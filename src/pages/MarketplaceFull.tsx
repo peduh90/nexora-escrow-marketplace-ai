@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { SAMPLE_PRODUCTS, formatPrice, getConditionColor, type SampleProduct } from "@/lib/sample-products";
 import { CATEGORIES } from "@/lib/categories";
 import { getCounties } from "@/lib/delivery-config";
+import { getProductImage } from "@/lib/product-images";
 import {
   Search, SlidersHorizontal, Grid3X3, List, MapPin, Star, Shield, Truck, Heart,
   ChevronDown, X, Package, CheckCircle2, Filter, ArrowUpDown,
@@ -316,11 +317,13 @@ export default function MarketplaceFull() {
 }
 
 function ProductCard({ product, viewMode, navigate, saved, onSave }: { product: SampleProduct; viewMode: "grid" | "list"; navigate: any; saved: boolean; onSave: () => void }) {
+  const imgSrc = getProductImage(product.title, product.category, 0);
+
   if (viewMode === "list") {
     return (
       <div onClick={() => navigate(`/product/${product.id}`)} className="flex gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 cursor-pointer transition-all">
-        <div className="w-32 h-32 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0 relative">
-          <Package className="w-10 h-10 text-white/10" />
+        <div className="w-32 h-32 rounded-lg overflow-hidden bg-white/[0.03] shrink-0 relative">
+          <img src={imgSrc} alt={product.title} className="w-full h-full object-cover" loading="lazy" />
           <span className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full font-medium ${getConditionColor(product.condition)}`}>{product.condition}</span>
         </div>
         <div className="flex-1 min-w-0">
@@ -347,8 +350,9 @@ function ProductCard({ product, viewMode, navigate, saved, onSave }: { product: 
 
   return (
     <div onClick={() => navigate(`/product/${product.id}`)} className="group rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 overflow-hidden cursor-pointer transition-all">
-      <div className="h-48 bg-gradient-to-br from-white/[0.02] to-white/[0.04] relative flex items-center justify-center">
-        <Package className="w-14 h-14 text-white/5" />
+      <div className="h-48 relative overflow-hidden">
+        <img src={imgSrc} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         <span className={`absolute top-3 left-3 text-[10px] px-2 py-0.5 rounded-full font-medium ${getConditionColor(product.condition)}`}>{product.condition}</span>
         <button onClick={(e) => { e.stopPropagation(); onSave(); }} className={`absolute top-3 right-3 p-1.5 rounded-full bg-black/30 backdrop-blur-sm ${saved ? "text-red-400" : "text-white/30 hover:text-white/60"}`}>
           <Heart className={`w-4 h-4 ${saved ? "fill-red-400" : ""}`} />
