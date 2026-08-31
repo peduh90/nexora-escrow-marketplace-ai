@@ -11,6 +11,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
+import AIChat from "@/components/AIChat";
 
 const navItems = [
   { to: "/buyer", icon: LayoutDashboard, label: "Dashboard", end: true },
@@ -124,6 +125,8 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
         {/* Page content */}
         <div className="p-6">{children}</div>
       </main>
+      {/* AI Assistant */}
+      <AIChat panel="buyer" />
     </div>
   );
 }

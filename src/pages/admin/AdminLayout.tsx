@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
+import AIChat from "@/components/AIChat";
 import {
   Shield, LayoutDashboard, Users, ShoppingCart, FileCheck, Scale,
   Brain, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
@@ -266,6 +267,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </div>
       </main>
+      <AIChat panel="admin" />
     </div>
   );
 }

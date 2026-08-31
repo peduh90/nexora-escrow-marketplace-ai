@@ -1,6 +1,7 @@
 import { useLocation } from "react-router";
 import SellerSidebar from "./SellerSidebar";
 import { Bell, Search, Wallet, ChevronDown } from "lucide-react";
+import AIChat from "@/components/AIChat";
 
 const navLabels: Record<string, string> = {
   "/seller": "Dashboard",
@@ -76,8 +77,9 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
         </header>
 
         {/* Page content */}
-        <main className="p-4 md:p-6 pb-20 lg:pb-6">{children}</main>
+        <main className="p-4 md:p-6 pb-20 lg:pb-6">{children}        </main>
       </div>
+      <AIChat panel="seller" />
     </div>
   );
 }
