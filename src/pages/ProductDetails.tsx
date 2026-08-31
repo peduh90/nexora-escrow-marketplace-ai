@@ -48,7 +48,7 @@ export default function ProductDetails() {
           <div className="flex-1 relative">
             <input type="text" placeholder="Search products..." className="w-full pl-4 pr-4 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/30" />
           </div>
-          <button onClick={() => navigate("/buyer/wallet")} className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors">
+          <button onClick={() => navigate("/buyer/orders")} className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors">
             <ShoppingCart className="w-5 h-5" />
           </button>
         </div>
@@ -338,7 +338,7 @@ export default function ProductDetails() {
               <div className="flex justify-between text-white/40"><span>Platform Fee</span><span>{formatPrice(Math.round(product.price * 0.025))}</span></div>
               <div className="flex justify-between text-white font-bold pt-2 border-t border-white/5"><span>Total</span><span>{formatPrice(product.price * quantity + (delivery.free ? 0 : delivery.fee) + Math.round(product.price * 0.025))}</span></div>
             </div>
-            <button onClick={() => { setShowCart(false); navigate("/buyer/wallet"); }} className="w-full py-3 rounded-xl bg-nx-violet text-white font-semibold text-sm hover:bg-nx-violet/80 transition-colors">
+            <button onClick={() => { setShowCart(false); navigate("/buyer/orders"); }} className="w-full py-3 rounded-xl bg-nx-violet text-white font-semibold text-sm hover:bg-nx-violet/80 transition-colors">
               Proceed to Checkout
             </button>
           </div>

@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import BuyerSidebar from "./BuyerSidebar";
+import BuyerLayout from "./BuyerLayout";
 import {
   ShoppingCart, Package, Truck, CheckCircle2, Clock, Shield,
   MapPin, Eye, MessageSquare, AlertTriangle, Star,
@@ -33,13 +33,8 @@ const statusMap: Record<string, { label: string; color: string; bg: string; icon
 
 export default function BuyerOrders() {
   return (
-    <div className="flex min-h-screen bg-background">
-      <BuyerSidebar />
-      <main className="flex-1 min-w-0 pb-20 lg:pb-0">
-        <div className="sticky top-0 z-30 h-14 bg-[#08080F]/80 backdrop-blur-xl border-b border-white/5 flex items-center px-4 md:px-6">
-          <h2 className="text-sm font-semibold text-white">My Orders</h2>
-        </div>
-        <div className="p-4 md:p-6 space-y-5">
+    <BuyerLayout>
+        <div className="space-y-5">
           <FadeIn>
             <h1 className="text-2xl font-bold text-white">My Orders</h1>
             <p className="text-sm text-white/40 mt-1">Track and manage all your purchases</p>
@@ -113,7 +108,6 @@ export default function BuyerOrders() {
             })}
           </div>
         </div>
-      </main>
-    </div>
+    </BuyerLayout>
   );
 }
