@@ -41,7 +41,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     searchParams.get("returnTo"),
     redirectAfterAuth,
   );
-  const [step, setStep] = useState<"signIn" | { email: string }>("signIn");
+  const [step, setStep] = useState<"signIn" | { email: string } | "roleSelect">("signIn");
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +78,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     try {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
-      navigate(redirect);
+      navigate(redirect === "/buyer" ? "/buyer" : redirect);
     } catch (error) {
       console.error("OTP verification error:", error);
       setError("The verification code you entered is incorrect.");
@@ -92,7 +92,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       await signIn("anonymous");
-      navigate(redirect);
+      navigate("/buyer");
     } catch (error) {
       console.error("Guest login error:", error);
       setError(`Failed to sign in as guest: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -174,16 +174,21 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                         </div>
                       </div>
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full mt-4 bg-transparent border-white/10 text-white/60 hover:text-white hover:border-white/20 hover:bg-white/[0.02]"
-                        onClick={handleGuestLogin}
-                        disabled={isLoading}
-                      >
-                        <UserX className="mr-2 h-4 w-4" />
-                        Continue as Guest
-                      </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full mt-4 bg-transparent border-white/10 text-white/60 hover:text-white hover:border-white/20 hover:bg-white/[0.02]"
+                      onClick={handleGuestLogin}
+                      disabled={isLoading}
+                    >
+                      <UserX className="mr-2 h-4 w-4" />
+                      Continue as Guest
+                    </Button>
+
+                    {/* Role selection hint */}
+                    <p className="text-center text-[11px] text-white/20 mt-4">
+                      After sign-in, choose your role: <span className="text-nx-cyan">Buyer</span> or <span className="text-nx-violet">Seller</span>
+                    </p>
                     </div>
                   </CardContent>
                 </form>
@@ -193,12 +198,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                 <CardHeader className="text-center pt-6">
                   <CardTitle className="text-xl text-white">Check your email</CardTitle>
                   <CardDescription className="text-white/40">
-                    We've sent a code to {step.email}
+                    We've sent a code to {typeof step === "object" ? step.email : ""}
                   </CardDescription>
                 </CardHeader>
                 <form onSubmit={handleOtpSubmit}>
                   <CardContent className="pb-4">
-                    <input type="hidden" name="email" value={step.email} />
+                    <input type="hidden" name="email" value={typeof step === "object" ? step.email : ""} />
                     <input type="hidden" name="code" value={otp} />
 
                     <div className="flex justify-center">

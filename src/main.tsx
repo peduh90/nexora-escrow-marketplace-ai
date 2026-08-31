@@ -12,6 +12,8 @@ import "./index.css";
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+// Legacy dashboard (redirects)
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const Transactions = lazy(() => import("./pages/Transactions.tsx"));
 const WalletPage = lazy(() => import("./pages/WalletPage.tsx"));
@@ -19,7 +21,26 @@ const Marketplace = lazy(() => import("./pages/Marketplace.tsx"));
 const Disputes = lazy(() => import("./pages/Disputes.tsx"));
 const AIInsights = lazy(() => import("./pages/AIInsights.tsx"));
 const Settings = lazy(() => import("./pages/Settings.tsx"));
-const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+// Buyer panel
+const BuyerDashboard = lazy(() => import("./pages/buyer/BuyerDashboard.tsx"));
+const BuyerMarketplace = lazy(() => import("./pages/Marketplace.tsx"));
+const BuyerWallet = lazy(() => import("./pages/WalletPage.tsx"));
+const BuyerDisputes = lazy(() => import("./pages/Disputes.tsx"));
+const BuyerOrders = lazy(() => import("./pages/buyer/BuyerOrders.tsx"));
+const BuyerDeliveries = lazy(() => import("./pages/buyer/BuyerDeliveries.tsx"));
+const BuyerSettings = lazy(() => import("./pages/Settings.tsx"));
+const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
+// Seller panel
+const SellerDashboard = lazy(() => import("./pages/seller/SellerDashboard.tsx"));
+const SellerProducts = lazy(() => import("./pages/seller/SellerProducts.tsx"));
+const SellerOrders = lazy(() => import("./pages/seller/SellerOrders.tsx"));
+const SellerEarnings = lazy(() => import("./pages/seller/SellerEarnings.tsx"));
+const SellerKYC = lazy(() => import("./pages/seller/SellerKYC.tsx"));
+const SellerDeliveries = lazy(() => import("./pages/seller/SellerDeliveries.tsx"));
+const SellerAnalytics = lazy(() => import("./pages/seller/SellerAnalytics.tsx"));
+const SellerSettings = lazy(() => import("./pages/Settings.tsx"));
+// Admin panel
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {
@@ -125,67 +146,43 @@ createRoot(document.getElementById("root")!).render(
           <RouteSyncer />
           <Suspense fallback={<RouteLoading />}>
             <Routes>
+              {/* Public routes */}
               <Route path="/" element={<Landing />} />
-              <Route
-                path="/auth"
-                element={<AuthPage redirectAfterAuth="/dashboard" />}
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <RequireAuth>
-                    <Dashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/dashboard/transactions"
-                element={
-                  <RequireAuth>
-                    <Transactions />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/dashboard/wallet"
-                element={
-                  <RequireAuth>
-                    <WalletPage />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/dashboard/marketplace"
-                element={
-                  <RequireAuth>
-                    <Marketplace />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/dashboard/disputes"
-                element={
-                  <RequireAuth>
-                    <Disputes />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/dashboard/ai-insights"
-                element={
-                  <RequireAuth>
-                    <AIInsights />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/dashboard/settings"
-                element={
-                  <RequireAuth>
-                    <Settings />
-                  </RequireAuth>
-                }
-              />
+              <Route path="/auth" element={<AuthPage redirectAfterAuth="/buyer" />} />
+              <Route path="/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
+
+              {/* Legacy dashboard routes (backward compat) */}
+              <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+              <Route path="/dashboard/transactions" element={<RequireAuth><Transactions /></RequireAuth>} />
+              <Route path="/dashboard/wallet" element={<RequireAuth><WalletPage /></RequireAuth>} />
+              <Route path="/dashboard/marketplace" element={<RequireAuth><Marketplace /></RequireAuth>} />
+              <Route path="/dashboard/disputes" element={<RequireAuth><Disputes /></RequireAuth>} />
+              <Route path="/dashboard/ai-insights" element={<RequireAuth><AIInsights /></RequireAuth>} />
+              <Route path="/dashboard/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+
+              {/* Buyer routes */}
+              <Route path="/buyer" element={<RequireAuth><BuyerDashboard /></RequireAuth>} />
+              <Route path="/buyer/marketplace" element={<RequireAuth><BuyerMarketplace /></RequireAuth>} />
+              <Route path="/buyer/orders" element={<RequireAuth><BuyerOrders /></RequireAuth>} />
+              <Route path="/buyer/deliveries" element={<RequireAuth><BuyerDeliveries /></RequireAuth>} />
+              <Route path="/buyer/wallet" element={<RequireAuth><BuyerWallet /></RequireAuth>} />
+              <Route path="/buyer/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
+              <Route path="/buyer/disputes" element={<RequireAuth><BuyerDisputes /></RequireAuth>} />
+              <Route path="/buyer/settings" element={<RequireAuth><BuyerSettings /></RequireAuth>} />
+
+              {/* Seller routes */}
+              <Route path="/seller" element={<RequireAuth><SellerDashboard /></RequireAuth>} />
+              <Route path="/seller/products" element={<RequireAuth><SellerProducts /></RequireAuth>} />
+              <Route path="/seller/orders" element={<RequireAuth><SellerOrders /></RequireAuth>} />
+              <Route path="/seller/deliveries" element={<RequireAuth><SellerDeliveries /></RequireAuth>} />
+              <Route path="/seller/earnings" element={<RequireAuth><SellerEarnings /></RequireAuth>} />
+              <Route path="/seller/kyc" element={<RequireAuth><SellerKYC /></RequireAuth>} />
+              <Route path="/seller/analytics" element={<RequireAuth><SellerAnalytics /></RequireAuth>} />
+              <Route path="/seller/settings" element={<RequireAuth><SellerSettings /></RequireAuth>} />
+
+              {/* Admin routes */}
+              <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

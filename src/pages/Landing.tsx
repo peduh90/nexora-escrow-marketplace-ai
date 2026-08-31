@@ -22,6 +22,9 @@ import {
 import ParticleCanvas from "@/components/canvas/ParticleCanvas";
 import EscrowCore from "@/components/canvas/EscrowCore";
 import NavigationBar from "@/components/layout/NavigationBar";
+import { TrustBanner, TrustStats } from "@/components/layout/TrustBadges";
+import SocialLinks from "@/components/layout/SocialLinks";
+import { Truck, Briefcase, Store, Package } from "lucide-react";
 
 // Animated counter component
 function AnimatedNumber({ target, prefix = "", suffix = "" }: { target: number; prefix?: string; suffix?: string }) {
@@ -157,6 +160,11 @@ export default function Landing() {
       {/* Navigation */}
       <NavigationBar />
 
+      {/* Trust Banner */}
+      <div className="relative z-10">
+        <TrustBanner />
+      </div>
+
       {/* =================== HERO =================== */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-16 z-10">
         {/* Escrow Core */}
@@ -245,6 +253,38 @@ export default function Landing() {
             </motion.div>
           ))}
         </motion.div>
+      </section>
+
+      {/* =================== NEW FEATURES =================== */}
+      <section className="relative z-10 py-20 px-6">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn className="text-center mb-12">
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
+              More Than Just <span className="nx-gradient-text">Escrow</span>
+            </h2>
+            <p className="text-white/40 max-w-xl mx-auto text-base">
+              A complete ecosystem for African commerce — from marketplace to delivery to jobs.
+            </p>
+          </FadeIn>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { icon: Store, title: "Smart Marketplace", desc: "AI-powered product discovery across 47 counties. Every listing verified and escrow-protected.", color: "#8B5CF6" },
+              { icon: Truck, title: "Insured Transport", desc: "GPS-tracked deliveries with full insurance. Platform-negotiated rates across all counties.", color: "#06B6D4" },
+              { icon: Briefcase, title: "Job & Services Board", desc: "Find work, hire talent, or offer services. Escrow-protected gigs from KES 3,000 to millions.", color: "#F59E0B" },
+              { icon: Package, title: "Seller Command Center", desc: "Full business dashboard with KYC verification, analytics, refunds, and M-Pesa withdrawals.", color: "#10B981" },
+            ].map((f, i) => (
+              <FadeIn key={f.title} delay={i * 0.08}>
+                <div className="p-5 rounded-xl border border-white/5 bg-nx-surface/50 hover:border-white/10 transition-all h-full">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style={{ background: `${f.color}12` }}>
+                    <f.icon className="w-5 h-5" style={{ color: f.color }} />
+                  </div>
+                  <h3 className="text-white font-semibold text-sm mb-1.5">{f.title}</h3>
+                  <p className="text-white/40 text-xs leading-relaxed">{f.desc}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* =================== STATS BAR =================== */}
@@ -532,6 +572,38 @@ export default function Landing() {
         </FadeIn>
       </section>
 
+      {/* =================== WHY NEXORA =================== */}
+      <section className="relative z-10 py-20 px-6">
+        <div className="max-w-5xl mx-auto">
+          <FadeIn>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  Why Africa Prefers <span className="nx-gradient-text">Nexora</span>
+                </h2>
+                <div className="space-y-4">
+                  {[
+                    { title: "M-Pesa Native", desc: "Direct integration with Kenya's #1 payment system. No third-party bridges." },
+                    { title: "County-Level Coverage", desc: "All 47 counties mapped. Towns, stages, and marketplaces in our delivery network." },
+                    { title: "Commission That Makes Sense", desc: "5% free tier, 2.5% professional, 0.5% enterprise. Transport covered by platform." },
+                    { title: "Social Selling", desc: "Share listings on WhatsApp, Facebook, Instagram, TikTok — one tap." },
+                  ].map((item, i) => (
+                    <div key={item.title} className="flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-nx-emerald shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-white">{item.title}</p>
+                        <p className="text-xs text-white/40 mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <TrustStats />
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* =================== FOOTER =================== */}
       <footer className="relative z-10 border-t border-white/5 py-12 px-6">
         <div className="max-w-6xl mx-auto">
@@ -547,6 +619,9 @@ export default function Landing() {
                 Africa's first AI-powered escrow marketplace. Secure, transparent,
                 and built for the continent.
               </p>
+              <div className="mt-4">
+                <SocialLinks size="sm" />
+              </div>
             </div>
             {[
               {
@@ -576,10 +651,9 @@ export default function Landing() {
               </div>
             ))}
           </div>
-          <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-white/20">
-              &copy; 2025 Nexora Market. All rights reserved. HQ: Nairobi, Kenya.
-            </p>
+          <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">              <p className="text-xs text-white/20">
+                &copy; 2025 Nexora Market. All rights reserved. HQ: Nairobi, Kenya. CBK Licensed.
+              </p>
             <div className="flex items-center gap-4 text-xs text-white/20">
               <a href="#" className="hover:text-white/40 transition-colors">Privacy</a>
               <a href="#" className="hover:text-white/40 transition-colors">Terms</a>
