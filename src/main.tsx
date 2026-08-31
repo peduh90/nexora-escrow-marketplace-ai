@@ -35,6 +35,18 @@ const SellerEarnings = lazy(() => import("./pages/seller/SellerEarnings.tsx"));
 const SellerKYC = lazy(() => import("./pages/seller/SellerKYC.tsx"));
 const SellerMessages = lazy(() => import("./pages/seller/SellerMessages.tsx"));
 const SellerAnalytics = lazy(() => import("./pages/seller/SellerAnalytics.tsx"));
+const SellerEscrow = lazy(() => import("./pages/seller/SellerEscrow.tsx"));
+const SellerOffers = lazy(() => import("./pages/seller/SellerOffers.tsx"));
+const SellerCustomers = lazy(() => import("./pages/seller/SellerCustomers.tsx"));
+const SellerReviews = lazy(() => import("./pages/seller/SellerReviews.tsx"));
+const SellerDelivery = lazy(() => import("./pages/seller/SellerDelivery.tsx"));
+const SellerStore = lazy(() => import("./pages/seller/SellerStore.tsx"));
+const SellerSettings = lazy(() => import("./pages/seller/SellerSettings.tsx"));
+const SellerNotifications = lazy(() => import("./pages/seller/SellerNotifications.tsx"));
+const SellerHelp = lazy(() => import("./pages/seller/SellerHelp.tsx"));
+const SellerWithdrawals = lazy(() => import("./pages/seller/SellerWithdrawals.tsx"));
+const SellerPromotions = lazy(() => import("./pages/seller/SellerPromotions.tsx"));
+const SellerAddProduct = lazy(() => import("./pages/seller/SellerAddProduct.tsx"));
 const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails.tsx"));
 // Admin panel
@@ -170,11 +182,23 @@ createRoot(document.getElementById("root")!).render(
               {/* Seller routes */}
               <Route path="/seller" element={<RequireAuth><SellerDashboard /></RequireAuth>} />
               <Route path="/seller/products" element={<RequireAuth><SellerProducts /></RequireAuth>} />
+              <Route path="/seller/add-product" element={<RequireAuth><SellerAddProduct /></RequireAuth>} />
               <Route path="/seller/orders" element={<RequireAuth><SellerOrders /></RequireAuth>} />
+              <Route path="/seller/escrow" element={<RequireAuth><SellerEscrow /></RequireAuth>} />
               <Route path="/seller/messages" element={<RequireAuth><SellerMessages /></RequireAuth>} />
+              <Route path="/seller/offers" element={<RequireAuth><SellerOffers /></RequireAuth>} />
+              <Route path="/seller/customers" element={<RequireAuth><SellerCustomers /></RequireAuth>} />
               <Route path="/seller/earnings" element={<RequireAuth><SellerEarnings /></RequireAuth>} />
-              <Route path="/seller/kyc" element={<RequireAuth><SellerKYC /></RequireAuth>} />
+              <Route path="/seller/withdrawals" element={<RequireAuth><SellerWithdrawals /></RequireAuth>} />
+              <Route path="/seller/delivery" element={<RequireAuth><SellerDelivery /></RequireAuth>} />
               <Route path="/seller/analytics" element={<RequireAuth><SellerAnalytics /></RequireAuth>} />
+              <Route path="/seller/reviews" element={<RequireAuth><SellerReviews /></RequireAuth>} />
+              <Route path="/seller/promotions" element={<RequireAuth><SellerPromotions /></RequireAuth>} />
+              <Route path="/seller/kyc" element={<RequireAuth><SellerKYC /></RequireAuth>} />
+              <Route path="/seller/store" element={<RequireAuth><SellerStore /></RequireAuth>} />
+              <Route path="/seller/notifications" element={<RequireAuth><SellerNotifications /></RequireAuth>} />
+              <Route path="/seller/settings" element={<RequireAuth><SellerSettings /></RequireAuth>} />
+              <Route path="/seller/help" element={<RequireAuth><SellerHelp /></RequireAuth>} />
 
               {/* Admin routes */}
               <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />

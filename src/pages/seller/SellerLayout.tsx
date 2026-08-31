@@ -1,143 +1,83 @@
-import { NavLink, useLocation } from "react-router";
-import {
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  MessageSquare,
-  Wallet,
-  ShieldCheck,
-  Settings,
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
-  Bell,
-  Store,
-} from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useLocation } from "react-router";
+import SellerSidebar from "./SellerSidebar";
+import { Bell, Search, Wallet, ChevronDown } from "lucide-react";
 
-const navItems = [
-  { to: "/seller", icon: LayoutDashboard, label: "Dashboard", end: true },
-  { to: "/seller/products", icon: Package, label: "My Products" },
-  { to: "/seller/orders", icon: ShoppingCart, label: "Orders" },
-  { to: "/seller/messages", icon: MessageSquare, label: "Messages" },
-  { to: "/seller/earnings", icon: Wallet, label: "Earnings" },
-  { to: "/seller/kyc", icon: ShieldCheck, label: "KYC Verification" },
-  { to: "/seller/analytics", icon: BarChart3, label: "Analytics" },
-  { to: "/seller/settings", icon: Settings, label: "Settings" },
-];
+const navLabels: Record<string, string> = {
+  "/seller": "Dashboard",
+  "/seller/products": "My Products",
+  "/seller/add-product": "Add Product",
+  "/seller/orders": "Orders",
+  "/seller/escrow": "Escrow",
+  "/seller/messages": "Messages",
+  "/seller/offers": "Offers",
+  "/seller/customers": "Customers",
+  "/seller/earnings": "Wallet",
+  "/seller/withdrawals": "Withdrawals",
+  "/seller/delivery": "Delivery",
+  "/seller/analytics": "Analytics",
+  "/seller/reviews": "Reviews",
+  "/seller/promotions": "Promotions",
+  "/seller/kyc": "Verification",
+  "/seller/store": "Store Profile",
+  "/seller/notifications": "Notifications",
+  "/seller/settings": "Settings",
+  "/seller/help": "Help & Support",
+};
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+
+  const getPageLabel = () => {
+    for (const [path, label] of Object.entries(navLabels)) {
+      if (path === "/seller" ? location.pathname === path : location.pathname.startsWith(path)) {
+        return label;
+      }
+    }
+    return "Seller Panel";
+  };
 
   return (
     <div className="min-h-screen bg-[#05050A] flex">
-      {/* Sidebar */}
-      <aside
-        className={`fixed left-0 top-0 h-full z-40 flex flex-col border-r border-white/5 bg-[#0A0A12] transition-all duration-300 ${
-          collapsed ? "w-[68px]" : "w-[240px]"
-        }`}
-      >
-        {/* Logo */}
-        <div className="h-16 flex items-center px-4 border-b border-white/5">
-          <Store className="w-6 h-6 text-nx-violet shrink-0" />
-          {!collapsed && (
-            <span className="ml-2 text-sm font-bold tracking-tight text-white">
-              NEXORA<span className="text-nx-violet">.</span>
-            </span>
-          )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="ml-auto p-1 rounded hover:bg-white/5 text-white/30 hover:text-white/60 transition-colors hidden md:block"
-          >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          </button>
-        </div>
+      <SellerSidebar />
 
-        {/* Seller badge */}
-        {!collapsed && (
-          <div className="px-4 py-3 border-b border-white/5">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-nx-violet/10 flex items-center justify-center text-nx-violet text-xs font-bold">
-                S
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-white truncate">Seller Panel</p>
-                <p className="text-[10px] text-white/30 truncate">Manage your store</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Navigation */}
-        <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = item.end
-              ? location.pathname === item.to
-              : location.pathname.startsWith(item.to);
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all group ${
-                  isActive
-                    ? "bg-nx-violet/10 text-nx-violet"
-                    : "text-white/40 hover:text-white/70 hover:bg-white/[0.03]"
-                }`}
-                title={collapsed ? item.label : undefined}
-              >
-                <item.icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-nx-violet" : "text-white/30 group-hover:text-white/50"}`} />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        {/* Bottom */}
-        <div className="p-2 border-t border-white/5">
-          {!collapsed && (
-            <div className="px-3 py-2 mb-2 rounded-lg bg-nx-violet/5 border border-nx-violet/10">
-              <p className="text-[10px] text-nx-violet/70 font-medium">SELLER TIER</p>
-              <p className="text-xs text-white/60 mt-0.5">Free • 5% commission</p>
-            </div>
-          )}
-          <NavLink
-            to="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/30 hover:text-white/60 hover:bg-white/[0.03] transition-colors"
-          >
-            <LogOut className="w-4 h-4 shrink-0" />
-            {!collapsed && <span>Back to Home</span>}
-          </NavLink>
-        </div>
-      </aside>
-
-      {/* Main content */}
-      <main className={`flex-1 transition-all duration-300 ${collapsed ? "ml-[68px]" : "ml-[240px]"}`}>
+      <div className="flex-1 min-w-0 lg:ml-0">
         {/* Top bar */}
-        <header className="h-16 border-b border-white/5 bg-[#0A0A12]/80 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between px-6">
-          <div>
-            <h1 className="text-sm font-semibold text-white">
-              {navItems.find((n) =>
-                n.end ? location.pathname === n.to : location.pathname.startsWith(n.to)
-              )?.label || "Seller Panel"}
-            </h1>
+        <header className="h-14 border-b border-white/5 bg-[#0A0A12]/80 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-4">
+            <h1 className="text-sm font-semibold text-white hidden sm:block">{getPageLabel()}</h1>
+            {/* Search */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 w-64">
+              <Search className="w-3.5 h-3.5 text-white/20" />
+              <input type="text" placeholder="Search..." className="bg-transparent text-xs text-white placeholder:text-white/20 focus:outline-none flex-1" />
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+
+          <div className="flex items-center gap-2">
+            {/* Wallet balance */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-400/5 border border-emerald-400/10">
+              <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-xs font-medium text-emerald-400">KSh 125,400</span>
+            </div>
+            {/* Notifications */}
             <button className="relative p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/70 transition-colors">
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-nx-violet" />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-nx-violet" />
             </button>
-            <div className="w-8 h-8 rounded-lg bg-nx-violet/10 flex items-center justify-center text-nx-violet text-xs font-bold">
-              S
+            {/* Profile */}
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
+              <div className="w-7 h-7 rounded-full bg-nx-violet/20 flex items-center justify-center text-nx-violet text-xs font-bold">S</div>
+              <div className="hidden md:block">
+                <p className="text-xs font-medium text-white">TechZone</p>
+                <p className="text-[9px] text-white/30">Verified</p>
+              </div>
+              <ChevronDown className="w-3 h-3 text-white/20 hidden md:block" />
             </div>
           </div>
         </header>
 
         {/* Page content */}
-        <div className="p-6">{children}</div>
-      </main>
+        <main className="p-4 md:p-6 pb-20 lg:pb-6">{children}</main>
+      </div>
     </div>
   );
 }

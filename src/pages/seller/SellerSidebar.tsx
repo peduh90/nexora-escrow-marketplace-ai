@@ -1,106 +1,116 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
-import { useAuth } from "@/hooks/use-auth";
 import {
-  Shield,
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  Wallet,
-  FileCheck,
-  BarChart3,
-  Settings,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  User,
-  Truck,
+  LayoutDashboard, Package, Plus, ShoppingCart, Shield, MessageSquare,
+  TrendingUp, Users, Wallet, Download, Truck, BarChart3, Star,
+  Megaphone, BadgeCheck, Store, Bell, Settings, HelpCircle, LogOut,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/seller" },
-  { icon: Package, label: "My Products", path: "/seller/products" },
-  { icon: ShoppingCart, label: "Orders", path: "/seller/orders" },
-  { icon: Truck, label: "Deliveries", path: "/seller/deliveries" },
-  { icon: Wallet, label: "Earnings", path: "/seller/earnings" },
-  { icon: FileCheck, label: "KYC Verification", path: "/seller/kyc" },
+  { icon: Package, label: "My Products", path: "/seller/products", badge: 0 },
+  { icon: Plus, label: "Add Product", path: "/seller/add-product" },
+  { icon: ShoppingCart, label: "Orders", path: "/seller/orders", badge: 5 },
+  { icon: Shield, label: "Escrow", path: "/seller/escrow", badge: 12 },
+  { icon: MessageSquare, label: "Messages", path: "/seller/messages", badge: 3 },
+  { icon: TrendingUp, label: "Offers", path: "/seller/offers", badge: 2 },
+  { icon: Users, label: "Customers", path: "/seller/customers" },
+  { icon: Wallet, label: "Wallet", path: "/seller/earnings" },
+  { icon: Download, label: "Withdrawals", path: "/seller/withdrawals" },
+  { icon: Truck, label: "Delivery", path: "/seller/delivery" },
   { icon: BarChart3, label: "Analytics", path: "/seller/analytics" },
+  { icon: Star, label: "Reviews", path: "/seller/reviews" },
+  { icon: Megaphone, label: "Promotions", path: "/seller/promotions" },
+  { icon: BadgeCheck, label: "Verification", path: "/seller/kyc" },
+  { icon: Store, label: "Store Profile", path: "/seller/store" },
+  { icon: Bell, label: "Notifications", path: "/seller/notifications", badge: 1 },
   { icon: Settings, label: "Settings", path: "/seller/settings" },
+  { icon: HelpCircle, label: "Help & Support", path: "/seller/help" },
 ];
 
 export default function SellerSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
-  };
 
   return (
     <>
-      <motion.aside
-        initial={{ x: -20, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className={`hidden lg:flex flex-col h-screen sticky top-0 border-r border-white/5 bg-[#08080F] transition-all duration-300 ${collapsed ? "w-[72px]" : "w-[240px]"}`}
-      >
-        <div className={`flex items-center h-16 px-4 border-b border-white/5 ${collapsed ? "justify-center" : "gap-2.5"}`}>
-          <Shield className="w-6 h-6 text-nx-violet shrink-0" />
-          {!collapsed && <span className="text-base font-bold text-white">NEXORA<span className="text-nx-violet">.</span></span>}
+      {/* Desktop sidebar */}
+      <aside className={`hidden lg:flex flex-col h-screen sticky top-0 border-r border-white/5 bg-[#0A0A12] transition-all duration-300 ${collapsed ? "w-[68px]" : "w-[220px]"}`}>
+        {/* Logo */}
+        <div className={`h-16 flex items-center px-4 border-b border-white/5 ${collapsed ? "justify-center" : ""}`}>
+          <div className="w-8 h-8 rounded-lg bg-nx-violet/20 flex items-center justify-center shrink-0">
+            <Store className="w-4 h-4 text-nx-violet" />
+          </div>
+          {!collapsed && <span className="ml-2 text-sm font-bold text-white">NEXORA<span className="text-nx-violet">.</span></span>}
+          <button onClick={() => setCollapsed(!collapsed)} className={`p-1 rounded hover:bg-white/5 text-white/30 hover:text-white/60 transition-colors ${collapsed ? "mt-2 mx-auto" : "ml-auto"}`}>
+            {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+          </button>
         </div>
 
-        <div className={`mx-3 mt-3 mb-1 px-3 py-1.5 rounded-lg bg-nx-violet/10 text-nx-violet text-[10px] font-medium tracking-wider uppercase ${collapsed ? "text-center" : ""}`}>
-          {collapsed ? "S" : "SELLER PANEL"}
-        </div>
+        {/* Seller badge */}
+        {!collapsed && (
+          <div className="px-3 py-2 border-b border-white/5">
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-nx-violet/5 border border-nx-violet/10">
+              <BadgeCheck className="w-4 h-4 text-nx-violet shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium text-nx-violet">SELLER PANEL</p>
+                <p className="text-[9px] text-white/30 truncate">Verified Seller</p>
+              </div>
+            </div>
+          </div>
+        )}
 
-        <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
+        {/* Navigation */}
+        <nav className="flex-1 py-2 px-1.5 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path || (item.path !== "/seller" && location.pathname.startsWith(item.path));
+            const isActive = item.path === "/seller" ? location.pathname === item.path : location.pathname.startsWith(item.path);
             return (
               <button key={item.path} onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all group ${isActive ? "bg-nx-violet/10 text-nx-violet" : "text-white/40 hover:text-white/70 hover:bg-white/[0.03]"} ${collapsed ? "justify-center" : ""}`}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-all group ${isActive ? "bg-nx-violet/10 text-nx-violet" : "text-white/35 hover:text-white/60 hover:bg-white/[0.03]"} ${collapsed ? "justify-center" : ""}`}
                 title={collapsed ? item.label : undefined}>
-                <item.icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-nx-violet" : ""}`} />
-                {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+                <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-nx-violet" : "text-white/25 group-hover:text-white/40"}`} />
+                {!collapsed && <span className="truncate flex-1 text-left">{item.label}</span>}
+                {!collapsed && item.badge && item.badge > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-nx-violet/20 text-nx-violet text-[9px] font-bold flex items-center justify-center shrink-0">{item.badge}</span>
+                )}
               </button>
             );
           })}
         </nav>
 
-        <div className={`border-t border-white/5 p-3 ${collapsed ? "flex flex-col items-center gap-2" : ""}`}>
-          <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
-            <div className="w-8 h-8 rounded-full bg-nx-violet/15 flex items-center justify-center shrink-0">
-              <User className="w-4 h-4 text-nx-violet" />
-            </div>
-            {!collapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-white truncate">{user?.businessName || user?.name || "Seller"}</p>
-                <p className="text-[10px] text-white/30 truncate">{user?.email}</p>
-              </div>
-            )}
-          </div>
-          <button onClick={handleSignOut} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/30 hover:text-white/60 hover:bg-white/[0.03] transition-colors mt-2 ${collapsed ? "justify-center w-full" : ""}`}>
-            <LogOut className="w-3.5 h-3.5" /> {!collapsed && "Sign Out"}
+        {/* Bottom */}
+        <div className="p-2 border-t border-white/5 space-y-0.5">
+          <button onClick={() => navigate("/")} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-white/25 hover:text-white/50 hover:bg-white/[0.03] transition-colors">
+            <LogOut className="w-4 h-4 shrink-0" />
+            {!collapsed && <span>Logout</span>}
           </button>
         </div>
-
-        <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 rounded-full bg-nx-surface border border-white/10 items-center justify-center text-white/30 hover:text-white/60 transition-colors">
-          {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
-        </button>
-      </motion.aside>
+      </aside>
 
       {/* Mobile bottom nav */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#08080F]/95 backdrop-blur-xl border-t border-white/5">
-        <nav className="flex items-center justify-around py-2 px-2">
-          {navItems.slice(0, 5).map((item) => {
-            const isActive = location.pathname === item.path;
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#0A0A12]/95 backdrop-blur-xl border-t border-white/5">
+        <nav className="flex items-center justify-around py-1.5 px-1">
+          {[
+            { icon: LayoutDashboard, label: "Dashboard", path: "/seller" },
+            { icon: ShoppingCart, label: "Orders", path: "/seller/orders" },
+            { icon: Plus, label: "Add", path: "/seller/add-product", special: true },
+            { icon: MessageSquare, label: "Messages", path: "/seller/messages" },
+            { icon: Wallet, label: "Wallet", path: "/seller/earnings" },
+          ].map((item) => {
+            const isActive = item.path === "/seller" ? location.pathname === item.path : location.pathname.startsWith(item.path);
             return (
-              <button key={item.path} onClick={() => navigate(item.path)} className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-colors ${isActive ? "text-nx-violet" : "text-white/30"}`}>
-                <item.icon className="w-5 h-5" />
-                <span className="text-[10px]">{item.label}</span>
+              <button key={item.path} onClick={() => navigate(item.path)}
+                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-colors ${item.special ? "-mt-4" : ""} ${isActive ? "text-nx-violet" : "text-white/30"}`}>
+                {item.special ? (
+                  <div className="w-10 h-10 rounded-full bg-nx-violet flex items-center justify-center -mb-1">
+                    <Plus className="w-5 h-5 text-white" />
+                  </div>
+                ) : (
+                  <item.icon className="w-5 h-5" />
+                )}
+                <span className="text-[9px]">{item.label}</span>
               </button>
             );
           })}
