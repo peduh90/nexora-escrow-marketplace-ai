@@ -1,19 +1,22 @@
 import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { ShoppingCart, Search, Eye, Package, Truck, CheckCircle2, XCircle } from "lucide-react";
-
-const sampleOrders = [
-  { id: "ORD-2901", product: "HP EliteBook 840 G3", buyer: "Edwin Kamau", seller: "TechZone Kenya", amount: "KES 22,000", escrow: "KES 22,000", delivery: "In Transit", payment: "Paid", date: "Apr 5, 2025" },
-  { id: "ORD-2900", product: "Samsung Galaxy S23", buyer: "Peter Mwangi", seller: "PhoneWorld", amount: "KES 45,000", escrow: "KES 45,000", delivery: "Picked Up", payment: "Paid", date: "Apr 5, 2025" },
-  { id: "ORD-2899", product: "Nike Air Max 90", buyer: "Lucy Wambui", seller: "FashionHub KE", amount: "KES 8,500", escrow: "KES 8,500", delivery: "Delivered", payment: "Paid", date: "Apr 4, 2025" },
-  { id: "ORD-2898", product: "MacBook Pro M3", buyer: "Michael Chen", seller: "TechZone Kenya", amount: "KES 185,000", escrow: "KES 185,000", delivery: "Preparing", payment: "Paid", date: "Apr 4, 2025" },
-  { id: "ORD-2897", product: "Toyota Vitz 2019", buyer: "James Odhiambo", seller: "AutoHub Kenya", amount: "KES 1,450,000", escrow: "KES 1,450,000", delivery: "Pending", payment: "Paid", date: "Apr 3, 2025" },
-  { id: "ORD-2896", product: "2BR Apartment Westlands", buyer: "Grace Njeri", seller: "PropertyLink KE", amount: "KES 45,000", escrow: "KES 45,000", delivery: "N/A", payment: "Paid", date: "Apr 3, 2025" },
-];
+import { ShoppingCart, Search, Eye } from "lucide-react";
 
 export default function AdminOrders() {
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
+  const escrows = useQuery(api.users.getAllEscrows);
+
+  const orders = escrows ?? [];
+  const filtered = orders.filter(e => {
+    if (filter === "Active" && e.status !== "funded" && e.status !== "active") return false;
+    if (filter === "Delivered" && e.status !== "released" && e.status !== "completed") return false;
+    if (filter === "Disputed" && e.status !== "disputed") return false;
+    if (search && !e.title.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   return (
     <AdminLayout>
@@ -24,11 +27,11 @@ export default function AdminOrders() {
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         {[
-          { label: "Total Orders", value: "12,847", color: "#8B5CF6" },
-          { label: "Active", value: "2,156", color: "#06B6D4" },
-          { label: "In Escrow", value: "1,893", color: "#F59E0B" },
-          { label: "Delivered Today", value: "342", color: "#10B981" },
-          { label: "Disputed", value: "23", color: "#EF4444" },
+          { label: "Total Orders", value: orders.length.toLocaleString() },
+          { label: "Active", value: orders.filter(e => e.status === "funded" || e.status === "active").length.toLocaleString() },
+          { label: "In Escrow", value: orders.filter(e => e.status === "funded").length.toLocaleString() },
+          { label: "Delivered", value: orders.filter(e => e.status === "released" || e.status === "completed").length.toLocaleString() },
+          { label: "Disputed", value: orders.filter(e => e.status === "disputed").length.toLocaleString() },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-white/5 bg-[#0A0A12]">
             <p className="text-[10px] text-white/30 uppercase">{s.label}</p>
@@ -50,55 +53,56 @@ export default function AdminOrders() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/5 bg-[#0A0A12] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider">Order</th>
-                <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider hidden md:table-cell">Buyer</th>
-                <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider hidden lg:table-cell">Seller</th>
-                <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider">Amount</th>
-                <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider hidden lg:table-cell">Escrow</th>
-                <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider">Delivery</th>
-                <th className="text-right px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.03]">
-              {sampleOrders.map(order => (
-                <tr key={order.id} className="hover:bg-white/[0.01] transition-colors">
-                  <td className="px-4 py-3.5">
-                    <div>
-                      <p className="text-sm text-white/70 font-medium">{order.id}</p>
-                      <p className="text-[10px] text-white/25 truncate max-w-[180px]">{order.product}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 hidden md:table-cell">
-                    <p className="text-xs text-white/50">{order.buyer}</p>
-                  </td>
-                  <td className="px-4 py-3.5 hidden lg:table-cell">
-                    <p className="text-xs text-white/50">{order.seller}</p>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <p className="text-xs text-white/60 font-medium">{order.amount}</p>
-                  </td>
-                  <td className="px-4 py-3.5 hidden lg:table-cell">
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-nx-gold/10 text-nx-gold font-medium">{order.escrow}</span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${order.delivery === "Delivered" ? "bg-nx-emerald/10 text-nx-emerald" : order.delivery === "In Transit" ? "bg-nx-cyan/10 text-nx-cyan" : order.delivery === "Pending" ? "bg-nx-gold/10 text-nx-gold" : order.delivery === "Preparing" ? "bg-nx-violet/10 text-nx-violet" : "bg-white/5 text-white/30"}`}>
-                      {order.delivery}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"><Eye className="w-3.5 h-3.5" /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border border-white/5 bg-[#0A0A12] py-16 flex flex-col items-center">
+          <ShoppingCart className="w-8 h-8 text-white/10 mb-3" />
+          <p className="text-sm text-white/30">{search ? "No orders match your search" : "No orders yet"}</p>
+          <p className="text-[11px] text-white/15 mt-1">Orders will appear here once buyers start purchasing</p>
         </div>
-      </div>
+      ) : (
+        <div className="rounded-xl border border-white/5 bg-[#0A0A12] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider">Order</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider">Amount</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider">Commission</th>
+                  <th className="text-right px-4 py-3 text-[10px] font-medium text-white/30 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.03]">
+                {filtered.map(order => (
+                  <tr key={order._id} className="hover:bg-white/[0.01] transition-colors">
+                    <td className="px-4 py-3.5">
+                      <p className="text-sm text-white/70 font-medium">{order.title}</p>
+                      <p className="text-[10px] text-white/25">{order.currency} {order.amount.toLocaleString()}</p>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <p className="text-xs text-white/60 font-medium">{order.currency} {order.amount.toLocaleString()}</p>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+                        order.status === "completed" || order.status === "released" ? "bg-nx-emerald/10 text-nx-emerald" :
+                        order.status === "disputed" ? "bg-red-400/10 text-red-400" :
+                        order.status === "refunded" ? "bg-nx-gold/10 text-nx-gold" :
+                        "bg-nx-cyan/10 text-nx-cyan"
+                      }`}>{order.status}</span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="text-[10px] text-white/30">{order.commissionRate}%</span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"><Eye className="w-3.5 h-3.5" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

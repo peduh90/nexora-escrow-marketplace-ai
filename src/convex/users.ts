@@ -60,6 +60,30 @@ export const promoteToAdmin = mutation({
 /**
  * Check if the current user is an admin
  */
+/** Admin: get all users */
+export const getAllUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("users").collect();
+  },
+});
+
+/** Admin: get all listings */
+export const getAllListings = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("listings").collect();
+  },
+});
+
+/** Admin: get all escrows */
+export const getAllEscrows = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("escrows").collect();
+  },
+});
+
 export const isAdmin = query({
   args: {},
   handler: async (ctx) => {
