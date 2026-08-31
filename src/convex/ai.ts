@@ -107,23 +107,41 @@ Be helpful but keep responses concise (2-4 sentences max unless explaining somet
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error("OpenAI API error:", response.status, errorData);
-        if (response.status === 401) {
-          return "AI authentication failed. The API key may be invalid. Please check your OPENAI_API_KEY in Convex environment variables.";
-        }
-        if (response.status === 429) {
-          return "Too many requests. Please wait a moment and try again.";
-        }
-        return `AI service error (${response.status}). Please try again in a moment.`;
+      if (response.ok) {
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || "I couldn't generate a response. Please try again.";
       }
 
-      const data = await response.json();
-      return data.choices?.[0]?.message?.content || "I couldn't generate a response. Please try again.";
+      // If rate limited, try once more after a short delay
+      if (response.status === 429) {
+        await new Promise(r => setTimeout(r, 2000));
+        const retry = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...args.messages,
+            ],
+            max_tokens: 500,
+            temperature: 0.7,
+          }),
+        });
+        if (retry.ok) {
+          const data = await retry.json();
+          return data.choices?.[0]?.message?.content || getSmartFallback(args.messages[args.messages.length - 1]?.content || "");
+        }
+      }
+
+      // Fall back to smart rule-based responses
+      return getSmartFallback(args.messages[args.messages.length - 1]?.content || "");
     } catch (error) {
       console.error("AI chat error:", error);
-      return "I'm temporarily unavailable. Please try again later.";
+      return getSmartFallback(args.messages[args.messages.length - 1]?.content || "");
     }
   },
 });
@@ -439,3 +457,57 @@ Return ONLY valid JSON.`,
     }
   },
 });
+
+/**
+ * Smart rule-based fallback — works without OpenAI API
+ * Matches user questions to known Nexora Market topics
+ */
+function getSmartFallback(input: string): string {
+  const q = input.toLowerCase();
+
+  if (q.includes("escrow")) {
+    return "Escrow is Nexora Market's core safety feature. When you buy something, your payment is held securely in escrow — it's only released to the seller after you confirm you've received the product. If there's a problem, you can open a dispute and our team will review it. This protects both buyers and sellers from fraud.";
+  }
+
+  if (q.includes("pay") || q.includes("payment") || q.includes("mpesa") || q.includes("m-pesa")) {
+    return "You can pay using M-Pesa (STK Push), credit/debit card, or your Nexora Wallet. M-Pesa is the easiest — just enter your phone number during checkout and you'll receive a prompt on your phone to enter your PIN. All payments are secured through escrow.";
+  }
+
+  if (q.includes("deliver") || q.includes("shipping") || q.includes("track")) {
+    return "All delivery on Nexora Market is managed by us — sellers don't handle delivery. During checkout, select your delivery location and we'll calculate the fee (some areas get free delivery!). You can track your order in the Orders or Deliveries section of your dashboard.";
+  }
+
+  if (q.includes("dispute") || q.includes("problem") || q.includes("issue") || q.includes("report")) {
+    return "If you have a problem with an order, you can open a dispute from the Disputes section in your dashboard. Provide details and any evidence (photos, screenshots). Our AI-assisted review system helps resolve disputes fairly. You can also report a seller or product from their profile page.";
+  }
+
+  if (q.includes("sell") || q.includes("list") || q.includes("product")) {
+    return "To sell on Nexora Market, you need to create a seller account and complete KYC verification. Once verified, go to your Seller Dashboard → Add Product to list items. You'll need to add photos, set a price, choose a category, and select your location. All delivery is handled by Nexora!";
+  }
+
+  if (q.includes("withdraw") || q.includes("wallet") || q.includes("balance")) {
+    return "Your wallet balance shows your available funds and money held in escrow. You can withdraw earnings via M-Pesa or bank transfer from the Wallet section. Funds become available for withdrawal after the buyer confirms delivery and the escrow is released.";
+  }
+
+  if (q.includes("fee") || q.includes("commission") || q.includes("charge")) {
+    return "Nexora Market charges a 2.5-5% transaction commission and a 0.5-2% escrow fee. Delivery fees vary by location — some areas like Nairobi CBD and Westlands get free delivery. Premium seller subscriptions are available for lower fees and extra features.";
+  }
+
+  if (q.includes("verify") || q.includes("kyc") || q.includes("identity")) {
+    return "Seller verification (KYC) requires your business name, business type, and identity documents. Once submitted, our team reviews it within 24-48 hours. Verified sellers get a trust badge and higher visibility. Buyers can verify their identity for added security.";
+  }
+
+  if (q.includes("refund")) {
+    return "Refunds are handled through the escrow system. If you open a dispute and it's resolved in your favor, the funds in escrow are refunded to your wallet. You can also request a refund before delivery if the seller hasn't shipped yet.";
+  }
+
+  if (q.includes("hello") || q.includes("hi") || q.includes("hey") || q.includes("help")) {
+    return "Hello! I'm NexoraAI, your assistant for Nexora Market. I can help you with:\n\n• Payments & M-Pesa\n• Escrow & security\n• Delivery tracking\n• Selling & KYC verification\n• Disputes & refunds\n• Fees & commissions\n\nWhat would you like to know?";
+  }
+
+  if (q.includes("thank")) {
+    return "You're welcome! Is there anything else I can help you with about Nexora Market?";
+  }
+
+  return "I can help you with payments, escrow, delivery, disputes, selling, verification, and more. Try asking something like:\n\n• \"How does escrow work?\"\n• \"How do I pay with M-Pesa?\"\n• \"Track my delivery\"\n• \"How do I start selling?\"";
+}

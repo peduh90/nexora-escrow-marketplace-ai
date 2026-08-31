@@ -44,6 +44,7 @@ What would you like to know?`,
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [lastSent, setLastSent] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -58,7 +59,8 @@ What would you like to know?`,
   }, [isOpen]);
 
   const sendMessage = async (content: string) => {
-    if (!content.trim() || isLoading) return;
+    const now = Date.now();
+    if (!content.trim() || isLoading || now - lastSent < 3000) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -70,6 +72,7 @@ What would you like to know?`,
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+    setLastSent(now);
 
     try {
       const response = await chat({
