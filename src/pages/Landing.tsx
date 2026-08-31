@@ -221,10 +221,10 @@ export default function Landing() {
             <div className="absolute inset-0 bg-gradient-to-r from-nx-violet via-nx-cyan to-nx-violet opacity-0 group-hover:opacity-100 transition-opacity duration-700 animate-nx-gradient-shift" />
           </button>
           <button
-            onClick={() => navigate("/auth")}
+            onClick={() => navigate("/marketplace")}
             className="px-8 py-3.5 rounded-xl text-white/70 font-medium text-base border border-white/10 hover:border-nx-violet/40 hover:text-white transition-all duration-300"
           >
-            Explore the Platform
+            Browse Marketplace
           </button>
         </motion.div>
 
@@ -609,10 +609,10 @@ export default function Landing() {
                   ))}
                 </div>
                 <button
-                  onClick={() => navigate("/auth?returnTo=/buyer")}
+                  onClick={() => navigate("/marketplace")}
                   className="w-full mt-6 py-3 rounded-xl bg-nx-cyan/10 text-nx-cyan font-medium text-sm hover:bg-nx-cyan/20 transition-colors border border-nx-cyan/20"
                 >
-                  Shop as Buyer →
+                  Browse Marketplace →
                 </button>
               </div>
             </FadeIn>

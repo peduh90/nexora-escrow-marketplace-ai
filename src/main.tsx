@@ -23,7 +23,7 @@ const AIInsights = lazy(() => import("./pages/AIInsights.tsx"));
 const Settings = lazy(() => import("./pages/Settings.tsx"));
 // Buyer panel
 const BuyerDashboard = lazy(() => import("./pages/buyer/BuyerDashboard.tsx"));
-const BuyerMarketplace = lazy(() => import("./pages/Marketplace.tsx"));
+const BuyerMarketplace = lazy(() => import("./pages/MarketplaceFull.tsx"));
 const BuyerWallet = lazy(() => import("./pages/buyer/BuyerWallet.tsx"));
 const BuyerDisputes = lazy(() => import("./pages/Disputes.tsx"));
 const BuyerOrders = lazy(() => import("./pages/buyer/BuyerOrders.tsx"));
@@ -36,6 +36,7 @@ const SellerKYC = lazy(() => import("./pages/seller/SellerKYC.tsx"));
 const SellerMessages = lazy(() => import("./pages/seller/SellerMessages.tsx"));
 const SellerAnalytics = lazy(() => import("./pages/seller/SellerAnalytics.tsx"));
 const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
+const ProductDetails = lazy(() => import("./pages/ProductDetails.tsx"));
 // Admin panel
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
 
@@ -147,6 +148,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<AuthPage redirectAfterAuth="/buyer" />} />
               <Route path="/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
+              <Route path="/product/:id" element={<ProductDetails />} />
+              <Route path="/marketplace" element={<BuyerMarketplace />} />
 
               {/* Legacy dashboard routes (backward compat) */}
               <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />

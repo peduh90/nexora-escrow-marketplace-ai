@@ -14,7 +14,7 @@ import { useState } from "react";
 
 const navItems = [
   { to: "/buyer", icon: LayoutDashboard, label: "Dashboard", end: true },
-  { to: "/buyer/marketplace", icon: ShoppingBag, label: "Marketplace" },
+  { to: "/marketplace", icon: ShoppingBag, label: "Marketplace" },
   { to: "/buyer/orders", icon: ShoppingCart, label: "My Orders" },
   { to: "/buyer/wallet", icon: Wallet, label: "Wallet" },
   { to: "/buyer/disputes", icon: Shield, label: "Disputes" },
