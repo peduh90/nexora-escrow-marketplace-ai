@@ -1,6 +1,7 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
 import { RequireAuth } from "@/components/RequireAuth";
+import { RequireAdmin } from "@/components/RequireAdmin";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
@@ -223,32 +224,32 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/seller/settings" element={<RequireAuth><SellerSettings /></RequireAuth>} />
               <Route path="/seller/help" element={<RequireAuth><SellerHelp /></RequireAuth>} />
 
-              {/* Admin routes */}
-              <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
-              <Route path="/admin/users" element={<RequireAuth><AdminUsers /></RequireAuth>} />
-              <Route path="/admin/buyers" element={<RequireAuth><AdminBuyers /></RequireAuth>} />
-              <Route path="/admin/sellers" element={<RequireAuth><AdminSellers /></RequireAuth>} />
-              <Route path="/admin/products" element={<RequireAuth><AdminProducts /></RequireAuth>} />
-              <Route path="/admin/orders" element={<RequireAuth><AdminOrders /></RequireAuth>} />
-              <Route path="/admin/payments" element={<RequireAuth><AdminPayments /></RequireAuth>} />
-              <Route path="/admin/escrow" element={<RequireAuth><AdminEscrow /></RequireAuth>} />
-              <Route path="/admin/wallets" element={<RequireAuth><AdminWallets /></RequireAuth>} />
-              <Route path="/admin/withdrawals" element={<RequireAuth><AdminWithdrawals /></RequireAuth>} />
-              <Route path="/admin/deliveries" element={<RequireAuth><AdminDeliveries /></RequireAuth>} />
-              <Route path="/admin/zones" element={<RequireAuth><AdminDeliveries /></RequireAuth>} />
-              <Route path="/admin/disputes" element={<RequireAuth><AdminDisputes /></RequireAuth>} />
-              <Route path="/admin/fraud" element={<RequireAuth><AdminFraud /></RequireAuth>} />
-              <Route path="/admin/kyc" element={<RequireAuth><AdminKYC /></RequireAuth>} />
-              <Route path="/admin/messages" element={<RequireAuth><AdminMessages /></RequireAuth>} />
-              <Route path="/admin/reviews" element={<RequireAuth><AdminReviews /></RequireAuth>} />
-              <Route path="/admin/reports" element={<RequireAuth><AdminReports /></RequireAuth>} />
-              <Route path="/admin/jobs" element={<RequireAuth><AdminJobs /></RequireAuth>} />
-              <Route path="/admin/analytics" element={<RequireAuth><AdminAnalytics /></RequireAuth>} />
-              <Route path="/admin/revenue" element={<RequireAuth><AdminRevenue /></RequireAuth>} />
-              <Route path="/admin/system" element={<RequireAuth><AdminSystem /></RequireAuth>} />
-              <Route path="/admin/settings" element={<RequireAuth><AdminSettings /></RequireAuth>} />
-              <Route path="/admin/notifications" element={<RequireAuth><AdminNotifications /></RequireAuth>} />
-              <Route path="/admin/audit-logs" element={<RequireAuth><AdminAuditLogs /></RequireAuth>} />
+              {/* Admin routes (role-protected) */}
+              <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+              <Route path="/admin/users" element={<RequireAdmin><AdminUsers /></RequireAdmin>} />
+              <Route path="/admin/buyers" element={<RequireAdmin><AdminBuyers /></RequireAdmin>} />
+              <Route path="/admin/sellers" element={<RequireAdmin><AdminSellers /></RequireAdmin>} />
+              <Route path="/admin/products" element={<RequireAdmin><AdminProducts /></RequireAdmin>} />
+              <Route path="/admin/orders" element={<RequireAdmin><AdminOrders /></RequireAdmin>} />
+              <Route path="/admin/payments" element={<RequireAdmin><AdminPayments /></RequireAdmin>} />
+              <Route path="/admin/escrow" element={<RequireAdmin><AdminEscrow /></RequireAdmin>} />
+              <Route path="/admin/wallets" element={<RequireAdmin><AdminWallets /></RequireAdmin>} />
+              <Route path="/admin/withdrawals" element={<RequireAdmin><AdminWithdrawals /></RequireAdmin>} />
+              <Route path="/admin/deliveries" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
+              <Route path="/admin/zones" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
+              <Route path="/admin/disputes" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />
+              <Route path="/admin/fraud" element={<RequireAdmin><AdminFraud /></RequireAdmin>} />
+              <Route path="/admin/kyc" element={<RequireAdmin><AdminKYC /></RequireAdmin>} />
+              <Route path="/admin/messages" element={<RequireAdmin><AdminMessages /></RequireAdmin>} />
+              <Route path="/admin/reviews" element={<RequireAdmin><AdminReviews /></RequireAdmin>} />
+              <Route path="/admin/reports" element={<RequireAdmin><AdminReports /></RequireAdmin>} />
+              <Route path="/admin/jobs" element={<RequireAdmin><AdminJobs /></RequireAdmin>} />
+              <Route path="/admin/analytics" element={<RequireAdmin><AdminAnalytics /></RequireAdmin>} />
+              <Route path="/admin/revenue" element={<RequireAdmin><AdminRevenue /></RequireAdmin>} />
+              <Route path="/admin/system" element={<RequireAdmin><AdminSystem /></RequireAdmin>} />
+              <Route path="/admin/settings" element={<RequireAdmin><AdminSettings /></RequireAdmin>} />
+              <Route path="/admin/notifications" element={<RequireAdmin><AdminNotifications /></RequireAdmin>} />
+              <Route path="/admin/audit-logs" element={<RequireAdmin><AdminAuditLogs /></RequireAdmin>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
