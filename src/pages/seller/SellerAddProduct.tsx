@@ -1,10 +1,92 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
 import SellerLayout from "./SellerLayout";
 import { CATEGORIES } from "@/lib/categories";
-import { ChevronRight, ChevronLeft, Upload, Check, Package } from "lucide-react";
+import { ChevronRight, ChevronLeft, Upload, Check, Package, X, ImagePlus } from "lucide-react";
 
 const steps = ["Category", "Details", "Specifications", "Images", "Location", "Pricing", "Preview"];
+
+function ImageUploadStep({ form, update }: { form: any; update: (key: string, val: any) => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleFiles = useCallback((files: FileList | null) => {
+    if (!files) return;
+    const newImages: { file: File; preview: string }[] = [];
+    for (let i = 0; i < files.length && form.images.length + newImages.length < 6; i++) {
+      const file = files[i];
+      if (!file.type.startsWith("image/")) continue;
+      if (file.size > 5 * 1024 * 1024) continue;
+      newImages.push({ file, preview: URL.createObjectURL(file) });
+    }
+    if (newImages.length > 0) {
+      update("images", [...form.images, ...newImages]);
+    }
+  }, [form.images, update]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFiles(e.dataTransfer.files);
+  }, [handleFiles]);
+
+  const removeImage = (index: number) => {
+    const updated = [...form.images];
+    URL.revokeObjectURL(updated[index].preview);
+    updated.splice(index, 1);
+    update("images", updated);
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-white">Product Images</h3>
+
+      {/* Upload area */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+        className={`relative aspect-[2/1] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
+          dragOver ? "border-nx-violet bg-nx-violet/5" : "border-white/10 hover:border-nx-violet/30 hover:bg-white/[0.01]"
+        }`}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+        <ImagePlus className="w-10 h-10 text-white/15 mb-2" />
+        <p className="text-sm text-white/40 font-medium">Click to upload or drag and drop</p>
+        <p className="text-[11px] text-white/20 mt-1">JPG, PNG, WebP — Max 5MB each — Up to 6 images</p>
+      </div>
+
+      {/* Image previews */}
+      {form.images.length > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          {form.images.map((img: { file: File; preview: string }, i: number) => (
+            <div key={i} className="relative aspect-square rounded-lg overflow-hidden group">
+              <img src={img.preview} alt={`Upload ${i + 1}`} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <button onClick={(e) => { e.stopPropagation(); removeImage(i); }} className="p-1.5 rounded-full bg-red-500/80 text-white hover:bg-red-500 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {i === 0 && (
+                <span className="absolute bottom-1 left-1 text-[9px] px-1.5 py-0.5 rounded bg-nx-violet/80 text-white font-medium">Primary</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-[11px] text-white/25">First image is the primary product photo. You can reorder by removing and re-uploading.</p>
+    </div>
+  );
+}
 
 export default function SellerAddProduct() {
   const navigate = useNavigate();
@@ -15,6 +97,7 @@ export default function SellerAddProduct() {
     county: "", town: "",
     price: "", originalPrice: "",
     specs: {} as Record<string, string>,
+    images: [] as { file: File; preview: string }[],
   });
 
   const update = (key: string, value: string | boolean | Record<string, string>) => setForm({ ...form, [key]: value });
@@ -100,18 +183,7 @@ export default function SellerAddProduct() {
 
           {/* Step 3: Images */}
           {step === 3 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Product Images</h3>
-              <div className="grid grid-cols-4 gap-3">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="aspect-square rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center hover:border-nx-violet/30 transition-colors cursor-pointer">
-                    <Upload className="w-6 h-6 text-white/15 mb-1" />
-                    <span className="text-[10px] text-white/20">{i === 1 ? "Primary" : "Optional"}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[11px] text-white/25">First image is the primary product photo. Max 5MB per image. JPG, PNG, WebP.</p>
-            </div>
+            <ImageUploadStep form={form} update={update} />
           )}
 
           {/* Step 4: Location */}
