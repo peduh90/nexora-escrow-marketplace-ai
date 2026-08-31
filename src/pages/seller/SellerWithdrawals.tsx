@@ -1,26 +1,23 @@
 import { useState } from "react";
 import SellerLayout from "./SellerLayout";
-import { Download, Clock, CheckCircle2, XCircle, CreditCard, Phone, Building2 } from "lucide-react";
-
-const withdrawals = [
-  { id: "WD-001", amount: 20000, method: "M-Pesa", destination: "+254 712 ***678", status: "completed", date: "Jan 28, 2025", fee: 0 },
-  { id: "WD-002", amount: 50000, method: "Bank", destination: "KCB ••••4567", status: "completed", date: "Jan 22, 2025", fee: 100 },
-  { id: "WD-003", amount: 15000, method: "M-Pesa", destination: "+254 712 ***678", status: "processing", date: "Jan 20, 2025", fee: 0 },
-  { id: "WD-004", amount: 30000, method: "M-Pesa", destination: "+254 712 ***678", status: "failed", date: "Jan 15, 2025", fee: 0 },
-];
-
-const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  pending: { label: "Pending", color: "text-amber-400", icon: Clock },
-  processing: { label: "Processing", color: "text-nx-cyan", icon: Clock },
-  completed: { label: "Completed", color: "text-emerald-400", icon: CheckCircle2 },
-  failed: { label: "Failed", color: "text-red-400", icon: XCircle },
-};
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useAuth } from "@/hooks/use-auth";
+import { Download, CreditCard } from "lucide-react";
 
 export default function SellerWithdrawals() {
+  const { user } = useAuth();
+  const walletBalance = useQuery(api.wallet.getWalletBalance);
+  const transactions = useQuery(api.wallet.getWalletTransactions);
+
+  const availableBalance = walletBalance?.walletBalance ?? 0;
+  const escrowBalance = walletBalance?.escrowBalance ?? 0;
+  const withdrawals = transactions?.filter(t => t.type === "withdrawal") ?? [];
+  const totalWithdrawn = withdrawals.filter(t => t.status === "completed").reduce((s, t) => s + t.amount, 0);
+
   const [showModal, setShowModal] = useState(false);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("mpesa");
-  const availableBalance = 125400;
 
   return (
     <SellerLayout>
@@ -30,7 +27,11 @@ export default function SellerWithdrawals() {
             <h1 className="text-2xl font-bold text-white">Withdrawals</h1>
             <p className="text-sm text-white/40 mt-1">Withdraw your available earnings</p>
           </div>
-          <button onClick={() => setShowModal(true)} className="px-4 py-2.5 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-500/80 transition-colors flex items-center gap-2">
+          <button
+            onClick={() => setShowModal(true)}
+            disabled={availableBalance <= 0}
+            className="px-4 py-2.5 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-500/80 transition-colors flex items-center gap-2 disabled:opacity-40"
+          >
             <Download className="w-4 h-4" /> Withdraw
           </button>
         </div>
@@ -39,80 +40,104 @@ export default function SellerWithdrawals() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="p-5 rounded-xl bg-gradient-to-br from-emerald-400/10 to-emerald-400/5 border border-emerald-400/10">
             <p className="text-xs text-white/30 mb-1">Available for Withdrawal</p>
-            <p className="text-3xl font-bold text-white">KSh {availableBalance.toLocaleString()}</p>
-            <p className="text-[10px] text-emerald-400/60 mt-2">✓ Ready to withdraw</p>
+            <p className="text-3xl font-bold text-white">KES {availableBalance.toLocaleString()}</p>
+            {availableBalance > 0 && <p className="text-[10px] text-emerald-400/60 mt-2">✓ Ready to withdraw</p>}
           </div>
           <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5">
             <p className="text-xs text-white/30 mb-1">In Escrow</p>
-            <p className="text-3xl font-bold text-white">KSh 78,500</p>
-            <p className="text-[10px] text-amber-400/60 mt-2">🔒 Protected</p>
+            <p className="text-3xl font-bold text-white">KES {escrowBalance.toLocaleString()}</p>
+            {escrowBalance > 0 && <p className="text-[10px] text-amber-400/60 mt-2">🔒 Protected</p>}
           </div>
           <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5">
             <p className="text-xs text-white/30 mb-1">Total Withdrawn</p>
-            <p className="text-3xl font-bold text-white">KSh 185,000</p>
+            <p className="text-3xl font-bold text-white">KES {totalWithdrawn.toLocaleString()}</p>
+            {totalWithdrawn > 0 && <p className="text-[10px] text-nx-cyan/60 mt-2">Lifetime withdrawals</p>}
           </div>
         </div>
 
-        {/* Withdrawal history */}
+        {/* Withdrawal History */}
         <div className="rounded-xl bg-white/[0.02] border border-white/5">
           <div className="px-5 py-4 border-b border-white/5">
             <h3 className="text-sm font-semibold text-white">Withdrawal History</h3>
           </div>
-          <div className="divide-y divide-white/[0.03]">
-            {withdrawals.map(w => {
-              const st = statusConfig[w.status];
-              return (
-                <div key={w.id} className="px-5 py-3.5 flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${w.method === "M-Pesa" ? "bg-emerald-400/10" : "bg-nx-cyan/10"}`}>
-                    {w.method === "M-Pesa" ? <Phone className="w-4 h-4 text-emerald-400" /> : <Building2 className="w-4 h-4 text-nx-cyan" />}
+          {withdrawals.length === 0 ? (
+            <div className="py-16 text-center">
+              <CreditCard className="w-10 h-10 text-white/10 mx-auto mb-3" />
+              <p className="text-sm text-white/30">No withdrawals yet</p>
+              <p className="text-[11px] text-white/15 mt-1">Withdraw your earnings via M-Pesa or bank transfer</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-white/[0.03]">
+              {withdrawals.map((w) => (
+                <div key={w._id} className="px-5 py-3.5 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0">
+                    <Download className="w-5 h-5 text-white/20" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-white">KSh {w.amount.toLocaleString()}</span>
-                      <span className={`text-[10px] flex items-center gap-1 ${st.color}`}><st.icon className="w-3 h-3" /> {st.label}</span>
-                    </div>
-                    <p className="text-[11px] text-white/30">{w.method} • {w.destination} • {w.date}</p>
+                    <p className="text-sm text-white truncate">{w.description}</p>
+                    <p className="text-xs text-white/30 mt-0.5">{w.reference}</p>
                   </div>
-                  {w.fee > 0 && <span className="text-[10px] text-white/20">Fee: KSh {w.fee}</span>}
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-medium text-white/60">-KES {w.amount.toLocaleString()}</p>
+                    <p className={`text-[10px] mt-0.5 capitalize ${
+                      w.status === "completed" ? "text-emerald-400" :
+                      w.status === "pending" ? "text-amber-400" :
+                      "text-white/30"
+                    }`}>{w.status}</p>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Withdraw modal */}
+        {/* Withdraw Modal */}
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-            <div className="relative w-full max-w-md rounded-2xl bg-[#0E0E18] border border-white/5 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Withdraw Funds</h3>
+            <div className="relative w-full max-w-md rounded-2xl bg-[#0E0E18] border border-white/5 shadow-2xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-1">Withdraw Funds</h3>
+              <p className="text-xs text-white/30 mb-5">Available: KES {availableBalance.toLocaleString()}</p>
+
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs text-white/40 mb-1.5">Amount (KSh)</label>
-                  <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0"
-                    className="w-full px-4 py-3 rounded-lg bg-white/[0.03] border border-white/5 text-xl text-white font-bold focus:outline-none focus:border-emerald-400/30" />
-                  <button onClick={() => setAmount(String(availableBalance))} className="text-xs text-emerald-400 mt-1">Max: KSh {availableBalance.toLocaleString()}</button>
+                  <label className="block text-xs font-medium text-white/60 mb-1.5">Amount (KES)</label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0"
+                    max={availableBalance}
+                    className="w-full px-4 py-3 rounded-lg bg-white/[0.03] border border-white/5 text-xl text-white placeholder:text-white/20 focus:outline-none focus:border-nx-cyan/30 font-bold"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs text-white/40 mb-1.5">Method</label>
-                  <div className="flex gap-2">
-                    <button onClick={() => setMethod("mpesa")} className={`flex-1 p-3 rounded-lg border text-sm flex items-center gap-2 ${method === "mpesa" ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-400" : "border-white/5 bg-white/[0.02] text-white/40"}`}>
-                      <Phone className="w-4 h-4" /> M-Pesa
+                  <label className="block text-xs font-medium text-white/60 mb-1.5">Method</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setMethod("mpesa")}
+                      className={`p-3 rounded-lg border text-sm text-center transition-colors ${method === "mpesa" ? "border-emerald-400/40 bg-emerald-400/5 text-emerald-400" : "border-white/5 bg-white/[0.02] text-white/40"}`}
+                    >
+                      M-Pesa
                     </button>
-                    <button onClick={() => setMethod("bank")} className={`flex-1 p-3 rounded-lg border text-sm flex items-center gap-2 ${method === "bank" ? "border-nx-cyan/30 bg-nx-cyan/5 text-nx-cyan" : "border-white/5 bg-white/[0.02] text-white/40"}`}>
-                      <Building2 className="w-4 h-4" /> Bank
+                    <button
+                      onClick={() => setMethod("bank")}
+                      className={`p-3 rounded-lg border text-sm text-center transition-colors ${method === "bank" ? "border-nx-cyan/40 bg-nx-cyan/5 text-nx-cyan" : "border-white/5 bg-white/[0.02] text-white/40"}`}
+                    >
+                      Bank Transfer
                     </button>
                   </div>
                 </div>
-                <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
-                  <div className="flex justify-between text-xs"><span className="text-white/40">Amount</span><span className="text-white/60">KSh {Number(amount || 0).toLocaleString()}</span></div>
-                  <div className="flex justify-between text-xs"><span className="text-white/40">Fee</span><span className="text-white/60">{method === "bank" ? "KSh 100" : "Free"}</span></div>
-                  <div className="flex justify-between text-xs pt-1.5 border-t border-white/5"><span className="text-white/60 font-medium">You receive</span><span className="text-emerald-400 font-bold">KSh {Math.max(0, Number(amount || 0) - (method === "bank" ? 100 : 0)).toLocaleString()}</span></div>
-                </div>
               </div>
-              <div className="flex gap-3 mt-5">
-                <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg text-sm text-white/40 hover:bg-white/[0.03]">Cancel</button>
-                <button disabled={!amount || Number(amount) > availableBalance} onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg bg-emerald-500 text-white text-sm font-medium disabled:opacity-40">Withdraw</button>
+
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setShowModal(false)} className="flex-1 px-4 py-2.5 rounded-lg text-sm text-white/40 hover:text-white/60 transition-colors">Cancel</button>
+                <button
+                  disabled={!amount || Number(amount) <= 0 || Number(amount) > availableBalance}
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-500/80 text-white text-sm font-medium transition-colors disabled:opacity-40"
+                >
+                  Withdraw
+                </button>
               </div>
             </div>
           </div>

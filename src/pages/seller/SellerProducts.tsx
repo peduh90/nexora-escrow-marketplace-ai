@@ -28,50 +28,7 @@ const CATEGORIES = [
 const CONDITIONS = ["New", "Used - Like New", "Used - Good", "Used - Fair", "Refurbished"];
 
 // Mock seller's own products
-const mockProducts = [
-  {
-    id: "p1", title: "MacBook Pro 14\" M3 Max", description: "Brand new, sealed. Warranty included.",
-    price: 285000, originalPrice: 320000, category: "Electronics", condition: "New",
-    stock: 3, views: 1247, orders: 8, county: "Nairobi", town: "Westlands",
-    transport: true, insurance: true, status: "active" as const, images: 3,
-    rating: 4.9, reviews: 12, createdAt: "2025-01-15",
-  },
-  {
-    id: "p2", title: "iPhone 15 Pro Max 256GB", description: "Natural titanium, unlocked. 100% battery health.",
-    price: 142000, originalPrice: 155000, category: "Electronics", condition: "New",
-    stock: 7, views: 2341, orders: 23, county: "Nairobi", town: "CBD",
-    transport: true, insurance: true, status: "active" as const, images: 4,
-    rating: 4.8, reviews: 31, createdAt: "2025-01-10",
-  },
-  {
-    id: "p3", title: "Samsung Galaxy S24 Ultra 512GB", description: "Titanium Black. S Pen included. Factory unlocked.",
-    price: 165000, originalPrice: 180000, category: "Electronics", condition: "New",
-    stock: 5, views: 983, orders: 6, county: "Mombasa", town: "Nyali",
-    transport: true, insurance: false, status: "active" as const, images: 2,
-    rating: 4.7, reviews: 8, createdAt: "2025-01-20",
-  },
-  {
-    id: "p4", title: "Nike Air Max 90 - White/Black", description: "Authentic Nike. Size 42 EU. Brand new in box.",
-    price: 12500, originalPrice: 15000, category: "Fashion & Clothing", condition: "New",
-    stock: 15, views: 654, orders: 18, county: "Nairobi", town: "Karen",
-    transport: true, insurance: false, status: "active" as const, images: 5,
-    rating: 4.6, reviews: 22, createdAt: "2025-01-22",
-  },
-  {
-    id: "p5", title: "Sony WH-1000XM5 Headphones", description: "Industry-leading noise cancelling. Silver color.",
-    price: 38000, originalPrice: 42000, category: "Electronics", condition: "New",
-    stock: 0, views: 445, orders: 5, county: "Kisumu", town: "Milimani",
-    transport: false, insurance: false, status: "sold" as const, images: 2,
-    rating: 5.0, reviews: 5, createdAt: "2025-01-08",
-  },
-  {
-    id: "p6", title: "Italian Leather Sofa Set", description: "3-seater + 2-seater + single. Dark brown genuine leather.",
-    price: 85000, originalPrice: 95000, category: "Furniture", condition: "New",
-    stock: 2, views: 312, orders: 1, county: "Nakuru", town: "CBD",
-    transport: true, insurance: true, status: "paused" as const, images: 6,
-    rating: 4.5, reviews: 3, createdAt: "2025-01-25",
-  },
-];
+// Products are fetched from the database — no mock data
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   active: { label: "Active", color: "bg-emerald-400/10 text-emerald-400" },
@@ -89,12 +46,7 @@ export default function SellerProducts() {
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  const filtered = mockProducts.filter((p) => {
-    const matchSearch = p.title.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = filterCategory === "All" || p.category === filterCategory;
-    const matchStatus = filterStatus === "All" || p.status === filterStatus;
-    return matchSearch && matchCategory && matchStatus;
-  });
+  const filtered: Record<string, any>[] = [];
 
   return (
     <SellerLayout>
@@ -102,7 +54,7 @@ export default function SellerProducts() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-lg font-bold text-white">My Products</h2>
-          <p className="text-xs text-white/30 mt-0.5">{mockProducts.length} products • {mockProducts.filter(p => p.status === "active").length} active</p>
+          <p className="text-xs text-white/30 mt-0.5">{filtered.length} products</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -281,14 +233,14 @@ export default function SellerProducts() {
       {(showAddModal || editingProduct) && (
         <ProductModal
           onClose={() => { setShowAddModal(false); setEditingProduct(null); }}
-          editProduct={editingProduct ? mockProducts.find(p => p.id === editingProduct) ?? null : null}
+          editProduct={null}
         />
       )}
     </SellerLayout>
   );
 }
 
-function ProductModal({ onClose, editProduct }: { onClose: () => void; editProduct: typeof mockProducts[0] | null }) {
+function ProductModal({ onClose, editProduct }: { onClose: () => void; editProduct: Record<string, any> | null }) {
   const [form, setForm] = useState({
     title: editProduct?.title || "",
     description: editProduct?.description || "",
