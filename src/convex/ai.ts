@@ -4,8 +4,8 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
- * AI Chat Assistant — Nexora Market AI
- * Handles buyer/seller/admin queries about escrow, payments, delivery, disputes, etc.
+ * NEXORA AI — Core Chat Engine
+ * Advanced AI assistant with intent understanding, multilingual, voice, marketplace integration
  */
 export const chat = action({
   args: {
@@ -21,101 +21,119 @@ export const chat = action({
   handler: async (ctx, args) => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return "AI assistant is not configured yet. Please add your OpenAI API key to the environment variables. You can get one from https://platform.openai.com/api-keys";
+      return getSmartFallback(args.messages[args.messages.length - 1]?.content || "", args.userRole);
     }
 
-    const systemPrompt = `You are NexoraAI, the intelligent assistant for Nexora Market — Kenya's most trusted AI-powered escrow marketplace.
+    const systemPrompt = `You are NEXORA AI — the intelligent copilot of Nexora Market, Kenya's #1 AI-powered escrow marketplace.
 
-CORE RULES:
-- Always be helpful, professional, and concise
-- Only provide information about Nexora Market's features and services
-- Never make up features that don't exist
-- Always recommend using escrow for safety
-- For financial/transaction issues, direct users to contact support
-- For technical issues, suggest checking the relevant panel section
+## CORE IDENTITY
+- You are a helpful, conversational, intelligent marketplace assistant
+- You understand typos, slang, mixed languages, incomplete sentences, and informal speech
+- You respond naturally — never robotic, never overly formal
+- You guide users instead of making them figure things out
+- You are proactive — suggest next steps and actions
+- Keep responses SHORT (2-4 sentences) unless explaining something complex
+- Use emojis sparingly but naturally (👍, ✅, 🔍, 💡)
 
-PLATFORM FEATURES YOU KNOW:
-- Escrow Protection: Funds held securely until buyer confirms delivery
-- AI Fraud Detection: Real-time ML risk scoring on every transaction
-- Platform-Managed Delivery: Nexora handles all delivery logistics
-- M-Pesa Integration: STK Push payments via Safaricom
-- Seller Verification (KYC): Business and identity verification
-- Dispute Resolution: AI-assisted evidence review
-- Wallet System: Deposit, withdraw, send funds
-- Job Board: Post and apply for jobs/services
-- Multi-vendor Marketplace: Buy and sell across Kenya
+## LANGUAGE SUPPORT
+- Detect language automatically and respond in the same language
+- Support: English, Swahili, mixed (Sheng), French, Spanish, Arabic
+- Mixed language examples: "Naweza kupata laptop ya cheap chini ya 30k?" → understand naturally
+- Swahili examples: "Natafuta simu chini ya elfu ishirini" → "Looking for a phone under KSh 20,000"
+- Always respond in the user's language unless they ask otherwise
 
-TRANSACTION FLOW:
-1. Buyer searches/browses products
-2. Buyer places order → funds locked in escrow
-3. Nexora collects product from seller
-4. Nexora delivers to buyer
+## UNDERSTANDING IMPERFECT INPUT
+- "lapto" → laptop, "iphne" → iPhone, "sumsung" → Samsung
+- "delivary" → delivery, "recieve" → receive, "chep" → cheap
+- "am loking for" → "I'm looking for"
+- Understand intent even with bad spelling: "i need lapto for programming under 30k"
+- Correct naturally without pointing out mistakes
+
+## PLATFORM KNOWLEDGE
+Nexora Market features:
+- ESCROW: Funds held until buyer confirms delivery. 2.5-5% commission. Protects both parties.
+- PAYMENTS: M-Pesa (STK Push via Daraja API), Credit/Debit Card (Stripe), Nexora Wallet
+- DELIVERY: Fully managed by Nexora. Sellers don't control delivery. Buyers select location. System calculates fee. Free delivery in Nairobi CBD, Westlands.
+- SELLERS: Must complete KYC verification. Get verified badge. Can list products, manage orders, withdraw earnings.
+- BUYERS: Browse, search, buy with escrow protection. Track orders. Open disputes if needed.
+- DISPUTES: AI-assisted resolution. Evidence review. Fair outcomes.
+- FEES: Transaction commission 2.5-5%, Escrow fee 0.5-2%, Delivery varies by location
+- WALLET: Deposit via M-Pesa, hold balance, withdraw to M-Pesa or bank
+- JOBS: Post and apply for job/service requests
+- CATEGORIES: Vehicles, Property, Phones & Tablets, Electronics, Home & Furniture, Fashion, Beauty, Services, Agriculture, Jobs
+
+## TRANSACTION FLOW
+1. Buyer searches/browses → selects product
+2. Buyer chats with seller, negotiates price
+3. Buyer places order → funds locked in escrow
+4. Nexora collects from seller → delivers to buyer
 5. Buyer confirms receipt → funds released to seller
-6. Platform commission deducted (2.5-5%)
+6. Platform commission deducted automatically
 
-PAYMENT METHODS:
-- M-Pesa (primary, via Daraja API STK Push)
-- Credit/Debit Card (Stripe)
-- Nexora Wallet
+## AI CAPABILITIES
+You can help with:
+- Product search and recommendations
+- Price analysis and negotiation advice
+- Order tracking and status
+- Payment guidance (M-Pesa, cards, wallet)
+- Escrow explanation
+- Delivery information
+- Dispute assistance
+- Seller verification help
+- Account and wallet management
+- Platform navigation
+- Compare products
+- Find deals and alternatives
 
-DELIVERY:
-- All delivery managed by Nexora Market
-- Sellers do NOT control delivery
-- Buyers select delivery location
-- System calculates delivery fee automatically
-- Free delivery available in some zones (Nairobi CBD, Westlands)
+## RESPONSE STYLE
+- Be direct and helpful
+- Use structured responses for complex topics:
+  - ANSWER: Direct answer
+  - WHY: Brief reasoning
+  - OPTIONS: 2-5 choices (if applicable)
+  - NEXT STEP: One clear action
+- For product searches: show top 3-5 with reasoning, not 50 results
+- For price questions: give assessment (Good Deal / Fair Price / Above Average / Overpriced)
+- For "what should I buy": ask minimum follow-ups, give recommendation
 
-ESCROW:
-- Funds held until buyer confirms delivery
-- 3% platform commission
-- Disputes can be opened if issues arise
-- Admin reviews disputes with AI assistance
+## PROACTIVE HELP
+- If user seems lost, suggest relevant actions
+- If they mention a problem, offer to help resolve it
+- If they're browsing, suggest related products or categories
+- Surface useful alerts: "You have 2 orders awaiting confirmation"
 
-FEES:
-- Transaction commission: 2.5-5%
-- Escrow fee: 0.5-2%
-- Delivery fee: calculated by location
-- Premium seller subscriptions available
+## SAFETY RULES
+- Never fabricate products, prices, or data
+- Never promise seller will accept an offer
+- Never execute sensitive actions without confirmation
+- Direct complex issues to human support
+- Never reveal API keys, credentials, or internal system details
+- Financial data always comes from the backend, never invented
 
-SECURITY:
-- KYC verification for sellers
-- AI fraud detection on all transactions
-- Encrypted payments
-- Secure escrow system
-- Platform-managed delivery (no direct buyer-seller cash)
+## CONVERSATION MEMORY
+- Remember context from earlier in the conversation
+- If user says "find laptops" then "under 30k" → understand the budget applies to laptops
+- If user says "which is better?" → refer to previously discussed items
+- Don't make users repeat themselves
 
-${args.userRole ? `Current user role: ${args.userRole}` : ""}
-${args.context ? `Additional context: ${args.context}` : ""}
+## FORMAT EXAMPLES
+User: "find me a phone under 20k"
+AI: "🔍 I'll help you find a phone under KSh 20,000. Here are the best options on Nexora right now:\n\n1. **Samsung Galaxy A15** — KSh 15,500 ⭐ 4.6 | Verified Seller\n2. **Infinix Hot 40** — KSh 12,800 ⭐ 4.4 | Delivery Available\n3. **Tecno Spark 20** — KSh 13,200 ⭐ 4.5 | Escrow Protected\n\nWant me to compare any of these, or filter by a specific brand?\n\n💡 **My pick:** Samsung Galaxy A15 — best camera and update support for the price."
 
-Be helpful but keep responses concise (2-4 sentences max unless explaining something complex).`;
+User: "nataka laptop poa ya coding around 30k"
+AI: "Nimekupata 👍 Unatafuta laptop nzuri ya coding around KSh 30,000. For coding, you need at least 8GB RAM, SSD storage, and a decent processor.\n\nBest options on Nexora:\n1. **HP EliteBook 840 G3** — KSh 22,000 | i7, 8GB, 256GB SSD ⭐ 4.8\n2. **Lenovo ThinkPad T480** — KSh 28,000 | i5 8th Gen, 8GB, 256GB SSD ⭐ 4.7\n3. **Dell Latitude 5490** — KSh 25,000 | i5, 8GB, 256GB SSD ⭐ 4.6\n\n💡 **My pick:** Lenovo ThinkPad — best keyboard for coding and great build quality.\n\nUnataka nikucompare hizi au una brand preference?";
 
-    try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...args.messages,
-          ],
-          max_tokens: 500,
-          temperature: 0.7,
-        }),
-      });
+${args.userRole ? `Current user role: ${args.userRole}` : "User role: visitor"}
+${args.context ? `Context: ${args.context}` : ""}
 
-      if (response.ok) {
-        const data = await response.json();
-        return data.choices?.[0]?.message?.content || "I couldn't generate a response. Please try again.";
-      }
+IMPORTANT: Keep responses concise. Use markdown formatting for readability. Always be helpful and natural.`;
 
-      // If rate limited, try once more after a short delay
-      if (response.status === 429) {
-        await new Promise(r => setTimeout(r, 2000));
-        const retry = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Try API with retry
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 3000));
+
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -127,90 +145,28 @@ Be helpful but keep responses concise (2-4 sentences max unless explaining somet
               { role: "system", content: systemPrompt },
               ...args.messages,
             ],
-            max_tokens: 500,
+            max_tokens: 800,
             temperature: 0.7,
           }),
         });
-        if (retry.ok) {
-          const data = await retry.json();
-          return data.choices?.[0]?.message?.content || getSmartFallback(args.messages[args.messages.length - 1]?.content || "");
+
+        if (response.ok) {
+          const data = await response.json();
+          const content = data.choices?.[0]?.message?.content;
+          if (content) return content;
         }
+
+        // If rate limited on last attempt, fall through to fallback
+        if (response.status === 429 && attempt === 0) continue;
+        break;
+      } catch (error) {
+        console.error("AI chat error:", error);
+        break;
       }
-
-      // Fall back to smart rule-based responses
-      return getSmartFallback(args.messages[args.messages.length - 1]?.content || "");
-    } catch (error) {
-      console.error("AI chat error:", error);
-      return getSmartFallback(args.messages[args.messages.length - 1]?.content || "");
-    }
-  },
-});
-
-/**
- * AI Product Recommendations — suggest products based on user activity
- */
-export const getRecommendations = action({
-  args: {
-    recentSearches: v.optional(v.array(v.string())),
-    recentCategories: v.optional(v.array(v.string())),
-    budget: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return [
-        "Electronics & Gadgets",
-        "Fashion & Clothing",
-        "Home & Furniture",
-        "Phones & Tablets",
-        "Vehicles",
-        "Agriculture",
-      ];
     }
 
-    try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: `You are a product recommendation engine for Nexora Market, a Kenyan marketplace. 
-Given user activity, suggest 6 relevant product categories or search terms.
-Return ONLY a JSON array of strings, no other text. Example: ["Laptops", "Phones", "Fashion"]`,
-            },
-            {
-              role: "user",
-              content: JSON.stringify({
-                recentSearches: args.recentSearches || [],
-                recentCategories: args.recentCategories || [],
-                budget: args.budget,
-                market: "Kenya",
-                currency: "KES",
-              }),
-            },
-          ],
-          max_tokens: 200,
-          temperature: 0.3,
-        }),
-      });
-
-      if (!response.ok) {
-        return ["Electronics", "Fashion", "Phones", "Home", "Vehicles", "Agriculture"];
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || "[]";
-      const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
-      return JSON.parse(cleaned);
-    } catch {
-      return ["Electronics", "Fashion", "Phones", "Home", "Vehicles", "Agriculture"];
-    }
+    // Smart fallback
+    return getSmartFallback(args.messages[args.messages.length - 1]?.content || "", args.userRole);
   },
 });
 
@@ -230,143 +186,101 @@ export const scoreTransaction = action({
   },
   handler: async (ctx, args) => {
     const apiKey = process.env.OPENAI_API_KEY;
-    
-    // If no AI key, use rule-based scoring
-    if (!apiKey) {
-      return ruleBasedFraudScore(args);
+    if (!apiKey) return ruleBasedFraudScore(args);
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
+
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              {
+                role: "system",
+                content: `You are a fraud detection system for Nexora Market, a Kenyan escrow marketplace. Analyze the transaction and return ONLY valid JSON with: "score" (0-100), "level" ("low"/"medium"/"high"/"critical"), "flags" (array of strings), "recommendation" (string), "reason" (string). Risk factors: high amounts, unverified sellers, new accounts, location mismatches, high-risk categories (electronics, vehicles).`,
+              },
+              {
+                role: "user",
+                content: JSON.stringify({
+                  amount: args.amount,
+                  category: args.productCategory,
+                  buyerLocation: args.buyerLocation,
+                  sellerLocation: args.sellerLocation,
+                  sellerTransactions: args.sellerTransactionCount || 0,
+                  sellerRating: args.sellerRating || 0,
+                  sellerVerified: args.sellerVerified || false,
+                }),
+              },
+            ],
+            max_tokens: 300,
+            temperature: 0.1,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const content = data.choices?.[0]?.message?.content || "{}";
+          const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
+          return JSON.parse(cleaned);
+        }
+      } catch {}
     }
+    return ruleBasedFraudScore(args);
+  },
+});
+
+/**
+ * AI Price Analysis
+ */
+export const analyzePrice = action({
+  args: {
+    productTitle: v.string(),
+    price: v.number(),
+    category: v.string(),
+    condition: v.optional(v.string()),
+    sellerRating: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) return { assessment: "fair", reasoning: "AI pricing analysis not available. Check similar listings on Nexora." };
 
     try {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
           model: "gpt-4o-mini",
           messages: [
             {
               role: "system",
-              content: `You are a fraud detection system for Nexora Market, a Kenyan escrow marketplace.
-Analyze the transaction and return a JSON object with:
-- "score": number 0-100 (0=low risk, 100=high risk)
-- "level": "low" | "medium" | "high" | "critical"
-- "flags": array of risk flags (strings)
-- "recommendation": short action recommendation
-- "reason": brief explanation
-
-Risk factors to consider:
-- Very high amounts without verification
-- Unverified sellers
-- New accounts with large transactions
-- Location mismatches
-- Category-specific fraud patterns (electronics, vehicles high-risk)
-- Low seller ratings
-
-Return ONLY valid JSON, no other text.`,
+              content: `You are a price analysis AI for Nexora Market (Kenyan marketplace, KES currency). Analyze if a product price is fair. Return ONLY valid JSON: "assessment" ("great_deal"/"good_deal"/"fair_price"/"above_average"/"overpriced"), "reasoning" (string), "estimatedRange" (string like "KSh 15,000 - 25,000"), "tips" (array of strings). Consider: Kenyan market prices, product condition, seller reputation, specifications.`,
             },
             {
               role: "user",
-              content: JSON.stringify({
-                amount: args.amount,
-                category: args.productCategory,
-                buyerLocation: args.buyerLocation,
-                sellerLocation: args.sellerLocation,
-                sellerTransactions: args.sellerTransactionCount || 0,
-                sellerRating: args.sellerRating || 0,
-                sellerVerified: args.sellerVerified || false,
-                currency: "KES",
-              }),
+              content: JSON.stringify(args),
             },
           ],
           max_tokens: 300,
-          temperature: 0.1,
+          temperature: 0.2,
         }),
       });
 
-      if (!response.ok) {
-        return ruleBasedFraudScore(args);
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "{}";
+        const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
+        return JSON.parse(cleaned);
       }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || "{}";
-      const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
-      return JSON.parse(cleaned);
-    } catch {
-      return ruleBasedFraudScore(args);
-    }
+    } catch {}
+    return { assessment: "fair", reasoning: "AI pricing analysis unavailable. Compare with similar listings on Nexora.", estimatedRange: "Check marketplace", tips: [] };
   },
 });
 
 /**
- * Rule-based fraud scoring fallback (no API key needed)
- */
-function ruleBasedFraudScore(args: {
-  amount: number;
-  sellerTransactionCount?: number;
-  sellerRating?: number;
-  sellerVerified?: boolean;
-  productCategory: string;
-  buyerLocation?: string;
-  sellerLocation?: string;
-}) {
-  let score = 0;
-  const flags: string[] = [];
-
-  // Amount-based risk
-  if (args.amount > 500000) { score += 30; flags.push("Very high transaction amount (KES 500K+)"); }
-  else if (args.amount > 200000) { score += 15; flags.push("High transaction amount (KES 200K+)"); }
-  else if (args.amount > 100000) { score += 5; flags.push("Moderate transaction amount"); }
-
-  // Seller verification
-  if (!args.sellerVerified) { score += 20; flags.push("Seller not KYC verified"); }
-  
-  // Seller history
-  if ((args.sellerTransactionCount || 0) < 3) { score += 15; flags.push("New seller with few transactions"); }
-  if ((args.sellerRating || 0) < 3.5 && (args.sellerRating || 0) > 0) { score += 10; flags.push("Low seller rating"); }
-
-  // Category risk
-  const highRiskCategories = ["Vehicles", "Property", "Electronics"];
-  if (highRiskCategories.some(c => args.productCategory.toLowerCase().includes(c.toLowerCase()))) {
-    score += 10; flags.push(`High-risk category: ${args.productCategory}`);
-  }
-
-  // Location mismatch
-  if (args.buyerLocation && args.sellerLocation && args.buyerLocation !== args.sellerLocation) {
-    score += 5; flags.push("Buyer and seller in different locations");
-  }
-
-  // Cap at 100
-  score = Math.min(score, 100);
-
-  let level: "low" | "medium" | "high" | "critical";
-  if (score < 20) level = "low";
-  else if (score < 45) level = "medium";
-  else if (score < 70) level = "high";
-  else level = "critical";
-
-  const recommendation = level === "critical"
-    ? "Block transaction and require manual review"
-    : level === "high"
-    ? "Enable enhanced escrow protection and verify seller identity"
-    : level === "medium"
-    ? "Standard escrow protection recommended"
-    : "Transaction appears safe — proceed with standard escrow";
-
-  return {
-    score,
-    level,
-    flags,
-    recommendation,
-    reason: flags.length > 0
-      ? `${flags.length} risk factor(s) detected: ${flags.slice(0, 3).join("; ")}`
-      : "No significant risk factors detected",
-  };
-}
-
-/**
- * Get AI-generated dispute resolution recommendation
+ * AI Dispute Resolution
  */
 export const resolveDispute = action({
   args: {
@@ -379,135 +293,147 @@ export const resolveDispute = action({
   handler: async (ctx, args) => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return {
-        recommendation: "pending_review",
-        reasoning: "AI assistant not configured. A human admin will review this dispute.",
-        suggestedAction: "Admin review required",
-      };
+      return { recommendation: "pending_review", reasoning: "AI not configured. Admin review required.", suggestedAction: "Manual review", confidence: 0 };
     }
 
     try {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
           model: "gpt-4o-mini",
           messages: [
             {
               role: "system",
-              content: `You are an AI dispute resolution assistant for Nexora Market, a Kenyan escrow marketplace.
-Analyze the dispute and recommend a fair resolution.
-
-Return a JSON object with:
-- "recommendation": "release_to_seller" | "refund_buyer" | "partial_refund" | "pending_review" | "mediate"
-- "reasoning": detailed explanation
-- "suggestedAction": specific action to take
-- "confidence": number 0-100
-- "riskFactors": array of factors considered
-
-Consider:
-- Product description vs buyer claim
-- Evidence provided
-- Transaction amount
-- Seller/buyer history
-- Platform policies
-- Fairness to both parties
-
-Return ONLY valid JSON.`,
+              content: `You are a dispute resolution AI for Nexora Market. Analyze disputes fairly. Return ONLY valid JSON: "recommendation" ("release_to_seller"/"refund_buyer"/"partial_refund"/"pending_review"/"mediate"), "reasoning" (string), "suggestedAction" (string), "confidence" (0-100).`,
             },
-            {
-              role: "user",
-              content: JSON.stringify({
-                type: args.disputeType,
-                buyerClaim: args.buyerClaim,
-                sellerResponse: args.sellerResponse,
-                amount: args.amount,
-                evidence: args.evidence,
-              }),
-            },
+            { role: "user", content: JSON.stringify(args) },
           ],
-          max_tokens: 500,
+          max_tokens: 400,
           temperature: 0.2,
         }),
       });
 
-      if (!response.ok) {
-        return {
-          recommendation: "pending_review",
-          reasoning: "AI analysis unavailable. Admin review recommended.",
-          suggestedAction: "Manual review required",
-          confidence: 0,
-        };
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "{}";
+        const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
+        return JSON.parse(cleaned);
       }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || "{}";
-      const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
-      return JSON.parse(cleaned);
-    } catch {
-      return {
-        recommendation: "pending_review",
-        reasoning: "AI analysis failed. Admin review recommended.",
-        suggestedAction: "Manual review required",
-        confidence: 0,
-      };
-    }
+    } catch {}
+    return { recommendation: "pending_review", reasoning: "AI analysis unavailable.", suggestedAction: "Manual review", confidence: 0 };
   },
 });
 
 /**
- * Smart rule-based fallback — works without OpenAI API
- * Matches user questions to known Nexora Market topics
+ * Rule-based fraud scoring fallback
  */
-function getSmartFallback(input: string): string {
+function ruleBasedFraudScore(args: { amount: number; sellerTransactionCount?: number; sellerRating?: number; sellerVerified?: boolean; productCategory: string; buyerLocation?: string; sellerLocation?: string }) {
+  let score = 0;
+  const flags: string[] = [];
+  if (args.amount > 500000) { score += 30; flags.push("Very high amount (KES 500K+)"); }
+  else if (args.amount > 200000) { score += 15; flags.push("High amount (KES 200K+)"); }
+  if (!args.sellerVerified) { score += 20; flags.push("Seller not verified"); }
+  if ((args.sellerTransactionCount || 0) < 3) { score += 15; flags.push("New seller"); }
+  if ((args.sellerRating || 0) < 3.5 && (args.sellerRating || 0) > 0) { score += 10; flags.push("Low seller rating"); }
+  const highRisk = ["Vehicles", "Property", "Electronics"];
+  if (highRisk.some(c => args.productCategory.toLowerCase().includes(c.toLowerCase()))) {
+    score += 10; flags.push(`High-risk category: ${args.productCategory}`);
+  }
+  if (args.buyerLocation && args.sellerLocation && args.buyerLocation !== args.sellerLocation) {
+    score += 5; flags.push("Location mismatch");
+  }
+  score = Math.min(score, 100);
+  const level = score < 20 ? "low" : score < 45 ? "medium" : score < 70 ? "high" : "critical";
+  const rec = level === "critical" ? "Block and review" : level === "high" ? "Enhanced escrow required" : level === "medium" ? "Standard escrow recommended" : "Proceed safely";
+  return { score, level, flags, recommendation: rec, reason: flags.length > 0 ? `${flags.length} risk factor(s) detected` : "No significant risks" };
+}
+
+/**
+ * Smart rule-based fallback when API is unavailable
+ */
+function getSmartFallback(input: string, role?: string): string {
   const q = input.toLowerCase();
 
+  // Greeting
+  if (q.match(/^(hi|hello|hey|sup|yo|habari|jambo|mambo)/)) {
+    return role === "seller"
+      ? "Hey! 👋 I'm your NexoraAI copilot. I can help you:\n\n• 📦 Create or improve product listings\n• 💰 Analyze your pricing\n• 📊 Understand your sales analytics\n• 🛒 Manage orders\n• 💡 Get selling tips\n\nWhat do you need help with?"
+      : role === "admin"
+      ? "Hello, Admin. 🛡️ NexoraAI command center active. I can help with:\n\n• 📊 Platform performance reports\n• 🚨 Risk and fraud alerts\n• ⚖️ Dispute resolution\n• 👥 Seller/buyer analytics\n• 💰 Revenue and payments\n\nWhat would you like to analyze?"
+      : "Hey! 👋 I'm NexoraAI — your smart shopping assistant. I can help you find products, compare prices, track orders, or answer any question about Nexora Market.\n\nWhat are you looking for?";
+  }
+
+  // Escrow
   if (q.includes("escrow")) {
-    return "Escrow is Nexora Market's core safety feature. When you buy something, your payment is held securely in escrow — it's only released to the seller after you confirm you've received the product. If there's a problem, you can open a dispute and our team will review it. This protects both buyers and sellers from fraud.";
+    return "🔒 **Escrow** is how Nexora keeps your money safe:\n\n1. You pay → funds locked in escrow\n2. Seller prepares → Nexora collects & delivers\n3. You confirm receipt → funds released to seller\n\nYour money is **never** sent directly to the seller until you're satisfied. If there's a problem, you can open a dispute.\n\n💡 **It's free to use** — the 2.5-5% commission covers escrow protection.";
   }
 
-  if (q.includes("pay") || q.includes("payment") || q.includes("mpesa") || q.includes("m-pesa")) {
-    return "You can pay using M-Pesa (STK Push), credit/debit card, or your Nexora Wallet. M-Pesa is the easiest — just enter your phone number during checkout and you'll receive a prompt on your phone to enter your PIN. All payments are secured through escrow.";
+  // Payment / M-Pesa
+  if (q.match(/pay|mpesa|m-pesa|payment|lipa/)) {
+    return "💳 **Payment options on Nexora:**\n\n1. **M-Pesa** (most popular) — Enter your phone number at checkout, get an STK push, enter your PIN. Done!\n2. **Credit/Debit Card** — Visa & Mastercard accepted via Stripe\n3. **Nexora Wallet** — Deposit funds first, pay from wallet balance\n\n💡 M-Pesa is the fastest and most secure option for Kenya.";
   }
 
-  if (q.includes("deliver") || q.includes("shipping") || q.includes("track")) {
-    return "All delivery on Nexora Market is managed by us — sellers don't handle delivery. During checkout, select your delivery location and we'll calculate the fee (some areas get free delivery!). You can track your order in the Orders or Deliveries section of your dashboard.";
+  // Delivery
+  if (q.match(/deliver|ship|track|delivery|kufika/)) {
+    return "🚚 **Nexora manages ALL delivery** — sellers don't handle it.\n\n• Choose your delivery location at checkout\n• System calculates fee (some areas get **FREE delivery!**)\n• Track your order in **My Orders** or **Deliveries**\n• All deliveries are **insured & GPS-tracked**\n\nFree delivery zones: Nairobi CBD, Westlands, and select areas.\n\nWant me to check delivery to a specific location?";
   }
 
-  if (q.includes("dispute") || q.includes("problem") || q.includes("issue") || q.includes("report")) {
-    return "If you have a problem with an order, you can open a dispute from the Disputes section in your dashboard. Provide details and any evidence (photos, screenshots). Our AI-assisted review system helps resolve disputes fairly. You can also report a seller or product from their profile page.";
+  // Dispute / problem / report
+  if (q.match(/dispute|problem|issue|report|complain|scam/)) {
+    return "⚖️ **If you have a problem:**\n\n1. Go to **Disputes** in your dashboard\n2. Select the order and describe the issue\n3. Upload any evidence (photos, screenshots)\n4. Our AI + admin team reviews within 24-48 hours\n\nYou can also **report a seller** or **report a product** from their profile page.\n\n💡 Most disputes are resolved fairly through our AI-assisted review.";
   }
 
-  if (q.includes("sell") || q.includes("list") || q.includes("product")) {
-    return "To sell on Nexora Market, you need to create a seller account and complete KYC verification. Once verified, go to your Seller Dashboard → Add Product to list items. You'll need to add photos, set a price, choose a category, and select your location. All delivery is handled by Nexora!";
+  // Sell / list / product
+  if (q.match(/sell|list|product|kuuza|uzaji/)) {
+    return "📦 **To sell on Nexora:**\n\n1. **Create a seller account** (choose 'I'm a Seller' at signup)\n2. **Complete KYC** — business name, type, and ID docs\n3. **Add your first product** — photos, price, category, location\n4. **Start selling!**\n\nNexora handles delivery, payments & escrow. You just provide the product.\n\n💡 **Pro tip:** Verified sellers get 3x more sales on average.";
   }
 
-  if (q.includes("withdraw") || q.includes("wallet") || q.includes("balance")) {
-    return "Your wallet balance shows your available funds and money held in escrow. You can withdraw earnings via M-Pesa or bank transfer from the Wallet section. Funds become available for withdrawal after the buyer confirms delivery and the escrow is released.";
+  // Wallet / balance / withdraw
+  if (q.match(/wallet|balance|withdraw|pesa|pesa yangu/)) {
+    return "💰 **Your Nexora Wallet:**\n\n• **Deposit** via M-Pesa (STK Push)\n• **Pay** for orders directly from wallet\n• **Withdraw** to M-Pesa or bank account\n• **Escrow funds** shown separately\n\nAll balances are real-time from the backend.\n\n💡 Withdrawals typically process within 24 hours.";
   }
 
-  if (q.includes("fee") || q.includes("commission") || q.includes("charge")) {
-    return "Nexora Market charges a 2.5-5% transaction commission and a 0.5-2% escrow fee. Delivery fees vary by location — some areas like Nairobi CBD and Westlands get free delivery. Premium seller subscriptions are available for lower fees and extra features.";
+  // Fees / commission / charge
+  if (q.match(/fee|commission|charge|bei|gharama/)) {
+    return "💳 **Nexora fees (transparent & fair):**\n\n• **Transaction commission:** 2.5-5%\n• **Escrow fee:** 0.5-2%\n• **Delivery fee:** Varies by location (FREE in some areas!)\n• **Seller subscriptions:** KES 999-4,999/month for premium features\n\n💡 **Buyers pay NO extra fees** — the listed price is what you pay.";
   }
 
-  if (q.includes("verify") || q.includes("kyc") || q.includes("identity")) {
-    return "Seller verification (KYC) requires your business name, business type, and identity documents. Once submitted, our team reviews it within 24-48 hours. Verified sellers get a trust badge and higher visibility. Buyers can verify their identity for added security.";
+  // Verify / KYC
+  if (q.match(/verify|kyc|identity|certificate/)) {
+    return "✅ **Seller verification (KYC):**\n\n1. Submit business name & type\n2. Upload identity document\n3. Review within 24-48 hours\n4. Get your **Verified Badge** ✓\n\nVerified sellers get:\n• Higher visibility in search\n• Trust badge on listings\n• 3x more sales on average\n• Lower commission rates";
   }
 
-  if (q.includes("refund")) {
-    return "Refunds are handled through the escrow system. If you open a dispute and it's resolved in your favor, the funds in escrow are refunded to your wallet. You can also request a refund before delivery if the seller hasn't shipped yet.";
+  // Refund
+  if (q.match(/refund|return|back money|pesa yangu/)) {
+    return "💰 **Refund process:**\n\n1. Open a dispute for the order\n2. Explain the issue + upload evidence\n3. AI + admin reviews the case\n4. If approved → funds returned to your wallet\n\n💡 Refunds go back to your Nexora wallet, not directly to M-Pesa. You can then withdraw.";
   }
 
-  if (q.includes("hello") || q.includes("hi") || q.includes("hey") || q.includes("help")) {
-    return "Hello! I'm NexoraAI, your assistant for Nexora Market. I can help you with:\n\n• Payments & M-Pesa\n• Escrow & security\n• Delivery tracking\n• Selling & KYC verification\n• Disputes & refunds\n• Fees & commissions\n\nWhat would you like to know?";
+  // Price / cheap / expensive / deal
+  if (q.match(/price|cheap|expensive|deal|afford|bei|nafuu/)) {
+    return "💡 I can help you find the best deals!\n\nTell me:\n• What product are you looking for?\n• What's your budget?\n• What location?\n\nI'll find the best options with the best value.\n\nOr ask me: \"Is this price fair?\" about any listing!";
   }
 
-  if (q.includes("thank")) {
-    return "You're welcome! Is there anything else I can help you with about Nexora Market?";
+  // Compare
+  if (q.match(/compare|better|difference|versus|vs/)) {
+    return "🔍 I can compare products for you!\n\nTell me:\n• Which products do you want to compare?\n• Or share the product names/links\n\nI'll compare price, specs, seller rating, delivery, and value — then recommend the best one for you.";
   }
 
-  return "I can help you with payments, escrow, delivery, disputes, selling, verification, and more. Try asking something like:\n\n• \"How does escrow work?\"\n• \"How do I pay with M-Pesa?\"\n• \"Track my delivery\"\n• \"How do I start selling?\"";
+  // Track order
+  if (q.match(/where.*order|track.*order|my order|order.*status|iliwahi/)) {
+    return "📦 **To track your order:**\n\n1. Go to **My Orders** in your dashboard\n2. Find the order and click **Track**\n3. See real-time status updates\n\nOr just tell me the order number and I'll look it up for you!";
+  }
+
+  // Help
+  if (q.match(/help|assist|support|support|msaada/)) {
+    return "🤝 **I can help you with:**\n\n🔍 **Search** — \"Find me a laptop under 30k\"\n💰 **Pricing** — \"Is this price fair?\"\n📦 **Orders** — \"Where is my order?\"\n🚚 **Delivery** — \"Track my delivery\"\n💳 **Payments** — \"How do I pay?\"\n⚖️ **Disputes** — \"I have a problem with my order\"\n📦 **Selling** — \"How do I start selling?\"\n💡 **Advice** — \"What should I buy?\"\n\nJust ask naturally — I understand typos, slang, and mixed languages!";
+  }
+
+  // Thank you
+  if (q.match(/thank|asante|shukran|cheers/)) {
+    return "You're welcome! 😊 Is there anything else I can help you with?";
+  }
+
+  // Default fallback — helpful
+  return `I'm NexoraAI, your marketplace assistant! 💡\n\nI can help with:\n\n• 🔍 **Search** — "Find me a phone under 20k"\n• 💰 **Prices** — "Is this laptop worth 25k?"\n• 📦 **Orders** — "Where is my order?"\n• 🚚 **Delivery** — "Track my package"\n• 💳 **Payments** — "How do I pay with M-Pesa?"\n• ⚖️ **Disputes** — "I have a problem"\n• 📦 **Selling** — "How do I list products?"\n• 💡 **Advice** — "What should I buy with 30k?"\n\nJust ask naturally — I understand typos, slang, and mixed languages! 🇰🇪`;
 }
