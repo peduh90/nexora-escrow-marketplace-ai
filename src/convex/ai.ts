@@ -1,4 +1,6 @@
-import { action, query } from "./_generated/server";
+"use node";
+
+import { action } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
@@ -107,8 +109,14 @@ Be helpful but keep responses concise (2-4 sentences max unless explaining somet
 
       if (!response.ok) {
         const errorData = await response.text();
-        console.error("OpenAI API error:", errorData);
-        return "I'm experiencing technical difficulties. Please try again in a moment.";
+        console.error("OpenAI API error:", response.status, errorData);
+        if (response.status === 401) {
+          return "AI authentication failed. The API key may be invalid. Please check your OPENAI_API_KEY in Convex environment variables.";
+        }
+        if (response.status === 429) {
+          return "Too many requests. Please wait a moment and try again.";
+        }
+        return `AI service error (${response.status}). Please try again in a moment.`;
       }
 
       const data = await response.json();
@@ -429,25 +437,5 @@ Return ONLY valid JSON.`,
         confidence: 0,
       };
     }
-  },
-});
-
-/**
- * Admin: Get AI insights about platform health
- */
-export const getPlatformInsights = query({
-  args: {},
-  handler: async (ctx) => {
-    // This provides static insights — real-time would use actions
-    return {
-      tips: [
-        "Monitor escrow hold times — releases over 7 days may indicate delivery issues",
-        "Track seller verification rates — unverified sellers have 3x higher dispute rates",
-        "Watch for rapid price changes on high-value items — potential fraud indicator",
-        "Review flagged transactions weekly for patterns",
-        "Maintain delivery zone pricing — review quarterly based on logistics costs",
-      ],
-      alerts: [],
-    };
   },
 });
