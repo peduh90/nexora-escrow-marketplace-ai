@@ -1,19 +1,17 @@
 import { useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
+import { getProductImage } from "@/lib/product-images";
 import {
   Search,
   Shield,
   Star,
   Eye,
-  TrendingUp,
   Filter,
   Grid3x3,
   List,
   Brain,
-  MapPin,
   CheckCircle2,
-  ArrowUpRight,
 } from "lucide-react";
 
 function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -29,15 +27,18 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
 const categories = ["All", "Electronics", "Agriculture", "Fashion", "Real Estate", "Services", "Digital Goods", "B2B"];
 
 const listings = [
-  { title: "Samsung Galaxy S24 Ultra", price: 145000, currency: "KES", seller: "TechHub Nairobi", category: "Electronics", verified: true, reputation: 4.8, escrowProtected: true, aiRisk: 98.2, views: 342, image: "📱" },
-  { title: "Organic Coffee Beans (50kg)", price: 85000, currency: "KES", seller: "Highlands Farm", category: "Agriculture", verified: true, reputation: 4.9, escrowProtected: true, aiRisk: 99.5, views: 187, image: "☕" },
-  { title: "Web Development Services", price: 250000, currency: "KES", seller: "DevStudio KE", category: "Services", verified: true, reputation: 4.7, escrowProtected: true, aiRisk: 96.8, views: 523, image: "💻" },
-  { title: "Commercial Land Kitengela", price: 4500000, currency: "KES", seller: "Prime Properties", category: "Real Estate", verified: true, reputation: 4.6, escrowProtected: true, aiRisk: 94.1, views: 891, image: "🏗" },
-  { title: "Nike Air Max 2025 Collection", price: 18500, currency: "KES", seller: "Urban Fashion KE", category: "Fashion", verified: true, reputation: 4.5, escrowProtected: true, aiRisk: 97.3, views: 1205, image: "👟" },
-  { title: "E-Commerce Platform License", price: 75000, currency: "KES", seller: "SoftTech Africa", category: "Digital Goods", verified: true, reputation: 4.8, escrowProtected: true, aiRisk: 99.1, views: 456, image: "📦" },
-  { title: "Bulk Maize (5 Tons)", price: 320000, currency: "KES", seller: "Western Kenya Mills", category: "Agriculture", verified: true, reputation: 4.7, escrowProtected: true, aiRisk: 98.7, views: 234, image: "🌽" },
-  { title: "iPhone 15 Pro Max 256GB", price: 168000, currency: "KES", seller: "GadgetZone", category: "Electronics", verified: false, reputation: 4.3, escrowProtected: true, aiRisk: 91.4, views: 892, image: "📱" },
-  { title: "B2B Logistics Partnership", price: 500000, currency: "KES", seller: "MoveIt KE", category: "B2B", verified: true, reputation: 4.9, escrowProtected: true, aiRisk: 97.8, views: 167, image: "🚛" },
+  { title: "Samsung Galaxy S24 Ultra", price: 145000, currency: "KES", seller: "TechHub Nairobi", category: "Electronics", verified: true, reputation: 4.8, escrowProtected: true, aiRisk: 98.2, views: 342, condition: "New", location: "Nairobi" },
+  { title: "Organic Coffee Beans (50kg)", price: 85000, currency: "KES", seller: "Highlands Farm", category: "Agriculture", verified: true, reputation: 4.9, escrowProtected: true, aiRisk: 99.5, views: 187, condition: "New", location: "Nyeri" },
+  { title: "Web Development Services", price: 250000, currency: "KES", seller: "DevStudio KE", category: "Services", verified: true, reputation: 4.7, escrowProtected: true, aiRisk: 96.8, views: 523, condition: "N/A", location: "Nairobi" },
+  { title: "Commercial Land Kitengela", price: 4500000, currency: "KES", seller: "Prime Properties", category: "Real Estate", verified: true, reputation: 4.6, escrowProtected: true, aiRisk: 94.1, views: 891, condition: "New", location: "Kitengela" },
+  { title: "Nike Air Max 2025 Collection", price: 18500, currency: "KES", seller: "Urban Fashion KE", category: "Fashion", verified: true, reputation: 4.5, escrowProtected: true, aiRisk: 97.3, views: 1205, condition: "New", location: "Nairobi" },
+  { title: "E-Commerce Platform License", price: 75000, currency: "KES", seller: "SoftTech Africa", category: "Digital Goods", verified: true, reputation: 4.8, escrowProtected: true, aiRisk: 99.1, views: 456, condition: "New", location: "Online" },
+  { title: "Bulk Maize (5 Tons)", price: 320000, currency: "KES", seller: "Western Kenya Mills", category: "Agriculture", verified: true, reputation: 4.7, escrowProtected: true, aiRisk: 98.7, views: 234, condition: "New", location: "Kisumu" },
+  { title: "iPhone 15 Pro Max 256GB", price: 168000, currency: "KES", seller: "GadgetZone", category: "Electronics", verified: false, reputation: 4.3, escrowProtected: true, aiRisk: 91.4, views: 892, condition: "Used", location: "Mombasa" },
+  { title: "B2B Logistics Partnership", price: 500000, currency: "KES", seller: "MoveIt KE", category: "B2B", verified: true, reputation: 4.9, escrowProtected: true, aiRisk: 97.8, views: 167, condition: "N/A", location: "Nairobi" },
+  { title: "HP EliteBook 840 G3 Laptop", price: 22000, currency: "KES", seller: "TechZone Kenya", category: "Electronics", verified: true, reputation: 4.8, escrowProtected: true, aiRisk: 97.5, views: 1045, condition: "Used", location: "Nairobi" },
+  { title: "Toyota Hilux 2019 Double Cab", price: 3800000, currency: "KES", seller: "AutoDeal KE", category: "Electronics", verified: true, reputation: 4.7, escrowProtected: true, aiRisk: 95.2, views: 2103, condition: "Used", location: "Nairobi" },
+  { title: "Modern 3BR Apartment Kilimani", price: 65000, currency: "KES", seller: "Prime Properties", category: "Real Estate", verified: true, reputation: 4.6, escrowProtected: true, aiRisk: 93.8, views: 756, condition: "New", location: "Kilimani" },
 ];
 
 export default function Marketplace() {
@@ -73,7 +74,7 @@ export default function Marketplace() {
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products, services, sellers..."
+                  placeholder="What are you looking for?"
                   className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/5 text-sm text-white/70 placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none"
                 />
               </div>
@@ -111,48 +112,62 @@ export default function Marketplace() {
 
           {/* Listings grid */}
           <div className={`grid gap-3 ${viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}>
-            {filtered.map((listing, i) => (
-              <FadeIn key={listing.title} delay={i * 0.04}>
-                <div className={`group p-4 rounded-xl border border-white/5 bg-nx-surface/50 hover:border-white/10 transition-all duration-300 cursor-pointer ${viewMode === "list" ? "flex items-center gap-4" : ""}`}>
-                  {viewMode === "grid" && (
-                    <div className="w-full h-32 rounded-lg bg-white/[0.02] flex items-center justify-center text-4xl mb-3 group-hover:bg-white/[0.03] transition-colors">
-                      {listing.image}
-                    </div>
-                  )}
-                  {viewMode === "list" && (
-                    <div className="w-14 h-14 rounded-lg bg-white/[0.02] flex items-center justify-center text-2xl shrink-0">
-                      {listing.image}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="text-sm font-medium text-white truncate">{listing.title}</h3>
-                      {listing.escrowProtected && (
-                        <Shield className="w-3.5 h-3.5 text-nx-violet shrink-0 mt-0.5" />
-                      )}
-                    </div>
-                    <p className="text-xs text-white/30 mb-2">{listing.seller}</p>
-                    <div className="flex items-center gap-2 mb-2">
-                      {listing.verified && (
-                        <span className="inline-flex items-center gap-1 text-[9px] text-nx-cyan bg-nx-cyan/10 px-1.5 py-0.5 rounded">
-                          <CheckCircle2 className="w-2.5 h-2.5" /> Verified
+            {filtered.map((listing, i) => {
+              const imgSrc = getProductImage(listing.title, listing.category, i);
+              return (
+                <FadeIn key={listing.title} delay={i * 0.04}>
+                  <div className={`group p-4 rounded-xl border border-white/5 bg-nx-surface/50 hover:border-white/10 transition-all duration-300 cursor-pointer ${viewMode === "list" ? "flex items-center gap-4" : ""}`}>
+                    {viewMode === "grid" && (
+                      <div className="w-full h-40 rounded-lg overflow-hidden bg-white/[0.02] mb-3 group-hover:bg-white/[0.03] transition-colors">
+                        <img
+                          src={imgSrc}
+                          alt={listing.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+                    {viewMode === "list" && (
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-white/[0.02] shrink-0">
+                        <img
+                          src={imgSrc}
+                          alt={listing.title}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h3 className="text-sm font-medium text-white truncate">{listing.title}</h3>
+                        {listing.escrowProtected && (
+                          <Shield className="w-3.5 h-3.5 text-nx-violet shrink-0 mt-0.5" />
+                        )}
+                      </div>
+                      <p className="text-xs text-white/30 mb-1">{listing.seller}</p>
+                      <div className="flex items-center gap-2 mb-2">
+                        {listing.verified && (
+                          <span className="inline-flex items-center gap-1 text-[9px] text-nx-cyan bg-nx-cyan/10 px-1.5 py-0.5 rounded">
+                            <CheckCircle2 className="w-2.5 h-2.5" /> Verified
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1 text-[9px] text-nx-violet bg-nx-violet/10 px-1.5 py-0.5 rounded">
+                          <Brain className="w-2.5 h-2.5" /> {listing.aiRisk}%
                         </span>
-                      )}
-                      <span className="inline-flex items-center gap-1 text-[9px] text-nx-violet bg-nx-violet/10 px-1.5 py-0.5 rounded">
-                        <Brain className="w-2.5 h-2.5" /> {listing.aiRisk}%
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-white">{listing.currency} {listing.price.toLocaleString()}</span>
-                      <div className="flex items-center gap-2 text-[10px] text-white/25">
-                        <span className="flex items-center gap-1"><Star className="w-3 h-3 text-nx-gold" /> {listing.reputation}</span>
-                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {listing.views}</span>
+                        <span className="text-[9px] text-white/25 bg-white/[0.03] px-1.5 py-0.5 rounded">{listing.condition}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-bold text-white">{listing.currency} {listing.price.toLocaleString()}</span>
+                        <div className="flex items-center gap-2 text-[10px] text-white/25">
+                          <span className="flex items-center gap-1"><Star className="w-3 h-3 text-nx-gold" /> {listing.reputation}</span>
+                          <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {listing.views}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </FadeIn>
-            ))}
+                </FadeIn>
+              );
+            })}
           </div>
         </div>
       </main>
