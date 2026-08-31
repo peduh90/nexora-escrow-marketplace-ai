@@ -361,6 +361,36 @@ const schema = defineSchema(
       .index("by_slug", ["slug"])
       .index("by_active", ["active"]),
 
+    // Buyer-Seller Messages
+    messages: defineTable({
+      senderId: v.string(),
+      receiverId: v.string(),
+      listingId: v.optional(v.string()),
+      escrowId: v.optional(v.string()),
+      content: v.string(),
+      read: v.boolean(),
+      createdAt: v.number(),
+    })
+      .index("by_sender", ["senderId"])
+      .index("by_receiver", ["receiverId"])
+      .index("by_listing", ["listingId"])
+      .index("by_created", ["createdAt"]),
+
+    // Conversations (buyer-seller threads)
+    conversations: defineTable({
+      buyerId: v.string(),
+      sellerId: v.string(),
+      listingId: v.optional(v.string()),
+      lastMessage: v.string(),
+      lastMessageAt: v.number(),
+      unreadBuyer: v.number(),
+      unreadSeller: v.number(),
+      createdAt: v.number(),
+    })
+      .index("by_buyer", ["buyerId"])
+      .index("by_seller", ["sellerId"])
+      .index("by_last_message", ["lastMessageAt"]),
+
     // Platform settings (admin)
     platformSettings: defineTable({
       key: v.string(),

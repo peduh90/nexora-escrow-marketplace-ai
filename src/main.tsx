@@ -24,21 +24,18 @@ const Settings = lazy(() => import("./pages/Settings.tsx"));
 // Buyer panel
 const BuyerDashboard = lazy(() => import("./pages/buyer/BuyerDashboard.tsx"));
 const BuyerMarketplace = lazy(() => import("./pages/Marketplace.tsx"));
-const BuyerWallet = lazy(() => import("./pages/WalletPage.tsx"));
+const BuyerWallet = lazy(() => import("./pages/buyer/BuyerWallet.tsx"));
 const BuyerDisputes = lazy(() => import("./pages/Disputes.tsx"));
 const BuyerOrders = lazy(() => import("./pages/buyer/BuyerOrders.tsx"));
-const BuyerDeliveries = lazy(() => import("./pages/buyer/BuyerDeliveries.tsx"));
-const BuyerSettings = lazy(() => import("./pages/Settings.tsx"));
-const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
 // Seller panel
 const SellerDashboard = lazy(() => import("./pages/seller/SellerDashboard.tsx"));
 const SellerProducts = lazy(() => import("./pages/seller/SellerProducts.tsx"));
 const SellerOrders = lazy(() => import("./pages/seller/SellerOrders.tsx"));
 const SellerEarnings = lazy(() => import("./pages/seller/SellerEarnings.tsx"));
 const SellerKYC = lazy(() => import("./pages/seller/SellerKYC.tsx"));
-const SellerDeliveries = lazy(() => import("./pages/seller/SellerDeliveries.tsx"));
+const SellerMessages = lazy(() => import("./pages/seller/SellerMessages.tsx"));
 const SellerAnalytics = lazy(() => import("./pages/seller/SellerAnalytics.tsx"));
-const SellerSettings = lazy(() => import("./pages/Settings.tsx"));
+const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
 // Admin panel
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
 
@@ -164,21 +161,17 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/buyer" element={<RequireAuth><BuyerDashboard /></RequireAuth>} />
               <Route path="/buyer/marketplace" element={<RequireAuth><BuyerMarketplace /></RequireAuth>} />
               <Route path="/buyer/orders" element={<RequireAuth><BuyerOrders /></RequireAuth>} />
-              <Route path="/buyer/deliveries" element={<RequireAuth><BuyerDeliveries /></RequireAuth>} />
               <Route path="/buyer/wallet" element={<RequireAuth><BuyerWallet /></RequireAuth>} />
-              <Route path="/buyer/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
               <Route path="/buyer/disputes" element={<RequireAuth><BuyerDisputes /></RequireAuth>} />
-              <Route path="/buyer/settings" element={<RequireAuth><BuyerSettings /></RequireAuth>} />
 
               {/* Seller routes */}
               <Route path="/seller" element={<RequireAuth><SellerDashboard /></RequireAuth>} />
               <Route path="/seller/products" element={<RequireAuth><SellerProducts /></RequireAuth>} />
               <Route path="/seller/orders" element={<RequireAuth><SellerOrders /></RequireAuth>} />
-              <Route path="/seller/deliveries" element={<RequireAuth><SellerDeliveries /></RequireAuth>} />
+              <Route path="/seller/messages" element={<RequireAuth><SellerMessages /></RequireAuth>} />
               <Route path="/seller/earnings" element={<RequireAuth><SellerEarnings /></RequireAuth>} />
               <Route path="/seller/kyc" element={<RequireAuth><SellerKYC /></RequireAuth>} />
               <Route path="/seller/analytics" element={<RequireAuth><SellerAnalytics /></RequireAuth>} />
-              <Route path="/seller/settings" element={<RequireAuth><SellerSettings /></RequireAuth>} />
 
               {/* Admin routes */}
               <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
