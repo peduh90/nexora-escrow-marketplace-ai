@@ -51,6 +51,29 @@ const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails.tsx"));
 // Admin panel
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers.tsx"));
+const AdminBuyers = lazy(() => import("./pages/admin/AdminBuyers.tsx"));
+const AdminSellers = lazy(() => import("./pages/admin/AdminSellers.tsx"));
+const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
+const AdminOrders = lazy(() => import("./pages/admin/AdminOrders.tsx"));
+const AdminPayments = lazy(() => import("./pages/admin/AdminPayments.tsx"));
+const AdminEscrow = lazy(() => import("./pages/admin/AdminEscrow.tsx"));
+const AdminWallets = lazy(() => import("./pages/admin/AdminWallets.tsx"));
+const AdminWithdrawals = lazy(() => import("./pages/admin/AdminWithdrawals.tsx"));
+const AdminDeliveries = lazy(() => import("./pages/admin/AdminDeliveries.tsx"));
+const AdminDisputes = lazy(() => import("./pages/admin/AdminDisputes.tsx"));
+const AdminFraud = lazy(() => import("./pages/admin/AdminFraud.tsx"));
+const AdminKYC = lazy(() => import("./pages/admin/AdminKYC.tsx"));
+const AdminMessages = lazy(() => import("./pages/admin/AdminMessages.tsx"));
+const AdminReviews = lazy(() => import("./pages/admin/AdminReviews.tsx"));
+const AdminReports = lazy(() => import("./pages/admin/AdminReports.tsx"));
+const AdminJobs = lazy(() => import("./pages/admin/AdminJobs.tsx"));
+const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics.tsx"));
+const AdminRevenue = lazy(() => import("./pages/admin/AdminRevenue.tsx"));
+const AdminSystem = lazy(() => import("./pages/admin/AdminSystem.tsx"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings.tsx"));
+const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications.tsx"));
+const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {
@@ -202,6 +225,30 @@ createRoot(document.getElementById("root")!).render(
 
               {/* Admin routes */}
               <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
+              <Route path="/admin/users" element={<RequireAuth><AdminUsers /></RequireAuth>} />
+              <Route path="/admin/buyers" element={<RequireAuth><AdminBuyers /></RequireAuth>} />
+              <Route path="/admin/sellers" element={<RequireAuth><AdminSellers /></RequireAuth>} />
+              <Route path="/admin/products" element={<RequireAuth><AdminProducts /></RequireAuth>} />
+              <Route path="/admin/orders" element={<RequireAuth><AdminOrders /></RequireAuth>} />
+              <Route path="/admin/payments" element={<RequireAuth><AdminPayments /></RequireAuth>} />
+              <Route path="/admin/escrow" element={<RequireAuth><AdminEscrow /></RequireAuth>} />
+              <Route path="/admin/wallets" element={<RequireAuth><AdminWallets /></RequireAuth>} />
+              <Route path="/admin/withdrawals" element={<RequireAuth><AdminWithdrawals /></RequireAuth>} />
+              <Route path="/admin/deliveries" element={<RequireAuth><AdminDeliveries /></RequireAuth>} />
+              <Route path="/admin/zones" element={<RequireAuth><AdminDeliveries /></RequireAuth>} />
+              <Route path="/admin/disputes" element={<RequireAuth><AdminDisputes /></RequireAuth>} />
+              <Route path="/admin/fraud" element={<RequireAuth><AdminFraud /></RequireAuth>} />
+              <Route path="/admin/kyc" element={<RequireAuth><AdminKYC /></RequireAuth>} />
+              <Route path="/admin/messages" element={<RequireAuth><AdminMessages /></RequireAuth>} />
+              <Route path="/admin/reviews" element={<RequireAuth><AdminReviews /></RequireAuth>} />
+              <Route path="/admin/reports" element={<RequireAuth><AdminReports /></RequireAuth>} />
+              <Route path="/admin/jobs" element={<RequireAuth><AdminJobs /></RequireAuth>} />
+              <Route path="/admin/analytics" element={<RequireAuth><AdminAnalytics /></RequireAuth>} />
+              <Route path="/admin/revenue" element={<RequireAuth><AdminRevenue /></RequireAuth>} />
+              <Route path="/admin/system" element={<RequireAuth><AdminSystem /></RequireAuth>} />
+              <Route path="/admin/settings" element={<RequireAuth><AdminSettings /></RequireAuth>} />
+              <Route path="/admin/notifications" element={<RequireAuth><AdminNotifications /></RequireAuth>} />
+              <Route path="/admin/audit-logs" element={<RequireAuth><AdminAuditLogs /></RequireAuth>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
