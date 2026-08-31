@@ -26,6 +26,9 @@ import {
   Lock,
   Globe,
   Zap,
+  Phone,
+  User,
+  ArrowLeft,
 } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -55,6 +58,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Account creation fields
+  const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
       navigate(redirect);
@@ -72,6 +79,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       const formData = new FormData(event.currentTarget);
+      // Store name and phone for later use after OTP verification
       await signIn("email-otp", formData);
       setStep({ email: formData.get("email") as string });
       setIsLoading(false);
@@ -89,6 +97,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     try {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
+      // After successful sign-in, redirect based on role
       navigate(selectedRole === "seller" ? "/seller" : "/buyer");
     } catch (error) {
       console.error("OTP verification error:", error);
@@ -217,21 +226,25 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             </div>
           )}
 
-          {/* ===== STEP 2: Sign In ===== */}
+          {/* ===== STEP 2: Sign In / Create Account ===== */}
           {step === "signIn" && (
-            <Card className="w-full max-w-[420px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
+            <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors">
-                    ← Change
+                  <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1">
+                    <ArrowLeft className="w-3 h-3" /> Change
                   </button>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : "bg-nx-cyan/10 text-nx-cyan"}`}>
                     {selectedRole === "seller" ? "🏪 Seller" : "🛒 Buyer"}
                   </span>
                 </div>
-                <CardTitle className="text-xl text-white">Welcome to Nexora</CardTitle>
+                <CardTitle className="text-xl text-white">
+                  {selectedRole === "seller" ? "Create Seller Account" : "Create Buyer Account"}
+                </CardTitle>
                 <CardDescription className="text-white/40">
-                  Sign in to start {selectedRole === "seller" ? "selling" : "buying"} securely
+                  {selectedRole === "seller"
+                    ? "Set up your seller account to start listing products"
+                    : "Create your account to start shopping securely"}
                 </CardDescription>
               </CardHeader>
 
@@ -259,45 +272,81 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     <span className="w-full border-t border-white/5" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-nx-surface px-2 text-white/20 tracking-wider">or</span>
+                    <span className="bg-nx-surface px-2 text-white/20 tracking-wider">or create with email</span>
                   </div>
                 </div>
 
-                {/* Email form */}
-                <form onSubmit={handleEmailSubmit}>
-                  <div className="relative flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-white/30" />
-                      <Input
-                        name="email"
-                        placeholder="name@example.com"
-                        type="email"
-                        className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:ring-nx-violet/20"
-                        disabled={isLoading}
-                        required
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      size="icon"
+                {/* Registration Form */}
+                <form onSubmit={handleEmailSubmit} className="space-y-3">
+                  {/* Full Name */}
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-white/30" />
+                    <Input
+                      name="name"
+                      placeholder="Full name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:ring-nx-violet/20"
                       disabled={isLoading}
-                      className="bg-nx-violet hover:bg-nx-violet/80 text-white shrink-0"
-                    >
-                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                    </Button>
+                      required
+                    />
                   </div>
-                  {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+
+                  {/* Email */}
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-white/30" />
+                    <Input
+                      name="email"
+                      placeholder="Email address"
+                      type="email"
+                      className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:ring-nx-violet/20"
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+
+                  {/* Phone Number */}
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-white/30" />
+                    <Input
+                      name="phone"
+                      placeholder="Phone number (e.g. 0712 345 678)"
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:ring-nx-violet/20"
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+
+                  {/* Role field (hidden, sent with form) */}
+                  <input type="hidden" name="role" value={selectedRole || "buyer"} />
+
+                  {error && <p className="text-sm text-red-400">{error}</p>}
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>Send Verification Code <ArrowRight className="ml-2 h-4 w-4" /></>
+                    )}
+                  </Button>
                 </form>
 
                 <p className="text-[11px] text-white/20 text-center">
                   {selectedRole === "seller"
                     ? "Sellers must complete KYC verification before listing products"
-                    : "Start browsing and buying with escrow protection"}
+                    : "By creating an account, you agree to Nexora's Terms & Privacy Policy"}
                 </p>
               </CardContent>
 
-              <div className="py-3 px-6 text-xs text-center text-white/20 bg-white/[0.02] border-t border-white/5 rounded-b-lg">
-                Protected by Nexora Escrow Security
+              <div className="py-3 px-6 text-xs text-center text-white/20 bg-white/[0.02] border-t border-white/5 rounded-b-lg flex items-center justify-center gap-1.5">
+                <Shield className="w-3 h-3" /> Protected by Nexora Escrow Security
               </div>
             </Card>
           )}
@@ -306,9 +355,13 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           {typeof step === "object" && (
             <Card className="w-full max-w-[420px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
+                <div className="w-12 h-12 rounded-full bg-nx-violet/10 flex items-center justify-center mx-auto mb-3">
+                  <Mail className="w-6 h-6 text-nx-violet" />
+                </div>
                 <CardTitle className="text-xl text-white">Check your email</CardTitle>
                 <CardDescription className="text-white/40">
-                  We've sent a code to {step.email}
+                  We've sent a 6-digit code to<br />
+                  <span className="text-white/60 font-medium">{step.email}</span>
                 </CardDescription>
               </CardHeader>
               <form onSubmit={handleOtpSubmit}>
