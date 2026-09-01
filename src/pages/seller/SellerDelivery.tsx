@@ -1,21 +1,30 @@
 import { useState } from "react";
 import SellerLayout from "./SellerLayout";
-import { Truck, Package, MapPin, Clock, CheckCircle2, AlertTriangle, Shield } from "lucide-react";
-
-const deliveries = [
-  { id: "DLV-042", orderId: "NX-20485", product: "HP EliteBook 840 G3", buyer: "John Kamau", from: "Westlands, Nairobi", to: "Kisumu Town", status: "in_transit", driver: "John Kamau", tracking: "NX-4829-KE", eta: "Tomorrow 2PM", insurance: true, km: 340, pickupReady: true },
-  { id: "DLV-040", orderId: "NX-20482", product: "iPhone 15 Pro Max", buyer: "Sarah Wanjiku", from: "CBD, Nairobi", to: "Nyali, Mombasa", status: "awaiting_pickup", driver: "Pending", tracking: "NX-4827-KE", eta: "3-4 days", insurance: true, km: 485, pickupReady: true },
-  { id: "DLV-038", orderId: "NX-20479", product: "Samsung Galaxy S24", buyer: "Peter Otieno", from: "Karen, Nairobi", to: "CBD, Nairobi", status: "delivered", driver: "Peter Ochieng", tracking: "NX-4826-KE", eta: "Completed", insurance: true, km: 25, pickupReady: true },
-];
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useAuth } from "@/hooks/use-auth";
+import { Truck, Package, MapPin, Shield } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  awaiting_pickup: { label: "Awaiting Pickup", color: "text-amber-400", bg: "bg-amber-400/10" },
+  pending: { label: "Awaiting Pickup", color: "text-amber-400", bg: "bg-amber-400/10" },
+  assigned: { label: "Assigned", color: "text-nx-violet", bg: "bg-nx-violet/10" },
+  picked_up: { label: "Picked Up", color: "text-blue-400", bg: "bg-blue-400/10" },
   in_transit: { label: "In Transit", color: "text-blue-400", bg: "bg-blue-400/10" },
   delivered: { label: "Delivered", color: "text-emerald-400", bg: "bg-emerald-400/10" },
-  issue: { label: "Issue", color: "text-red-400", bg: "bg-red-400/10" },
+  failed: { label: "Failed", color: "text-red-400", bg: "bg-red-400/10" },
+  cancelled: { label: "Cancelled", color: "text-white/40", bg: "bg-white/5" },
 };
 
 export default function SellerDelivery() {
+  const { user } = useAuth();
+  const deliveries = useQuery(api.wallet.getWalletTransactions) ?? [];
+  // For now, show empty state since deliveries table isn't linked to seller view yet
+  // In production, this would query deliveries tied to this seller's orders
+
+  const activeDeliveries = 0;
+  const inTransit = 0;
+  const completed = 0;
+
   return (
     <SellerLayout>
       <div className="space-y-6">
@@ -32,63 +41,24 @@ export default function SellerDelivery() {
 
         <div className="grid grid-cols-3 gap-3">
           <div className="p-4 rounded-xl bg-amber-400/5 border border-amber-400/10">
-            <p className="text-2xl font-bold text-amber-400">1</p>
+            <p className="text-2xl font-bold text-amber-400">{activeDeliveries}</p>
             <p className="text-[11px] text-white/30">Awaiting Pickup</p>
           </div>
           <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-            <p className="text-2xl font-bold text-blue-400">1</p>
+            <p className="text-2xl font-bold text-blue-400">{inTransit}</p>
             <p className="text-[11px] text-white/30">In Transit</p>
           </div>
           <div className="p-4 rounded-xl bg-emerald-400/5 border border-emerald-400/10">
-            <p className="text-2xl font-bold text-emerald-400">1</p>
+            <p className="text-2xl font-bold text-emerald-400">{completed}</p>
             <p className="text-[11px] text-white/30">Delivered</p>
           </div>
         </div>
 
-        <div className="space-y-3">
-          {deliveries.map(d => {
-            const st = statusConfig[d.status];
-            const steps = ["Ready", "Picked Up", "In Transit", "Delivered"];
-            const activeStep = d.status === "delivered" ? 3 : d.status === "in_transit" ? 2 : 0;
-            return (
-              <div key={d.id} className="p-5 rounded-xl bg-white/[0.02] border border-white/5">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0">
-                    <Package className="w-5 h-5 text-white/20" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-medium text-white">{d.product}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${st.color} ${st.bg}`}>{st.label}</span>
-                      {d.insurance && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-400/10 text-emerald-400">Insured</span>}
-                    </div>
-                    <div className="flex items-center gap-3 text-[11px] text-white/30">
-                      <span>{d.buyer}</span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {d.from} → {d.to}</span>
-                      <span>•</span>
-                      <span>{d.km} km</span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs font-mono text-white/40">{d.tracking}</p>
-                    <p className="text-[10px] text-white/25 mt-0.5">ETA: {d.eta}</p>
-                    <p className="text-[10px] text-white/20 mt-0.5">Driver: {d.driver}</p>
-                  </div>
-                </div>
-                <div className="mt-4 flex items-center gap-1">
-                  {steps.map((step, i) => (
-                    <div key={step} className="flex-1 flex items-center gap-1">
-                      <div className={`w-full h-1.5 rounded-full ${i <= activeStep ? "bg-nx-cyan" : "bg-white/[0.05]"}`} />
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-between text-[9px] text-white/20 mt-1">
-                  {steps.map(s => <span key={s}>{s}</span>)}
-                </div>
-              </div>
-            );
-          })}
+        {/* Empty state — real deliveries will appear here once orders with transport are placed */}
+        <div className="text-center py-16 rounded-xl bg-white/[0.02] border border-white/5">
+          <Truck className="w-12 h-12 text-white/10 mx-auto mb-3" />
+          <p className="text-sm text-white/40 font-medium">No active deliveries</p>
+          <p className="text-[11px] text-white/20 mt-1">Deliveries will appear here once buyers place orders with Nexora Transport</p>
         </div>
       </div>
     </SellerLayout>
