@@ -34,7 +34,7 @@ function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/buyer") 
   return fallback;
 }
 
-type AuthStep = "roleSelect" | "signIn" | { email: string } | "admin2fa";
+type AuthStep = "roleSelect" | "signIn" | { email: string } | "adminEmail" | "adminOtp";
 
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const { isLoading: authLoading, isAuthenticated, signIn } = useAuth();
@@ -43,7 +43,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const redirect = resolveRedirectAfterAuth(searchParams.get("returnTo"), redirectAfterAuth);
   const isAdminLogin = redirect === "/admin";
 
-  const [step, setStep] = useState<AuthStep>(isAdminLogin ? "admin2fa" : "roleSelect");
+  const [step, setStep] = useState<AuthStep>(isAdminLogin ? "adminEmail" : "roleSelect");
   const [selectedRole, setSelectedRole] = useState<"buyer" | "seller" | null>(null);
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -52,10 +52,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
+  const [adminEmail, setAdminEmail] = useState("");
   const [adminError, setAdminError] = useState<string | null>(null);
 
   const checkAndPromoteAdmin = useMutation(api.users.checkAndPromoteAdmin);
-  const validateAdmin2FA = useMutation(api.adminAuth.validateAdmin2FA);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -127,30 +127,48 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     }
   };
 
-  // --- Admin: 2FA verify → auto-promote + redirect ---
-  const handleAdmin2faSubmit = async (e: React.FormEvent) => {
+  // --- Admin: Email → sends OTP ---
+  const handleAdminEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminEmail) return;
+    setIsLoading(true);
+    setAdminError(null);
+    try {
+      const formData = new FormData();
+      formData.set("email", adminEmail);
+      await signIn("email-otp", formData);
+      setStep("adminOtp");
+    } catch (err: any) {
+      setAdminError(err.message || "Failed to send code.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- Admin: OTP verify → auto-promote + redirect ---
+  const handleAdminOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length !== 6) return;
     setIsLoading(true);
     setAdminError(null);
     try {
-      // Auto-promote first
-      await checkAndPromoteAdmin();
-      // Verify 2FA code
-      const result = await validateAdmin2FA({ code: otp });
-      if (result?.success) {
-        sessionStorage.setItem("admin2fa_verified", "true");
-        navigate("/admin");
-      }
+      const formData = new FormData();
+      formData.set("email", adminEmail);
+      formData.set("code", otp);
+      await signIn("email-otp", formData);
+      await new Promise((r) => setTimeout(r, 800));
+      try { await checkAndPromoteAdmin(); } catch {}
+      sessionStorage.setItem("admin2fa_verified", "true");
+      navigate("/admin");
     } catch (err: any) {
-      setAdminError(err.message || "Invalid 2FA code. Please try again.");
+      setAdminError("Invalid code.");
       setOtp("");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ===== ADMIN LOGIN — 2FA ONLY =====
+  // ===== ADMIN LOGIN — EMAIL + OTP (2FA) =====
   if (isAdminLogin) {
     return (
       <div className="min-h-screen bg-[#05050A] flex flex-col items-center justify-center relative overflow-hidden">
@@ -166,64 +184,50 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             </button>
             <div className="mb-4 px-3 py-1.5 rounded-lg bg-nx-gold/10 text-nx-gold text-[10px] font-bold tracking-widest uppercase">ADMIN CONTROL CENTER</div>
 
-            <p className="text-white/30 text-xs mb-6 text-center">Enter your authenticator app code to access the admin panel.</p>
+            {/* Step 1: Email */}
+            {step === "adminEmail" && (
+              <Card className="w-full border border-white/5 bg-nx-surface/80 backdrop-blur-xl">
+                <CardHeader className="text-center pt-6">
+                  <div className="w-12 h-12 rounded-full bg-nx-gold/10 flex items-center justify-center mx-auto mb-3"><Mail className="w-6 h-6 text-nx-gold" /></div>
+                  <CardTitle className="text-xl text-white">Admin Login</CardTitle>
+                  <CardDescription className="text-white/40">Enter your admin email address</CardDescription>
+                </CardHeader>
+                <form onSubmit={handleAdminEmailSubmit}>
+                  <CardContent className="space-y-4 pb-6">
+                    <Input type="email" placeholder="admin@nexora.com" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} className="bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-gold/50" required autoFocus />
+                    {adminError && <p className="text-sm text-red-400 text-center">{adminError}</p>}
+                    <Button type="submit" className="w-full bg-nx-gold hover:bg-nx-gold/80 text-black font-semibold" disabled={isLoading || !adminEmail}>
+                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Send Verification Code <ArrowRight className="ml-2 h-4 w-4" /></>}
+                    </Button>
+                  </CardContent>
+                </form>
+              </Card>
+            )}
 
-            <Card className="w-full border border-white/5 bg-nx-surface/80 backdrop-blur-xl">
-              <CardHeader className="text-center pt-6">
-                <div className="w-12 h-12 rounded-full bg-nx-gold/10 flex items-center justify-center mx-auto mb-3">
-                  <KeyRound className="w-6 h-6 text-nx-gold" />
-                </div>
-                <CardTitle className="text-xl text-white">Admin Verification</CardTitle>
-                <CardDescription className="text-white/40">
-                  Enter the 6-digit code from your authenticator app
-                </CardDescription>
-              </CardHeader>
-              <form onSubmit={handleAdmin2faSubmit}>
-                <CardContent className="space-y-4 pb-6">
-                  <div className="flex justify-center">
-                    <InputOTP
-                      value={otp}
-                      onChange={setOtp}
-                      maxLength={6}
-                      disabled={isLoading}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && otp.length === 6 && !isLoading) {
-                          const form = (e.target as HTMLElement).closest("form");
-                          if (form) form.requestSubmit();
-                        }
-                      }}
-                    >
-                      <InputOTPGroup>
-                        {Array.from({ length: 6 }).map((_, i) => (
-                          <InputOTPSlot
-                            key={i}
-                            index={i}
-                            className="bg-white/[0.03] border-white/10 text-white"
-                          />
-                        ))}
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                  {adminError && (
-                    <p className="text-sm text-red-400 text-center">{adminError}</p>
-                  )}
-                  <Button
-                    type="submit"
-                    className="w-full bg-nx-gold hover:bg-nx-gold/80 text-black font-semibold"
-                    disabled={isLoading || otp.length !== 6}
-                  >
-                    {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        Verify & Enter Admin Panel
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </form>
-            </Card>
+            {/* Step 2: OTP (2FA) */}
+            {step === "adminOtp" && (
+              <Card className="w-full border border-white/5 bg-nx-surface/80 backdrop-blur-xl">
+                <CardHeader className="text-center pt-6">
+                  <button onClick={() => { setStep("adminEmail"); setAdminError(null); setOtp(""); }} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1 mb-2 mx-auto"><ArrowLeft className="w-3 h-3" /> Back</button>
+                  <div className="w-12 h-12 rounded-full bg-nx-gold/10 flex items-center justify-center mx-auto mb-3"><KeyRound className="w-6 h-6 text-nx-gold" /></div>
+                  <CardTitle className="text-xl text-white">Two-Factor Verification</CardTitle>
+                  <CardDescription className="text-white/40">Code sent to<br /><span className="text-white/60 font-medium">{adminEmail}</span></CardDescription>
+                </CardHeader>
+                <form onSubmit={handleAdminOtpSubmit}>
+                  <CardContent className="space-y-4 pb-6">
+                    <div className="flex justify-center">
+                      <InputOTP value={otp} onChange={setOtp} maxLength={6} disabled={isLoading} onKeyDown={(e) => { if (e.key === "Enter" && otp.length === 6 && !isLoading) { const form = (e.target as HTMLElement).closest("form"); if (form) form.requestSubmit(); } }}>
+                        <InputOTPGroup>{Array.from({ length: 6 }).map((_, i) => <InputOTPSlot key={i} index={i} className="bg-white/[0.03] border-white/10 text-white" />)}</InputOTPGroup>
+                      </InputOTP>
+                    </div>
+                    {adminError && <p className="text-sm text-red-400 text-center">{adminError}</p>}
+                    <Button type="submit" className="w-full bg-nx-gold hover:bg-nx-gold/80 text-black font-semibold" disabled={isLoading || otp.length !== 6}>
+                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Verify & Enter Admin Panel <ArrowRight className="ml-2 h-4 w-4" /></>}
+                    </Button>
+                  </CardContent>
+                </form>
+              </Card>
+            )}
 
             <div className="mt-4 text-center">
               <button onClick={() => navigate("/")} className="text-xs text-white/20 hover:text-white/40 transition-colors">← Back to home</button>
