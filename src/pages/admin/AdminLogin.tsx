@@ -28,6 +28,7 @@ export default function AdminLogin() {
   const setupAdmin2FA = useMutation(api.adminAuth.setupAdmin2FA);
   const confirmAdmin2FA = useMutation(api.adminAuth.confirmAdmin2FA);
   const validateAdmin2FA = useMutation(api.adminAuth.validateAdmin2FA);
+  const checkAndPromoteAdmin = useMutation(api.users.checkAndPromoteAdmin);
 
   // Convex queries — only fetch after auth
   const admin2FAStatus = useQuery(

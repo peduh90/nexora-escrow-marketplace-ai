@@ -84,6 +84,32 @@ export const getAllEscrows = query({
   },
 });
 
+/** Auto-promote first admin — anyone signing up with this email gets admin role */
+const ADMIN_EMAIL = "murimiedwin227@gmail.com";
+
+export const checkAndPromoteAdmin = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    // Auto-promote if email matches admin email and not already admin
+    if (identity.email === ADMIN_EMAIL && user.role !== "admin") {
+      await ctx.db.patch(user._id, { role: "admin" });
+      return { promoted: true, message: "You have been promoted to admin!" };
+    }
+
+    return { promoted: false, message: "No auto-promotion needed" };
+  },
+});
+
 export const isAdmin = query({
   args: {},
   handler: async (ctx) => {
