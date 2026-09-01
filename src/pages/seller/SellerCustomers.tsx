@@ -1,54 +1,111 @@
 import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
-import { Users, MessageSquare, Star, MapPin, ShoppingBag } from "lucide-react";
-
-const customers = [
-  { id: "c1", name: "James Kamau", verified: true, orders: 5, totalSpent: 185000, lastPurchase: "2 days ago", rating: 5, messages: 12, location: "Nairobi" },
-  { id: "c2", name: "Sarah Wanjiku", verified: true, orders: 3, totalSpent: 320000, lastPurchase: "5 days ago", rating: 4, messages: 8, location: "Mombasa" },
-  { id: "c3", name: "Peter Otieno", verified: false, orders: 2, totalSpent: 45000, lastPurchase: "1 week ago", rating: 5, messages: 5, location: "Kisumu" },
-  { id: "c4", name: "Grace Muthoni", verified: true, orders: 8, totalSpent: 520000, lastPurchase: "1 day ago", rating: 5, messages: 22, location: "Nakuru" },
-  { id: "c5", name: "David Kimani", verified: true, orders: 1, totalSpent: 165000, lastPurchase: "3 days ago", rating: 4, messages: 3, location: "Eldoret" },
-];
+import { Users, ShoppingBag, Search } from "lucide-react";
 
 export default function SellerCustomers() {
+  const { user } = useAuth();
+  const escrows = useQuery(api.users.getAllEscrows);
+  const allUsers = useQuery(api.users.getAllUsers);
+
   const [search, setSearch] = useState("");
-  const filtered = customers.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+
+  const sellerId = (user?._id as string) ?? "";
+  const sellerEscrows = (escrows ?? []).filter((e: any) => e.sellerId === sellerId);
+
+  // Build unique buyer list from escrows
+  const buyerMap = new Map<string, { orders: number; totalSpent: number }>();
+  sellerEscrows.forEach((e: any) => {
+    const existing = buyerMap.get(e.buyerId) || { orders: 0, totalSpent: 0 };
+    existing.orders++;
+    existing.totalSpent += e.amount;
+    buyerMap.set(e.buyerId, existing);
+  });
+
+  // Get buyer details from allUsers
+  const users = allUsers ?? [];
+  const customers = Array.from(buyerMap.entries())
+    .map(([id, stats]) => {
+      const u = users.find((usr: any) => usr._id === id);
+      if (!u) return null;
+      return {
+        id: u._id,
+        name: u.name || "Unknown",
+        email: u.email || "",
+        verified: u.kycStatus === "verified",
+        orders: stats.orders,
+        totalSpent: stats.totalSpent,
+        location: u.county || u.town || "",
+      };
+    })
+    .filter(Boolean) as Array<{
+      id: string;
+      name: string;
+      email: string;
+      verified: boolean;
+      orders: number;
+      totalSpent: number;
+      location: string;
+    }>;
+
+  const filtered = customers.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.email.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <SellerLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Customers</h1>
-            <p className="text-sm text-white/40 mt-1">{customers.length} customers • {customers.reduce((s, c) => s + c.orders, 0)} total orders</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-white">Customers</h1>
+          <p className="text-sm text-white/40 mt-1">{customers.length} customers • {sellerEscrows.length} total orders</p>
         </div>
-        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search customers..."
-          className="w-full max-w-sm px-4 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/30" />
-        <div className="space-y-2">
-          {filtered.map(c => (
-            <div key={c.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-nx-violet/10 flex items-center justify-center text-nx-violet text-sm font-bold">{c.name.charAt(0)}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-white">{c.name}</span>
-                    {c.verified && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-400/10 text-emerald-400">✓ Verified</span>}
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search customers..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/30"
+          />
+        </div>
+
+        {customers.length === 0 ? (
+          <div className="text-center py-16">
+            <Users className="w-12 h-12 text-white/10 mx-auto mb-3" />
+            <p className="text-sm text-white/30">No customers yet</p>
+            <p className="text-[11px] text-white/15 mt-1">Customers will appear here when buyers purchase your products</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map(c => (
+              <div key={c.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-nx-violet/10 flex items-center justify-center text-nx-violet text-sm font-bold">
+                    {c.name.charAt(0)}
                   </div>
-                  <div className="flex items-center gap-3 text-[11px] text-white/30 mt-0.5">
-                    <span className="flex items-center gap-1"><ShoppingBag className="w-3 h-3" /> {c.orders} orders</span>
-                    <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400" /> {c.rating}</span>
-                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {c.location}</span>
-                    <span>{c.messages} messages</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-white">{c.name}</span>
+                      {c.verified && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-400/10 text-emerald-400">✓ Verified</span>}
+                    </div>
+                    <div className="flex items-center gap-3 text-[11px] text-white/30 mt-0.5">
+                      <span className="flex items-center gap-1"><ShoppingBag className="w-3 h-3" /> {c.orders} orders</span>
+                      {c.location && <span>{c.location}</span>}
+                    </div>
                   </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-white">KSh {c.totalSpent.toLocaleString()}</p>
-                  <p className="text-[10px] text-white/25">Last: {c.lastPurchase}</p>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-white">KES {c.totalSpent.toLocaleString()}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </SellerLayout>
   );

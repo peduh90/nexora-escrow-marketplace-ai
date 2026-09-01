@@ -1,14 +1,10 @@
 import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Truck, Search, Eye, MapPin, Clock, CheckCircle2, Package, ArrowRight } from "lucide-react";
+import { Truck, Eye, MapPin, ArrowRight } from "lucide-react";
 
-const deliveries = [
-  { id: "DLV-0342", order: "ORD-2901", product: "HP EliteBook 840 G3", buyer: "Edwin Kamau", buyerLocation: "Westlands, Nairobi", seller: "TechZone Kenya", sellerLocation: "CBD, Nairobi", status: "In Transit", agent: "John Driver", fee: "FREE", insurance: "KES 440", created: "Apr 5, 2025" },
-  { id: "DLV-0341", order: "ORD-2900", product: "Samsung Galaxy S23", buyer: "Peter Mwangi", buyerLocation: "Kisumu CBD", seller: "PhoneWorld", sellerLocation: "CBD, Nairobi", status: "Picked Up", agent: "Mary Courier", fee: "KES 500", insurance: "KES 900", created: "Apr 5, 2025" },
-  { id: "DLV-0340", order: "ORD-2899", product: "Nike Air Max 90", buyer: "Lucy Wambui", buyerLocation: "Karen, Nairobi", seller: "FashionHub KE", sellerLocation: "Westlands, Nairobi", status: "Delivered", agent: "Sam Express", fee: "FREE", insurance: "KES 170", created: "Apr 4, 2025" },
-  { id: "DLV-0339", order: "ORD-2896", product: "2BR Apartment", buyer: "Grace Njeri", buyerLocation: "Nakuru CBD", seller: "PropertyLink KE", sellerLocation: "Westlands, Nairobi", status: "Pending", agent: "Unassigned", fee: "KES 500", insurance: "KES 0", created: "Apr 3, 2025" },
-];
-
+// Delivery zones are platform config — these are the admin-configured defaults
 const deliveryZones = [
   { zone: "Nairobi CBD", fee: "FREE", estimatedTime: "1-2 hours", active: true },
   { zone: "Westlands, Nairobi", fee: "FREE", estimatedTime: "1-2 hours", active: true },
@@ -21,7 +17,22 @@ const deliveryZones = [
 ];
 
 export default function AdminDeliveries() {
+  const allDeliveries = useQuery(api.admin.getAllDeliveries);
+  const allUsers = useQuery(api.users.getAllUsers);
   const [tab, setTab] = useState("Active");
+
+  const deliveries = allDeliveries ?? [];
+  const users = allUsers ?? [];
+  const getUser = (id: string) => users.find((u: any) => u._id === id);
+
+  const pending = deliveries.filter((d: any) => d.status === "assigned").length;
+  const inTransit = deliveries.filter((d: any) => d.status === "in_transit").length;
+  const delivered = deliveries.filter((d: any) => d.status === "delivered" || d.status === "confirmed").length;
+  const issues = deliveries.filter((d: any) => d.status === "issue").length;
+
+  const filtered = tab === "Active"
+    ? deliveries.filter((d: any) => d.status !== "delivered" && d.status !== "confirmed")
+    : deliveries;
 
   return (
     <AdminLayout>
@@ -32,11 +43,11 @@ export default function AdminDeliveries() {
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         {[
-          { label: "Pending", value: "47", color: "#F59E0B" },
-          { label: "In Transit", value: "156", color: "#06B6D4" },
-          { label: "Delivered Today", value: "342", color: "#10B981" },
-          { label: "Active Agents", value: "28", color: "#8B5CF6" },
-          { label: "Failed", value: "3", color: "#EF4444" },
+          { label: "Pending", value: pending.toString(), color: "#F59E0B" },
+          { label: "In Transit", value: inTransit.toString(), color: "#06B6D4" },
+          { label: "Delivered", value: delivered.toString(), color: "#10B981" },
+          { label: "Total", value: deliveries.length.toString(), color: "#8B5CF6" },
+          { label: "Issues", value: issues.toString(), color: "#EF4444" },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-white/5 bg-[#0A0A12]">
             <p className="text-[10px] text-white/30 uppercase">{s.label}</p>
@@ -59,29 +70,36 @@ export default function AdminDeliveries() {
               ))}
             </div>
           </div>
-          <div className="divide-y divide-white/[0.03]">
-            {deliveries.map(d => (
-              <div key={d.id} className="px-5 py-3.5 hover:bg-white/[0.01] transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-white/50">{d.id}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${d.status === "Delivered" ? "bg-nx-emerald/10 text-nx-emerald" : d.status === "In Transit" ? "bg-nx-cyan/10 text-nx-cyan" : d.status === "Picked Up" ? "bg-nx-violet/10 text-nx-violet" : "bg-nx-gold/10 text-nx-gold"}`}>{d.status}</span>
+          {deliveries.length === 0 ? (
+            <div className="py-16 flex flex-col items-center">
+              <Truck className="w-8 h-8 text-white/10 mb-3" />
+              <p className="text-sm text-white/30">No deliveries yet</p>
+              <p className="text-[11px] text-white/15 mt-1">Deliveries will appear here once orders are placed</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-white/[0.03]">
+              {filtered.map((d: any) => {
+                const escrow = d.escrowId;
+                return (
+                  <div key={d._id} className="px-5 py-3.5 hover:bg-white/[0.01] transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${d.status === "delivered" || d.status === "confirmed" ? "bg-nx-emerald/10 text-nx-emerald" : d.status === "in_transit" ? "bg-nx-cyan/10 text-nx-cyan" : "bg-nx-gold/10 text-nx-gold"}`}>{d.status}</span>
+                      <span className="text-[10px] text-white/20">{d.trackingCode}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-white/25">
+                      <span>{d.pickupCounty}, {d.pickupTown}</span>
+                      <ArrowRight className="w-3 h-3" />
+                      <span>{d.dropoffCounty}, {d.dropoffTown}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2 text-[10px]">
+                      <span className="text-white/25">{d.driverName || "Unassigned"}</span>
+                      <span className="text-white/40">KES {d.transportFee?.toLocaleString()}</span>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-white/20">{d.created}</span>
-                </div>
-                <p className="text-xs text-white/60 font-medium mb-1">{d.product}</p>
-                <div className="flex items-center gap-2 text-[10px] text-white/25">
-                  <span>{d.sellerLocation}</span>
-                  <ArrowRight className="w-3 h-3" />
-                  <span>{d.buyerLocation}</span>
-                </div>
-                <div className="flex items-center justify-between mt-2 text-[10px]">
-                  <span className="text-white/25">Agent: {d.agent}</span>
-                  <span className={d.fee === "FREE" ? "text-nx-emerald" : "text-white/40"}>Fee: {d.fee}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Delivery Zones */}
