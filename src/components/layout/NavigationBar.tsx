@@ -61,6 +61,12 @@ export default function NavigationBar() {
           {/* CTA */}
           <div className="hidden md:flex items-center gap-3">
             <button
+              onClick={() => navigate("/admin/login")}
+              className="text-xs text-nx-gold/40 hover:text-nx-gold px-3 py-2 transition-colors"
+            >
+              Admin
+            </button>
+            <button
               onClick={() => navigate("/auth")}
               className="text-sm text-white/70 hover:text-white px-4 py-2 transition-colors"
             >
@@ -109,6 +115,12 @@ export default function NavigationBar() {
                   {link.label}
                 </a>
               ))}
+              <button
+                onClick={() => { navigate("/admin/login"); setMobileOpen(false); }}
+                className="text-xs text-nx-gold/50 hover:text-nx-gold py-2 text-left"
+              >
+                Admin Panel
+              </button>
               <button
                 onClick={() => { navigate("/auth"); setMobileOpen(false); }}
                 className="text-sm font-medium text-white px-5 py-2.5 rounded-lg mt-2"
