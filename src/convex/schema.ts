@@ -395,6 +395,34 @@ const schema = defineSchema(
       .index("by_seller", ["sellerId"])
       .index("by_last_message", ["lastMessageAt"]),
 
+    // Reviews
+    reviews: defineTable({
+      orderId: v.string(),
+      listingId: v.string(),
+      buyerId: v.string(),
+      sellerId: v.string(),
+      rating: v.number(),
+      comment: v.optional(v.string()),
+      sellerReply: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_listing", ["listingId"])
+      .index("by_seller", ["sellerId"])
+      .index("by_buyer", ["buyerId"]),
+
+    // Notifications
+    notifications: defineTable({
+      userId: v.string(),
+      type: v.string(),
+      title: v.string(),
+      message: v.string(),
+      read: v.boolean(),
+      link: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_read", ["userId", "read"]),
+
     // Platform settings (admin)
     platformSettings: defineTable({
       key: v.string(),
