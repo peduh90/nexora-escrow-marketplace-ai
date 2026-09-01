@@ -45,7 +45,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   if (!isAuthenticated) {
     return (
       <Navigate
-        to={`/auth?returnTo=${encodeURIComponent("/admin")}`}
+        to="/admin/login"
         replace
       />
     );
@@ -75,7 +75,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
     const verified = sessionStorage.getItem("admin2fa_verified");
     if (verified !== "true") {
       return (
-        <Navigate to={`/auth?returnTo=${encodeURIComponent("/admin")}`} replace />
+        <Navigate to="/admin/login" replace />
       );
     }
   }
