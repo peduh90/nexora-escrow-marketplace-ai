@@ -736,7 +736,6 @@ export default function Landing() {
               <a href="#" className="hover:text-white/40 transition-colors">Privacy</a>
               <a href="#" className="hover:text-white/40 transition-colors">Terms</a>
               <a href="#" className="hover:text-white/40 transition-colors">Security</a>
-              <a href="/auth?returnTo=/admin" className="hover:text-nx-gold/60 transition-colors text-nx-gold/30">Admin</a>
             </div>
           </div>
         </div>
