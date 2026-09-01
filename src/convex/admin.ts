@@ -39,3 +39,11 @@ export const getAllMessages = query({
     return await ctx.db.query("messages").collect();
   },
 });
+
+/** Admin: get all job posts */
+export const getAllJobPosts = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("jobPosts").collect();
+  },
+});

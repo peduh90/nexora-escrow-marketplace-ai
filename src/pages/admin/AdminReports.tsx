@@ -1,13 +1,17 @@
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { AlertTriangle, Search, Eye, CheckCircle2, XCircle, Clock } from "lucide-react";
-
-const reports = [
-  { id: "RPT-089", reporter: "Edwin Kamau", target: "CheapDeals254", type: "Counterfeit Product", product: "Phone Charger", status: "Open", date: "Apr 5, 2025" },
-  { id: "RPT-088", reporter: "Lucy Wambui", target: "LuxForLess", type: "Fake Product", product: "Designer Bags", status: "Under Review", date: "Apr 3, 2025" },
-  { id: "RPT-087", reporter: "Peter Mwangi", target: "user_8823", type: "Suspicious Seller", product: "N/A", status: "Resolved", date: "Apr 1, 2025" },
-];
+import { AlertTriangle, Eye } from "lucide-react";
 
 export default function AdminReports() {
+  const disputes = useQuery(api.admin.getAllDisputes);
+  const allDisputes = disputes ?? [];
+
+  // Reports are modeled as disputes in the current schema
+  const openReports = allDisputes.filter((d: any) => d.status === "open").length;
+  const underReview = allDisputes.filter((d: any) => d.status === "under_review").length;
+  const resolved = allDisputes.filter((d: any) => d.status === "resolved").length;
+
   return (
     <AdminLayout>
       <div className="mb-6">
@@ -16,44 +20,53 @@ export default function AdminReports() {
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Open Reports", value: "12" },
-          { label: "Under Review", value: "5" },
-          { label: "Resolved This Month", value: "28" },
-          { label: "Banned Sellers", value: "8" },
-        ].map(s => (
+          { label: "Open Reports", value: openReports.toString() },
+          { label: "Under Review", value: underReview.toString() },
+          { label: "Resolved", value: resolved.toString() },
+          { label: "Total", value: allDisputes.length.toString() },
+        ].map((s) => (
           <div key={s.label} className="p-4 rounded-xl border border-white/5 bg-[#0A0A12]">
             <p className="text-[10px] text-white/30 uppercase">{s.label}</p>
             <p className="text-xl font-bold text-white mt-1">{s.value}</p>
           </div>
         ))}
       </div>
-      <div className="rounded-xl border border-white/5 bg-[#0A0A12]">
-        <div className="px-5 py-3 border-b border-white/5 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-nx-gold" />
-          <h3 className="text-sm font-semibold text-white">Recent Reports</h3>
+      {allDisputes.length === 0 ? (
+        <div className="rounded-xl border border-white/5 bg-[#0A0A12] py-16 flex flex-col items-center">
+          <AlertTriangle className="w-8 h-8 text-white/10 mb-3" />
+          <p className="text-sm text-white/30">No reports yet</p>
+          <p className="text-[11px] text-white/15 mt-1">User reports and safety concerns will appear here</p>
         </div>
-        <div className="divide-y divide-white/[0.03]">
-          {reports.map(r => (
-            <div key={r.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.01] transition-colors">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${r.type.includes("Counterfeit") || r.type.includes("Fake") ? "bg-red-400/10" : "bg-nx-gold/10"}`}>
-                <AlertTriangle className={`w-4 h-4 ${r.type.includes("Counterfeit") || r.type.includes("Fake") ? "text-red-400" : "text-nx-gold"}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[10px] font-mono text-white/30">{r.id}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${r.status === "Resolved" ? "bg-nx-emerald/10 text-nx-emerald" : r.status === "Under Review" ? "bg-nx-gold/10 text-nx-gold" : "bg-red-400/10 text-red-400"}`}>{r.status}</span>
+      ) : (
+        <div className="rounded-xl border border-white/5 bg-[#0A0A12]">
+          <div className="px-5 py-3 border-b border-white/5 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-nx-gold" />
+            <h3 className="text-sm font-semibold text-white">Recent Reports</h3>
+          </div>
+          <div className="divide-y divide-white/[0.03]">
+            {allDisputes.map((r: any) => (
+              <div key={r._id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.01] transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-nx-gold/10 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-4 h-4 text-nx-gold" />
                 </div>
-                <p className="text-xs text-white/60">{r.type} — {r.product}</p>
-                <p className="text-[10px] text-white/25">Reported by {r.reporter} against {r.target}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-mono text-white/30">DSP-{r._id.slice(-6)}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${r.status === "resolved" ? "bg-nx-emerald/10 text-nx-emerald" : r.status === "under_review" ? "bg-nx-gold/10 text-nx-gold" : "bg-red-400/10 text-red-400"}`}>
+                      {r.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/60">{r.reason}</p>
+                  {r.description && <p className="text-[10px] text-white/25 truncate">{r.description}</p>}
+                </div>
+                <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors">
+                  <Eye className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-[10px] text-white/20">{r.date}</p>
-              </div>
-              <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"><Eye className="w-3.5 h-3.5" /></button>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </AdminLayout>
   );
 }
