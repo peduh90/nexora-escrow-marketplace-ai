@@ -10,6 +10,11 @@ const freebuffIssuer =
 
 export default {
   providers: [
+    // Google OAuth — uses OIDC discovery to validate Google's JWTs.
+    {
+      domain: "accounts.google.com",
+      applicationID: "google",
+    },
     // Standard Convex Auth provider for this project's own sign-in ("Get
     // Started" email/guest, see src/convex/auth.ts). The deployment
     // self-issues JWTs (iss = CONVEX_SITE_URL, no `kid` header) validated
