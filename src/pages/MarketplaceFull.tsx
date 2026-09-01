@@ -127,7 +127,7 @@ export default function MarketplaceFull() {
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
                   selectedCategory === cat.slug ? "bg-nx-violet text-white" : "bg-white/[0.03] text-white/40 hover:text-white/60"
                 }`}>
-                <span>{cat.icon}</span>{cat.name}
+                {cat.name}
               </button>
             ))}
           </div>

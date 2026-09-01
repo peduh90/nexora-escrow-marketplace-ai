@@ -156,7 +156,6 @@ export default function SellerAddProduct() {
                 {CATEGORIES.map(cat => (
                   <button key={cat.slug} onClick={() => { update("category", cat.slug); setStep(1); }}
                     className={`p-4 rounded-xl border text-left transition-all ${form.category === cat.slug ? "border-nx-violet/30 bg-nx-violet/5" : "border-white/5 bg-white/[0.02] hover:border-white/10"}`}>
-                    <span className="text-xl mb-2 block">{cat.icon}</span>
                     <p className="text-sm font-medium text-white">{cat.name}</p>
                     <p className="text-[10px] text-white/30 mt-0.5">{cat.subcategories.length} subcategories</p>
                   </button>
