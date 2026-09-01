@@ -48,6 +48,7 @@ const SellerHelp = lazy(() => import("./pages/seller/SellerHelp.tsx"));
 const SellerWithdrawals = lazy(() => import("./pages/seller/SellerWithdrawals.tsx"));
 const SellerPromotions = lazy(() => import("./pages/seller/SellerPromotions.tsx"));
 const SellerAddProduct = lazy(() => import("./pages/seller/SellerAddProduct.tsx"));
+const SellerEditProduct = lazy(() => import("./pages/seller/SellerEditProduct.tsx"));
 const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails.tsx"));
 // Admin panel
@@ -207,6 +208,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/seller" element={<RequireAuth><SellerDashboard /></RequireAuth>} />
               <Route path="/seller/products" element={<RequireAuth><SellerProducts /></RequireAuth>} />
               <Route path="/seller/add-product" element={<RequireAuth><SellerAddProduct /></RequireAuth>} />
+              <Route path="/seller/edit-product/:id" element={<RequireAuth><SellerEditProduct /></RequireAuth>} />
               <Route path="/seller/orders" element={<RequireAuth><SellerOrders /></RequireAuth>} />
               <Route path="/seller/escrow" element={<RequireAuth><SellerEscrow /></RequireAuth>} />
               <Route path="/seller/messages" element={<RequireAuth><SellerMessages /></RequireAuth>} />

@@ -6,7 +6,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { getCounties } from "@/lib/delivery-config";
 import {
   Search, SlidersHorizontal, Grid3X3, List, X, Package,
-  ArrowUpDown, Shield, Truck, MapPin, Star, CheckCircle2, Heart, Loader2,
+  ArrowUpDown, Shield, Truck, MapPin, Star, CheckCircle2, Heart, Loader2, ArrowLeft,
 } from "lucide-react";
 
 const SORT_OPTIONS = [
@@ -122,9 +122,15 @@ export default function MarketplaceFull() {
 
   return (
     <div className="min-h-screen bg-[#05050A]">
-      {/* Search header */}
+      {/* Back navigation + Search header */}
       <div className="sticky top-0 z-40 bg-[#0A0A12]/90 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center gap-2 mb-3">
+            <button onClick={() => navigate(-1)} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm font-medium text-white/60">Marketplace</span>
+          </div>
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />

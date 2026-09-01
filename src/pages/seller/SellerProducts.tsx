@@ -117,7 +117,7 @@ export default function SellerProducts() {
       ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((product) => (
-            <div key={product._id} className="group rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 overflow-hidden transition-all">
+            <div key={product._id} className="group rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 overflow-hidden transition-all cursor-pointer" onClick={() => navigate(`/seller/edit-product/${product._id}`)}>
               <div className="h-44 bg-gradient-to-br from-white/[0.02] to-white/[0.04] relative flex items-center justify-center">
                 {product.images && product.images.length > 0 ? (
                   <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
@@ -158,7 +158,7 @@ export default function SellerProducts() {
       ) : (
         <div className="space-y-2">
           {filtered.map((product) => (
-            <div key={product._id} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+            <div key={product._id} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all cursor-pointer" onClick={() => navigate(`/seller/edit-product/${product._id}`)}>
               <div className="w-14 h-14 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0 overflow-hidden">
                 {product.images && product.images.length > 0 ? (
                   <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
