@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import {
   LayoutDashboard, Package, Plus, ShoppingCart, Shield, MessageSquare,
   TrendingUp, Users, Wallet, Download, Truck, BarChart3, Star,
@@ -7,32 +9,37 @@ import {
   ChevronLeft, ChevronRight,
 } from "lucide-react";
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/seller" },
-  { icon: Package, label: "My Products", path: "/seller/products", badge: 0 },
-  { icon: Plus, label: "Add Product", path: "/seller/add-product" },
-  { icon: ShoppingCart, label: "Orders", path: "/seller/orders", badge: 5 },
-  { icon: Shield, label: "Escrow", path: "/seller/escrow", badge: 12 },
-  { icon: MessageSquare, label: "Messages", path: "/seller/messages", badge: 3 },
-  { icon: TrendingUp, label: "Offers", path: "/seller/offers", badge: 2 },
-  { icon: Users, label: "Customers", path: "/seller/customers" },
-  { icon: Wallet, label: "Wallet", path: "/seller/earnings" },
-  { icon: Download, label: "Withdrawals", path: "/seller/withdrawals" },
-  { icon: Truck, label: "Delivery", path: "/seller/delivery" },
-  { icon: BarChart3, label: "Analytics", path: "/seller/analytics" },
-  { icon: Star, label: "Reviews", path: "/seller/reviews" },
-  { icon: Megaphone, label: "Promotions", path: "/seller/promotions" },
-  { icon: BadgeCheck, label: "Verification", path: "/seller/kyc" },
-  { icon: Store, label: "Store Profile", path: "/seller/store" },
-  { icon: Bell, label: "Notifications", path: "/seller/notifications", badge: 1 },
-  { icon: Settings, label: "Settings", path: "/seller/settings" },
-  { icon: HelpCircle, label: "Help & Support", path: "/seller/help" },
-];
-
 export default function SellerSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Real data from Convex
+  const sellerListings = useQuery(api.listings.getSellerListings);
+
+  const listingCount = sellerListings?.length ?? 0;
+
+  const navItems = [
+    { icon: LayoutDashboard, label: "Dashboard", path: "/seller" },
+    { icon: Package, label: "My Products", path: "/seller/products", badge: listingCount },
+    { icon: Plus, label: "Add Product", path: "/seller/add-product" },
+    { icon: ShoppingCart, label: "Orders", path: "/seller/orders" },
+    { icon: Shield, label: "Escrow", path: "/seller/escrow" },
+    { icon: MessageSquare, label: "Messages", path: "/seller/messages" },
+    { icon: TrendingUp, label: "Offers", path: "/seller/offers" },
+    { icon: Users, label: "Customers", path: "/seller/customers" },
+    { icon: Wallet, label: "Wallet", path: "/seller/earnings" },
+    { icon: Download, label: "Withdrawals", path: "/seller/withdrawals" },
+    { icon: Truck, label: "Delivery", path: "/seller/delivery" },
+    { icon: BarChart3, label: "Analytics", path: "/seller/analytics" },
+    { icon: Star, label: "Reviews", path: "/seller/reviews" },
+    { icon: Megaphone, label: "Promotions", path: "/seller/promotions" },
+    { icon: BadgeCheck, label: "Verification", path: "/seller/kyc" },
+    { icon: Store, label: "Store Profile", path: "/seller/store" },
+    { icon: Bell, label: "Notifications", path: "/seller/notifications" },
+    { icon: Settings, label: "Settings", path: "/seller/settings" },
+    { icon: HelpCircle, label: "Help & Support", path: "/seller/help" },
+  ];
 
   return (
     <>
@@ -72,7 +79,7 @@ export default function SellerSidebar() {
                 title={collapsed ? item.label : undefined}>
                 <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-nx-violet" : "text-white/25 group-hover:text-white/40"}`} />
                 {!collapsed && <span className="truncate flex-1 text-left">{item.label}</span>}
-                {!collapsed && item.badge && item.badge > 0 && (
+                {!collapsed && "badge" in item && item.badge != null && item.badge > 0 && (
                   <span className="w-5 h-5 rounded-full bg-nx-violet/20 text-nx-violet text-[9px] font-bold flex items-center justify-center shrink-0">{item.badge}</span>
                 )}
               </button>

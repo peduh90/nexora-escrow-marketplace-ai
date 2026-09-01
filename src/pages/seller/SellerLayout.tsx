@@ -1,4 +1,7 @@
 import { useLocation } from "react-router";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useAuth } from "@/hooks/use-auth";
 import SellerSidebar from "./SellerSidebar";
 import { Bell, Search, Wallet, ChevronDown } from "lucide-react";
 import AIChat from "@/components/AIChat";
@@ -27,6 +30,9 @@ const navLabels: Record<string, string> = {
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const { user } = useAuth();
+  const walletData = useQuery(api.wallet.getWalletBalance);
+  const balance = walletData?.walletBalance ?? 0;
 
   const getPageLabel = () => {
     for (const [path, label] of Object.entries(navLabels)) {
@@ -57,19 +63,20 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
             {/* Wallet balance */}
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-400/5 border border-emerald-400/10">
               <Wallet className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-xs font-medium text-emerald-400">KSh 125,400</span>
+              <span className="text-xs font-medium text-emerald-400">KSh {balance.toLocaleString()}</span>
             </div>
             {/* Notifications */}
             <button className="relative p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/70 transition-colors">
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-nx-violet" />
             </button>
             {/* Profile */}
             <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
-              <div className="w-7 h-7 rounded-full bg-nx-violet/20 flex items-center justify-center text-nx-violet text-xs font-bold">S</div>
+              <div className="w-7 h-7 rounded-full bg-nx-violet/20 flex items-center justify-center text-nx-violet text-xs font-bold">
+                {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "S"}
+              </div>
               <div className="hidden md:block">
-                <p className="text-xs font-medium text-white">TechZone</p>
-                <p className="text-[9px] text-white/30">Verified</p>
+                <p className="text-xs font-medium text-white">{user?.name || user?.email?.split("@")[0] || "Seller"}</p>
+                <p className="text-[9px] text-white/30">Seller</p>
               </div>
               <ChevronDown className="w-3 h-3 text-white/20 hidden md:block" />
             </div>
