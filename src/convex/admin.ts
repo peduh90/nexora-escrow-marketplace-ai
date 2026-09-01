@@ -1,4 +1,248 @@
-import { query } from "./_generated/server";
+import { v } from "convex/values";
+import { query, mutation } from "./_generated/server";
+
+const ADMIN_EMAIL = "murimiedwin227@gmail.com";
+
+/** Helper: verify the current user is an admin */
+async function requireAdmin(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Not authenticated");
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("email", (q: any) => q.eq("email", identity.email))
+    .first();
+
+  if (!user) throw new Error("User not found");
+
+  // Auto-promote admin email
+  if (identity.email === ADMIN_EMAIL && user.role !== "admin") {
+    await ctx.db.patch(user._id, { role: "admin" });
+  }
+
+  const fresh = await ctx.db.get(user._id);
+  if (!fresh || fresh.role !== "admin") {
+    throw new Error("Unauthorized: admin only");
+  }
+
+  return { user: fresh, identity };
+}
+
+/** Helper: create an audit log entry */
+async function auditLog(
+  ctx: any,
+  adminId: string,
+  action: string,
+  resource: string,
+  resourceId: string,
+  details?: string
+) {
+  await ctx.db.insert("notifications", {
+    userId: adminId,
+    type: "admin_audit",
+    title: `Admin: ${action}`,
+    message: `${resource} ${resourceId ? `(${resourceId})` : ""} — ${details || "No details"}`,
+    read: false,
+    createdAt: Date.now(),
+  });
+}
+
+// ─── DASHBOARD QUERIES ───
+
+/** Admin: get platform stats for dashboard */
+export const getDashboardStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const listings = await ctx.db.query("listings").collect();
+    const escrows = await ctx.db.query("escrows").collect();
+    const walletTx = await ctx.db.query("walletTransactions").collect();
+    const disputes = await ctx.db.query("disputes").collect();
+    const deliveries = await ctx.db.query("deliveries").collect();
+    const reviews = await ctx.db.query("reviews").collect();
+    const conversations = await ctx.db.query("conversations").collect();
+
+    const now = Date.now();
+    const dayAgo = now - 86400000;
+    const weekAgo = now - 604800000;
+    const monthAgo = now - 2592000000;
+
+    const buyers = users.filter((u) => u.role === "buyer");
+    const sellers = users.filter((u) => u.role === "seller");
+    const activeListings = listings.filter((l) => l.status === "active");
+    const pendingListings = listings.filter((l) => l.status === "paused");
+
+    const completedEscrows = escrows.filter((e) =>
+      ["released", "completed"].includes(e.status)
+    );
+    const pendingEscrows = escrows.filter((e) =>
+      ["funded", "active", "delivery", "inspection"].includes(e.status)
+    );
+    const disputedEscrows = escrows.filter((e) => e.status === "disputed");
+
+    const totalGMV = escrows.reduce((sum, e) => sum + e.amount, 0);
+    const platformRevenue = completedEscrows.reduce(
+      (sum, e) => sum + (e.platformFee || 0),
+      0
+    );
+    const heldInEscrow = pendingEscrows.reduce((sum, e) => sum + e.amount, 0);
+
+    const newUsersToday = users.filter((u) => (u._creationTime || 0) > dayAgo).length;
+    const newListingsToday = listings.filter((l) => l.createdAt > dayAgo).length;
+    const newOrdersToday = escrows.filter((e) => e.createdAt > dayAgo).length;
+
+    return {
+      users: {
+        total: users.length,
+        buyers: buyers.length,
+        sellers: sellers.length,
+        admins: users.filter((u) => u.role === "admin").length,
+        newToday: newUsersToday,
+        verified: users.filter((u) => u.kycStatus === "verified").length,
+        pendingKyc: users.filter((u) => u.kycStatus === "pending").length,
+      },
+      products: {
+        total: listings.length,
+        active: activeListings.length,
+        pending: pendingListings.length,
+        sold: listings.filter((l) => l.status === "sold").length,
+        paused: listings.filter((l) => l.status === "paused").length,
+        newToday: newListingsToday,
+      },
+      orders: {
+        total: escrows.length,
+        pending: escrows.filter((e) => e.status === "created").length,
+        funded: escrows.filter((e) => e.status === "funded").length,
+        active: escrows.filter((e) => e.status === "active").length,
+        delivery: escrows.filter((e) => e.status === "delivery").length,
+        completed: completedEscrows.length,
+        disputed: disputedEscrows.length,
+        refunded: escrows.filter((e) => e.status === "refunded").length,
+        cancelled: escrows.filter((e) => e.status === "cancelled").length,
+        newToday: newOrdersToday,
+      },
+      finance: {
+        totalGMV,
+        platformRevenue,
+        heldInEscrow,
+        totalTransactions: walletTx.length,
+        completedTransactions: walletTx.filter((t) => t.status === "completed").length,
+        pendingTransactions: walletTx.filter((t) => t.status === "pending").length,
+      },
+      disputes: {
+        total: disputes.length,
+        open: disputes.filter((d) => d.status === "open").length,
+        underReview: disputes.filter((d) => d.status === "under_review").length,
+        resolved: disputes.filter((d) => d.status === "resolved").length,
+        escalated: disputes.filter((d) => d.status === "escalated").length,
+      },
+      delivery: {
+        total: deliveries.length,
+        inTransit: deliveries.filter((d) => d.status === "in_transit").length,
+        delivered: deliveries.filter((d) => d.status === "delivered").length,
+        pending: deliveries.filter((d) => d.status === "assigned").length,
+      },
+      engagement: {
+        conversations: conversations.length,
+        reviews: reviews.length,
+        totalViews: listings.reduce((sum, l) => sum + l.views, 0),
+      },
+    };
+  },
+});
+
+// ─── USER MANAGEMENT ───
+
+/** Admin: get all users with computed stats */
+export const getAllUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const listings = await ctx.db.query("listings").collect();
+    const escrows = await ctx.db.query("escrows").collect();
+
+    return users.map((u) => {
+      const userListings = listings.filter((l) => l.sellerId === u._id);
+      const userEscrows = escrows.filter(
+        (e) => e.buyerId === u._id || e.sellerId === u._id
+      );
+      return {
+        ...u,
+        listingCount: userListings.length,
+        orderCount: userEscrows.length,
+        totalSpent: escrows
+          .filter((e) => e.buyerId === u._id)
+          .reduce((sum, e) => sum + e.amount, 0),
+        totalEarned: escrows
+          .filter((e) => e.sellerId === u._id && ["released", "completed"].includes(e.status))
+          .reduce((sum, e) => sum + e.amount, 0),
+      };
+    });
+  },
+});
+
+/** Admin: suspend a user */
+export const suspendUser = mutation({
+  args: { userId: v.string(), reason: v.string() },
+  handler: async (ctx, args) => {
+    const { user } = await requireAdmin(ctx);
+    const target = await ctx.db.get(args.userId as any);
+    if (!target) throw new Error("User not found");
+
+    await ctx.db.patch(args.userId as any, { role: undefined });
+    await auditLog(ctx as any, user._id, "SUSPEND_USER", "user", args.userId, args.reason);
+    return { success: true };
+  },
+});
+
+// ─── LISTING MANAGEMENT ───
+
+/** Admin: get all listings */
+export const getAllListings = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("listings").collect();
+  },
+});
+
+/** Admin: update listing status */
+export const updateListingStatus = mutation({
+  args: {
+    listingId: v.string(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("sold"),
+      v.literal("paused"),
+      v.literal("removed")
+    ),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await requireAdmin(ctx);
+    await ctx.db.patch(args.listingId as any, { status: args.status, updatedAt: Date.now() });
+    await auditLog(
+      ctx as any,
+      user._id,
+      `UPDATE_LISTING_STATUS → ${args.status}`,
+      "listing",
+      args.listingId,
+      args.reason
+    );
+    return { success: true };
+  },
+});
+
+// ─── ESCROW MANAGEMENT ───
+
+/** Admin: get all escrows */
+export const getAllEscrows = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("escrows").collect();
+  },
+});
+
+// ─── DISPUTE MANAGEMENT ───
 
 /** Admin: get all disputes */
 export const getAllDisputes = query({
@@ -8,6 +252,38 @@ export const getAllDisputes = query({
   },
 });
 
+/** Admin: resolve a dispute */
+export const resolveDispute = mutation({
+  args: {
+    disputeId: v.string(),
+    resolution: v.string(),
+    refundAmount: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await requireAdmin(ctx);
+    const dispute = await ctx.db.get(args.disputeId as any);
+    if (!dispute) throw new Error("Dispute not found");
+
+    await ctx.db.patch(args.disputeId as any, {
+      status: "resolved",
+      resolution: args.resolution,
+      refundAmount: args.refundAmount,
+      resolvedAt: Date.now(),
+    });
+    await auditLog(
+      ctx as any,
+      user._id,
+      "RESOLVE_DISPUTE",
+      "dispute",
+      args.disputeId,
+      args.resolution
+    );
+    return { success: true };
+  },
+});
+
+// ─── KYC MANAGEMENT ───
+
 /** Admin: get all KYC applications */
 export const getAllKYC = query({
   args: {},
@@ -15,6 +291,48 @@ export const getAllKYC = query({
     return await ctx.db.query("kycApplications").collect();
   },
 });
+
+/** Admin: approve/reject KYC */
+export const reviewKYC = mutation({
+  args: {
+    applicationId: v.string(),
+    status: v.union(v.literal("approved"), v.literal("rejected")),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await requireAdmin(ctx);
+    const app = await ctx.db.get(args.applicationId as any);
+    if (!app) throw new Error("KYC application not found");
+
+    await ctx.db.patch(args.applicationId as any, {
+      status: args.status,
+      reviewedBy: user._id,
+      reviewNotes: args.notes,
+      reviewedAt: Date.now(),
+    });
+
+    // Update user KYC status if the KYC app has a userId
+    const kycApp = app as any;
+    if (kycApp.userId) {
+      await ctx.db.patch(kycApp.userId, {
+        kycStatus: args.status === "approved" ? "verified" : "rejected",
+        kycVerifiedAt: args.status === "approved" ? Date.now() : undefined,
+      });
+    }
+
+    await auditLog(
+      ctx as any,
+      user._id,
+      `KYC_${args.status.toUpperCase()}`,
+      "kycApplication",
+      args.applicationId,
+      args.notes
+    );
+    return { success: true };
+  },
+});
+
+// ─── DELIVERY MANAGEMENT ───
 
 /** Admin: get all deliveries */
 export const getAllDeliveries = query({
@@ -24,7 +342,9 @@ export const getAllDeliveries = query({
   },
 });
 
-/** Admin: get all conversations (for message monitoring) */
+// ─── MESSAGE MONITORING ───
+
+/** Admin: get all conversations */
 export const getAllConversations = query({
   args: {},
   handler: async (ctx) => {
@@ -40,10 +360,112 @@ export const getAllMessages = query({
   },
 });
 
+// ─── JOB MANAGEMENT ───
+
 /** Admin: get all job posts */
 export const getAllJobPosts = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("jobPosts").collect();
+  },
+});
+
+// ─── REVIEWS ───
+
+/** Admin: get all reviews */
+export const getAllReviews = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("reviews").collect();
+  },
+});
+
+// ─── WALLET MONITORING ───
+
+/** Admin: get all wallet transactions */
+export const getAllWalletTransactions = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("walletTransactions").collect();
+  },
+});
+
+// ─── CATEGORIES ───
+
+/** Admin: get all categories */
+export const getAllCategories = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("productCategories").collect();
+  },
+});
+
+// ─── NOTIFICATIONS / AUDIT LOGS ───
+
+/** Admin: get audit logs (stored as admin notifications) */
+export const getAuditLogs = query({
+  args: {},
+  handler: async (ctx) => {
+    const logs = await ctx.db
+      .query("notifications")
+      .withIndex("by_user", (q: any) => q.eq("userId", "admin_audit"))
+      .collect();
+
+    // Also get all admin audit type notifications
+    const allNotifs = await ctx.db.query("notifications").collect();
+    return allNotifs
+      .filter((n: any) => n.type === "admin_audit")
+      .sort((a: any, b: any) => b.createdAt - a.createdAt)
+      .slice(0, 200);
+  },
+});
+
+// ─── PLATFORM SETTINGS ───
+
+/** Admin: get platform settings */
+export const getPlatformSettings = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("platformSettings").collect();
+  },
+});
+
+/** Admin: update a platform setting */
+export const updatePlatformSetting = mutation({
+  args: {
+    key: v.string(),
+    value: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await requireAdmin(ctx);
+    const existing = await ctx.db
+      .query("platformSettings")
+      .withIndex("by_key", (q: any) => q.eq("key", args.key))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        value: args.value,
+        updatedBy: user._id,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("platformSettings", {
+        key: args.key,
+        value: args.value,
+        updatedBy: user._id,
+        updatedAt: Date.now(),
+      });
+    }
+
+    await auditLog(
+      ctx as any,
+      user._id,
+      "UPDATE_SETTING",
+      "platformSetting",
+      args.key,
+      `Value: ${args.value}`
+    );
+    return { success: true };
   },
 });
