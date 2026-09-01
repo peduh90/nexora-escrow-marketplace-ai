@@ -61,7 +61,7 @@ export default function NavigationBar() {
           {/* CTA */}
           <div className="hidden md:flex items-center gap-3">
             <button
-              onClick={() => navigate("/admin/login")}
+              onClick={() => navigate("/auth?returnTo=/admin")}
               className="text-xs text-nx-gold/40 hover:text-nx-gold px-3 py-2 transition-colors"
             >
               Admin
@@ -116,7 +116,7 @@ export default function NavigationBar() {
                 </a>
               ))}
               <button
-                onClick={() => { navigate("/admin/login"); setMobileOpen(false); }}
+                onClick={() => { navigate("/auth?returnTo=/admin"); setMobileOpen(false); }}
                 className="text-xs text-nx-gold/50 hover:text-nx-gold py-2 text-left"
               >
                 Admin Panel
