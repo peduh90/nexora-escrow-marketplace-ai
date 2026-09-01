@@ -56,6 +56,7 @@ export default function ProductDetails() {
   const incrementViews = useMutation(api.listings.incrementViews);
   const createOrder = useMutation(api.wallet.createOrder);
   const startConversation = useMutation(api.messages.startConversation);
+  // sendMessage removed - startConversation handles the first message internally
   const sendMessage = useMutation(api.messages.sendMessage);
 
   const [selectedImage, setSelectedImage] = useState(0);
@@ -138,13 +139,10 @@ export default function ProductDetails() {
     }
     if (!offerPrice) return;
     try {
-      const conversationId = await startConversation({
+      await startConversation({
         sellerId: listing.sellerId,
-        listingId: listing._id,
-      });
-      await sendMessage({
-        conversationId,
-        content: `💰 Offer: KES ${Number(offerPrice).toLocaleString()} for "${listing.title}" (Listed at KES ${listing.price.toLocaleString()})`,
+        listingId: listing._id as any,
+        firstMessage: `💰 Offer: KES ${Number(offerPrice).toLocaleString()} for "${listing.title}" (Listed at KES ${listing.price.toLocaleString()})`,
       });
       setShowOffer(false);
       setOfferPrice("");
@@ -160,13 +158,10 @@ export default function ProductDetails() {
       return;
     }
     try {
-      const conversationId = await startConversation({
+      await startConversation({
         sellerId: listing.sellerId,
-        listingId: listing._id,
-      });
-      await sendMessage({
-        conversationId,
-        content: `Hi, I'm interested in "${listing.title}" (KES ${listing.price.toLocaleString()}). Is it still available?`,
+        listingId: listing._id as any,
+        firstMessage: `Hi, I'm interested in "${listing.title}" (KES ${listing.price.toLocaleString()}). Is it still available?`,
       });
       navigate("/buyer/orders");
     } catch (err: any) {
