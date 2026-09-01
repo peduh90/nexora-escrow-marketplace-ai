@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
+const ADMIN_EMAIL = "murimiedwin227@gmail.com";
+
 // --- Password helpers using Web Crypto (available in Convex V8) ---
 async function hashPassword(password: string, salt: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -246,7 +248,17 @@ export const setAdminPassword = mutation({
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
 
-    if (!user || user.role !== "admin") {
+    // Auto-promote if email matches admin email
+    if (!user) throw new Error("No account found. Please sign up first.");
+    if (identity.email === ADMIN_EMAIL && user.role !== "admin") {
+      await ctx.db.patch(user._id, { role: "admin" });
+      // Re-fetch
+      const updated = await ctx.db.get(user._id);
+      if (!updated || updated.role !== "admin") {
+        throw new Error("Failed to promote to admin");
+      }
+    }
+    if (user.role !== "admin" && identity.email !== ADMIN_EMAIL) {
       throw new Error("Unauthorized: admin only");
     }
 
@@ -284,7 +296,14 @@ export const verifyAdminPassword = mutation({
       throw new Error("No account found with this email");
     }
 
-    if (user.role !== "admin") {
+    // Auto-promote if email matches admin email
+    if (args.email === ADMIN_EMAIL && user.role !== "admin") {
+      await ctx.db.patch(user._id, { role: "admin" });
+    }
+
+    // Re-fetch
+    const updated = await ctx.db.get(user._id);
+    if (!updated || updated.role !== "admin") {
       throw new Error("This account does not have admin privileges");
     }
 
