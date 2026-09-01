@@ -19,6 +19,47 @@ const SORT_OPTIONS = [
 
 const CONDITIONS = ["Brand New", "Used - Like New", "Used - Good", "Used - Fair", "Refurbished"];
 
+/** Show the most relevant attributes per category on the product card */
+function CategoryAttributes({ category, attributes }: { category: string; attributes?: Record<string, string> }) {
+  if (!attributes || Object.keys(attributes).length === 0) return null;
+
+  const entries = Object.entries(attributes).filter(([, v]) => v);
+  if (entries.length === 0) return null;
+
+  // Pick the 2-3 most relevant attributes per category
+  const relevantKeys: Record<string, string[]> = {
+    vehicles: ["Year", "Transmission", "Fuel", "Mileage", "Engine"],
+    "phones-tablets": ["Storage", "RAM", "Camera", "Battery Health"],
+    electronics: ["Processor", "RAM", "Storage", "Screen Size"],
+    "home-furniture": ["Material", "Colour", "Dimensions", "Type"],
+    fashion: ["Size", "Colour", "Material", "Style"],
+    "beauty-personal-care": ["Type", "Size", "Scent"],
+    services: ["Experience", "Availability", "Starting Price"],
+    agriculture: ["Type", "Weight", "Grade"],
+    property: ["Bedrooms", "Bathrooms", "Size", "Type"],
+  };
+
+  const preferred = relevantKeys[category] || [];
+  const display = entries
+    .sort((a, b) => {
+      const ai = preferred.indexOf(a[0]);
+      const bi = preferred.indexOf(b[0]);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
+      return 0;
+    })
+    .slice(0, 3);
+
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {display.map(([key, val]) => (
+        <span key={key} className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-white/35">{val}</span>
+      ))}
+    </div>
+  );
+}
+
 export default function MarketplaceFull() {
   const navigate = useNavigate();
   const listings = useQuery(api.listings.getActiveListings, {});
@@ -54,23 +95,17 @@ export default function MarketplaceFull() {
 
   // Filter and sort listings
   const filtered = (listings ?? []).filter((item) => {
-    // Text search
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       if (!item.title.toLowerCase().includes(q) && !item.description.toLowerCase().includes(q) && !item.category.toLowerCase().includes(q)) {
         return false;
       }
     }
-    // Category
     if (selectedCategory !== "all" && item.category !== selectedCategory) return false;
-    // County
     if (selectedCounty !== "all" && item.originCounty !== selectedCounty) return false;
-    // Condition
     if (selectedCondition !== "all" && item.condition !== selectedCondition) return false;
-    // Price
     if (priceMin && item.price < Number(priceMin)) return false;
     if (priceMax && item.price > Number(priceMax)) return false;
-    // Toggles
     if (onlyVerified && !item.sellerVerified) return false;
     if (onlyEscrow && !item.escrowProtection) return false;
     if (onlyDelivery && !item.transportAvailable) return false;
@@ -124,7 +159,7 @@ export default function MarketplaceFull() {
               }`}>All</button>
             {CATEGORIES.map((cat) => (
               <button key={cat.slug} onClick={() => setSelectedCategory(selectedCategory === cat.slug ? "all" : cat.slug)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   selectedCategory === cat.slug ? "bg-nx-violet text-white" : "bg-white/[0.03] text-white/40 hover:text-white/60"
                 }`}>
                 {cat.name}
@@ -148,7 +183,7 @@ export default function MarketplaceFull() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-white/50 mb-2">Price Range (KSh)</label>
+                  <label className="block text-xs font-medium text-white/50 mb-2">Price Range (KES)</label>
                   <div className="flex gap-2">
                     <input type="number" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} placeholder="Min" className="flex-1 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/30" />
                     <input type="number" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} placeholder="Max" className="flex-1 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/30" />
@@ -275,6 +310,8 @@ export default function MarketplaceFull() {
                     <div className="p-3">
                       <h3 className="text-sm font-medium text-white truncate group-hover:text-nx-violet transition-colors">{item.title}</h3>
                       <p className="text-lg font-bold text-white mt-1">KSh {item.price.toLocaleString()}</p>
+                      {/* Show category-relevant attributes */}
+                      <CategoryAttributes category={item.category} attributes={item.attributes} />
                       <div className="flex items-center gap-1 mt-1">
                         <MapPin className="w-3 h-3 text-white/20" />
                         <span className="text-[11px] text-white/30">{item.originTown}, {item.originCounty}</span>
@@ -321,6 +358,7 @@ export default function MarketplaceFull() {
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-medium text-white truncate">{item.title}</h3>
                       <p className="text-xs text-white/30 mt-0.5 line-clamp-1">{item.description}</p>
+                      <CategoryAttributes category={item.category} attributes={item.attributes} />
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-[11px] text-white/30 flex items-center gap-1"><MapPin className="w-3 h-3" />{item.originTown}, {item.originCounty}</span>
                         {item.sellerVerified && <span className="text-[10px] text-nx-cyan flex items-center gap-0.5"><CheckCircle2 className="w-3 h-3" />Verified</span>}

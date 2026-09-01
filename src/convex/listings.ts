@@ -17,6 +17,7 @@ export const createListing = mutation({
     originTown: v.string(),
     escrowProtection: v.boolean(),
     condition: v.optional(v.string()),
+    attributes: v.optional(v.record(v.string(), v.string())),
     verified: v.boolean(),
     sellerName: v.string(),
     sellerReputation: v.number(),
@@ -54,6 +55,8 @@ export const createListing = mutation({
       sellerName: args.sellerName,
       sellerReputation: args.sellerReputation,
       sellerVerified: args.sellerVerified,
+      attributes: args.attributes,
+      negotiable: args.negotiable,
       views: 0,
       favorites: 0,
       status: "active",
@@ -78,6 +81,7 @@ export const updateListing = mutation({
     category: v.optional(v.string()),
     images: v.optional(v.array(v.string())),
     condition: v.optional(v.string()),
+    attributes: v.optional(v.record(v.string(), v.string())),
     originCounty: v.optional(v.string()),
     originTown: v.optional(v.string()),
     status: v.optional(v.union(v.literal("active"), v.literal("sold"), v.literal("paused"), v.literal("removed"))),
@@ -106,6 +110,7 @@ export const updateListing = mutation({
     if (args.condition !== undefined) updates.condition = args.condition;
     if (args.originCounty !== undefined) updates.originCounty = args.originCounty;
     if (args.originTown !== undefined) updates.originTown = args.originTown;
+    if (args.attributes !== undefined) updates.attributes = args.attributes;
     if (args.status !== undefined) updates.status = args.status;
 
     await ctx.db.patch(args.listingId, updates);

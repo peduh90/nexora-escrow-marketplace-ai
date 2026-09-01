@@ -177,11 +177,15 @@ const schema = defineSchema(
       sellerName: v.string(),
       sellerReputation: v.number(),
       sellerVerified: v.boolean(),
+      // Category-specific attributes (flexible key-value pairs)
+      attributes: v.optional(v.record(v.string(), v.string())),
       // Stats
       views: v.number(),
       favorites: v.number(),
       // Condition
       condition: v.optional(v.string()),
+      // Negotiable
+      negotiable: v.optional(v.boolean()),
       // Status
       status: v.union(
         v.literal("active"),

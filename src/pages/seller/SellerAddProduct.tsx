@@ -4,7 +4,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
-import { CATEGORIES } from "@/lib/categories";
+import { CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2 } from "lucide-react";
 
 const steps = ["Category", "Details", "Specifications", "Images", "Location", "Pricing", "Preview"];
@@ -86,15 +86,32 @@ export default function SellerAddProduct() {
   const [step, setStep] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [form, setForm] = useState({
-    category: "", subcategory: "", title: "", description: "", condition: "Brand New",
-    brand: "", model: "", quantity: "1", sku: "", negotiable: false,
-    county: "", town: "",
-    price: "", originalPrice: "",
-    specs: {} as Record<string, string>,
+    category: "",
+    subcategory: "",
+    title: "",
+    description: "",
+    condition: "Brand New",
+    brand: "",
+    model: "",
+    quantity: "1",
+    sku: "",
+    negotiable: false,
+    county: "",
+    town: "",
+    price: "",
+    originalPrice: "",
+    attributes: {} as Record<string, string>,
     images: [] as { file: File; preview: string }[],
   });
 
-  const update = (key: string, value: string | boolean | Record<string, string>) => setForm({ ...form, [key]: value });
+  const update = (key: string, value: any) => setForm({ ...form, [key]: value });
+
+  // Get the current category and subcategory objects
+  const selectedCategory = CATEGORIES.find(c => c.slug === form.category);
+  const selectedSubcategory = selectedCategory?.subcategories.find(s => s.slug === form.subcategory);
+
+  // Get the spec template for the selected subcategory
+  const specTemplate = SPECS_TEMPLATES[form.subcategory] || [];
 
   const handlePublish = async () => {
     if (!form.title || !form.price || !form.category || !form.county || !form.town) return;
@@ -107,12 +124,14 @@ export default function SellerAddProduct() {
         currency: "KES",
         category: form.category,
         subcategory: form.subcategory || undefined,
-        images: [], // Images would need to be uploaded to storage first
+        images: [],
         transportAvailable: true,
         originCounty: form.county,
         originTown: form.town,
         escrowProtection: true,
         condition: form.condition,
+        attributes: Object.keys(form.attributes).length > 0 ? form.attributes : undefined,
+        negotiable: form.negotiable,
         verified: user?.kycStatus === "verified",
         sellerName: user?.businessName || user?.name || "Seller",
         sellerReputation: user?.reputation || 0,
@@ -125,6 +144,15 @@ export default function SellerAddProduct() {
     } finally {
       setPublishing(false);
     }
+  };
+
+  // Helper to get preview attributes for the listing card
+  const getPreviewSpecs = () => {
+    const specs: string[] = [];
+    for (const [key, val] of Object.entries(form.attributes)) {
+      if (val) specs.push(val);
+    }
+    return specs;
   };
 
   return (
@@ -149,61 +177,109 @@ export default function SellerAddProduct() {
         </div>
 
         <div className="p-6 rounded-xl bg-white/[0.02] border border-white/5">
+          {/* STEP 0: Category Selection */}
           {step === 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Select Category</h3>
+              <h3 className="text-lg font-semibold text-white">What are you selling?</h3>
+              <p className="text-xs text-white/30">Select the category that best describes your product</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {CATEGORIES.map(cat => (
-                  <button key={cat.slug} onClick={() => { update("category", cat.slug); setStep(1); }}
+                  <button key={cat.slug} onClick={() => { update("category", cat.slug); update("subcategory", ""); update("attributes", {}); }}
                     className={`p-4 rounded-xl border text-left transition-all ${form.category === cat.slug ? "border-nx-violet/30 bg-nx-violet/5" : "border-white/5 bg-white/[0.02] hover:border-white/10"}`}>
+                    <p className="text-2xl mb-1">{cat.icon}</p>
                     <p className="text-sm font-medium text-white">{cat.name}</p>
-                    <p className="text-[10px] text-white/30 mt-0.5">{cat.subcategories.length} subcategories</p>
+                    <p className="text-[10px] text-white/30 mt-0.5">{cat.description}</p>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {step === 1 && (
+          {/* STEP 0b: Subcategory Selection (if category has subcategories) */}
+          {step === 1 && selectedCategory && !form.subcategory && selectedCategory.subcategories.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Product Details</h3>
-              <div><label className="text-xs text-white/40 mb-1.5 block">Product Title *</label>
-                <input value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="e.g. HP EliteBook 840 G3"
-                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" /></div>
-              <div><label className="text-xs text-white/40 mb-1.5 block">Description *</label>
-                <textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={4} placeholder="Describe your product..."
-                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none resize-none" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-white/40 mb-1.5 block">Condition *</label>
-                  <select value={form.condition} onChange={(e) => update("condition", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-violet/50 focus:outline-none">
-                    {["Brand New", "Used - Like New", "Used - Good", "Used - Fair", "Refurbished"].map(c => <option key={c}>{c}</option>)}
-                  </select></div>
-                <div><label className="text-xs text-white/40 mb-1.5 block">Quantity</label>
-                  <input type="number" value={form.quantity} onChange={(e) => update("quantity", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-violet/50 focus:outline-none" /></div>
+              <h3 className="text-lg font-semibold text-white">Select Subcategory</h3>
+              <p className="text-xs text-white/30">Choose the specific type of {selectedCategory.name}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {selectedCategory.subcategories.map(sub => (
+                  <button key={sub.slug} onClick={() => update("subcategory", sub.slug)}
+                    className="p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:border-white/10 text-left transition-all">
+                    <p className="text-sm font-medium text-white">{sub.name}</p>
+                  </button>
+                ))}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-white/40 mb-1.5 block">Brand</label>
-                  <input value={form.brand} onChange={(e) => update("brand", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" /></div>
-                <div><label className="text-xs text-white/40 mb-1.5 block">Model</label>
-                  <input value={form.model} onChange={(e) => update("model", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" /></div>
-              </div>
+              <button onClick={() => { update("subcategory", "general"); setStep(2); }}
+                className="text-xs text-nx-violet hover:text-nx-violet/80">Skip — treat as general {selectedCategory.name} product</button>
             </div>
           )}
 
-          {step === 2 && (
+          {/* STEP 1/2: Product Details */}
+          {step === 1 || (step === 2 && form.subcategory) ? (
+            step === 1 && form.subcategory ? null : (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white">Product Details</h3>
+                <div><label className="text-xs text-white/40 mb-1.5 block">Product Title *</label>
+                  <input value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="e.g. Toyota Harrier 2021 Automatic"
+                    className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" /></div>
+                <div><label className="text-xs text-white/40 mb-1.5 block">Description *</label>
+                  <textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={4} placeholder="Describe your product..."
+                    className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none resize-none" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-xs text-white/40 mb-1.5 block">Condition *</label>
+                    <select value={form.condition} onChange={(e) => update("condition", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-violet/50 focus:outline-none">
+                      {["Brand New", "Used - Like New", "Used - Good", "Used - Fair", "Refurbished"].map(c => <option key={c}>{c}</option>)}
+                    </select></div>
+                  <div><label className="text-xs text-white/40 mb-1.5 block">Quantity</label>
+                    <input type="number" value={form.quantity} onChange={(e) => update("quantity", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-violet/50 focus:outline-none" /></div>
+                </div>
+              </div>
+            )
+          ) : null}
+
+          {/* STEP 2: Category-Specific Specifications */}
+          {step === 2 && form.subcategory && specTemplate.length > 0 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Specifications</h3>
-              <p className="text-xs text-white/30">Add relevant specifications for your product category</p>
-              {["Processor", "RAM", "Storage", "Screen Size", "Operating System", "GPU", "Battery"].map(key => (
-                <div key={key}><label className="text-xs text-white/40 mb-1.5 block">{key}</label>
-                  <input value={form.specs[key] || ""} onChange={(e) => update("specs", { ...form.specs, [key]: e.target.value })} className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" />
+              <p className="text-xs text-white/30">
+                {selectedSubcategory ? `${selectedSubcategory.name}` : "Category"} — add relevant details
+              </p>
+              {specTemplate.map(spec => (
+                <div key={spec.label}>
+                  <label className="text-xs text-white/40 mb-1.5 block">{spec.label}</label>
+                  {spec.type === "select" && spec.options ? (
+                    <select
+                      value={form.attributes[spec.label] || ""}
+                      onChange={(e) => update("attributes", { ...form.attributes, [spec.label]: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-violet/50 focus:outline-none"
+                    >
+                      <option value="">Select {spec.label}</option>
+                      {spec.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      value={form.attributes[spec.label] || ""}
+                      onChange={(e) => update("attributes", { ...form.attributes, [spec.label]: e.target.value })}
+                      placeholder={`Enter ${spec.label}`}
+                      className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none"
+                    />
+                  )}
                 </div>
               ))}
             </div>
           )}
 
+          {/* STEP 2: No specs template — show message */}
+          {step === 2 && form.subcategory && specTemplate.length === 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white">Specifications</h3>
+              <p className="text-xs text-white/30">No specific fields required for this category. Add details in the description.</p>
+            </div>
+          )}
+
+          {/* STEP 3: Images */}
           {step === 3 && <ImageUploadStep form={form} update={update} />}
 
+          {/* STEP 4: Location */}
           {step === 4 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Product Location</h3>
@@ -218,39 +294,56 @@ export default function SellerAddProduct() {
             </div>
           )}
 
+          {/* STEP 5: Pricing */}
           {step === 5 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Pricing</h3>
-              <div><label className="text-xs text-white/40 mb-1.5 block">Price (KSh) *</label>
+              <div><label className="text-xs text-white/40 mb-1.5 block">Price (KES) *</label>
                 <input type="number" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="0" className="w-full px-3 py-3 rounded-lg bg-white/[0.03] border border-white/10 text-xl text-white font-bold placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" /></div>
-              <div><label className="text-xs text-white/40 mb-1.5 block">Original Price (KSh) — for discount display</label>
+              <div><label className="text-xs text-white/40 mb-1.5 block">Original Price (KES) — for discount display</label>
                 <input type="number" value={form.originalPrice} onChange={(e) => update("originalPrice", e.target.value)} placeholder="Optional" className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" /></div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.negotiable} onChange={(e) => update("negotiable", e.target.checked)} className="w-4 h-4 rounded border-white/10 bg-white/[0.03] text-nx-violet" />
                 <span className="text-sm text-white/60">Price is negotiable</span>
               </label>
               <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
-                <div className="flex justify-between text-xs"><span className="text-white/40">Platform Fee (5%)</span><span className="text-white/60">KSh {Math.round(Number(form.price || 0) * 0.05).toLocaleString()}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-white/40">Your Earnings</span><span className="text-emerald-400 font-bold">KSh {Math.round(Number(form.price || 0) * 0.95).toLocaleString()}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-white/40">Platform Fee (5%)</span><span className="text-white/60">KES {Math.round(Number(form.price || 0) * 0.05).toLocaleString()}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-white/40">Your Earnings</span><span className="text-emerald-400 font-bold">KES {Math.round(Number(form.price || 0) * 0.95).toLocaleString()}</span></div>
               </div>
             </div>
           )}
 
+          {/* STEP 6: Preview */}
           {step === 6 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Preview & Publish</h3>
               <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5">
                 <div className="flex items-start gap-4">
-                  <div className="w-24 h-24 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0"><Package className="w-8 h-8 text-white/10" /></div>
+                  <div className="w-24 h-24 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0">
+                    {form.images.length > 0 ? (
+                      <img src={form.images[0].preview} alt="Preview" className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <Package className="w-8 h-8 text-white/10" />
+                    )}
+                  </div>
                   <div>
                     <h4 className="text-lg font-semibold text-white">{form.title || "Product Title"}</h4>
-                    <p className="text-xl font-bold text-white mt-1">KSh {Number(form.price || 0).toLocaleString()}</p>
+                    <p className="text-xl font-bold text-white mt-1">KES {Number(form.price || 0).toLocaleString()}</p>
                     <p className="text-xs text-white/30 mt-2">{form.description || "No description"}</p>
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-400/10 text-emerald-400">{form.condition}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-white/40">{form.category || "No category"}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-white/40">{selectedCategory?.name || "No category"}</span>
+                      {form.subcategory && <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-white/40">{selectedSubcategory?.name || form.subcategory}</span>}
                       {form.negotiable && <span className="text-[10px] px-2 py-0.5 rounded bg-amber-400/10 text-amber-400">Negotiable</span>}
                     </div>
+                    {/* Show category-specific attributes */}
+                    {getPreviewSpecs().length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {getPreviewSpecs().map((spec, i) => (
+                          <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-nx-violet/10 text-nx-violet">{spec}</span>
+                        ))}
+                      </div>
+                    )}
                     <p className="text-xs text-white/30 mt-2">📍 {form.county}, {form.town}</p>
                   </div>
                 </div>
