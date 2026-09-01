@@ -252,13 +252,10 @@ export const setAdminPassword = mutation({
     if (!user) throw new Error("No account found. Please sign up first.");
     if (identity.email === ADMIN_EMAIL && user.role !== "admin") {
       await ctx.db.patch(user._id, { role: "admin" });
-      // Re-fetch
-      const updated = await ctx.db.get(user._id);
-      if (!updated || updated.role !== "admin") {
-        throw new Error("Failed to promote to admin");
-      }
     }
-    if (user.role !== "admin" && identity.email !== ADMIN_EMAIL) {
+    // Re-fetch to get updated role
+    const freshUser = await ctx.db.get(user._id);
+    if (!freshUser || freshUser.role !== "admin") {
       throw new Error("Unauthorized: admin only");
     }
 
@@ -307,11 +304,11 @@ export const verifyAdminPassword = mutation({
       throw new Error("This account does not have admin privileges");
     }
 
-    if (!user.adminPasswordHash || !user.adminPasswordSalt) {
+    if (!updated.adminPasswordHash || !updated.adminPasswordSalt) {
       throw new Error("No admin password set. Please contact support.");
     }
 
-    const valid = await verifyPassword(args.password, user.adminPasswordHash, user.adminPasswordSalt);
+    const valid = await verifyPassword(args.password, updated.adminPasswordHash, updated.adminPasswordSalt);
     if (!valid) {
       throw new Error("Incorrect password");
     }
