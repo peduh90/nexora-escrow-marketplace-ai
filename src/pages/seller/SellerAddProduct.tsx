@@ -1,8 +1,11 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
 import { CATEGORIES } from "@/lib/categories";
-import { ChevronRight, ChevronLeft, Upload, Check, Package, X, ImagePlus } from "lucide-react";
+import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2 } from "lucide-react";
 
 const steps = ["Category", "Details", "Specifications", "Images", "Location", "Pricing", "Preview"];
 
@@ -40,8 +43,6 @@ function ImageUploadStep({ form, update }: { form: any; update: (key: string, va
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-white">Product Images</h3>
-
-      {/* Upload area */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -51,20 +52,11 @@ function ImageUploadStep({ form, update }: { form: any; update: (key: string, va
           dragOver ? "border-nx-violet bg-nx-violet/5" : "border-white/10 hover:border-nx-violet/30 hover:bg-white/[0.01]"
         }`}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
-        />
+        <input ref={fileInputRef} type="file" multiple accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
         <ImagePlus className="w-10 h-10 text-white/15 mb-2" />
         <p className="text-sm text-white/40 font-medium">Click to upload or drag and drop</p>
         <p className="text-[11px] text-white/20 mt-1">JPG, PNG, WebP — Max 5MB each — Up to 6 images</p>
       </div>
-
-      {/* Image previews */}
       {form.images.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
           {form.images.map((img: { file: File; preview: string }, i: number) => (
@@ -82,15 +74,17 @@ function ImageUploadStep({ form, update }: { form: any; update: (key: string, va
           ))}
         </div>
       )}
-
-      <p className="text-[11px] text-white/25">First image is the primary product photo. You can reorder by removing and re-uploading.</p>
+      <p className="text-[11px] text-white/25">First image is the primary product photo.</p>
     </div>
   );
 }
 
 export default function SellerAddProduct() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const createListing = useMutation(api.listings.createListing);
   const [step, setStep] = useState(0);
+  const [publishing, setPublishing] = useState(false);
   const [form, setForm] = useState({
     category: "", subcategory: "", title: "", description: "", condition: "Brand New",
     brand: "", model: "", quantity: "1", sku: "", negotiable: false,
@@ -101,6 +95,37 @@ export default function SellerAddProduct() {
   });
 
   const update = (key: string, value: string | boolean | Record<string, string>) => setForm({ ...form, [key]: value });
+
+  const handlePublish = async () => {
+    if (!form.title || !form.price || !form.category || !form.county || !form.town) return;
+    setPublishing(true);
+    try {
+      await createListing({
+        title: form.title,
+        description: form.description || `${form.title} - ${form.condition}`,
+        price: Number(form.price),
+        currency: "KES",
+        category: form.category,
+        subcategory: form.subcategory || undefined,
+        images: [], // Images would need to be uploaded to storage first
+        transportAvailable: true,
+        originCounty: form.county,
+        originTown: form.town,
+        escrowProtection: true,
+        condition: form.condition,
+        verified: user?.kycStatus === "verified",
+        sellerName: user?.businessName || user?.name || "Seller",
+        sellerReputation: user?.reputation || 0,
+        sellerVerified: user?.kycStatus === "verified",
+      });
+      navigate("/seller/products");
+    } catch (err) {
+      console.error("Failed to publish:", err);
+      alert("Failed to publish product. Please try again.");
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   return (
     <SellerLayout>
@@ -124,7 +149,6 @@ export default function SellerAddProduct() {
         </div>
 
         <div className="p-6 rounded-xl bg-white/[0.02] border border-white/5">
-          {/* Step 0: Category */}
           {step === 0 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Select Category</h3>
@@ -141,7 +165,6 @@ export default function SellerAddProduct() {
             </div>
           )}
 
-          {/* Step 1: Details */}
           {step === 1 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Product Details</h3>
@@ -168,7 +191,6 @@ export default function SellerAddProduct() {
             </div>
           )}
 
-          {/* Step 2: Specifications */}
           {step === 2 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Specifications</h3>
@@ -181,12 +203,8 @@ export default function SellerAddProduct() {
             </div>
           )}
 
-          {/* Step 3: Images */}
-          {step === 3 && (
-            <ImageUploadStep form={form} update={update} />
-          )}
+          {step === 3 && <ImageUploadStep form={form} update={update} />}
 
-          {/* Step 4: Location */}
           {step === 4 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Product Location</h3>
@@ -196,12 +214,11 @@ export default function SellerAddProduct() {
               <div><label className="text-xs text-white/40 mb-1.5 block">Town / Area *</label>
                 <input value={form.town} onChange={(e) => update("town", e.target.value)} placeholder="e.g. Westlands" className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" /></div>
               <div className="p-3 rounded-lg bg-nx-violet/5 border border-nx-violet/10">
-                <p className="text-xs text-white/40">🚚 <span className="text-nx-violet font-medium">Delivery is handled by Nexora Market.</span> You only need to provide the product location. Nexora Market will calculate delivery fees and handle logistics.</p>
+                <p className="text-xs text-white/40">🚚 <span className="text-nx-violet font-medium">Delivery is handled by Nexora Market.</span> You only need to provide the product location.</p>
               </div>
             </div>
           )}
 
-          {/* Step 5: Pricing */}
           {step === 5 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Pricing</h3>
@@ -220,10 +237,9 @@ export default function SellerAddProduct() {
             </div>
           )}
 
-          {/* Step 6: Preview */}
           {step === 6 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Preview</h3>
+              <h3 className="text-lg font-semibold text-white">Preview & Publish</h3>
               <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5">
                 <div className="flex items-start gap-4">
                   <div className="w-24 h-24 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0"><Package className="w-8 h-8 text-white/10" /></div>
@@ -236,6 +252,7 @@ export default function SellerAddProduct() {
                       <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-white/40">{form.category || "No category"}</span>
                       {form.negotiable && <span className="text-[10px] px-2 py-0.5 rounded bg-amber-400/10 text-amber-400">Negotiable</span>}
                     </div>
+                    <p className="text-xs text-white/30 mt-2">📍 {form.county}, {form.town}</p>
                   </div>
                 </div>
               </div>
@@ -255,9 +272,13 @@ export default function SellerAddProduct() {
               Next <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
-            <button onClick={() => navigate("/seller/products")}
-              className="px-6 py-2.5 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-500/80 transition-colors flex items-center gap-2">
-              <Check className="w-4 h-4" /> Publish Product
+            <button onClick={handlePublish} disabled={publishing}
+              className="px-6 py-2.5 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-500/80 transition-colors flex items-center gap-2 disabled:opacity-50">
+              {publishing ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Publishing...</>
+              ) : (
+                <><Check className="w-4 h-4" /> Publish Product</>
+              )}
             </button>
           )}
         </div>
