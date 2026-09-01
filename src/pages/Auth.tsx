@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 interface AuthProps {
   redirectAfterAuth?: string;
@@ -62,8 +64,14 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
+  const checkAndPromoteAdmin = useMutation(api.users.checkAndPromoteAdmin);
+
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
+      // Auto-promote to admin if redirecting to admin panel
+      if (redirect === "/admin") {
+        checkAndPromoteAdmin().catch(() => {});
+      }
       navigate(redirect);
     }
   }, [authLoading, isAuthenticated, navigate, redirect]);

@@ -228,7 +228,6 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/seller/help" element={<RequireAuth><SellerHelp /></RequireAuth>} />
 
               {/* Admin routes */}
-              <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
               <Route path="/admin/users" element={<RequireAdmin><AdminUsers /></RequireAdmin>} />
               <Route path="/admin/buyers" element={<RequireAdmin><AdminBuyers /></RequireAdmin>} />
