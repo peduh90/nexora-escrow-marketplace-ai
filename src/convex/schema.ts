@@ -68,6 +68,10 @@ const schema = defineSchema(
       facebook: v.optional(v.string()),
       instagram: v.optional(v.string()),
       tiktok: v.optional(v.string()),
+      // Admin 2FA
+      adminTotpSecret: v.optional(v.string()),
+      adminTwoFactorEnabled: v.optional(v.boolean()),
+      adminLastLogin: v.optional(v.number()),
       // Stats
       totalSales: v.optional(v.number()),
       totalPurchases: v.optional(v.number()),

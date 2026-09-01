@@ -1,15 +1,21 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { Navigate } from "react-router";
 
 export function RequireAdmin({ children }: { children: ReactNode }) {
   const { isLoading, isAuthenticated, user } = useAuth();
+  const admin2FAStatus = useQuery(
+    api.adminAuth.isAdmin2FAEnabled,
+    isAuthenticated && user?.role === "admin" ? {} : "skip"
+  );
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && user?.role === "admin" && admin2FAStatus === undefined)) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#05050A]">
-        <Loader2 className="size-6 animate-spin text-nx-violet" />
+        <Loader2 className="size-6 animate-spin text-nx-gold" />
       </main>
     );
   }
@@ -17,7 +23,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   if (!isAuthenticated) {
     return (
       <Navigate
-        to={`/auth?returnTo=${encodeURIComponent("/admin")}`}
+        to="/admin/login"
         replace
       />
     );
@@ -33,13 +39,23 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
           <p className="text-white/40 mb-6">You do not have administrator privileges.</p>
           <a
             href="/"
-            className="px-6 py-2.5 rounded-lg bg-nx-violet text-white text-sm font-medium hover:bg-nx-violet/80 transition-colors inline-block"
+            className="px-6 py-2.5 rounded-lg bg-nx-gold text-black text-sm font-medium hover:bg-nx-gold/80 transition-colors inline-block"
           >
             Return Home
           </a>
         </div>
       </main>
     );
+  }
+
+  // Check if admin 2FA is required and not yet verified this session
+  if (admin2FAStatus?.enabled) {
+    const verified = sessionStorage.getItem("admin2fa_verified");
+    if (verified !== "true") {
+      return (
+        <Navigate to="/admin/login" replace />
+      );
+    }
   }
 
   return children;

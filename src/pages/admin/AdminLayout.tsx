@@ -21,16 +21,16 @@ const navSections = [
   {
     label: "USERS",
     items: [
-      { icon: Users, label: "All Users", path: "/admin/users", badge: "52K" },
+      { icon: Users, label: "All Users", path: "/admin/users" },
       { icon: User, label: "Buyers", path: "/admin/buyers" },
-      { icon: Briefcase, label: "Sellers", path: "/admin/sellers", badge: "3.2K" },
-      { icon: FileCheck, label: "Verification", path: "/admin/kyc", badge: "12" },
+      { icon: Briefcase, label: "Sellers", path: "/admin/sellers" },
+      { icon: FileCheck, label: "Verification", path: "/admin/kyc" },
     ],
   },
   {
     label: "MARKETPLACE",
     items: [
-      { icon: Package, label: "Products", path: "/admin/products", badge: "8.4K" },
+      { icon: Package, label: "Products", path: "/admin/products" },
       { icon: ShoppingCart, label: "Orders", path: "/admin/orders" },
       { icon: MessageSquare, label: "Messages", path: "/admin/messages" },
       { icon: Scale, label: "Reviews", path: "/admin/reviews" },
@@ -42,7 +42,7 @@ const navSections = [
       { icon: CreditCard, label: "Payments", path: "/admin/payments" },
       { icon: Shield, label: "Escrow", path: "/admin/escrow" },
       { icon: Wallet, label: "Wallets", path: "/admin/wallets" },
-      { icon: Receipt, label: "Withdrawals", path: "/admin/withdrawals", badge: "8" },
+      { icon: Receipt, label: "Withdrawals", path: "/admin/withdrawals" },
       { icon: TrendingUp, label: "Revenue", path: "/admin/revenue" },
     ],
   },
@@ -57,7 +57,7 @@ const navSections = [
     label: "SECURITY",
     items: [
       { icon: Brain, label: "AI & Fraud", path: "/admin/fraud" },
-      { icon: Scale, label: "Disputes", path: "/admin/disputes", badge: "5" },
+      { icon: Scale, label: "Disputes", path: "/admin/disputes" },
       { icon: AlertTriangle, label: "Reports", path: "/admin/reports" },
     ],
   },
@@ -121,9 +121,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   >
                     <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-nx-gold" : "group-hover:text-white/50"}`} />
                     {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
-                    {!collapsed && item.badge && (
-                      <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-nx-gold/10 text-nx-gold font-medium">{item.badge}</span>
-                    )}
+
                   </button>
                 );
               })}
@@ -197,9 +195,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                           <item.icon className="w-4 h-4 shrink-0" />
                           <span className="whitespace-nowrap">{item.label}</span>
-                          {item.badge && (
-                            <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-nx-gold/10 text-nx-gold font-medium">{item.badge}</span>
-                          )}
+
                         </button>
                       );
                     })}
@@ -252,11 +248,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <div className="flex items-center gap-2 pl-2 border-l border-white/5">
               <div className="w-7 h-7 rounded-full bg-nx-gold/15 flex items-center justify-center">
-                <span className="text-[10px] font-bold text-nx-gold">SA</span>
+                <span className="text-[10px] font-bold text-nx-gold">{(user?.name || user?.email || "A").slice(0, 2).toUpperCase()}</span>
               </div>
               <div className="hidden md:block">
-                <p className="text-[11px] font-medium text-white/70">Super Admin</p>
-                <p className="text-[9px] text-white/25">nexora@platform.com</p>
+                <p className="text-[11px] font-medium text-white/70">{user?.name || "Admin"}</p>
+                <p className="text-[9px] text-white/25">{user?.email || ""}</p>
               </div>
             </div>
           </div>
