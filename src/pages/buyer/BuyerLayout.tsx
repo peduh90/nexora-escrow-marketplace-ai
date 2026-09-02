@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router";
+import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -24,6 +25,7 @@ const navItems = [
 ];
 
 export default function BuyerLayout({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
@@ -55,12 +57,16 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
         {!collapsed && (
           <div className="px-4 py-3 border-b border-white/5">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-nx-cyan/10 flex items-center justify-center text-nx-cyan text-xs font-bold">
-                B
-              </div>
+              {user?.image ? (
+                <img src={user.image} alt="" className="w-8 h-8 rounded-lg object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-nx-cyan/10 flex items-center justify-center text-nx-cyan text-xs font-bold">
+                  {(user?.name || user?.email || "B")[0]?.toUpperCase()}
+                </div>
+              )}
               <div className="min-w-0">
-                <p className="text-xs font-medium text-white truncate">Buyer</p>
-                <p className="text-[10px] text-white/30 truncate">Shop securely</p>
+                <p className="text-xs font-medium text-white truncate">{user?.name || user?.email?.split("@")[0] || "Buyer"}</p>
+                <p className="text-[10px] text-white/30 truncate">{user?.kycStatus === "verified" ? "✓ Verified" : "Shop securely"}</p>
               </div>
             </div>
           </div>
@@ -118,8 +124,18 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
               <Bell className="w-4 h-4" />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-nx-cyan" />
             </button>
-            <div className="w-8 h-8 rounded-lg bg-nx-cyan/10 flex items-center justify-center text-nx-cyan text-xs font-bold">
-              B
+            <div className="flex items-center gap-2">
+              {user?.image ? (
+                <img src={user.image} alt="" className="w-7 h-7 rounded-full object-cover" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-nx-cyan/10 flex items-center justify-center text-nx-cyan text-xs font-bold">
+                  {(user?.name || user?.email || "B")[0]?.toUpperCase()}
+                </div>
+              )}
+              <div className="hidden md:block">
+                <p className="text-xs font-medium text-white">{user?.name || user?.email?.split("@")[0] || "Buyer"}</p>
+                <p className="text-[9px] text-white/30">{user?.kycStatus === "verified" ? "✓ Verified" : "Buyer"}</p>
+              </div>
             </div>
           </div>
         </header>

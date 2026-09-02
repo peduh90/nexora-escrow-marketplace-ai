@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard, Package, Plus, ShoppingCart, Shield, MessageSquare,
   TrendingUp, Users, Wallet, Download, Truck, BarChart3, Star,
@@ -12,6 +13,7 @@ import {
 export default function SellerSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
   // Real data from Convex
@@ -60,10 +62,14 @@ export default function SellerSidebar() {
         {!collapsed && (
           <div className="px-3 py-2 border-b border-white/5">
             <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-nx-violet/5 border border-nx-violet/10">
-              <BadgeCheck className="w-4 h-4 text-nx-violet shrink-0" />
+              {user?.image ? (
+                <img src={user.image} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+              ) : (
+                <BadgeCheck className="w-4 h-4 text-nx-violet shrink-0" />
+              )}
               <div className="min-w-0">
-                <p className="text-[10px] font-medium text-nx-violet">SELLER PANEL</p>
-                <p className="text-[9px] text-white/30 truncate">Verified Seller</p>
+                <p className="text-[10px] font-medium text-nx-violet truncate">{(user?.businessName || user?.name || "SELLER").toUpperCase()}</p>
+                <p className="text-[9px] text-white/30 truncate">{user?.kycStatus === "verified" ? "✓ Verified" : "Seller"}</p>
               </div>
             </div>
           </div>

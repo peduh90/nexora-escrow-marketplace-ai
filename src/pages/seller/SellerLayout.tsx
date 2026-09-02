@@ -71,12 +71,16 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
             </button>
             {/* Profile */}
             <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
-              <div className="w-7 h-7 rounded-full bg-nx-violet/20 flex items-center justify-center text-nx-violet text-xs font-bold">
-                {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "S"}
-              </div>
+              {user?.image ? (
+                <img src={user.image} alt="" className="w-7 h-7 rounded-full object-cover" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-nx-violet/20 flex items-center justify-center text-nx-violet text-xs font-bold">
+                  {(user?.businessName || user?.name || user?.email || "S")[0]?.toUpperCase()}
+                </div>
+              )}
               <div className="hidden md:block">
-                <p className="text-xs font-medium text-white">{user?.name || user?.email?.split("@")[0] || "Seller"}</p>
-                <p className="text-[9px] text-white/30">Seller</p>
+                <p className="text-xs font-medium text-white">{user?.businessName || user?.name || user?.email?.split("@")[0] || "Seller"}</p>
+                <p className="text-[9px] text-white/30">{user?.kycStatus === "verified" ? "✓ Verified Seller" : "Seller"}</p>
               </div>
               <ChevronDown className="w-3 h-3 text-white/20 hidden md:block" />
             </div>
