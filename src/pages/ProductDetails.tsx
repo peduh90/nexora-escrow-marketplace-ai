@@ -60,6 +60,7 @@ export default function ProductDetails() {
   const startConversation = useMutation(api.messages.startConversation);
   // sendMessage removed - startConversation handles the first message internally
   const sendMessage = useMutation(api.messages.sendMessage);
+  const allListings = useQuery(api.listings.getActiveListings, { limit: 100 });
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [showOffer, setShowOffer] = useState(false);
@@ -265,6 +266,9 @@ export default function ProductDetails() {
           <div className="flex-1">
             <h3 className="text-sm text-white/60 truncate">{listing.title}</h3>
           </div>
+          <button onClick={() => { navigator.share?.({ title: listing.title, url: window.location.href }).catch(() => { navigator.clipboard.writeText(window.location.href); }); }} className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors" title="Share">
+            <Share2 className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
@@ -399,6 +403,14 @@ export default function ProductDetails() {
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-nx-violet/10 text-nx-violet text-xs font-medium hover:bg-nx-violet/20 transition-colors">
                   <MessageSquare className="w-3.5 h-3.5" /> Chat Seller
                 </button>
+                <button onClick={() => navigate(`/seller/${listing.sellerId}`)}
+                  className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/50 text-xs font-medium hover:text-white/70 transition-colors">
+                  View Profile
+                </button>
+                <button onClick={() => navigate(`/seller/${listing.sellerId}`)}
+                  className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/50 text-xs font-medium hover:text-white/70 transition-colors">
+                  View Profile
+                </button>
               </div>
             </div>
 
@@ -459,6 +471,37 @@ export default function ProductDetails() {
             </div>
           </div>
         </div>
+
+        {/* Similar Items */}
+        {allListings && allListings.length > 0 && (() => {
+          const similar = allListings
+            .filter((l: any) => l._id !== listing._id && (l.category === listing.category || l.sellerId === listing.sellerId))
+            .slice(0, 4);
+          if (similar.length === 0) return null;
+          return (
+            <div className="mt-8">
+              <h2 className="text-lg font-bold text-white mb-4">Similar Items</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {similar.map((item: any) => (
+                  <button key={item._id} onClick={() => navigate(`/product/${item._id}`)}
+                    className="text-left rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden hover:border-white/10 transition-all group">
+                    <div className="aspect-[4/3] bg-white/[0.03] overflow-hidden">
+                      {item.images?.[0] ? (
+                        <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center"><Package className="w-6 h-6 text-white/10" /></div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <h4 className="text-sm text-white/70 font-medium truncate group-hover:text-white transition-colors">{item.title}</h4>
+                      <p className="text-sm font-bold text-white mt-0.5">KES {(item.price || 0).toLocaleString()}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Make Offer Modal */}
