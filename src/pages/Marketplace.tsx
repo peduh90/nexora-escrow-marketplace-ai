@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "convex/react";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../convex/_generated/api";
@@ -13,6 +13,8 @@ export default function Marketplace() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000000]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const [conditionFilter, setConditionFilter] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -61,18 +63,43 @@ export default function Marketplace() {
         {/* Search and filters */}
         <ScrollReveal delay={100}>
           <div className="flex flex-col md:flex-row gap-3">
-            <div className="relative flex-1">
+            <div className="relative flex-1" ref={searchRef}>
               <Search className="w-4 h-4 text-white/20 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setShowAutocomplete(e.target.value.length > 1); }}
+                onFocus={() => searchQuery.length > 1 && setShowAutocomplete(true)}
+                onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
                 placeholder="Search products, brands, categories..."
                 className="w-full pl-9 pr-4 py-3 rounded-xl bg-white/[0.03] border border-white/5 text-sm text-white/70 placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none transition-colors"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50">
+                <button onClick={() => { setSearchQuery(""); setShowAutocomplete(false); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50">
                   <X className="w-4 h-4" />
                 </button>
+              )}
+              {/* Autocomplete dropdown */}
+              {showAutocomplete && searchQuery.length > 1 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-nx-card border border-nx-border rounded-xl shadow-xl z-50 overflow-hidden">
+                  {CATEGORIES.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 5).map((cat) => (
+                    <button key={cat.slug} onClick={() => { setSelectedCategory(cat.slug); setSearchQuery(""); setShowAutocomplete(false); }} className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-white/[0.03] transition-colors text-left">
+                      <span>{cat.icon}</span>
+                      <span className="text-sm text-white/60">{cat.name}</span>
+                    </button>
+                  ))}
+                  {(results ?? []).slice(0, 5).map((l: any) => (
+                    <button key={l._id} onClick={() => { navigate(`/product/${l._id}`); setShowAutocomplete(false); }} className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-white/[0.03] transition-colors text-left">
+                      <Package className="w-4 h-4 text-white/20" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-white/60 truncate block">{l.title}</span>
+                        <span className="text-[10px] text-white/30">KES {(l.price || 0).toLocaleString()}</span>
+                      </div>
+                    </button>
+                  ))}
+                  {CATEGORIES.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (!results || results.length === 0) && (
+                    <div className="px-4 py-3 text-xs text-white/30 text-center">No results for "{searchQuery}"</div>
+                  )}
+                </div>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -134,6 +161,18 @@ export default function Marketplace() {
             </div>
           </ScrollReveal>
         )}
+
+        {/* Popular searches */}
+        <ScrollReveal delay={150}>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <span className="text-[10px] text-white/20 shrink-0">Popular:</span>
+            {["Laptops", "iPhone", "Samsung", "Cars", "Furniture", "Fashion", "TVs", "Cameras"].map((term) => (
+              <button key={term} onClick={() => { setSearchQuery(term); setShowAutocomplete(false); }} className="px-3 py-1.5 rounded-lg text-[11px] font-medium text-white/30 bg-white/[0.02] border border-white/5 hover:text-white/50 hover:border-white/10 transition-colors shrink-0">
+                {term}
+              </button>
+            ))}
+          </div>
+        </ScrollReveal>
 
         {/* Categories grid */}
         <ScrollReveal delay={200}>

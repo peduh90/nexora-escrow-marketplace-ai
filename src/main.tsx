@@ -53,6 +53,10 @@ const SellerEditProduct = lazy(() => import("./pages/seller/SellerEditProduct.ts
 const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails.tsx"));
 const PrivacyPage = lazy(() => import("./pages/Privacy.tsx"));
+const SellerProfilePage = lazy(() => import("./pages/SellerProfile.tsx"));
+// Components
+import MobileBottomNav from "@/components/MobileBottomNav";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 const TermsPage = lazy(() => import("./pages/Terms.tsx"));
 // Admin panel
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
@@ -213,6 +217,7 @@ createRoot(document.getElementById("root")!).render(
 
               {/* Seller routes */}
               <Route path="/seller" element={<RequireAuth><SellerDashboard /></RequireAuth>} />
+              <Route path="/seller/:userId" element={<SellerProfilePage />} />
               <Route path="/seller/products" element={<RequireAuth><SellerProducts /></RequireAuth>} />
               <Route path="/seller/add-product" element={<RequireAuth><SellerAddProduct /></RequireAuth>} />
               <Route path="/seller/edit-product/:id" element={<RequireAuth><SellerEditProduct /></RequireAuth>} />
@@ -263,6 +268,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
+          <MobileBottomNav />
         </BrowserRouter>
         <Toaster />
       </ConvexAuthProvider>
