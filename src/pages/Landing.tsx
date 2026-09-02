@@ -18,6 +18,7 @@ import {
   Fingerprint,
   AlertTriangle,
   CreditCard,
+  Search,
 } from "lucide-react";
 import ParticleCanvas from "@/components/canvas/ParticleCanvas";
 import EscrowCore from "@/components/canvas/EscrowCore";
@@ -25,6 +26,7 @@ import NavigationBar from "@/components/layout/NavigationBar";
 import { TrustBanner, TrustStats } from "@/components/layout/TrustBadges";
 import SocialLinks from "@/components/layout/SocialLinks";
 import { Truck, Briefcase, Store, Package } from "lucide-react";
+import { CATEGORIES } from "@/lib/categories";
 
 // Animated counter component
 function AnimatedNumber({ target, prefix = "", suffix = "" }: { target: number; prefix?: string; suffix?: string }) {
@@ -303,6 +305,54 @@ export default function Landing() {
               <div className="text-sm text-white/40">{stat.label}</div>
             </FadeIn>
           ))}
+        </div>
+      </section>
+
+      {/* =================== MARKETPLACE CATEGORIES =================== */}
+      <section className="relative z-10 py-20 px-6">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 text-nx-cyan text-xs font-medium tracking-widest uppercase mb-4">
+              <Store className="w-3.5 h-3.5" />
+              Marketplace
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
+              Browse <span className="nx-gradient-text">Categories</span>
+            </h2>
+            <p className="text-white/40 max-w-xl mx-auto text-base">
+              Discover thousands of verified products across Kenya. Every listing protected by escrow.
+            </p>
+          </FadeIn>
+
+          {/* Category grid — matching seller listing layout */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {CATEGORIES.map((cat, i) => (
+              <FadeIn key={cat.slug} delay={i * 0.04}>
+                <button
+                  onClick={() => navigate(`/marketplace?category=${cat.slug}`)}
+                  className="w-full p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] text-left transition-all hover:border-white/10 hover:bg-white/[0.04] hover:scale-[1.02] group"
+                >
+                  <p className="text-2xl mb-2 group-hover:scale-110 transition-transform inline-block">{cat.icon}</p>
+                  <p className="text-sm font-semibold text-white mb-0.5">{cat.name}</p>
+                  <p className="text-[11px] text-white/30 leading-relaxed line-clamp-2">{cat.description}</p>
+                </button>
+              </FadeIn>
+            ))}
+          </div>
+
+          {/* View all button */}
+          <FadeIn delay={0.3}>
+            <div className="text-center mt-8">
+              <button
+                onClick={() => navigate("/marketplace")}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 text-white/60 text-sm font-medium hover:border-nx-cyan/30 hover:text-white transition-all"
+              >
+                <Search className="w-4 h-4" />
+                View All Products
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </FadeIn>
         </div>
       </section>
 
