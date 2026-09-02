@@ -114,25 +114,25 @@ export default function Landing() {
       <div className="relative z-10"><TrustBanner /></div>
 
       {/* ══════ HERO ══════ */}
-      <section className="relative min-h-[85vh] flex flex-col items-center justify-center px-6 pt-24 pb-12 z-10">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1.5, delay: 0.2 }} className="mb-0">
-          <GalacticCore size={340} />
+      <section className="relative min-h-[70vh] md:min-h-[65vh] flex flex-col items-center justify-start px-6 pt-20 md:pt-24 pb-8 z-10">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1.5, delay: 0.2 }} className="mb-1">
+          <GalacticCore size={220} />
         </motion.div>
 
         <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.8 }}
-          className="text-4xl sm:text-5xl md:text-7xl font-bold text-center max-w-4xl leading-tight tracking-tight">
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-center max-w-4xl leading-tight tracking-tight">
           <span className="text-white">Buy. Sell. </span>
           <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-cyan-200 bg-clip-text text-transparent">Securely.</span>
         </motion.h1>
 
         <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.0 }}
-          className="text-base sm:text-lg text-white/40 text-center max-w-2xl mt-2 leading-relaxed">
+          className="text-sm sm:text-base md:text-lg text-white/40 text-center max-w-2xl mt-3 leading-relaxed">
           AI-powered marketplace with protected transactions. Every trade backed by escrow.
         </motion.p>
 
         {/* Search Bar */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.1 }}
-          className="w-full max-w-2xl mt-8">
+          className="w-full max-w-2xl mt-6">
           <div className="flex items-center rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl overflow-hidden hover:border-white/20 transition-colors">
             <div className="pl-4"><Search className="w-5 h-5 text-white/30" /></div>
             <input
@@ -140,10 +140,10 @@ export default function Landing() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="Search products, vehicles, fashion, electronics..."
-              className="flex-1 px-4 py-4 bg-transparent text-sm text-white placeholder:text-white/25 focus:outline-none"
+              className="flex-1 px-4 py-3 md:py-4 bg-transparent text-sm text-white placeholder:text-white/25 focus:outline-none"
             />
             <button onClick={handleSearch}
-              className="px-6 py-4 bg-nx-cyan text-black text-sm font-semibold hover:bg-nx-cyan/80 transition-colors">
+              className="px-5 md:px-6 py-3 md:py-4 bg-nx-cyan text-black text-sm font-semibold hover:bg-nx-cyan/80 transition-colors">
               Search
             </button>
           </div>
@@ -151,7 +151,7 @@ export default function Landing() {
 
         {/* Trust badges */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 1.5 }}
-          className="flex flex-wrap justify-center gap-6 mt-8">
+          className="flex flex-wrap justify-center gap-5 mt-5">
           {[
             { icon: Shield, label: "Escrow Protected" },
             { icon: Brain, label: "AI-Powered Security" },
