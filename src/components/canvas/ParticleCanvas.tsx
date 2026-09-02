@@ -20,10 +20,10 @@ interface Constellation {
 const PARTICLE_COUNT = 600;
 const CONSTELLATION_DISTANCE = 120;
 const COLORS = [
-  { r: 139, g: 92, b: 246 },  // violet
+  { r: 100, g: 200, b: 255 }, // ice blue
   { r: 6, g: 182, b: 212 },   // cyan
   { r: 255, g: 255, b: 255 }, // white
-  { r: 245, g: 158, b: 11 },  // gold (rare)
+  { r: 139, g: 92, b: 246 },  // violet (rare)
 ];
 
 export default function ParticleCanvas() {

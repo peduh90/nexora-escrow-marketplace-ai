@@ -200,7 +200,7 @@
 
 /* Gradient text */
 .nx-gradient-text {
-  background: linear-gradient(135deg, #8B5CF6, #06B6D4, #F59E0B);
+  background: linear-gradient(135deg, #67E8F9, #93C5FD, #C4B5FD);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

@@ -10,7 +10,7 @@ import {
   Truck, Briefcase, Store, Package, ShoppingCart, ChevronLeft,
 } from "lucide-react";
 import ParticleCanvas from "@/components/canvas/ParticleCanvas";
-import EscrowCore from "@/components/canvas/EscrowCore";
+import GalacticCore from "@/components/canvas/GalacticCore";
 import NavigationBar from "@/components/layout/NavigationBar";
 import { TrustBanner } from "@/components/layout/TrustBadges";
 import SocialLinks from "@/components/layout/SocialLinks";
@@ -115,18 +115,18 @@ export default function Landing() {
 
       {/* ══════ HERO ══════ */}
       <section className="relative min-h-[85vh] flex flex-col items-center justify-center px-6 pt-24 pb-12 z-10">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1.2, delay: 0.3 }} className="mb-2">
-          <EscrowCore size={280} />
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1.5, delay: 0.2 }} className="mb-0">
+          <GalacticCore size={340} />
         </motion.div>
 
-        <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.6 }}
+        <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.8 }}
           className="text-4xl sm:text-5xl md:text-7xl font-bold text-center max-w-4xl leading-tight tracking-tight">
           <span className="text-white">Buy. Sell. </span>
-          <span className="nx-gradient-text">Securely.</span>
+          <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-cyan-200 bg-clip-text text-transparent">Securely.</span>
         </motion.h1>
 
-        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.9 }}
-          className="text-base sm:text-lg text-white/50 text-center max-w-2xl mt-2 leading-relaxed">
+        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.0 }}
+          className="text-base sm:text-lg text-white/40 text-center max-w-2xl mt-2 leading-relaxed">
           AI-powered marketplace with protected transactions. Every trade backed by escrow.
         </motion.p>
 
