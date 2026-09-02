@@ -52,6 +52,8 @@ const SellerAddProduct = lazy(() => import("./pages/seller/SellerAddProduct.tsx"
 const SellerEditProduct = lazy(() => import("./pages/seller/SellerEditProduct.tsx"));
 const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails.tsx"));
+const PrivacyPage = lazy(() => import("./pages/Privacy.tsx"));
+const TermsPage = lazy(() => import("./pages/Terms.tsx"));
 // Admin panel
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers.tsx"));
@@ -189,6 +191,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
               <Route path="/product/:id" element={<ProductDetails />} />
               <Route path="/marketplace" element={<BuyerMarketplace />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
 
               {/* Legacy dashboard routes (backward compat) */}
               <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />

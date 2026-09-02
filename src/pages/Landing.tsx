@@ -462,9 +462,9 @@ export default function Landing() {
           <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-[11px] text-white/15">&copy; 2025 Nexora Market. All rights reserved. HQ: Nairobi, Kenya.</p>
             <div className="flex items-center gap-4 text-[11px] text-white/15">
-              <a href="#" className="hover:text-white/30 transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white/30 transition-colors">Terms</a>
-              <a href="#" className="hover:text-white/30 transition-colors">Security</a>
+              <a href="/privacy" className="hover:text-white/30 transition-colors">Privacy</a>
+              <a href="/terms" className="hover:text-white/30 transition-colors">Terms</a>
+              <a href="/privacy" className="hover:text-white/30 transition-colors">Security</a>
             </div>
           </div>
         </div>
