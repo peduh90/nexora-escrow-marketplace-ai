@@ -7,7 +7,7 @@ import {
   Shield, Brain, Eye, Scale, CheckCircle2, Globe, ArrowRight, Zap,
   Lock, Users, TrendingUp, ChevronRight, ShieldCheck, Fingerprint,
   AlertTriangle, CreditCard, Search, Star, MapPin, Heart,
-  Truck, Briefcase, Store, Package, ShoppingCart, ChevronLeft,
+  Truck, Briefcase, Store, Package, ShoppingCart,
 } from "lucide-react";
 import ParticleCanvas from "@/components/canvas/ParticleCanvas";
 import GalacticCore from "@/components/canvas/GalacticCore";
@@ -86,8 +86,6 @@ function ProductCard({ listing }: { listing: any }) {
 export default function Landing() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [catScrollRef, setCatScrollRef] = useState<HTMLDivElement | null>(null);
-
   // Real products from database
   const latestListings = useQuery(api.listings.getActiveListings, { limit: 8 });
   const featuredListings = useQuery(api.listings.getActiveListings, { limit: 4 });
@@ -97,12 +95,6 @@ export default function Landing() {
       navigate(`/marketplace?q=${encodeURIComponent(searchQuery.trim())}`);
     } else {
       navigate("/marketplace");
-    }
-  };
-
-  const scrollCategories = (dir: "left" | "right") => {
-    if (catScrollRef) {
-      catScrollRef.scrollBy({ left: dir === "left" ? -200 : 200, behavior: "smooth" });
     }
   };
 
@@ -166,23 +158,22 @@ export default function Landing() {
         </motion.div>
       </section>
 
-      {/* ══════ POPULAR CATEGORIES ══════ */}
+      {/* ══════ CATEGORIES (same grid as Marketplace) ══════ */}
       <section className="relative z-10 py-10 px-6 border-y border-white/5">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-bold text-white">Popular Categories</h2>
-            <button onClick={() => navigate("/marketplace")} className="text-xs text-nx-cyan hover:text-nx-cyan/80 transition-colors flex items-center gap-1">
-              View All <ChevronRight className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="relative">
-            <button onClick={() => scrollCategories("left")} className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/60 text-white/40 hover:text-white transition-colors hidden md:block">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div ref={setCatScrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 px-1">
-              {CATEGORIES.map((cat) => (
-                <button key={cat.slug} onClick={() => navigate(`/marketplace?category=${cat.slug}`)}
-                  className="relative flex items-end px-4 py-3 rounded-xl overflow-hidden shrink-0 group min-w-[170px] h-20">
+          <FadeIn className="text-center mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              Browse <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-cyan-200 bg-clip-text text-transparent">Categories</span>
+            </h2>
+            <p className="text-sm text-white/40">Find exactly what you need across our marketplace</p>
+          </FadeIn>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-2 justify-items-center">
+            {CATEGORIES.map((cat, i) => (
+              <FadeIn key={cat.slug} delay={i * 0.03}>
+                <button
+                  onClick={() => navigate(`/marketplace?category=${cat.slug}`)}
+                  className="relative flex flex-col items-end justify-end p-3 rounded-xl text-left transition-all overflow-hidden h-24 md:h-28 w-full group hover:ring-1 hover:ring-white/20"
+                >
                   <img
                     src={CATEGORY_DEFAULTS[cat.slug] || CATEGORY_DEFAULTS["mobile-phones"]}
                     alt={cat.name}
@@ -190,14 +181,19 @@ export default function Landing() {
                     loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                  <span className="relative z-10 text-sm font-bold text-white drop-shadow-lg">{cat.name}</span>
+                  <span className="relative z-10 text-[10px] md:text-xs font-bold text-white leading-tight drop-shadow-lg">{cat.name}</span>
                 </button>
-              ))}
-            </div>
-            <button onClick={() => scrollCategories("right")} className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/60 text-white/40 hover:text-white transition-colors hidden md:block">
-              <ChevronRight className="w-4 h-4" />
-            </button>
+              </FadeIn>
+            ))}
           </div>
+          <FadeIn delay={0.3}>
+            <div className="text-center mt-6">
+              <button onClick={() => navigate("/marketplace")}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-white/10 text-white/60 text-sm font-medium hover:border-cyan-300/30 hover:text-white transition-all">
+                Browse All Products <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </FadeIn>
         </div>
       </section>
 
