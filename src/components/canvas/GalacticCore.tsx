@@ -1,14 +1,60 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function GalacticCore({ size = 320 }: { size?: number }) {
+interface OrbitalRing {
+  rx: number;
+  ry: number;
+  tiltX: number;
+  tiltY: number;
+  tiltZ: number;
+  speed: number;
+  color: string;
+  nodeCount: number;
+  nodeSize: number;
+}
+
+interface OrbitingNode {
+  ringIdx: number;
+  angle: number;
+  speed: number;
+}
+
+const RINGS: OrbitalRing[] = [
+  { rx: 140, ry: 50, tiltX: 25, tiltY: 0, tiltZ: 10, speed: 0.012, color: "#67E8F9", nodeCount: 3, nodeSize: 3.5 },
+  { rx: 115, ry: 42, tiltX: -20, tiltY: 40, tiltZ: -5, speed: -0.009, color: "#93C5FD", nodeCount: 2, nodeSize: 3 },
+  { rx: 90, ry: 34, tiltX: 50, tiltY: 20, tiltZ: 30, speed: 0.015, color: "#C4B5FD", nodeCount: 2, nodeSize: 2.5 },
+  { rx: 160, ry: 55, tiltX: -35, tiltY: -30, tiltZ: 15, speed: -0.007, color: "#34D399", nodeCount: 3, nodeSize: 2 },
+  { rx: 70, ry: 26, tiltX: 70, tiltY: 10, tiltZ: -40, speed: 0.018, color: "#F9A8D4", nodeCount: 2, nodeSize: 2 },
+];
+
+const TOTAL_NODES = RINGS.reduce((s, r) => s + r.nodeCount, 0);
+
+export default function GalacticCore({ size = 360 }: { size?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const animRef = useRef<number>(0);
   const prefersReduced = useRef(false);
+  const nodesRef = useRef<OrbitingNode[]>([]);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     prefersReduced.current = mq.matches;
+  }, []);
+
+  // Init nodes
+  useEffect(() => {
+    const nodes: OrbitingNode[] = [];
+    let idx = 0;
+    for (let ri = 0; ri < RINGS.length; ri++) {
+      for (let ni = 0; ni < RINGS[ri].nodeCount; ni++) {
+        nodes.push({
+          ringIdx: ri,
+          angle: (ni / RINGS[ri].nodeCount) * Math.PI * 2,
+          speed: RINGS[ri].speed * (1 + (idx % 3) * 0.15),
+        });
+        idx++;
+      }
+    }
+    nodesRef.current = nodes;
   }, []);
 
   useEffect(() => {
@@ -24,57 +70,197 @@ export default function GalacticCore({ size = 320 }: { size?: number }) {
 
     const cx = size / 2;
     const cy = size / 2;
-    const speed = isHovered ? 0.003 : 0.001;
 
-    // Stars
-    const stars = Array.from({ length: 120 }, () => ({
-      angle: Math.random() * Math.PI * 2,
-      dist: Math.random() * size * 0.48 + size * 0.05,
-      size: Math.random() * 1.5 + 0.3,
-      speed: (Math.random() * 0.4 + 0.1) * (Math.random() > 0.5 ? 1 : -1),
-      brightness: Math.random() * 0.6 + 0.2,
-      hue: Math.random() * 60 + 180, // blue-cyan range
-    }));
-
-    // Spiral arm particles
-    const spiralParticles = Array.from({ length: 80 }, () => {
-      const arm = Math.floor(Math.random() * 3);
-      const armAngle = (arm / 3) * Math.PI * 2;
-      const t = Math.random();
-      return {
-        t,
-        armAngle,
-        size: Math.random() * 2 + 0.5,
-        speed: (Math.random() * 0.3 + 0.2),
-        brightness: Math.random() * 0.5 + 0.1,
-        hue: Math.random() > 0.5 ? 200 : (Math.random() > 0.5 ? 260 : 170),
-      };
-    });
-
-    // Orbiting rings (subtle ellipses)
-    const rings = [
-      { rx: size * 0.42, ry: size * 0.12, tilt: 0, speed: 0.0008, color: "rgba(100, 200, 255, 0.08)" },
-      { rx: size * 0.35, ry: size * 0.10, tilt: 0.5, speed: -0.0006, color: "rgba(139, 92, 246, 0.06)" },
-      { rx: size * 0.28, ry: size * 0.08, tilt: -0.3, speed: 0.001, color: "rgba(6, 182, 212, 0.07)" },
-    ];
-
-    let time = 0;
+    // Precompute trails for each node (ring buffer of past positions)
+    const trails: { x: number; y: number }[][] = Array.from({ length: TOTAL_NODES }, () => []);
 
     const animate = () => {
-      if (prefersReduced.current) {
-        // Draw static
-        ctx.clearRect(0, 0, size, size);
-        drawGalaxy(ctx, cx, cy, size, 0, stars, spiralParticles, rings, false);
-        return;
+      ctx.clearRect(0, 0, size, size);
+      const speedMult = isHovered ? 1.8 : 1;
+
+      // ── Ambient glow ──
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.45);
+      glow.addColorStop(0, "rgba(103, 232, 249, 0.04)");
+      glow.addColorStop(0.4, "rgba(147, 197, 253, 0.02)");
+      glow.addColorStop(1, "transparent");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, size, size);
+
+      // ── Draw orbital paths (visible lines) ──
+      for (const ring of RINGS) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        // 3D rotation simulation via elliptical projection
+        ctx.rotate((ring.tiltZ * Math.PI) / 180);
+
+        // Draw the full ellipse path
+        ctx.beginPath();
+        ctx.ellipse(0, 0, ring.rx, ring.ry, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = ring.color + "15";
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        // Dashed version for depth feel
+        ctx.beginPath();
+        ctx.ellipse(0, 0, ring.rx, ring.ry, 0, 0, Math.PI * 2);
+        ctx.setLineDash([2, 6]);
+        ctx.strokeStyle = ring.color + "0A";
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.restore();
       }
 
-      time += speed;
-      ctx.clearRect(0, 0, size, size);
-      drawGalaxy(ctx, cx, cy, size, time, stars, spiralParticles, rings, isHovered);
-      animRef.current = requestAnimationFrame(animate);
+      // ── Update and draw nodes ──
+      let nodeIdx = 0;
+      for (let ri = 0; ri < RINGS.length; ri++) {
+        const ring = RINGS[ri];
+        for (let ni = 0; ni < ring.nodeCount; ni++) {
+          const node = nodesRef.current[nodeIdx];
+          node.angle += node.speed * speedMult;
+
+          // Project 3D position onto 2D
+          const rawX = Math.cos(node.angle) * ring.rx;
+          const rawY = Math.sin(node.angle) * ring.ry;
+
+          // Apply tilt rotations
+          const tiltRadZ = (ring.tiltZ * Math.PI) / 180;
+          const tiltRadX = (ring.tiltX * Math.PI) / 180;
+          const tiltRadY = (ring.tiltY * Math.PI) / 180;
+
+          // Z-rotation
+          let x = rawX * Math.cos(tiltRadZ) - rawY * Math.sin(tiltRadZ);
+          let y = rawX * Math.sin(tiltRadZ) + rawY * Math.cos(tiltRadZ);
+          let z = 0;
+
+          // X-rotation
+          const y2 = y * Math.cos(tiltRadX) - z * Math.sin(tiltRadX);
+          const z2 = y * Math.sin(tiltRadX) + z * Math.cos(tiltRadX);
+          y = y2;
+          z = z2;
+
+          // Y-rotation
+          const x2 = x * Math.cos(tiltRadY) + z * Math.sin(tiltRadY);
+          const z3 = -x * Math.sin(tiltRadY) + z * Math.cos(tiltRadY);
+          x = x2;
+
+          const screenX = cx + x;
+          const screenY = cy + y;
+          // z for depth: affects size and opacity
+          const depthScale = 0.7 + 0.3 * ((z2 + ring.rx) / (ring.rx * 2));
+          const nodeAlpha = 0.4 + 0.6 * depthScale;
+
+          // Store trail
+          trails[nodeIdx].push({ x: screenX, y: screenY });
+          if (trails[nodeIdx].length > 20) trails[nodeIdx].shift();
+
+          // Draw trail
+          if (trails[nodeIdx].length > 2) {
+            ctx.beginPath();
+            ctx.moveTo(trails[nodeIdx][0].x, trails[nodeIdx][0].y);
+            for (let ti = 1; ti < trails[nodeIdx].length; ti++) {
+              ctx.lineTo(trails[nodeIdx][ti].x, trails[nodeIdx][ti].y);
+            }
+            ctx.strokeStyle = ring.color + "18";
+            ctx.lineWidth = ring.nodeSize * 0.5;
+            ctx.lineCap = "round";
+            ctx.stroke();
+          }
+
+          // Draw energy line from core to node
+          const lineGrad = ctx.createLinearGradient(cx, cy, screenX, screenY);
+          lineGrad.addColorStop(0, "transparent");
+          lineGrad.addColorStop(0.3, ring.color + "06");
+          lineGrad.addColorStop(0.7, ring.color + Math.round(nodeAlpha * 12).toString(16).padStart(2, "0"));
+          lineGrad.addColorStop(1, ring.color + Math.round(nodeAlpha * 20).toString(16).padStart(2, "0"));
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(screenX, screenY);
+          ctx.strokeStyle = lineGrad;
+          ctx.lineWidth = 0.6;
+          ctx.stroke();
+
+          // Glow around node
+          const glowGrad = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, ring.nodeSize * 4 * depthScale);
+          glowGrad.addColorStop(0, ring.color + "30");
+          glowGrad.addColorStop(1, "transparent");
+          ctx.fillStyle = glowGrad;
+          ctx.beginPath();
+          ctx.arc(screenX, screenY, ring.nodeSize * 4 * depthScale, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Node sphere
+          const ns = ring.nodeSize * depthScale;
+          const sphereGrad = ctx.createRadialGradient(screenX - ns * 0.3, screenY - ns * 0.3, 0, screenX, screenY, ns);
+          sphereGrad.addColorStop(0, "#FFFFFF");
+          sphereGrad.addColorStop(0.3, ring.color);
+          sphereGrad.addColorStop(1, ring.color + "40");
+          ctx.beginPath();
+          ctx.arc(screenX, screenY, ns, 0, Math.PI * 2);
+          ctx.fillStyle = sphereGrad;
+          ctx.globalAlpha = nodeAlpha;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+
+          nodeIdx++;
+        }
+      }
+
+      // ── Core nucleus ──
+      const pulse = 1 + Math.sin(Date.now() * 0.003) * 0.08;
+      const coreR = 12 * pulse;
+
+      // Outer corona
+      const corona = ctx.createRadialGradient(cx, cy, coreR, cx, cy, coreR * 6);
+      corona.addColorStop(0, "rgba(103, 232, 249, 0.08)");
+      corona.addColorStop(0.5, "rgba(147, 197, 253, 0.03)");
+      corona.addColorStop(1, "transparent");
+      ctx.fillStyle = corona;
+      ctx.beginPath();
+      ctx.arc(cx, cy, coreR * 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core glow
+      const coreGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 2);
+      coreGlow.addColorStop(0, "rgba(200, 230, 255, 0.12)");
+      coreGlow.addColorStop(0.4, "rgba(103, 232, 249, 0.06)");
+      coreGlow.addColorStop(1, "transparent");
+      ctx.fillStyle = coreGlow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, coreR * 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core sphere
+      const coreGrad = ctx.createRadialGradient(cx - 3, cy - 3, 0, cx, cy, coreR);
+      coreGrad.addColorStop(0, "rgba(220, 245, 255, 0.5)");
+      coreGrad.addColorStop(0.5, "rgba(103, 232, 249, 0.3)");
+      coreGrad.addColorStop(1, "rgba(103, 232, 249, 0.05)");
+      ctx.beginPath();
+      ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
+      ctx.fillStyle = coreGrad;
+      ctx.fill();
+
+      // Core bright center
+      const center = ctx.createRadialGradient(cx, cy, 0, cx, cy, 4);
+      center.addColorStop(0, "rgba(255, 255, 255, 0.5)");
+      center.addColorStop(1, "transparent");
+      ctx.fillStyle = center;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (!prefersReduced.current) {
+        animRef.current = requestAnimationFrame(animate);
+      }
     };
 
-    animate();
+    if (prefersReduced.current) {
+      animate();
+    } else {
+      animRef.current = requestAnimationFrame(animate);
+    }
+
     return () => cancelAnimationFrame(animRef.current);
   }, [size, isHovered]);
 
@@ -85,18 +271,16 @@ export default function GalacticCore({ size = 320 }: { size?: number }) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       role="img"
-      aria-label="Galactic escrow protection"
+      aria-label="Atomic orbital escrow protection"
     >
-      {/* Ambient nebula glow */}
+      {/* Ambient nebula backdrop */}
       <div
         className="absolute rounded-full"
         style={{
-          width: size * 2,
-          height: size * 2,
-          background: `radial-gradient(circle at 40% 40%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
-                       radial-gradient(circle at 60% 60%, rgba(139, 92, 246, 0.04) 0%, transparent 50%),
-                       radial-gradient(circle, rgba(100, 200, 255, 0.03) 0%, transparent 60%)`,
-          animation: prefersReduced.current ? "none" : "nx-breathe 20s ease-in-out infinite",
+          width: size * 1.8,
+          height: size * 1.8,
+          background: `radial-gradient(ellipse at 35% 35%, rgba(103, 232, 249, 0.03) 0%, transparent 50%),
+                       radial-gradient(ellipse at 65% 65%, rgba(196, 181, 253, 0.02) 0%, transparent 50%)`,
         }}
       />
 
@@ -107,134 +291,11 @@ export default function GalacticCore({ size = 320 }: { size?: number }) {
       />
 
       {/* Label */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20">
-        <span className="text-[10px] font-mono font-semibold tracking-[4px] text-cyan-300/40">
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20">
+        <span className="text-[9px] font-mono font-semibold tracking-[5px] text-cyan-300/30">
           ESCROW PROTECTED
         </span>
       </div>
     </div>
   );
-}
-
-function drawGalaxy(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  size: number,
-  time: number,
-  stars: any[],
-  spiralParticles: any[],
-  rings: any[],
-  hovered: boolean
-) {
-  // ── Outer nebula haze ──
-  const nebulaGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.5);
-  nebulaGrad.addColorStop(0, "rgba(6, 182, 212, 0.04)");
-  nebulaGrad.addColorStop(0.3, "rgba(139, 92, 246, 0.03)");
-  nebulaGrad.addColorStop(0.6, "rgba(100, 200, 255, 0.01)");
-  nebulaGrad.addColorStop(1, "transparent");
-  ctx.fillStyle = nebulaGrad;
-  ctx.fillRect(0, 0, size, size);
-
-  // ── Spiral arms ──
-  for (const p of spiralParticles) {
-    const angle = p.armAngle + time * p.speed * 3;
-    const dist = (p.t * size * 0.4 + size * 0.06);
-    // Tighten spiral as distance increases
-    const spiralOffset = p.t * Math.PI * 1.5;
-    const x = cx + Math.cos(angle + spiralOffset + time * 0.2) * dist;
-    const y = cy + Math.sin(angle + spiralOffset + time * 0.2) * dist * 0.35;
-
-    const alpha = p.brightness * (1 - p.t * 0.5) * (hovered ? 1.3 : 1);
-    ctx.beginPath();
-    ctx.arc(x, y, p.size, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${p.hue}, 80%, 70%, ${alpha})`;
-    ctx.fill();
-  }
-
-  // ── Orbital rings ──
-  for (const ring of rings) {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(ring.tilt);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, ring.rx, ring.ry, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = ring.color;
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // ── Orbiting dots on rings ──
-  const ringDots = [
-    { rx: size * 0.42, ry: size * 0.12, tilt: 0, speed: 0.5, color: "#64C8FF", count: 4 },
-    { rx: size * 0.35, ry: size * 0.10, tilt: 0.5, speed: -0.3, color: "#8B5CF6", count: 3 },
-    { rx: size * 0.28, ry: size * 0.08, tilt: -0.3, speed: 0.7, color: "#06B6D4", count: 3 },
-  ];
-  for (const rd of ringDots) {
-    for (let i = 0; i < rd.count; i++) {
-      const angle = time * rd.speed + (i / rd.count) * Math.PI * 2;
-      const x = cx + Math.cos(angle) * rd.rx * Math.cos(rd.tilt) - Math.sin(angle) * rd.ry * Math.sin(rd.tilt);
-      const y = cy + Math.cos(angle) * rd.rx * Math.sin(rd.tilt) + Math.sin(angle) * rd.ry * Math.cos(rd.tilt);
-
-      // Glow
-      const glowGrad = ctx.createRadialGradient(x, y, 0, x, y, 6);
-      glowGrad.addColorStop(0, rd.color + "60");
-      glowGrad.addColorStop(1, "transparent");
-      ctx.fillStyle = glowGrad;
-      ctx.fillRect(x - 6, y - 6, 12, 12);
-
-      // Dot
-      ctx.beginPath();
-      ctx.arc(x, y, 1.5, 0, Math.PI * 2);
-      ctx.fillStyle = rd.color;
-      ctx.fill();
-    }
-  }
-
-  // ── Background stars ──
-  for (const star of stars) {
-    const x = cx + Math.cos(star.angle + time * star.speed) * star.dist;
-    const y = cy + Math.sin(star.angle + time * star.speed) * star.dist * 0.4;
-
-    ctx.beginPath();
-    ctx.arc(x, y, star.size, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${star.hue}, 60%, 80%, ${star.brightness})`;
-    ctx.fill();
-  }
-
-  // ── Core glow (subtle, not bright) ──
-  const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.15);
-  coreGrad.addColorStop(0, "rgba(200, 230, 255, 0.15)");
-  coreGrad.addColorStop(0.3, "rgba(100, 200, 255, 0.06)");
-  coreGrad.addColorStop(0.6, "rgba(139, 92, 246, 0.03)");
-  coreGrad.addColorStop(1, "transparent");
-  ctx.fillStyle = coreGrad;
-  ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.15, 0, Math.PI * 2);
-  ctx.fill();
-
-  // ── Central bright point ──
-  const pointGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 4);
-  pointGrad.addColorStop(0, "rgba(220, 240, 255, 0.6)");
-  pointGrad.addColorStop(1, "transparent");
-  ctx.fillStyle = pointGrad;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  // ── Occasional shooting star ──
-  const shootTime = (time * 100) % 300;
-  if (shootTime < 15) {
-    const sx = cx + Math.cos(time * 2) * size * 0.3;
-    const sy = cy - size * 0.3 + shootTime * 8;
-    const len = 20;
-    const alpha = 1 - shootTime / 15;
-    ctx.beginPath();
-    ctx.moveTo(sx, sy);
-    ctx.lineTo(sx - len * 0.7, sy + len);
-    ctx.strokeStyle = `rgba(180, 220, 255, ${alpha * 0.3})`;
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-  }
 }
