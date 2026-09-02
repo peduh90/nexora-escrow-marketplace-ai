@@ -5,6 +5,7 @@ import { useNavigate } from "react-router";
 
 const navLinks = [
   { label: "Platform", href: "#platform" },
+  { label: "Marketplace", href: "/marketplace" },
   { label: "How It Works", href: "#how-it-works" },
   { label: "Trust", href: "#trust" },
   { label: "Pricing", href: "#pricing" },
@@ -51,6 +52,7 @@ export default function NavigationBar() {
               <a
                 key={link.label}
                 href={link.href}
+                onClick={(e) => { if (link.href.startsWith("/")) { e.preventDefault(); navigate(link.href); } }}
                 className="text-sm text-white/60 hover:text-white transition-colors duration-300"
               >
                 {link.label}
@@ -104,7 +106,7 @@ export default function NavigationBar() {
                   key={link.label}
                   href={link.href}
                   className="text-white/70 hover:text-white text-sm py-2"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={(e) => { if (link.href.startsWith("/")) { e.preventDefault(); navigate(link.href); } setMobileOpen(false); }}
                 >
                   {link.label}
                 </a>
