@@ -1,10 +1,15 @@
 import { useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
-import { Store, Camera, MapPin, Globe, Phone, Mail, Clock, Save } from "lucide-react";
+import { Store, Camera, MapPin, Globe, Phone, Mail, Clock, Save, CheckCircle2 } from "lucide-react";
 
 export default function SellerStore() {
+  const { user } = useAuth();
+  const updateProfile = useMutation(api.users.updateProfile);
   const [form, setForm] = useState({
-    storeName: "TechZone Kenya", description: "Premium electronics and gadgets store. Authorized dealer for top brands.", phone: "+254 712 345 678", email: "sales@techzone.co.ke", website: "https://techzone.co.ke", county: "Nairobi", town: "Westlands", hours: "Mon-Sat 8AM-6PM",
+    storeName: user?.businessName || "", description: "", phone: user?.phone || "", email: user?.email || "", website: "", county: user?.county || "", town: user?.town || "", hours: "",
   });
   const [saved, setSaved] = useState(false);
   return (
