@@ -55,6 +55,8 @@ export default function ProductDetails() {
   const listing = useQuery(api.listings.getListing, id ? { listingId: id as any } : "skip");
   const incrementViews = useMutation(api.listings.incrementViews);
   const createOrder = useMutation(api.wallet.createOrder);
+  const initiateStkPush = useMutation(api.mpesa.initiateStkPush as any);
+  const checkTransactionStatus = useMutation(api.mpesa.checkTransactionStatus as any);
   const startConversation = useMutation(api.messages.startConversation);
   // sendMessage removed - startConversation handles the first message internally
   const sendMessage = useMutation(api.messages.sendMessage);
@@ -71,6 +73,9 @@ export default function ProductDetails() {
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"wallet" | "mpesa">("wallet");
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [mpesaStep, setMpesaStep] = useState<"idle" | "sending" | "waiting" | "confirming" | "done" | "error">("idle");
+  const [mpesaPhone, setMpesaPhone] = useState("");
+  const [mpesaError, setMpesaError] = useState("");
 
   // Increment views on first load
   if (id && listing) {
@@ -112,6 +117,76 @@ export default function ProductDetails() {
       return;
     }
     if (!deliveryCounty || !deliveryTown || !deliveryAddress) return;
+
+    // ── M-Pesa STK Push flow ──
+    if (paymentMethod === "mpesa") {
+      const phone = mpesaPhone || user.phone || "";
+      if (!phone) {
+        setMpesaError("Please enter your M-Pesa phone number.");
+        return;
+      }
+      setOrdering(true);
+      setMpesaStep("sending");
+      setMpesaError("");
+      try {
+        const stkResult = await initiateStkPush({
+          phoneNumber: phone,
+          amount: grandTotal,
+          accountReference: `NX-${listing.title.slice(0, 20)}`,
+          description: `Payment for ${listing.title}`,
+        });
+        setMpesaStep("waiting");
+        // Poll for status every 5 seconds, max 60 seconds
+        const checkoutId = stkResult.checkoutRequestId;
+        let attempts = 0;
+        const poll = async () => {
+          attempts++;
+          if (attempts > 12) {
+            setMpesaStep("error");
+            setMpesaError("Payment timed out. Please try again.");
+            setOrdering(false);
+            return;
+          }
+          try {
+            const status = await checkTransactionStatus({ checkoutRequestId: checkoutId });
+            if (status.resultCode === "0") {
+              // Payment succeeded — create the order/escrow
+              setMpesaStep("confirming");
+              await createOrder({
+                listingId: listing._id,
+                sellerId: listing.sellerId,
+                amount: totalAmount,
+                deliveryCounty,
+                deliveryTown,
+                deliveryAddress,
+                paymentMethod: "mpesa",
+              });
+              setMpesaStep("done");
+              setOrderSuccess(true);
+              setShowCheckout(false);
+            } else if (status.resultCode && status.resultCode !== "1032" && status.resultCode !== "1037") {
+              // 1032 = cancelled by user, 1037 = still processing
+              setMpesaStep("error");
+              setMpesaError(status.resultDesc || "Payment failed. Please try again.");
+              setOrdering(false);
+            } else {
+              // Still processing
+              setTimeout(poll, 5000);
+            }
+          } catch {
+            setTimeout(poll, 5000);
+          }
+        };
+        setTimeout(poll, 5000);
+      } catch (err: any) {
+        setMpesaStep("error");
+        setMpesaError(err.message || "Failed to initiate M-Pesa payment. Please try again.");
+        setOrdering(false);
+      }
+      return;
+    }
+
+    // ── Wallet flow ──
     setOrdering(true);
     try {
       await createOrder({
@@ -121,7 +196,7 @@ export default function ProductDetails() {
         deliveryCounty,
         deliveryTown,
         deliveryAddress,
-        paymentMethod,
+        paymentMethod: "wallet",
       });
       setOrderSuccess(true);
       setShowCheckout(false);
@@ -458,7 +533,7 @@ export default function ProductDetails() {
                   <p className="text-[11px] text-white/30">Pay from your wallet balance</p>
                 </div>
               </label>
-              <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${paymentMethod === 'mpesa' ? 'border-nx-violet/30 bg-nx-violet/5' : 'border-white/5 bg-white/[0.02]'}">
+              <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${paymentMethod === 'mpesa' ? 'border-nx-violet/30 bg-nx-violet/5' : 'border-white/5 bg-white/[0.02]'}`}>
                 <input type="radio" name="payment" value="mpesa" checked={paymentMethod === "mpesa"} onChange={() => setPaymentMethod("mpesa")} className="text-nx-violet" />
                 <div>
                   <p className="text-sm text-white">M-Pesa</p>
@@ -466,6 +541,31 @@ export default function ProductDetails() {
                 </div>
               </label>
             </div>
+
+            {/* M-Pesa phone input */}
+            {paymentMethod === "mpesa" && (
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-white/50 mb-1.5">M-Pesa Phone Number</label>
+                <input type="tel" value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="0712 345 678"
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
+                <p className="text-[11px] text-white/20 mt-1">You'll receive an STK Push prompt on this number</p>
+              </div>
+            )}
+
+            {/* M-Pesa status messages */}
+            {paymentMethod === "mpesa" && mpesaStep !== "idle" && (
+              <div className={`mb-4 p-3 rounded-lg text-sm flex items-center gap-2 ${
+                mpesaStep === "error" ? "bg-red-400/5 border border-red-400/10 text-red-400" :
+                mpesaStep === "done" ? "bg-emerald-400/5 border border-emerald-400/10 text-emerald-400" :
+                "bg-nx-cyan/5 border border-nx-cyan/10 text-nx-cyan"
+              }`}>
+                {mpesaStep === "sending" && <><Loader2 className="w-4 h-4 animate-spin" /> Sending M-Pesa prompt to your phone...</>}
+                {mpesaStep === "waiting" && <><Loader2 className="w-4 h-4 animate-spin" /> Enter your M-Pesa PIN on your phone...</>}
+                {mpesaStep === "confirming" && <><Loader2 className="w-4 h-4 animate-spin" /> Payment confirmed! Creating your order...</>}
+                {mpesaStep === "done" && <><CheckCircle2 className="w-4 h-4" /> Payment successful! Order placed.</>}
+                {mpesaStep === "error" && <>{mpesaError}</>}
+              </div>
+            )}
 
             {/* Price breakdown */}
             <div className="space-y-2 mb-4 text-sm p-3 rounded-xl bg-white/[0.02] border border-white/5">
@@ -477,9 +577,9 @@ export default function ProductDetails() {
 
             <p className="text-[11px] text-white/20 mb-4">🛡️ Payment is held in escrow until you confirm delivery.</p>
 
-            <button onClick={handleBuyNow} disabled={ordering || !deliveryCounty || !deliveryTown || !deliveryAddress}
+            <button onClick={handleBuyNow} disabled={ordering || !deliveryCounty || !deliveryTown || !deliveryAddress || (paymentMethod === "mpesa" && mpesaStep !== "idle")}
               className="w-full py-3 rounded-xl bg-nx-violet text-white font-semibold text-sm hover:bg-nx-violet/80 transition-colors disabled:opacity-30 flex items-center justify-center gap-2">
-              {ordering ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : `Pay KES ${grandTotal.toLocaleString()}`}
+              {ordering ? <><Loader2 className="w-4 h-4 animate-spin" /> {mpesaStep === "waiting" ? "Waiting for M-Pesa..." : "Processing..."}</> : paymentMethod === "mpesa" ? `Pay KES ${grandTotal.toLocaleString()} via M-Pesa` : `Pay KES ${grandTotal.toLocaleString()}`}
             </button>
           </div>
         </div>
