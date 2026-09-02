@@ -10,6 +10,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   const { isLoading, isAuthenticated, user } = useAuth();
   const checkAndPromoteAdmin = useMutation(api.users.checkAndPromoteAdmin);
   const [promoting, setPromoting] = useState(false);
+  const [promoted, setPromoted] = useState(false);
 
   const admin2FAStatus = useQuery(
     api.adminAuth.isAdmin2FAEnabled,
@@ -18,20 +19,22 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
 
   // Auto-promote admin email when they visit /admin
   useEffect(() => {
-    if (!isLoading && isAuthenticated && user && user.role !== "admin" && !promoting) {
+    if (!isLoading && isAuthenticated && user && user.role !== "admin" && !promoting && !promoted) {
       setPromoting(true);
       checkAndPromoteAdmin()
         .then((result) => {
           if (result?.promoted) {
-            window.location.reload();
+            setPromoted(true);
           }
         })
         .catch(() => {})
         .finally(() => setPromoting(false));
     }
-  }, [isLoading, isAuthenticated, user, promoting, checkAndPromoteAdmin]);
+  }, [isLoading, isAuthenticated, user, promoting, promoted, checkAndPromoteAdmin]);
 
-  if (isLoading || promoting || (isAuthenticated && user?.role !== "admin" && user)) {
+  // After promotion, Convex reactive query will re-run and user.role will update automatically.
+  // Show loading until the role updates or we've already promoted.
+  if (isLoading || promoting || (isAuthenticated && user?.role !== "admin" && !promoted)) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#05050A]">
         <div className="text-center">

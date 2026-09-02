@@ -17,10 +17,10 @@ export default function AdminDashboard() {
   );
 
   const statCards = [
-    { label: "Total Users", value: stats.users.total, sub: `${stats.users.buyers} buyers · ${stats.users.sellers} sellers`, icon: Users, color: "nx-violet" },
-    { label: "Products", value: stats.products.total, sub: `${stats.products.active} active · ${stats.products.pending} pending`, icon: Package, color: "emerald-400" },
-    { label: "GMV", value: `KES ${stats.finance.totalGMV.toLocaleString()}`, sub: `Revenue: KES ${stats.finance.platformRevenue.toLocaleString()}`, icon: DollarSign, color: "nx-cyan" },
-    { label: "In Escrow", value: `KES ${stats.finance.heldInEscrow.toLocaleString()}`, sub: `${stats.orders.active} active orders`, icon: Shield, color: "amber-400" },
+    { label: "Total Users", value: stats.users.total, sub: `${stats.users.buyers} buyers · ${stats.users.sellers} sellers`, icon: Users, bgClass: "bg-nx-violet/10", textClass: "text-nx-violet" },
+    { label: "Products", value: stats.products.total, sub: `${stats.products.active} active · ${stats.products.pending} pending`, icon: Package, bgClass: "bg-emerald-400/10", textClass: "text-emerald-400" },
+    { label: "GMV", value: `KES ${stats.finance.totalGMV.toLocaleString()}`, sub: `Revenue: KES ${stats.finance.platformRevenue.toLocaleString()}`, icon: DollarSign, bgClass: "bg-nx-cyan/10", textClass: "text-nx-cyan" },
+    { label: "In Escrow", value: `KES ${stats.finance.heldInEscrow.toLocaleString()}`, sub: `${stats.orders.active} active orders`, icon: Shield, bgClass: "bg-amber-400/10", textClass: "text-amber-400" },
   ];
 
   const secondaryCards = [
@@ -42,8 +42,8 @@ export default function AdminDashboard() {
           {statCards.map((s) => (
             <div key={s.label} className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
               <div className="flex items-center gap-3 mb-3">
-                <div className={`w-9 h-9 rounded-lg bg-${s.color}/10 flex items-center justify-center`}>
-                  <s.icon className={`w-4 h-4 text-${s.color}`} />
+                <div className={`w-9 h-9 rounded-lg ${s.bgClass} flex items-center justify-center`}>
+                  <s.icon className={`w-4 h-4 ${s.textClass}`} />
                 </div>
                 <span className="text-xs text-white/40">{s.label}</span>
               </div>
