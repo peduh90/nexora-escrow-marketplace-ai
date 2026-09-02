@@ -5,6 +5,7 @@ import { api } from "../convex/_generated/api";
 import { Search, Filter, Grid3x3, List, Package, MapPin, Shield, Truck, Heart, ArrowLeft, X } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
 import { CATEGORIES } from "@/lib/categories";
+import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
 
 export default function Marketplace() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -174,24 +175,31 @@ export default function Marketplace() {
           </div>
         </ScrollReveal>
 
-        {/* Categories grid */}
+        {/* Categories grid — real images */}
         <ScrollReveal delay={200}>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-2">
+            {/* All category */}
             <button
               onClick={() => { setSelectedCategory("All"); setSelectedSubcategory(null); }}
-              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-all ${selectedCategory === "All" ? "bg-nx-violet/10 border border-nx-violet/20 text-nx-violet" : "bg-white/[0.02] border border-white/5 text-white/40 hover:text-white/60 hover:border-white/10"}`}
+              className={`relative flex flex-col items-end justify-end p-3 rounded-xl text-left transition-all overflow-hidden h-24 md:h-28 ${selectedCategory === "All" ? "ring-2 ring-nx-violet" : "hover:ring-1 hover:ring-white/20"}`}
             >
-              <span className="text-lg">🏪</span>
-              <span className="text-[10px] font-medium">All</span>
+              <div className="absolute inset-0 bg-gradient-to-br from-nx-violet/20 to-nx-cyan/10" />
+              <span className="relative z-10 text-[10px] font-bold text-white">All Categories</span>
             </button>
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.slug}
                 onClick={() => { setSelectedCategory(cat.slug); setSelectedSubcategory(null); }}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-all group ${selectedCategory === cat.slug ? "bg-nx-violet/10 border border-nx-violet/20 text-nx-violet" : "bg-white/[0.02] border border-white/5 text-white/40 hover:text-white/60 hover:border-white/10"}`}
+                className={`relative flex flex-col items-end justify-end p-3 rounded-xl text-left transition-all overflow-hidden h-24 md:h-28 group ${selectedCategory === cat.slug ? "ring-2 ring-nx-violet" : "hover:ring-1 hover:ring-white/20"}`}
               >
-                <span className="text-lg group-hover:scale-110 transition-transform">{cat.icon}</span>
-                <span className="text-[10px] font-medium leading-tight">{cat.name}</span>
+                <img
+                  src={CATEGORY_DEFAULTS[cat.slug] || CATEGORY_DEFAULTS["mobile-phones"]}
+                  alt={cat.name}
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                <span className="relative z-10 text-[10px] font-bold text-white leading-tight drop-shadow-lg">{cat.name}</span>
               </button>
             ))}
           </div>
@@ -228,8 +236,8 @@ export default function Marketplace() {
         {/* Products */}
         {results.length === 0 ? (
           <div className="text-center py-20">
-            <div className="w-20 h-20 rounded-2xl bg-white/[0.03] flex items-center justify-center mx-auto mb-4">
-              <Package className="w-10 h-10 text-white/10" />
+            <div className="w-24 h-24 rounded-2xl overflow-hidden mx-auto mb-4 opacity-30">
+              <img src="https://images.pexels.com/photos/1092671/pexels-photo-1092671.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&dpr=1" alt="" className="w-full h-full object-cover" />
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">
               {searchQuery ? "No results found" : "No products yet"}
@@ -257,7 +265,7 @@ export default function Marketplace() {
                     {listing.images && listing.images.length > 0 ? (
                       <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
-                      <Package className="w-8 h-8 text-white/10" />
+                      <img src={PRODUCT_PLACEHOLDER[listing.category] || PRODUCT_PLACEHOLDER["mobile-phones"]} alt="" className="w-full h-full object-cover opacity-40" />
                     )}
                     <button onClick={(e) => e.stopPropagation()} className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 backdrop-blur-sm text-white/50 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
                       <Heart className="w-3.5 h-3.5" />

@@ -15,6 +15,7 @@ import NavigationBar from "@/components/layout/NavigationBar";
 import { TrustBanner } from "@/components/layout/TrustBadges";
 import SocialLinks from "@/components/layout/SocialLinks";
 import { CATEGORIES } from "@/lib/categories";
+import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
 
 /* ───── Reusable ───── */
 function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -42,9 +43,7 @@ function ProductCard({ listing }: { listing: any }) {
         {img ? (
           <img src={img} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Package className="w-8 h-8 text-white/10" />
-          </div>
+          <img src={PRODUCT_PLACEHOLDER[listing.category] || PRODUCT_PLACEHOLDER["mobile-phones"]} alt="" className="w-full h-full object-cover opacity-40" />
         )}
         {/* Wishlist */}
         <button onClick={(e) => e.stopPropagation()} className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 backdrop-blur-sm text-white/50 hover:text-red-400 transition-colors">
@@ -183,9 +182,15 @@ export default function Landing() {
             <div ref={setCatScrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 px-1">
               {CATEGORIES.map((cat) => (
                 <button key={cat.slug} onClick={() => navigate(`/marketplace?category=${cat.slug}`)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04] transition-all shrink-0 group min-w-[160px]">
-                  <span className="text-xl">{cat.icon}</span>
-                  <span className="text-sm font-medium text-white/70 group-hover:text-white transition-colors">{cat.name}</span>
+                  className="relative flex items-end px-4 py-3 rounded-xl overflow-hidden shrink-0 group min-w-[170px] h-20">
+                  <img
+                    src={CATEGORY_DEFAULTS[cat.slug] || CATEGORY_DEFAULTS["mobile-phones"]}
+                    alt={cat.name}
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <span className="relative z-10 text-sm font-bold text-white drop-shadow-lg">{cat.name}</span>
                 </button>
               ))}
             </div>
