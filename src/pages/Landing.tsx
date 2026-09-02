@@ -172,7 +172,7 @@ export default function Landing() {
               <FadeIn key={cat.slug} delay={i * 0.03}>
                 <button
                   onClick={() => navigate(`/marketplace?category=${cat.slug}`)}
-                  className="relative flex flex-col items-end justify-end p-3 rounded-xl text-left transition-all overflow-hidden h-24 md:h-28 w-full group hover:ring-1 hover:ring-white/20"
+                  className="relative flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-center transition-all overflow-hidden h-24 md:h-28 w-full group hover:ring-1 hover:ring-white/20"
                 >
                   <img
                     src={CATEGORY_DEFAULTS[cat.slug] || CATEGORY_DEFAULTS["mobile-phones"]}
@@ -181,6 +181,7 @@ export default function Landing() {
                     loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <span className="relative z-10 text-xl group-hover:scale-110 transition-transform drop-shadow-lg">{cat.icon}</span>
                   <span className="relative z-10 text-[10px] md:text-xs font-bold text-white leading-tight drop-shadow-lg">{cat.name}</span>
                 </button>
               </FadeIn>
