@@ -9,6 +9,7 @@ import {
   Bell,
   ChevronLeft,
   ChevronRight,
+  User,
 } from "lucide-react";
 import { useState } from "react";
 import AIChat from "@/components/AIChat";
@@ -19,6 +20,7 @@ const navItems = [
   { to: "/buyer/orders", icon: ShoppingCart, label: "My Orders" },
   { to: "/buyer/wallet", icon: Wallet, label: "Wallet" },
   { to: "/buyer/disputes", icon: Shield, label: "Disputes" },
+  { to: "/buyer/profile", icon: User, label: "My Profile" },
 ];
 
 export default function BuyerLayout({ children }: { children: React.ReactNode }) {

@@ -28,6 +28,7 @@ const BuyerMarketplace = lazy(() => import("./pages/MarketplaceFull.tsx"));
 const BuyerWallet = lazy(() => import("./pages/buyer/BuyerWallet.tsx"));
 const BuyerDisputes = lazy(() => import("./pages/Disputes.tsx"));
 const BuyerOrders = lazy(() => import("./pages/buyer/BuyerOrders.tsx"));
+const BuyerProfile = lazy(() => import("./pages/buyer/BuyerProfile.tsx"));
 // Seller panel
 const SellerDashboard = lazy(() => import("./pages/seller/SellerDashboard.tsx"));
 const SellerProducts = lazy(() => import("./pages/seller/SellerProducts.tsx"));
@@ -204,6 +205,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/buyer/orders" element={<RequireAuth><BuyerOrders /></RequireAuth>} />
               <Route path="/buyer/wallet" element={<RequireAuth><BuyerWallet /></RequireAuth>} />
               <Route path="/buyer/disputes" element={<RequireAuth><BuyerDisputes /></RequireAuth>} />
+              <Route path="/buyer/profile" element={<RequireAuth><BuyerProfile /></RequireAuth>} />
 
               {/* Seller routes */}
               <Route path="/seller" element={<RequireAuth><SellerDashboard /></RequireAuth>} />

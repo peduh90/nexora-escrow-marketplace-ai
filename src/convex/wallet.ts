@@ -202,3 +202,37 @@ export const createOrder = mutation({
     };
   },
 });
+
+/** Get escrow orders for the current buyer */
+export const getEscrowByBuyer = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+    if (!user) return [];
+
+    const escrows = await ctx.db
+      .query("escrows")
+      .withIndex("by_buyer", (q) => q.eq("buyerId", user._id))
+      .order("desc")
+      .collect();
+
+    // Enrich with seller name
+    const enriched = await Promise.all(
+      escrows.map(async (escrow) => {
+        const seller: any = await ctx.db.get(escrow.sellerId as any);
+        return {
+          ...escrow,
+          sellerName: seller?.name || "Unknown Seller",
+        };
+      })
+    );
+
+    return enriched;
+  },
+});

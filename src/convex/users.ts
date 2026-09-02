@@ -119,3 +119,35 @@ export const isAdmin = query({
     return user?.role === "admin";
   },
 });
+
+/** Update current user profile */
+export const updateProfile = mutation({
+  args: {
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    county: v.optional(v.string()),
+    town: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    const updates: Record<string, any> = {};
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.phone !== undefined) updates.phone = args.phone;
+    if (args.county !== undefined) updates.county = args.county;
+    if (args.town !== undefined) updates.town = args.town;
+
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(user._id, updates);
+    }
+
+    return { success: true };
+  },
+});
