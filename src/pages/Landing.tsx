@@ -115,8 +115,8 @@ export default function Landing() {
 
       {/* ══════ HERO ══════ */}
       <section className="relative min-h-[85vh] flex flex-col items-center justify-center px-6 pt-24 pb-12 z-10">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1.2, delay: 0.3 }} className="mb-6">
-          <EscrowCore size={180} />
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1.2, delay: 0.3 }} className="mb-2">
+          <EscrowCore size={280} />
         </motion.div>
 
         <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.6 }}
@@ -126,7 +126,7 @@ export default function Landing() {
         </motion.h1>
 
         <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.9 }}
-          className="text-base sm:text-lg text-white/50 text-center max-w-2xl mt-4 leading-relaxed">
+          className="text-base sm:text-lg text-white/50 text-center max-w-2xl mt-2 leading-relaxed">
           AI-powered marketplace with protected transactions. Every trade backed by escrow.
         </motion.p>
 

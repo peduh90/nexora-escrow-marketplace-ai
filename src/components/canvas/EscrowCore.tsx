@@ -12,9 +12,9 @@ export default function EscrowCore({ size = 280 }: { size?: number }) {
 
   const breatheSpeed = prefersReducedMotion.current ? 0 : isHovered ? 8 : 12;
   const ringCount = 3;
-  const outerRingRadius = size * 0.45;
-  const midRingRadius = size * 0.38;
-  const innerRingRadius = size * 0.3;
+  const outerRingRadius = size * 0.48;
+  const midRingRadius = size * 0.40;
+  const innerRingRadius = size * 0.32;
 
   return (
     <div
@@ -29,9 +29,9 @@ export default function EscrowCore({ size = 280 }: { size?: number }) {
       <div
         className="absolute rounded-full"
         style={{
-          width: size * 1.3,
-          height: size * 1.3,
-          background: `radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(6, 182, 212, 0.05) 50%, transparent 70%)`,
+          width: size * 1.6,
+          height: size * 1.6,
+          background: `radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, rgba(6, 182, 212, 0.06) 40%, transparent 70%)`,
           animation: prefersReducedMotion.current ? "none" : `nx-breathe ${breatheSpeed}s ease-in-out infinite`,
         }}
       />
@@ -98,7 +98,7 @@ export default function EscrowCore({ size = 280 }: { size?: number }) {
         </defs>
 
         {/* Ambient glow */}
-        <circle cx={size / 2} cy={size / 2} r={size * 0.25} fill="url(#core-glow)" />
+        <circle cx={size / 2} cy={size / 2} r={size * 0.30} fill="url(#core-glow)" />
 
         {/* Orbital rings */}
         {[
