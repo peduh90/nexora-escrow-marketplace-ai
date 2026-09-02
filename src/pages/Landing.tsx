@@ -257,6 +257,84 @@ export default function Landing() {
         </motion.div>
       </section>
 
+      {/* =================== BUYER vs SELLER =================== */}
+      <section className="relative z-10 py-20 px-6">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+                Choose Your <span className="nx-gradient-text">Experience</span>
+              </h2>
+              <p className="text-white/40 max-w-lg mx-auto">
+                Nexora serves buyers and sellers differently — each path optimized for security, speed, and trust.
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Buyer Path */}
+            <FadeIn delay={0.1}>
+              <div className="group relative p-8 rounded-2xl border border-nx-cyan/10 bg-gradient-to-br from-nx-cyan/5 to-transparent hover:border-nx-cyan/20 transition-all duration-500">
+                <div className="w-14 h-14 rounded-xl bg-nx-cyan/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                  <Package className="w-7 h-7 text-nx-cyan" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">I'm a Buyer</h3>
+                <p className="text-sm text-white/40 mb-6 leading-relaxed">
+                  Browse thousands of verified products. Every purchase is protected by escrow — your money is safe until you confirm delivery.
+                </p>
+                <div className="space-y-3">
+                  {[
+                    "Browse & search marketplace", "Escrow protection on every order", "Track deliveries in real-time",
+                    "AI fraud detection & risk alerts", "Dispute resolution with AI assistance", "Market wallet with M-Pesa deposit",
+                  ].map((f) => (
+                    <div key={f} className="flex items-center gap-2 text-sm text-white/50">
+                      <CheckCircle2 className="w-4 h-4 text-nx-cyan/60 shrink-0" />
+                      {f}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => navigate("/marketplace")}
+                  className="w-full mt-6 py-3 rounded-xl bg-nx-cyan/10 text-nx-cyan font-medium text-sm hover:bg-nx-cyan/20 transition-colors border border-nx-cyan/20"
+                >
+                  Browse Marketplace →
+                </button>
+              </div>
+            </FadeIn>
+
+            {/* Seller Path */}
+            <FadeIn delay={0.2}>
+              <div className="group relative p-8 rounded-2xl border border-nx-violet/10 bg-gradient-to-br from-nx-violet/5 to-transparent hover:border-nx-violet/20 transition-all duration-500">
+                <div className="w-14 h-14 rounded-xl bg-nx-violet/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                  <Store className="w-7 h-7 text-nx-violet" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">I'm a Seller</h3>
+                <p className="text-sm text-white/40 mb-6 leading-relaxed">
+                  List products, manage orders, communicate with buyers. KYC verification builds trust. Withdraw earnings via M-Pesa.
+                </p>
+                <div className="space-y-3">
+                  {[
+                    "KYC business verification", "Upload & manage products", "Real-time order management",
+                    "Direct buyer messaging", "Analytics & earnings dashboard", "Withdraw to M-Pesa instantly",
+                  ].map((f) => (
+                    <div key={f} className="flex items-center gap-2 text-sm text-white/50">
+                      <CheckCircle2 className="w-4 h-4 text-nx-violet/60 shrink-0" />
+                      {f}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => navigate("/auth?returnTo=/seller")}
+                  className="w-full mt-6 py-3 rounded-xl bg-nx-violet/10 text-nx-violet font-medium text-sm hover:bg-nx-violet/20 transition-colors border border-nx-violet/20"
+                >
+                  Start Selling →
+                </button>
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
       {/* =================== NEW FEATURES =================== */}
       <section className="relative z-10 py-20 px-6">
         <div className="max-w-6xl mx-auto">
@@ -620,84 +698,6 @@ export default function Landing() {
             </div>
           </div>
         </FadeIn>
-      </section>
-
-      {/* =================== BUYER vs SELLER =================== */}
-      <section className="relative z-10 py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <FadeIn>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                Choose Your <span className="nx-gradient-text">Experience</span>
-              </h2>
-              <p className="text-white/40 max-w-lg mx-auto">
-                Nexora serves buyers and sellers differently — each path optimized for security, speed, and trust.
-              </p>
-            </div>
-          </FadeIn>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Buyer Path */}
-            <FadeIn delay={0.1}>
-              <div className="group relative p-8 rounded-2xl border border-nx-cyan/10 bg-gradient-to-br from-nx-cyan/5 to-transparent hover:border-nx-cyan/20 transition-all duration-500">
-                <div className="w-14 h-14 rounded-xl bg-nx-cyan/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                  <Package className="w-7 h-7 text-nx-cyan" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">I'm a Buyer</h3>
-                <p className="text-sm text-white/40 mb-6 leading-relaxed">
-                  Browse thousands of verified products. Every purchase is protected by escrow — your money is safe until you confirm delivery.
-                </p>
-                <div className="space-y-3">
-                  {[
-                    "Browse & search marketplace", "Escrow protection on every order", "Track deliveries in real-time",
-                    "AI fraud detection & risk alerts", "Dispute resolution with AI assistance", "Market wallet with M-Pesa deposit",
-                  ].map((f) => (
-                    <div key={f} className="flex items-center gap-2 text-sm text-white/50">
-                      <CheckCircle2 className="w-4 h-4 text-nx-cyan/60 shrink-0" />
-                      {f}
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => navigate("/marketplace")}
-                  className="w-full mt-6 py-3 rounded-xl bg-nx-cyan/10 text-nx-cyan font-medium text-sm hover:bg-nx-cyan/20 transition-colors border border-nx-cyan/20"
-                >
-                  Browse Marketplace →
-                </button>
-              </div>
-            </FadeIn>
-
-            {/* Seller Path */}
-            <FadeIn delay={0.2}>
-              <div className="group relative p-8 rounded-2xl border border-nx-violet/10 bg-gradient-to-br from-nx-violet/5 to-transparent hover:border-nx-violet/20 transition-all duration-500">
-                <div className="w-14 h-14 rounded-xl bg-nx-violet/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                  <Store className="w-7 h-7 text-nx-violet" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">I'm a Seller</h3>
-                <p className="text-sm text-white/40 mb-6 leading-relaxed">
-                  List products, manage orders, communicate with buyers. KYC verification builds trust. Withdraw earnings via M-Pesa.
-                </p>
-                <div className="space-y-3">
-                  {[
-                    "KYC business verification", "Upload & manage products", "Real-time order management",
-                    "Direct buyer messaging", "Analytics & earnings dashboard", "Withdraw to M-Pesa instantly",
-                  ].map((f) => (
-                    <div key={f} className="flex items-center gap-2 text-sm text-white/50">
-                      <CheckCircle2 className="w-4 h-4 text-nx-violet/60 shrink-0" />
-                      {f}
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => navigate("/auth?returnTo=/seller")}
-                  className="w-full mt-6 py-3 rounded-xl bg-nx-violet/10 text-nx-violet font-medium text-sm hover:bg-nx-violet/20 transition-colors border border-nx-violet/20"
-                >
-                  Start Selling →
-                </button>
-              </div>
-            </FadeIn>
-          </div>
-        </div>
       </section>
 
       {/* =================== WHY NEXORA =================== */}
