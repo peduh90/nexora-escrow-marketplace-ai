@@ -43,6 +43,7 @@ const SellerReviews = lazy(() => import("./pages/seller/SellerReviews.tsx"));
 const SellerDelivery = lazy(() => import("./pages/seller/SellerDelivery.tsx"));
 const SellerStore = lazy(() => import("./pages/seller/SellerStore.tsx"));
 const SellerSettings = lazy(() => import("./pages/seller/SellerSettings.tsx"));
+const BuyerSettings = lazy(() => import("./pages/buyer/BuyerSettings.tsx"));
 const SellerNotifications = lazy(() => import("./pages/seller/SellerNotifications.tsx"));
 const SellerHelp = lazy(() => import("./pages/seller/SellerHelp.tsx"));
 const SellerWithdrawals = lazy(() => import("./pages/seller/SellerWithdrawals.tsx"));
@@ -217,7 +218,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/buyer/marketplace" element={<RequireAuth><Marketplace /></RequireAuth>} />
               <Route path="/buyer/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
               <Route path="/buyer/deliveries" element={<RequireAuth><BuyerOrders /></RequireAuth>} />
-              <Route path="/buyer/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+              <Route path="/buyer/settings" element={<RequireAuth><BuyerSettings /></RequireAuth>} />
 
               {/* Seller routes */}
               <Route path="/seller" element={<RequireAuth><SellerDashboard /></RequireAuth>} />
