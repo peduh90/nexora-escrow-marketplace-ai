@@ -50,6 +50,7 @@ const SellerPromotions = lazy(() => import("./pages/seller/SellerPromotions.tsx"
 const SellerAddProduct = lazy(() => import("./pages/seller/SellerAddProduct.tsx"));
 const SellerEditProduct = lazy(() => import("./pages/seller/SellerEditProduct.tsx"));
 const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
+const Chat = lazy(() => import("./pages/Chat.tsx"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails.tsx"));
 const PrivacyPage = lazy(() => import("./pages/Privacy.tsx"));
 const SellerProfilePage = lazy(() => import("./pages/SellerProfile.tsx"));
@@ -194,6 +195,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/auth" element={<AuthPage redirectAfterAuth="/buyer" />} />
               <Route path="/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
               <Route path="/product/:id" element={<ProductDetails />} />
+              <Route path="/chat" element={<RequireAuth><Chat /></RequireAuth>} />
+              <Route path="/chat/:conversationId" element={<RequireAuth><Chat /></RequireAuth>} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
 
@@ -211,6 +214,10 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/buyer/wallet" element={<RequireAuth><BuyerWallet /></RequireAuth>} />
               <Route path="/buyer/disputes" element={<RequireAuth><BuyerDisputes /></RequireAuth>} />
               <Route path="/buyer/profile" element={<RequireAuth><BuyerProfile /></RequireAuth>} />
+              <Route path="/buyer/marketplace" element={<RequireAuth><Marketplace /></RequireAuth>} />
+              <Route path="/buyer/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
+              <Route path="/buyer/deliveries" element={<RequireAuth><BuyerOrders /></RequireAuth>} />
+              <Route path="/buyer/settings" element={<RequireAuth><Settings /></RequireAuth>} />
 
               {/* Seller routes */}
               <Route path="/seller" element={<RequireAuth><SellerDashboard /></RequireAuth>} />

@@ -147,22 +147,27 @@ export const getConversations = query({
     const enriched = await Promise.all(
       allConvos.map(async (convo) => {
         const otherUserId = convo.buyerId === user._id ? convo.sellerId : convo.buyerId;
-        const allUsers = await ctx.db.query("users").collect();
-        const otherUser = allUsers.find((u) => u._id === otherUserId);
+        const otherUserDoc = await ctx.db.get(otherUserId as any);
+        const isUserDoc = otherUserDoc && "email" in otherUserDoc;
+        const otherUserName = isUserDoc ? (otherUserDoc as any).name : "Unknown";
+        const otherUserImage = isUserDoc ? (otherUserDoc as any).image : undefined;
 
-        // listingId is stored as a string, query by _id
-        let listingData = null;
+        let listingTitle = "Unknown product";
+        let listingPrice = 0;
         if (convo.listingId) {
-          const allListings = await ctx.db.query("listings").collect();
-          listingData = allListings.find((l) => l._id === convo.listingId) ?? null;
+          const listingDoc = await ctx.db.get(convo.listingId as any);
+          if (listingDoc && "title" in listingDoc) {
+            listingTitle = (listingDoc as any).title;
+            listingPrice = (listingDoc as any).price || 0;
+          }
         }
 
         return {
           ...convo,
-          otherUserName: otherUser?.name || "Unknown",
-          otherUserImage: otherUser?.image,
-          listingTitle: (listingData as any)?.title || "Unknown product",
-          listingPrice: (listingData as any)?.price || 0,
+          otherUserName,
+          otherUserImage,
+          listingTitle,
+          listingPrice,
           isBuyer: convo.buyerId === user._id,
         };
       })

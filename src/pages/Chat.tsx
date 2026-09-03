@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { ArrowLeft, Send, Paperclip, Image, Shield, Star, MoreVertical, Phone, Video, Info, MapPin, Clock, CheckCheck } from "lucide-react";
@@ -39,12 +39,31 @@ export default function Chat() {
   }, [messages?.length]);
 
   useEffect(() => {
-    // Mark conversation as read when opened
+    if (conversationId && user) {
+      markReadMutation({ conversationId: conversationId as any }).catch(() => {});
+    }
   }, [conversationId, user]);
 
-  const handleSend = () => {
-    if (!message.trim() || !conversationId || !user) return;
+  const sendMessageMutation = useMutation(api.messages.sendMessage);
+  const markReadMutation = useMutation(api.messages.markRead);
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!message.trim() || !conversationId || !user || sending) return;
+    const content = message.trim();
     setMessage("");
+    setSending(true);
+    try {
+      await sendMessageMutation({
+        conversationId: conversationId as any,
+        content,
+      });
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      setMessage(content);
+    } finally {
+      setSending(false);
+    }
   };
 
   const formatTime = (timestamp: number) => {

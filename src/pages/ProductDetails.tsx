@@ -215,14 +215,18 @@ export default function ProductDetails() {
     }
     if (!offerPrice) return;
     try {
-      await startConversation({
+      const result = await startConversation({
         sellerId: listing.sellerId,
         listingId: listing._id as any,
         firstMessage: `💰 Offer: KES ${Number(offerPrice).toLocaleString()} for "${listing.title}" (Listed at KES ${listing.price.toLocaleString()})`,
       });
       setShowOffer(false);
       setOfferPrice("");
-      navigate("/buyer/orders");
+      if (result?.conversationId) {
+        navigate(`/chat/${result.conversationId}`);
+      } else {
+        navigate("/chat");
+      }
     } catch (err: any) {
       alert(err.message || "Failed to send offer.");
     }
@@ -234,12 +238,16 @@ export default function ProductDetails() {
       return;
     }
     try {
-      await startConversation({
+      const result = await startConversation({
         sellerId: listing.sellerId,
         listingId: listing._id as any,
         firstMessage: `Hi, I'm interested in "${listing.title}" (KES ${listing.price.toLocaleString()}). Is it still available?`,
       });
-      navigate("/buyer/orders");
+      if (result?.conversationId) {
+        navigate(`/chat/${result.conversationId}`);
+      } else {
+        navigate("/chat");
+      }
     } catch (err: any) {
       alert(err.message || "Failed to start conversation.");
     }
@@ -404,11 +412,7 @@ export default function ProductDetails() {
                   <MessageSquare className="w-3.5 h-3.5" /> Chat Seller
                 </button>
                 <button onClick={() => navigate(`/seller/${listing.sellerId}`)}
-                  className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/50 text-xs font-medium hover:text-white/70 transition-colors">
-                  View Profile
-                </button>
-                <button onClick={() => navigate(`/seller/${listing.sellerId}`)}
-                  className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/50 text-xs font-medium hover:text-white/70 transition-colors">
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/50 text-xs font-medium hover:text-white/70 transition-colors">
                   View Profile
                 </button>
               </div>
