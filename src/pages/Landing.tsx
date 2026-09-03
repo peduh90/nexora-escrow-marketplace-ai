@@ -105,7 +105,7 @@ export default function Landing() {
       <div className="relative z-10"><TrustBanner /></div>
 
       {/* ══════ HERO ══════ */}
-      <section className="relative min-h-[55vh] md:min-h-[50vh] flex flex-col items-center justify-start px-6 pt-16 md:pt-20 pb-6 z-10">
+      <section id="platform" className="relative min-h-[55vh] md:min-h-[50vh] flex flex-col items-center justify-start px-6 pt-16 md:pt-20 pb-6 z-10">
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1.5, delay: 0.2 }} className="mb-0">
           <GalacticCore size={160} />
         </motion.div>
@@ -250,7 +250,7 @@ export default function Landing() {
       </section>
 
       {/* ══════ HOW ESCROW WORKS (simplified) ══════ */}
-      <section className="relative z-10 py-10 px-6 border-y border-white/5">
+      <section id="how-it-works" className="relative z-10 py-10 px-6 border-y border-white/5">
         <div className="max-w-5xl mx-auto">
           <FadeIn className="text-center mb-12">
             <div className="inline-flex items-center gap-2 text-nx-violet text-xs font-medium tracking-widest uppercase mb-3">
@@ -285,7 +285,7 @@ export default function Landing() {
       </section>
 
       {/* ══════ TRUST SECTION ══════ */}
-      <section className="relative z-10 py-12 px-6">
+      <section id="trust" className="relative z-10 py-12 px-6">
         <div className="max-w-6xl mx-auto">
           <FadeIn className="text-center mb-12">
             <div className="inline-flex items-center gap-2 text-nx-emerald text-xs font-medium tracking-widest uppercase mb-3">
@@ -318,7 +318,7 @@ export default function Landing() {
       </section>
 
       {/* ══════ SELLER CTA ══════ */}
-      <section className="relative z-10 py-12 px-6">
+      <section id="pricing" className="relative z-10 py-12 px-6">
         <FadeIn>
           <div className="max-w-4xl mx-auto text-center">
             <div className="relative p-12 md:p-16 rounded-2xl border border-white/5 overflow-hidden">

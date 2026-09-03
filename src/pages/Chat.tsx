@@ -15,25 +15,24 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isTyping, setIsTyping] = useState(false);
 
-  const conversations = useQuery(
-    user ? api.messages.getConversations : "skip" as any
-  );
+  const conversations = useQuery(api.messages.getConversations);
 
   const activeConvo = conversations?.find((c: any) => c._id === conversationId);
 
   const messages = useQuery(
-    conversationId ? api.messages.getMessages : "skip" as any,
-    conversationId ? { conversationId: conversationId as any } : "skip"
+    api.messages.getMessages,
+    conversationId ? { conversationId: conversationId as any } : ("skip" as any)
   );
 
-  const product = activeConvo?.listingId
-    ? useQuery(api.listings.getListing, { listingId: activeConvo.listingId })
-    : null;
+  const product = useQuery(
+    api.listings.getListing,
+    activeConvo?.listingId ? { listingId: activeConvo.listingId } : ("skip" as any)
+  );
 
   // otherUserName comes enriched from getConversations
   const otherUserName = activeConvo?.otherUserName || "User";
   const otherUserImage = activeConvo?.otherUserImage;
-  const otherUserVerified = user?._id === activeConvo?.sellerId ? false : (activeConvo?.sellerVerified ?? false);
+  const otherUserVerified = false;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

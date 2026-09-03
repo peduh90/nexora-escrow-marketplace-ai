@@ -9,7 +9,7 @@ export default function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const unreadCount = useQuery(
-    user ? api.messages.getUnreadCount : ("skip" as any)
+    api.messages.getUnreadCount
   );
 
   // Hide on landing, auth, admin pages

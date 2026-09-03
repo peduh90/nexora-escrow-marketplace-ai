@@ -11,6 +11,16 @@ const navLinks = [
   { label: "Pricing", href: "#pricing" },
 ];
 
+function scrollToSection(hash: string) {
+  const id = hash.replace("#", "");
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    window.location.hash = hash;
+  }
+}
+
 export default function NavigationBar() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
@@ -52,7 +62,18 @@ export default function NavigationBar() {
               <a
                 key={link.label}
                 href={link.href}
-                onClick={(e) => { if (link.href.startsWith("/")) { e.preventDefault(); navigate(link.href); } }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (link.href.startsWith("/")) {
+                    navigate(link.href);
+                  } else if (link.href.startsWith("#")) {
+                    if (window.location.pathname !== "/") {
+                      window.location.href = "/" + link.href;
+                    } else {
+                      scrollToSection(link.href);
+                    }
+                  }
+                }}
                 className="text-sm text-white/60 hover:text-white transition-colors duration-300"
               >
                 {link.label}
@@ -106,7 +127,19 @@ export default function NavigationBar() {
                   key={link.label}
                   href={link.href}
                   className="text-white/70 hover:text-white text-sm py-2"
-                  onClick={(e) => { if (link.href.startsWith("/")) { e.preventDefault(); navigate(link.href); } setMobileOpen(false); }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (link.href.startsWith("/")) {
+                      navigate(link.href);
+                    } else if (link.href.startsWith("#")) {
+                      if (window.location.pathname !== "/") {
+                        window.location.href = "/" + link.href;
+                      } else {
+                        scrollToSection(link.href);
+                      }
+                    }
+                    setMobileOpen(false);
+                  }}
                 >
                   {link.label}
                 </a>
