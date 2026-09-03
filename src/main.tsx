@@ -18,13 +18,11 @@ const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const Transactions = lazy(() => import("./pages/Transactions.tsx"));
 const WalletPage = lazy(() => import("./pages/WalletPage.tsx"));
-const Marketplace = lazy(() => import("./pages/Marketplace.tsx"));
 const Disputes = lazy(() => import("./pages/Disputes.tsx"));
 const AIInsights = lazy(() => import("./pages/AIInsights.tsx"));
 const Settings = lazy(() => import("./pages/Settings.tsx"));
 // Buyer panel
 const BuyerDashboard = lazy(() => import("./pages/buyer/BuyerDashboard.tsx"));
-const BuyerMarketplace = lazy(() => import("./pages/MarketplaceFull.tsx"));
 const BuyerWallet = lazy(() => import("./pages/buyer/BuyerWallet.tsx"));
 const BuyerDisputes = lazy(() => import("./pages/Disputes.tsx"));
 const BuyerOrders = lazy(() => import("./pages/buyer/BuyerOrders.tsx"));
@@ -194,7 +192,6 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/auth" element={<AuthPage redirectAfterAuth="/buyer" />} />
               <Route path="/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
               <Route path="/product/:id" element={<ProductDetails />} />
-              <Route path="/marketplace" element={<BuyerMarketplace />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
 
@@ -202,14 +199,12 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
               <Route path="/dashboard/transactions" element={<RequireAuth><Transactions /></RequireAuth>} />
               <Route path="/dashboard/wallet" element={<RequireAuth><WalletPage /></RequireAuth>} />
-              <Route path="/dashboard/marketplace" element={<RequireAuth><Marketplace /></RequireAuth>} />
               <Route path="/dashboard/disputes" element={<RequireAuth><Disputes /></RequireAuth>} />
               <Route path="/dashboard/ai-insights" element={<RequireAuth><AIInsights /></RequireAuth>} />
               <Route path="/dashboard/settings" element={<RequireAuth><Settings /></RequireAuth>} />
 
               {/* Buyer routes */}
               <Route path="/buyer" element={<RequireAuth><BuyerDashboard /></RequireAuth>} />
-              <Route path="/buyer/marketplace" element={<RequireAuth><BuyerMarketplace /></RequireAuth>} />
               <Route path="/buyer/orders" element={<RequireAuth><BuyerOrders /></RequireAuth>} />
               <Route path="/buyer/wallet" element={<RequireAuth><BuyerWallet /></RequireAuth>} />
               <Route path="/buyer/disputes" element={<RequireAuth><BuyerDisputes /></RequireAuth>} />
