@@ -6,36 +6,41 @@
 const pexels = (id: number, w = 800, h = 600) =>
   `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${w}&h=${h}&dpr=1`;
 
-/** Hero/banner images for each top-level category */
+/**
+ * Hero/banner images for each top-level category.
+ * Professional, high-quality images representing real products.
+ */
 export const CATEGORY_BANNERS: Record<string, string> = {
-  "mobile-phones": pexels(1092671),
-  "computers-laptops": pexels(18105),
-  "fashion": pexels(1536619),
-  "home-living": pexels(1648776),
-  "services": pexels(3184418),
-  "jobs": pexels(3184291),
-  "agriculture": pexels(250615),
-  "gaming": pexels(3165335),
-  "health-beauty": pexels(3373716),
-  "sports-fitness": pexels(2294361),
-  "baby-kids": pexels(1648377),
-  "handmade-art": pexels(1103970),
-  "events-tickets": pexels(2263436),
-  "business-industrial": pexels(1181298),
-  "tvs-video": pexels(1229861),
-  "pets": pexels(1108099),
-  "learning-books": pexels(159711),
-  "vehicles": pexels(116675),
-  "property": pexels(106399),
-  "phones-tablets": pexels(699122),
-  "electronics": pexels(1714208),
-  "property-rent": pexels(106399),
-  "animals-pets": pexels(1108099),
-  "music-entertainment": pexels(1190298),
-  "school-education": pexels(5212700),
+  "mobile-phones": pexels(1092671),     // Modern smartphones on desk
+  "computers-laptops": pexels(18105),   // MacBook workspace
+  "fashion": pexels(1536619),           // Fashion clothing rack
+  "home-living": pexels(1648776),       // Modern living room
+  "services": pexels(3184418),          // Team collaboration
+  "jobs": pexels(3184291),             // Professional workspace
+  "agriculture": pexels(250615),        // Farm field
+  "gaming": pexels(3165335),           // Gaming controller
+  "health-beauty": pexels(3373716),    // Beauty products
+  "sports-fitness": pexels(2294361),   // Fitness equipment
+  "baby-kids": pexels(1648377),        // Baby clothing
+  "handmade-art": pexels(1103970),     // Art supplies
+  "events-tickets": pexels(2263436),   // Concert crowd
+  "business-industrial": pexels(1181298), // Industrial machinery
+  "tvs-video": pexels(1229861),        // Modern TV
+  "pets": pexels(1108099),             // Dog portrait
+  "learning-books": pexels(159711),    // Stack of books
+  "vehicles": pexels(116675),          // Car interior
+  "property": pexels(106399),          // Modern house
+  "phones-tablets": pexels(699122),    // Tablet device
+  "electronics": pexels(1714208),      // Computer setup
+  "animals-pets": pexels(1108099),     // Pet
+  "music-entertainment": pexels(1190298), // Musical instruments
+  "school-education": pexels(5212700), // Education materials
 };
 
-/** Subcategory images — keyed by subcategory slug */
+/**
+ * Subcategory images — keyed by subcategory slug.
+ * Each image represents the specific subcategory accurately.
+ */
 export const SUBCATEGORY_IMAGES: Record<string, string> = {
   // Mobile Phones
   smartphones: pexels(1092671),
@@ -163,7 +168,10 @@ export const SUBCATEGORY_IMAGES: Record<string, string> = {
   offices: pexels(260931),
 };
 
-/** Default fallback images per top-level category */
+/**
+ * Default fallback images per top-level category.
+ * Used in category grid cards and sidebar category thumbnails.
+ */
 export const CATEGORY_DEFAULTS: Record<string, string> = {
   "mobile-phones": pexels(1092671),
   "computers-laptops": pexels(18105),
@@ -205,11 +213,13 @@ export function getCategoryImage(categorySlug: string, subcategorySlug?: string)
   if (CATEGORY_BANNERS[categorySlug]) {
     return CATEGORY_BANNERS[categorySlug];
   }
-  // Global fallback
   return pexels(1092671);
 }
 
-/** Product placeholder image by category */
+/**
+ * Product placeholder image by category.
+ * Shown when a listing has no images uploaded.
+ */
 export const PRODUCT_PLACEHOLDER: Record<string, string> = {
   "mobile-phones": pexels(699122, 400, 400),
   "computers-laptops": pexels(18105, 400, 400),
