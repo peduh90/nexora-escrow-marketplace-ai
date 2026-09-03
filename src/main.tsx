@@ -29,6 +29,7 @@ const BuyerOrders = lazy(() => import("./pages/buyer/BuyerOrders.tsx"));
 const BuyerProfile = lazy(() => import("./pages/buyer/BuyerProfile.tsx"));
 // Seller panel
 const SellerDashboard = lazy(() => import("./pages/seller/SellerDashboard.tsx"));
+const Marketplace = lazy(() => import("./pages/Marketplace.tsx"));
 const SellerProducts = lazy(() => import("./pages/seller/SellerProducts.tsx"));
 const SellerOrders = lazy(() => import("./pages/seller/SellerOrders.tsx"));
 const SellerEarnings = lazy(() => import("./pages/seller/SellerEarnings.tsx"));
@@ -189,6 +190,7 @@ createRoot(document.getElementById("root")!).render(
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Landing />} />
+              <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/auth" element={<AuthPage redirectAfterAuth="/buyer" />} />
               <Route path="/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
               <Route path="/product/:id" element={<ProductDetails />} />
