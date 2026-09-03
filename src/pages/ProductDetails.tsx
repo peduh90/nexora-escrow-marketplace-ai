@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { getDeliveryFee } from "@/lib/delivery-config";
 import { useAuth } from "@/hooks/use-auth"
@@ -56,8 +56,8 @@ export default function ProductDetails() {
   const listing = useQuery(api.listings.getListing, id ? { listingId: id as any } : "skip");
   const incrementViews = useMutation(api.listings.incrementViews);
   const createOrder = useMutation(api.wallet.createOrder);
-  const initiateStkPush = useMutation(api.mpesa.initiateStkPush as any);
-  const checkTransactionStatus = useMutation(api.mpesa.checkTransactionStatus as any);
+  const initiateStkPush = useAction(api.mpesa.initiateStkPush as any);
+  const checkTransactionStatus = useAction(api.mpesa.checkTransactionStatus as any);
   const startConversation = useMutation(api.messages.startConversation);
   // sendMessage removed - startConversation handles the first message internally
   const sendMessage = useMutation(api.messages.sendMessage);

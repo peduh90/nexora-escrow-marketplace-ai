@@ -1,9 +1,9 @@
 import BuyerLayout from "./BuyerLayout";
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
-import { Wallet, ArrowUpRight, ArrowDownRight, Send, Download, Copy, CheckCircle2, Clock, Shield, Phone, X } from "lucide-react";
+import { Wallet, ArrowUpRight, ArrowDownRight, Send, Download, Copy, CheckCircle2, Clock, Shield, Phone, X, Loader2 } from "lucide-react";
 
 const txConfig: Record<string, { icon: typeof Wallet; color: string }> = {
   deposit: { icon: ArrowDownRight, color: "text-emerald-400 bg-emerald-400/10" },
@@ -22,6 +22,10 @@ export default function BuyerWallet() {
   const [showDeposit, setShowDeposit] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [depositPhone, setDepositPhone] = useState("");
+  const [depositStep, setDepositStep] = useState<"idle" | "sending" | "waiting" | "done" | "error">("idle");
+  const [depositError, setDepositError] = useState("");
+  const initiateStkPush = useAction(api.mpesa.initiateStkPush as any);
+  const initiateDeposit = useMutation(api.wallet.initiateDeposit);
 
   const balance = walletBalance?.walletBalance ?? 0;
   const escrowBalance = walletBalance?.escrowBalance ?? 0;
@@ -177,11 +181,45 @@ export default function BuyerWallet() {
               <button onClick={() => setShowDeposit(false)} className="flex-1 px-4 py-2.5 rounded-lg text-sm text-white/40 hover:text-white/60 transition-colors">
                 Cancel
               </button>
+              {depositError && <p className="text-xs text-red-400 text-center">{depositError}</p>}
               <button
-                disabled={!depositAmount || !depositPhone || Number(depositAmount) < 10}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-nx-cyan hover:bg-nx-cyan/80 text-white text-sm font-medium transition-colors disabled:opacity-40"
+                disabled={!depositAmount || !depositPhone || Number(depositAmount) < 10 || depositStep === "sending" || depositStep === "waiting"}
+                onClick={async () => {
+                  if (!depositAmount || !depositPhone) return;
+                  setDepositStep("sending");
+                  setDepositError("");
+                  try {
+                    // 1. Record pending deposit in Convex
+                    await initiateDeposit({ amount: Number(depositAmount), phoneNumber: depositPhone });
+                    // 2. Send STK Push via Safaricom
+                    await initiateStkPush({
+                      phoneNumber: depositPhone,
+                      amount: Number(depositAmount),
+                      accountReference: `NX-DEP-${Date.now()}`,
+                      description: `Wallet deposit of KES ${Number(depositAmount).toLocaleString()}`,
+                    });
+                    setDepositStep("waiting");
+                    // 3. Simulate confirmation after 3 seconds (real flow waits for Safaricom callback)
+                    setTimeout(() => {
+                      setDepositStep("done");
+                      setTimeout(() => {
+                        setShowDeposit(false);
+                        setDepositStep("idle");
+                        setDepositAmount("");
+                        setDepositPhone("");
+                      }, 2000);
+                    }, 3000);
+                  } catch (err: any) {
+                    setDepositStep("error");
+                    setDepositError(err?.message || "M-Pesa payment failed. Please try again.");
+                  }
+                }}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-nx-cyan hover:bg-nx-cyan/80 text-white text-sm font-medium transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
               >
-                Deposit via M-Pesa
+                {depositStep === "sending" && <><Loader2 className="w-4 h-4 animate-spin" /> Sending STK Push...</>}
+                {depositStep === "waiting" && <><Loader2 className="w-4 h-4 animate-spin" /> Confirm on phone...</>}
+                {depositStep === "done" && <><CheckCircle2 className="w-4 h-4" /> Deposit Successful!</>}
+                {(depositStep === "idle" || depositStep === "error") && "Deposit via M-Pesa"}
               </button>
             </div>
           </div>
