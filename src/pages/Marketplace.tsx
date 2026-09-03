@@ -5,7 +5,7 @@ import { api } from "../convex/_generated/api";
 import {
   Search, ArrowLeft, X, ChevronRight, ChevronDown,
   MapPin, Shield, Truck, Heart, SlidersHorizontal,
-  DollarSign, RotateCcw, Grid3x3, Eye,
+  DollarSign, RotateCcw, Eye, Check,
 } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
@@ -18,7 +18,18 @@ const KENYA_COUNTIES = [
   "Tharaka-Nithi","Trans Nzoia","Turkana","Uasin Gishu","Vihiga","Wajir","West Pokot",
 ];
 
-const CONDITIONS = ["Brand New", "Used", "Refurbished"];
+const CONDITIONS = ["Brand New", "Used - Like New", "Used - Good", "Used - Fair", "Refurbished"];
+
+function ToggleSwitch({ enabled, onToggle, label }: { enabled: boolean; onToggle: () => void; label: string }) {
+  return (
+    <button onClick={onToggle} className="flex items-center justify-between w-full py-1.5 group">
+      <span className="text-[10px] text-white/50 group-hover:text-white/70 transition-colors">{label}</span>
+      <div className={`w-7 h-4 rounded-full transition-colors relative ${enabled ? "bg-nx-violet" : "bg-white/10"}`}>
+        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${enabled ? "left-3.5" : "left-0.5"}`} />
+      </div>
+    </button>
+  );
+}
 
 export default function Marketplace() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -31,6 +42,9 @@ export default function Marketplace() {
   const [countySearch, setCountySearch] = useState("");
   const [showCountyDropdown, setShowCountyDropdown] = useState(false);
   const [priceError, setPriceError] = useState("");
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [escrowOnly, setEscrowOnly] = useState(false);
+  const [deliveryOnly, setDeliveryOnly] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -59,8 +73,16 @@ export default function Marketplace() {
     return args;
   }, [searchQuery, selectedCategory, selectedCounty, minPrice, maxPrice, conditionFilter, priceError]);
 
-  const listings = useQuery(api.listings.searchListings, queryArgs as any);
-  const results = listings ?? [];
+  const rawListings = useQuery(api.listings.searchListings, queryArgs as any);
+
+  // Client-side filters for verified, escrow, delivery
+  const results = useMemo(() => {
+    let list = rawListings ?? [];
+    if (verifiedOnly) list = list.filter((l: any) => l.sellerVerified);
+    if (escrowOnly) list = list.filter((l: any) => l.escrowProtection);
+    if (deliveryOnly) list = list.filter((l: any) => l.transportAvailable);
+    return list;
+  }, [rawListings, verifiedOnly, escrowOnly, deliveryOnly]);
 
   const activeCategoryObj = CATEGORIES.find((c) => c.slug === selectedCategory);
 
@@ -70,7 +92,7 @@ export default function Marketplace() {
     return KENYA_COUNTIES.filter((c) => c.toLowerCase().includes(q));
   }, [countySearch]);
 
-  const hasActiveFilters = selectedCategory !== "All" || selectedSubcategory || selectedCounty !== "All Counties" || minPrice || maxPrice || conditionFilter;
+  const hasActiveFilters = selectedCategory !== "All" || selectedSubcategory || selectedCounty !== "All Counties" || minPrice || maxPrice || conditionFilter || verifiedOnly || escrowOnly || deliveryOnly;
 
   const clearAllFilters = () => {
     setSelectedCategory("All");
@@ -81,6 +103,9 @@ export default function Marketplace() {
     setConditionFilter(null);
     setSearchQuery("");
     setCountySearch("");
+    setVerifiedOnly(false);
+    setEscrowOnly(false);
+    setDeliveryOnly(false);
   };
 
   const activeFilterCount = [
@@ -89,6 +114,9 @@ export default function Marketplace() {
     selectedCounty !== "All Counties",
     !!minPrice || !!maxPrice,
     !!conditionFilter,
+    verifiedOnly,
+    escrowOnly,
+    deliveryOnly,
   ].filter(Boolean).length;
 
   return (
@@ -125,7 +153,7 @@ export default function Marketplace() {
       </div>
 
       <div className="flex max-w-[1600px] mx-auto">
-        {/* ═══════════════ LEFT SIDEBAR ═══════════════ */}
+        {/* ═══════════════ LEFT SIDEBAR — ALWAYS VISIBLE ═══════════════ */}
         <aside className="hidden md:block w-56 lg:w-64 shrink-0 border-r border-nx-border/50 bg-nx-card/20 min-h-[calc(100vh-56px)] sticky top-14 overflow-y-auto">
           <div className="p-4 space-y-5">
             {/* Filters Header */}
@@ -144,7 +172,7 @@ export default function Marketplace() {
             {/* ─── CATEGORY ─── */}
             <div>
               <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Category</h4>
-              <div className="space-y-0.5 max-h-[40vh] overflow-y-auto pr-1">
+              <div className="space-y-0.5 max-h-[30vh] overflow-y-auto pr-1">
                 <button
                   onClick={() => { setSelectedCategory("All"); setSelectedSubcategory(null); }}
                   className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all ${
@@ -168,21 +196,6 @@ export default function Marketplace() {
                       <span className="text-[10px] font-medium truncate flex-1">{cat.name}</span>
                       <ChevronRight className="w-2.5 h-2.5 opacity-30 shrink-0" />
                     </button>
-                    {selectedCategory === cat.slug && (
-                      <div className="ml-7 mt-0.5 mb-1 space-y-0.5 border-l border-white/5 pl-2">
-                        {cat.subcategories.map((sub) => (
-                          <button
-                            key={sub.slug}
-                            onClick={() => setSelectedSubcategory(selectedSubcategory === sub.name ? null : sub.name)}
-                            className={`w-full text-left px-2 py-1 rounded text-[9px] transition-colors ${
-                              selectedSubcategory === sub.name ? "text-nx-cyan bg-nx-cyan/10 font-medium" : "text-white/30 hover:text-white/50"
-                            }`}
-                          >
-                            {sub.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -226,7 +239,7 @@ export default function Marketplace() {
 
             {/* ─── PRICE RANGE ─── */}
             <div>
-              <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Price Range</h4>
+              <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Price Range (KES)</h4>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
                   <div className="flex-1 relative">
@@ -274,6 +287,16 @@ export default function Marketplace() {
                 ))}
               </div>
             </div>
+
+            {/* ─── TOGGLE FILTERS ─── */}
+            <div className="border-t border-white/5 pt-3">
+              <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Trust & Safety</h4>
+              <div className="space-y-1">
+                <ToggleSwitch enabled={verifiedOnly} onToggle={() => setVerifiedOnly(!verifiedOnly)} label="Verified Sellers Only" />
+                <ToggleSwitch enabled={escrowOnly} onToggle={() => setEscrowOnly(!escrowOnly)} label="Escrow Protected" />
+                <ToggleSwitch enabled={deliveryOnly} onToggle={() => setDeliveryOnly(!deliveryOnly)} label="Delivery Available" />
+              </div>
+            </div>
           </div>
         </aside>
 
@@ -296,26 +319,53 @@ export default function Marketplace() {
             </div>
           </div>
 
-          {/* Mobile filters row */}
-          <div className="md:hidden px-3 py-2 border-b border-nx-border/30 flex items-center gap-2 overflow-x-auto">
-            <div className="flex-1 flex items-center gap-1.5 min-w-0">
-              <div className="flex-1 relative">
-                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] text-white/25">KES</span>
-                <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} placeholder="Min" min="0"
-                  className="w-full pl-6 pr-1 py-1 rounded bg-white/[0.03] border border-white/5 text-[9px] text-white/60 placeholder:text-white/20 focus:outline-none" />
+          {/* Mobile compact filters */}
+          <div className="md:hidden px-3 py-2 border-b border-nx-border/30 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <div className="flex-1 flex items-center gap-1">
+                <div className="flex-1 relative">
+                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] text-white/25">KES</span>
+                  <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} placeholder="Min" min="0"
+                    className="w-full pl-6 pr-1 py-1 rounded bg-white/[0.03] border border-white/5 text-[9px] text-white/60 placeholder:text-white/20 focus:outline-none" />
+                </div>
+                <span className="text-white/10 text-[9px]">—</span>
+                <div className="flex-1 relative">
+                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] text-white/25">KES</span>
+                  <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="Max" min="0"
+                    className="w-full pl-6 pr-1 py-1 rounded bg-white/[0.03] border border-white/5 text-[9px] text-white/60 placeholder:text-white/20 focus:outline-none" />
+                </div>
               </div>
-              <span className="text-white/10 text-[9px]">—</span>
-              <div className="flex-1 relative">
-                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] text-white/25">KES</span>
-                <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="Max" min="0"
-                  className="w-full pl-6 pr-1 py-1 rounded bg-white/[0.03] border border-white/5 text-[9px] text-white/60 placeholder:text-white/20 focus:outline-none" />
-              </div>
+              <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)}
+                className="shrink-0 w-28 px-2 py-1 rounded bg-white/[0.03] border border-white/5 text-[9px] text-white/50 appearance-none focus:outline-none">
+                <option value="All Counties">All Counties</option>
+                {KENYA_COUNTIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
-            <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)}
-              className="shrink-0 w-28 px-2 py-1 rounded bg-white/[0.03] border border-white/5 text-[9px] text-white/50 appearance-none focus:outline-none">
-              <option value="All Counties">All Counties</option>
-              {KENYA_COUNTIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              {CONDITIONS.map((c) => (
+                <button key={c} onClick={() => setConditionFilter(conditionFilter === c ? null : c)}
+                  className={`shrink-0 px-2 py-0.5 rounded-full text-[8px] transition-colors ${conditionFilter === c ? "bg-nx-cyan/10 text-nx-cyan" : "text-white/30 bg-white/[0.02] border border-white/5"}`}>
+                  {c}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setVerifiedOnly(!verifiedOnly)} className={`flex items-center gap-1 text-[9px] ${verifiedOnly ? "text-nx-violet" : "text-white/30"}`}>
+                <div className={`w-3 h-3 rounded border flex items-center justify-center ${verifiedOnly ? "bg-nx-violet border-nx-violet" : "border-white/20"}`}>
+                  {verifiedOnly && <Check className="w-2 h-2 text-white" />}
+                </div> Verified
+              </button>
+              <button onClick={() => setEscrowOnly(!escrowOnly)} className={`flex items-center gap-1 text-[9px] ${escrowOnly ? "text-nx-emerald" : "text-white/30"}`}>
+                <div className={`w-3 h-3 rounded border flex items-center justify-center ${escrowOnly ? "bg-nx-emerald border-nx-emerald" : "border-white/20"}`}>
+                  {escrowOnly && <Check className="w-2 h-2 text-white" />}
+                </div> Escrow
+              </button>
+              <button onClick={() => setDeliveryOnly(!deliveryOnly)} className={`flex items-center gap-1 text-[9px] ${deliveryOnly ? "text-nx-blue" : "text-white/30"}`}>
+                <div className={`w-3 h-3 rounded border flex items-center justify-center ${deliveryOnly ? "bg-nx-blue border-nx-blue" : "border-white/20"}`}>
+                  {deliveryOnly && <Check className="w-2 h-2 text-white" />}
+                </div> Delivery
+              </button>
+            </div>
           </div>
 
           {/* Active filter chips */}
@@ -351,6 +401,24 @@ export default function Marketplace() {
                   <button onClick={() => setConditionFilter(null)}><X className="w-2.5 h-2.5" /></button>
                 </span>
               )}
+              {verifiedOnly && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium text-nx-violet bg-nx-violet/10 border border-nx-violet/20">
+                  Verified
+                  <button onClick={() => setVerifiedOnly(false)}><X className="w-2.5 h-2.5" /></button>
+                </span>
+              )}
+              {escrowOnly && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium text-nx-emerald bg-nx-emerald/10 border border-nx-emerald/20">
+                  Escrow
+                  <button onClick={() => setEscrowOnly(false)}><X className="w-2.5 h-2.5" /></button>
+                </span>
+              )}
+              {deliveryOnly && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium text-nx-blue bg-nx-blue/10 border border-nx-blue/20">
+                  Delivery
+                  <button onClick={() => setDeliveryOnly(false)}><X className="w-2.5 h-2.5" /></button>
+                </span>
+              )}
               <button onClick={clearAllFilters} className="text-[9px] text-nx-violet hover:text-nx-violet/80 ml-1">Clear all</button>
             </div>
           )}
@@ -366,7 +434,7 @@ export default function Marketplace() {
                   <p className="text-[11px] text-white/30 mt-0.5">
                     {selectedCategory === "All"
                       ? "Explore products across all categories in Kenya"
-                      : activeCategoryObj?.description || `${results.length} products available`
+                      : activeCategoryObj?.description || ""
                     }
                   </p>
                 </div>
@@ -388,9 +456,8 @@ export default function Marketplace() {
                 </div>
               )}
 
-              {/* Category grid — always shows */}
+              {/* Category grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 md:gap-3">
-                {/* "All" button when viewing a category */}
                 {selectedCategory !== "All" && (
                   <button onClick={() => { setSelectedCategory("All"); setSelectedSubcategory(null); }}
                     className="group relative rounded-xl overflow-hidden aspect-[4/3] bg-gradient-to-br from-nx-violet/20 to-nx-cyan/10 border border-white/5 hover:border-nx-violet/30 transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center">
@@ -400,7 +467,6 @@ export default function Marketplace() {
                     </div>
                   </button>
                 )}
-
                 {CATEGORIES.map((cat) => {
                   const isActive = selectedCategory === cat.slug;
                   return (
@@ -411,14 +477,9 @@ export default function Marketplace() {
                         isActive ? "ring-2 ring-nx-violet shadow-lg shadow-nx-violet/20" : "hover:shadow-lg hover:shadow-nx-violet/10"
                       }`}
                     >
-                      <img
-                        src={CATEGORY_DEFAULTS[cat.slug]}
-                        alt={cat.name}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                        loading="lazy"
-                      />
+                      <img src={CATEGORY_DEFAULTS[cat.slug]} alt={cat.name}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                      {/* Product count badge */}
                       <div className="absolute top-2 right-2">
                         <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-white/50 font-medium">
                           {cat.subcategories.length} sub
@@ -441,13 +502,10 @@ export default function Marketplace() {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <Grid3x3 className="w-4 h-4 text-white/20" />
                     <h2 className="text-sm font-bold text-white/70">
                       {selectedCategory !== "All" ? `${activeCategoryObj?.name} Products` : "All Products"}
                     </h2>
-                    <span className="text-[10px] text-white/25 bg-white/[0.03] px-2 py-0.5 rounded-full">
-                      {results.length}
-                    </span>
+                    <span className="text-[10px] text-white/25 bg-white/[0.03] px-2 py-0.5 rounded-full">{results.length}</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
@@ -464,9 +522,7 @@ export default function Marketplace() {
                           <Heart className="w-3 h-3" />
                         </button>
                         {listing.condition && (
-                          <span className="absolute top-2 left-2 text-[8px] px-1.5 py-0.5 rounded bg-black/50 backdrop-blur-sm text-white/70 font-medium">
-                            {listing.condition}
-                          </span>
+                          <span className="absolute top-2 left-2 text-[8px] px-1.5 py-0.5 rounded bg-black/50 backdrop-blur-sm text-white/70 font-medium">{listing.condition}</span>
                         )}
                       </div>
                       <div className="p-2.5">
@@ -501,7 +557,7 @@ export default function Marketplace() {
               </div>
             )}
 
-            {/* ═══════════════ EMPTY STATE (only when searching/filtering) ═══════════════ */}
+            {/* ═══════════════ EMPTY STATE ═══════════════ */}
             {results.length === 0 && hasActiveFilters && (
               <div className="text-center py-16 border-t border-white/5 mt-6">
                 <div className="w-16 h-16 rounded-2xl overflow-hidden mx-auto mb-3 opacity-30">
@@ -518,7 +574,6 @@ export default function Marketplace() {
               </div>
             )}
 
-            {/* ═══════════════ EXPLORE PROMPT (when viewing a category with no products) ═══════════════ */}
             {results.length === 0 && selectedCategory !== "All" && !hasActiveFilters && (
               <div className="text-center py-12 border-t border-white/5 mt-4">
                 <Eye className="w-8 h-8 text-white/10 mx-auto mb-3" />
