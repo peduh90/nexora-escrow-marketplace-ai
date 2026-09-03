@@ -105,25 +105,25 @@ export default function Landing() {
       <div className="relative z-10"><TrustBanner /></div>
 
       {/* ══════ HERO ══════ */}
-      <section className="relative min-h-[70vh] md:min-h-[65vh] flex flex-col items-center justify-start px-6 pt-20 md:pt-24 pb-8 z-10">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1.5, delay: 0.2 }} className="mb-1">
-          <GalacticCore size={220} />
+      <section className="relative min-h-[55vh] md:min-h-[50vh] flex flex-col items-center justify-start px-6 pt-16 md:pt-20 pb-6 z-10">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1.5, delay: 0.2 }} className="mb-0">
+          <GalacticCore size={160} />
         </motion.div>
 
         <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.8 }}
-          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-center max-w-4xl leading-tight tracking-tight">
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-center max-w-4xl leading-tight tracking-tight">
           <span className="text-white">Buy. Sell. </span>
           <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-cyan-200 bg-clip-text text-transparent">Securely.</span>
         </motion.h1>
 
         <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.0 }}
-          className="text-sm sm:text-base md:text-lg text-white/40 text-center max-w-2xl mt-3 leading-relaxed">
+          className="text-xs sm:text-sm md:text-base text-white/40 text-center max-w-2xl mt-2 leading-relaxed">
           AI-powered marketplace with protected transactions. Every trade backed by escrow.
         </motion.p>
 
         {/* Search Bar */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.1 }}
-          className="w-full max-w-2xl mt-6">
+          className="w-full max-w-2xl mt-4">
           <div className="flex items-center rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl overflow-hidden hover:border-white/20 transition-colors">
             <div className="pl-4"><Search className="w-5 h-5 text-white/30" /></div>
             <input
@@ -142,7 +142,7 @@ export default function Landing() {
 
         {/* Trust badges */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 1.5 }}
-          className="flex flex-wrap justify-center gap-5 mt-5">
+          className="flex flex-wrap justify-center gap-4 mt-4">
           {[
             { icon: Shield, label: "Escrow Protected" },
             { icon: Brain, label: "AI-Powered Security" },
@@ -159,7 +159,7 @@ export default function Landing() {
       </section>
 
       {/* ══════ CATEGORIES (same grid as Marketplace) ══════ */}
-      <section className="relative z-10 py-10 px-6 border-y border-white/5">
+      <section className="relative z-10 py-8 px-6 border-y border-white/5">
         <div className="max-w-6xl mx-auto">
           <FadeIn className="text-center mb-6">
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
@@ -199,7 +199,7 @@ export default function Landing() {
       </section>
 
       {/* ══════ FEATURED / LATEST PRODUCTS ══════ */}
-      <section className="relative z-10 py-16 px-6">
+      <section className="relative z-10 py-10 px-6">
         <div className="max-w-6xl mx-auto">
           <FadeIn className="text-center mb-10">
             <div className="inline-flex items-center gap-2 text-nx-cyan text-xs font-medium tracking-widest uppercase mb-3">
@@ -250,7 +250,7 @@ export default function Landing() {
       </section>
 
       {/* ══════ HOW ESCROW WORKS (simplified) ══════ */}
-      <section className="relative z-10 py-16 px-6 border-y border-white/5">
+      <section className="relative z-10 py-10 px-6 border-y border-white/5">
         <div className="max-w-5xl mx-auto">
           <FadeIn className="text-center mb-12">
             <div className="inline-flex items-center gap-2 text-nx-violet text-xs font-medium tracking-widest uppercase mb-3">
@@ -285,7 +285,7 @@ export default function Landing() {
       </section>
 
       {/* ══════ TRUST SECTION ══════ */}
-      <section className="relative z-10 py-20 px-6">
+      <section className="relative z-10 py-12 px-6">
         <div className="max-w-6xl mx-auto">
           <FadeIn className="text-center mb-12">
             <div className="inline-flex items-center gap-2 text-nx-emerald text-xs font-medium tracking-widest uppercase mb-3">
@@ -318,7 +318,7 @@ export default function Landing() {
       </section>
 
       {/* ══════ SELLER CTA ══════ */}
-      <section className="relative z-10 py-20 px-6">
+      <section className="relative z-10 py-12 px-6">
         <FadeIn>
           <div className="max-w-4xl mx-auto text-center">
             <div className="relative p-12 md:p-16 rounded-2xl border border-white/5 overflow-hidden">
@@ -352,7 +352,7 @@ export default function Landing() {
       </section>
 
       {/* ══════ BUYER vs SELLER ══════ */}
-      <section className="relative z-10 py-20 px-6">
+      <section className="relative z-10 py-12 px-6">
         <div className="max-w-6xl mx-auto">
           <FadeIn>
             <div className="text-center mb-12">
