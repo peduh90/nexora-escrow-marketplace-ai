@@ -1,7 +1,13 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useStorageUrl } from "convex/react";
 import { useNavigate } from "react-router";
 import { api } from "../convex/_generated/api";
+
+function StorageImage({ storageId, alt, className }: { storageId: string; alt: string; className?: string }) {
+  const url = useStorageUrl(storageId);
+  if (!url) return <div className={className} />;
+  return <img src={url} alt={alt} className={className} />;
+}
 import { Search, ArrowLeft, X, MapPin, Shield, Truck, Heart, ChevronRight } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
@@ -227,7 +233,7 @@ export default function Marketplace() {
                     className="group rounded-xl bg-white/[0.02] border border-white/5 overflow-hidden hover:border-white/10 transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-nx-violet/5 hover:-translate-y-0.5">
                     <div className="aspect-[4/3] bg-white/[0.03] overflow-hidden relative">
                       {listing.images?.length > 0 ? (
-                        <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <StorageImage storageId={listing.images[0]} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       ) : (
                         <img src={PRODUCT_PLACEHOLDER[listing.category] || PRODUCT_PLACEHOLDER["mobile-phones"]} alt="" className="w-full h-full object-cover opacity-40" />
                       )}

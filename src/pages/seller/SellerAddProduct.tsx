@@ -99,6 +99,7 @@ export default function SellerAddProduct() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const createListing = useMutation(api.listings.createListing);
+  const generateUploadUrl = useMutation(api.listings.generateUploadUrl);
   const [step, setStep] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [form, setForm] = useState({
@@ -126,6 +127,19 @@ export default function SellerAddProduct() {
     if (!form.title || !form.price || !form.category || !form.county || !form.town) return;
     setPublishing(true);
     try {
+      // Upload images to Convex storage
+      const imageUrls: string[] = [];
+      for (const img of form.images) {
+        const uploadUrl = await generateUploadUrl();
+        const response = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": img.file.type },
+          body: img.file,
+        });
+        const { storageId } = await response.json();
+        imageUrls.push(storageId);
+      }
+
       await createListing({
         title: form.title,
         description: form.description || `${form.title} - ${form.condition}`,
@@ -133,7 +147,7 @@ export default function SellerAddProduct() {
         currency: "KES",
         category: form.category,
         subcategory: form.subcategory || undefined,
-        images: [],
+        images: imageUrls,
         transportAvailable: true,
         originCounty: form.county,
         originTown: form.town,

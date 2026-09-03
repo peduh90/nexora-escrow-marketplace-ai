@@ -63,7 +63,6 @@ export const createListing = mutation({
       createdAt: Date.now(),
     });
 
-    // Update seller's active listings count
     const current = user.activeListings || 0;
     await ctx.db.patch(user._id, { activeListings: current + 1 });
 
@@ -78,98 +77,81 @@ export const updateListing = mutation({
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     price: v.optional(v.number()),
-    category: v.optional(v.string()),
     images: v.optional(v.array(v.string())),
     condition: v.optional(v.string()),
     attributes: v.optional(v.record(v.string(), v.string())),
-    originCounty: v.optional(v.string()),
-    originTown: v.optional(v.string()),
     status: v.optional(v.union(v.literal("active"), v.literal("sold"), v.literal("paused"), v.literal("removed"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-
-    if (!user) throw new Error("User not found");
-
     const listing = await ctx.db.get(args.listingId);
     if (!listing) throw new Error("Listing not found");
-    if (listing.sellerId !== user._id) throw new Error("Not authorized");
+    if (listing.sellerId !== identity.subject) throw new Error("Not authorized");
 
-    const updates: Record<string, any> = { updatedAt: Date.now() };
+    const updates: Record<string, unknown> = {};
     if (args.title !== undefined) updates.title = args.title;
     if (args.description !== undefined) updates.description = args.description;
     if (args.price !== undefined) updates.price = args.price;
-    if (args.category !== undefined) updates.category = args.category;
     if (args.images !== undefined) updates.images = args.images;
     if (args.condition !== undefined) updates.condition = args.condition;
-    if (args.originCounty !== undefined) updates.originCounty = args.originCounty;
-    if (args.originTown !== undefined) updates.originTown = args.originTown;
     if (args.attributes !== undefined) updates.attributes = args.attributes;
     if (args.status !== undefined) updates.status = args.status;
+    updates.updatedAt = Date.now();
 
     await ctx.db.patch(args.listingId, updates);
     return { success: true };
   },
 });
 
-/** Delete a listing (soft delete - set status to removed) */
+/** Delete a listing */
 export const deleteListing = mutation({
   args: { listingId: v.id("listings") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-
-    if (!user) throw new Error("User not found");
-
     const listing = await ctx.db.get(args.listingId);
     if (!listing) throw new Error("Listing not found");
-    if (listing.sellerId !== user._id) throw new Error("Not authorized");
+    if (listing.sellerId !== identity.subject) throw new Error("Not authorized");
 
-    await ctx.db.patch(args.listingId, { status: "removed", updatedAt: Date.now() });
-    const current = user.activeListings || 0;
-    await ctx.db.patch(user._id, { activeListings: Math.max(0, current - 1) });
+    await ctx.db.patch(args.listingId, { status: "removed" });
     return { success: true };
   },
 });
 
-/** Get all active listings for the marketplace */
+/** Get active listings (homepage feed) */
 export const getActiveListings = query({
-  args: {
-    category: v.optional(v.string()),
-    county: v.optional(v.string()),
-    limit: v.optional(v.number()),
-  },
+  args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    let listings = await ctx.db
+    const allActive = await ctx.db
       .query("listings")
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .order("desc")
-      .collect();
+      .take(args.limit ?? 50);
 
-    if (args.category) {
-      listings = listings.filter((l) => l.category === args.category);
-    }
+    // Resolve image URLs from storage
+    const listings = await Promise.all(
+      allActive.map(async (listing) => {
+        const imageUrls: string[] = [];
+        if (listing.images) {
+          for (const img of listing.images) {
+            try {
+              const url = await ctx.storage.getUrl(img);
+              if (url) imageUrls.push(url);
+            } catch { /* skip invalid */ }
+          }
+        }
+        return { ...listing, images: imageUrls };
+      })
+    );
 
-    if (args.county) {
-      listings = listings.filter((l) => l.originCounty === args.county);
-    }
-
-    return listings.slice(0, args.limit ?? 50);
+    return listings;
   },
 });
 
-/** Get listings by seller */
+/** Get seller's own listings */
 export const getSellerListings = query({
   args: {},
   handler: async (ctx) => {
@@ -180,14 +162,29 @@ export const getSellerListings = query({
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
-
     if (!user) return [];
 
-    return await ctx.db
+    const listings = await ctx.db
       .query("listings")
       .withIndex("by_seller", (q) => q.eq("sellerId", user._id))
       .order("desc")
       .collect();
+
+    // Resolve image URLs from storage
+    return Promise.all(
+      listings.map(async (listing) => {
+        const imageUrls: string[] = [];
+        if (listing.images) {
+          for (const img of listing.images) {
+            try {
+              const url = await ctx.storage.getUrl(img);
+              if (url) imageUrls.push(url);
+            } catch { /* skip invalid */ }
+          }
+        }
+        return { ...listing, images: imageUrls };
+      })
+    );
   },
 });
 
@@ -195,7 +192,21 @@ export const getSellerListings = query({
 export const getListing = query({
   args: { listingId: v.id("listings") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.listingId);
+    const listing = await ctx.db.get(args.listingId);
+    if (!listing) return null;
+
+    // Resolve image URLs from storage
+    const imageUrls: string[] = [];
+    if (listing.images) {
+      for (const img of listing.images) {
+        try {
+          const url = await ctx.storage.getUrl(img);
+          if (url) imageUrls.push(url);
+        } catch { /* skip invalid */ }
+      }
+    }
+
+    return { ...listing, images: imageUrls };
   },
 });
 
@@ -261,6 +272,30 @@ export const searchListings = query({
       results = results.filter((l) => l.condition === args.condition);
     }
 
-    return results;
+    // Resolve image URLs from storage
+    return Promise.all(
+      results.map(async (listing) => {
+        const imageUrls: string[] = [];
+        if (listing.images) {
+          for (const img of listing.images) {
+            try {
+              const url = await ctx.storage.getUrl(img);
+              if (url) imageUrls.push(url);
+            } catch { /* skip invalid */ }
+          }
+        }
+        return { ...listing, images: imageUrls };
+      })
+    );
+  },
+});
+
+/** Generate a Convex file storage upload URL for product images */
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return await ctx.storage.generateUploadUrl();
   },
 });

@@ -1,12 +1,18 @@
 import SellerLayout from "./SellerLayout";
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useStorageUrl } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useNavigate } from "react-router";
 import {
   Plus, Search, Package, Edit3, Trash2, Eye, MapPin, Truck,
   Grid3X3, List, Loader2,
 } from "lucide-react";
+
+function StorageImage({ storageId, alt, className }: { storageId: string; alt: string; className?: string }) {
+  const url = useStorageUrl(storageId);
+  if (!url) return <div className={className} />;
+  return <img src={url} alt={alt} className={className} />;
+}
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   active: { label: "Active", color: "bg-emerald-400/10 text-emerald-400" },
@@ -120,7 +126,7 @@ export default function SellerProducts() {
             <div key={product._id} className="group rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 overflow-hidden transition-all cursor-pointer" onClick={() => navigate(`/seller/edit-product/${product._id}`)}>
               <div className="h-44 bg-gradient-to-br from-white/[0.02] to-white/[0.04] relative flex items-center justify-center">
                 {product.images && product.images.length > 0 ? (
-                  <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
+                  <StorageImage storageId={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
                 ) : (
                   <Package className="w-12 h-12 text-white/10" />
                 )}
@@ -161,7 +167,7 @@ export default function SellerProducts() {
             <div key={product._id} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all cursor-pointer" onClick={() => navigate(`/seller/edit-product/${product._id}`)}>
               <div className="w-14 h-14 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0 overflow-hidden">
                 {product.images && product.images.length > 0 ? (
-                  <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
+                  <StorageImage storageId={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
                 ) : (
                   <Package className="w-6 h-6 text-white/10" />
                 )}

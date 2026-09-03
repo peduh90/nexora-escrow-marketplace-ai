@@ -1,13 +1,20 @@
 import { useParams, useNavigate } from "react-router";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useStorageUrl } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { getDeliveryFee } from "@/lib/delivery-config";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth"
 import { useState } from "react";
 import {
   Shield, Heart, Share2, MessageSquare, ShoppingCart, ArrowLeft, Star, MapPin, Clock,
   CheckCircle2, Truck, ChevronRight, Package, Eye, X, Minus, Plus, Loader2, Send,
 } from "lucide-react";
+
+/** Display an image from Convex storage or a direct URL */
+function StorageImage({ storageId, alt, className }: { storageId: string; alt: string; className?: string }) {
+  const url = useStorageUrl(storageId);
+  if (!url) return <div className={className} />;
+  return <img src={url} alt={alt} className={className} />;
+}
 
 /** Show the most relevant attributes per category */
 function CategoryAttributes({ category, attributes }: { category: string; attributes?: Record<string, string> }) {
@@ -300,7 +307,7 @@ export default function ProductDetails() {
           <div>
             <div className="aspect-square rounded-2xl bg-white/[0.02] border border-white/5 relative overflow-hidden flex items-center justify-center mb-4">
               {listing.images && listing.images.length > 0 ? (
-                <img src={listing.images[selectedImage]} alt={listing.title} className="w-full h-full object-cover" />
+                <StorageImage storageId={listing.images[selectedImage]} alt={listing.title} className="w-full h-full object-cover" />
               ) : (
                 <Package className="w-32 h-32 text-white/5" />
               )}
@@ -326,7 +333,7 @@ export default function ProductDetails() {
                 {listing.images.map((img, i) => (
                   <button key={i} onClick={() => setSelectedImage(i)}
                     className={`w-20 h-20 rounded-lg overflow-hidden border shrink-0 transition-all ${selectedImage === i ? "border-nx-violet/50 ring-1 ring-nx-violet/30" : "border-white/5 hover:border-white/10"}`}>
-                    <img src={img} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
+                    <StorageImage storageId={img} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -544,7 +551,7 @@ export default function ProductDetails() {
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 mb-4">
               <div className="w-14 h-14 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0 overflow-hidden">
                 {listing.images && listing.images[0] ? (
-                  <img src={listing.images[0]} alt="" className="w-full h-full object-cover" />
+                  <StorageImage storageId={listing.images[0]} alt="" className="w-full h-full object-cover" />
                 ) : <Package className="w-6 h-6 text-white/10" />}
               </div>
               <div className="flex-1 min-w-0">
