@@ -30,6 +30,9 @@ export const CATEGORY_BANNERS: Record<string, string> = {
   "phones-tablets": pexels(699122),
   "electronics": pexels(1714208),
   "property-rent": pexels(106399),
+  "animals-pets": pexels(1108099),
+  "music-entertainment": pexels(1190298),
+  "school-education": pexels(5212700),
 };
 
 /** Subcategory images — keyed by subcategory slug */
@@ -179,6 +182,9 @@ export const CATEGORY_DEFAULTS: Record<string, string> = {
   "tvs-video": pexels(1229861),
   pets: pexels(1108099),
   "learning-books": pexels(159711),
+  "animals-pets": pexels(1108099),
+  "music-entertainment": pexels(1190298),
+  "school-education": pexels(5212700),
   vehicles: pexels(116675),
   property: pexels(106399),
   "phones-tablets": pexels(699122),
@@ -226,4 +232,7 @@ export const PRODUCT_PLACEHOLDER: Record<string, string> = {
   property: pexels(106399, 400, 400),
   "phones-tablets": pexels(699122, 400, 400),
   electronics: pexels(1714208, 400, 400),
+  "animals-pets": pexels(1108099, 400, 400),
+  "music-entertainment": pexels(1190298, 400, 400),
+  "school-education": pexels(5212700, 400, 400),
 };

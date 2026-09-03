@@ -255,6 +255,47 @@ export const CATEGORIES: Category[] = [
       { name: "Tutoring Services", slug: "tutoring" },
     ],
   },
+  {
+    name: "Animals & Pets",
+    slug: "animals-pets",
+    icon: "🐾",
+    description: "Dogs, cats, birds, fish, and pet supplies",
+    subcategories: [
+      { name: "Dogs", slug: "dogs" },
+      { name: "Cats", slug: "cats" },
+      { name: "Birds", slug: "birds" },
+      { name: "Fish & Aquariums", slug: "fish" },
+      { name: "Pet Food & Supplies", slug: "pet-food" },
+      { name: "Pet Accessories", slug: "pet-accessories" },
+    ],
+  },
+  {
+    name: "Music & Entertainment",
+    slug: "music-entertainment",
+    icon: "🎵",
+    description: "Instruments, speakers, party equipment, and more",
+    subcategories: [
+      { name: "Musical Instruments", slug: "instruments" },
+      { name: "Speakers & Audio", slug: "speakers" },
+      { name: "DJ Equipment", slug: "dj-equipment" },
+      { name: "Karaoke", slug: "karaoke" },
+      { name: "Party Supplies", slug: "party-supplies" },
+    ],
+  },
+  {
+    name: "School & Education",
+    slug: "school-education",
+    icon: "🎓",
+    description: "Books, uniforms, stationery, and educational materials",
+    subcategories: [
+      { name: "Textbooks", slug: "textbooks" },
+      { name: "Stationery", slug: "stationery" },
+      { name: "School Uniforms", slug: "school-uniforms" },
+      { name: "Online Courses", slug: "online-courses" },
+      { name: "Tutoring", slug: "tutoring" },
+      { name: "Lab Equipment", slug: "lab-equipment" },
+    ],
+  },
 ];
 
 export function getCategoryBySlug(slug: string): Category | undefined {
