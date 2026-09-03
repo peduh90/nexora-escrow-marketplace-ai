@@ -47,7 +47,7 @@ export default function BuyerSidebar() {
             return (
               <button key={item.path} onClick={() => navigate(item.path)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all group ${isActive ? "bg-nx-cyan/10 text-nx-cyan" : "text-white/40 hover:text-white/70 hover:bg-white/[0.03]"} ${collapsed ? "justify-center" : ""}`}>
-                <item.icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-nx-cyan" : ""}`} />
+                <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-nx-cyan" : ""}`} />
                 {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
               </button>
             );

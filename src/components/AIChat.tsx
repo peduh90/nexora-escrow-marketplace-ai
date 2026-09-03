@@ -242,7 +242,7 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`fixed right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
-          (panel === "buyer" || panel === "seller") ? "bottom-22" : "bottom-6"
+          (panel === "buyer" || panel === "seller") ? "bottom-[8.5rem]" : "bottom-6"
         } ${
           isOpen
             ? "bg-white/10 border border-white/20"
@@ -263,7 +263,7 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
       {/* Chat Window */}
       {isOpen && (
         <div className={`fixed right-6 z-50 w-[400px] max-w-[calc(100vw-3rem)] h-[560px] max-h-[calc(100vh-8rem)] rounded-2xl bg-[#0A0A14] border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden ${
-          (panel === "buyer" || panel === "seller") ? "bottom-40" : "bottom-24"
+          (panel === "buyer" || panel === "seller") ? "bottom-[12rem]" : "bottom-24"
         }`}>
           {/* Header */}
           <div className="px-4 py-3 bg-gradient-to-r from-nx-cyan/10 to-nx-violet/10 border-b border-white/5 shrink-0">
