@@ -117,7 +117,7 @@ export default function Marketplace() {
 
       <div className="flex max-w-[1600px] mx-auto">
         {/* ═══════════════ SIDEBAR — EVERYTHING VISIBLE ═══════════════ */}
-        <aside className="hidden md:block w-60 lg:w-64 shrink-0 border-r border-nx-border/50 bg-nx-card/20 min-h-[calc(100vh-56px)] sticky top-14 overflow-y-auto">
+        <aside className="w-60 lg:w-64 shrink-0 border-r border-nx-border/50 bg-nx-card/20 min-h-[calc(100vh-56px)] sticky top-14 overflow-y-auto">
           <div className="p-4">
 
             {/* ─── CATEGORY ─── */}
@@ -251,7 +251,7 @@ export default function Marketplace() {
         {/* ═══════════════ MAIN ═══════════════ */}
         <main className="flex-1 min-w-0">
           {/* Mobile category scroll */}
-          <div className="md:hidden px-3 py-2 border-b border-nx-border/30 overflow-x-auto">
+          <div className="lg:hidden px-3 py-2 border-b border-nx-border/30 overflow-x-auto">
             <div className="flex items-center gap-1.5">
               <button onClick={() => { setSelectedCategory("All"); setSelectedSubcategory(null); }}
                 className={`shrink-0 px-2.5 py-1.5 rounded-full text-[10px] font-medium ${selectedCategory === "All" ? "bg-nx-violet text-white" : "bg-white/[0.04] text-white/40 border border-white/5"}`}>All</button>
@@ -265,7 +265,7 @@ export default function Marketplace() {
           </div>
 
           {/* Mobile compact filters */}
-          <div className="md:hidden px-3 py-2 border-b border-nx-border/30 flex items-center gap-2">
+          <div className="lg:hidden px-3 py-2 border-b border-nx-border/30 flex items-center gap-2">
             <select value={selectedCounty} onChange={(e) => setSelectedCounty(e.target.value)}
               className="shrink-0 px-2 py-1 rounded bg-white/[0.03] border border-white/5 text-[9px] text-white/50 focus:outline-none">
               <option value="All Counties">All Counties</option>
