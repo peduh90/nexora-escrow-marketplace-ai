@@ -1,9 +1,9 @@
-import { useLocation } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import SellerSidebar from "./SellerSidebar";
-import { Bell, Search, Wallet, ChevronDown } from "lucide-react";
+import { Bell, Search, Wallet, ChevronDown, Home } from "lucide-react";
 import AIChat from "@/components/AIChat";
 
 const navLabels: Record<string, string> = {
@@ -43,6 +43,8 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
     return "Seller Panel";
   };
 
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-[#05050A] flex">
       <SellerSidebar />
@@ -50,7 +52,10 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
       <div className="flex-1 min-w-0 lg:ml-0">
         {/* Top bar */}
         <header className="h-14 border-b border-white/5 bg-[#0A0A12]/80 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate("/")} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-colors shrink-0" title="Back to Home">
+              <Home className="w-4 h-4" />
+            </button>
             <h1 className="text-sm font-semibold text-white hidden sm:block">{getPageLabel()}</h1>
             {/* Search */}
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 w-64">
