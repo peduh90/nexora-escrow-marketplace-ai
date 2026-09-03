@@ -238,10 +238,12 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
 
   return (
     <>
-      {/* Floating Chat Button */}
+      {/* Floating Chat Button - shifts up when WhatsApp button is present */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+        className={`fixed right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+          (panel === "buyer" || panel === "seller") ? "bottom-22" : "bottom-6"
+        } ${
           isOpen
             ? "bg-white/10 border border-white/20"
             : "bg-gradient-to-br from-nx-cyan to-nx-violet hover:scale-110 hover:shadow-[0_0_30px_rgba(0,180,216,0.3)]"
@@ -260,7 +262,9 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-[400px] max-w-[calc(100vw-3rem)] h-[560px] max-h-[calc(100vh-8rem)] rounded-2xl bg-[#0A0A14] border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden">
+        <div className={`fixed right-6 z-50 w-[400px] max-w-[calc(100vw-3rem)] h-[560px] max-h-[calc(100vh-8rem)] rounded-2xl bg-[#0A0A14] border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden ${
+          (panel === "buyer" || panel === "seller") ? "bottom-40" : "bottom-24"
+        }`}>
           {/* Header */}
           <div className="px-4 py-3 bg-gradient-to-r from-nx-cyan/10 to-nx-violet/10 border-b border-white/5 shrink-0">
             <div className="flex items-center justify-between">

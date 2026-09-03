@@ -9,6 +9,12 @@ export const ROLES = {
   DRIVER: "driver",
 } as const;
 
+export const ADMIN_ROLES = {
+  SUPER_ADMIN: "super_admin",
+  MARKETPLACE_ADMIN: "marketplace_admin",
+  FINANCE_ADMIN: "finance_admin",
+} as const;
+
 export const roleValidator = v.union(
   v.literal(ROLES.ADMIN),
   v.literal(ROLES.BUYER),
@@ -74,6 +80,12 @@ const schema = defineSchema(
       adminTotpSecret: v.optional(v.string()),
       adminTwoFactorEnabled: v.optional(v.boolean()),
       adminLastLogin: v.optional(v.number()),
+      adminRole: v.optional(v.union(
+        v.literal("super_admin"),
+        v.literal("marketplace_admin"),
+        v.literal("finance_admin"),
+      )),
+      adminPermissions: v.optional(v.array(v.string())),
       // Stats
       totalSales: v.optional(v.number()),
       totalPurchases: v.optional(v.number()),
@@ -358,15 +370,30 @@ const schema = defineSchema(
       .index("by_driver", ["driverId"])
       .index("by_status", ["status"]),
 
-    // Product categories
+    // Product categories (admin-controlled)
     productCategories: defineTable({
       name: v.string(),
       slug: v.string(),
       icon: v.string(),
+      image: v.optional(v.string()),
       description: v.string(),
       subcategories: v.array(v.string()),
+      attributes: v.optional(v.array(v.object({
+        name: v.string(),
+        type: v.union(
+          v.literal("text"), v.literal("number"), v.literal("dropdown"),
+          v.literal("multi-select"), v.literal("checkbox"), v.literal("radio"),
+          v.literal("boolean"), v.literal("textarea"),
+        ),
+        required: v.boolean(),
+        options: v.optional(v.array(v.string())),
+        placeholder: v.optional(v.string()),
+      }))),
       active: v.boolean(),
       sortOrder: v.number(),
+      createdBy: v.optional(v.string()),
+      createdAt: v.optional(v.number()),
+      updatedAt: v.optional(v.number()),
     })
       .index("by_slug", ["slug"])
       .index("by_active", ["active"]),
@@ -437,6 +464,22 @@ const schema = defineSchema(
       updatedAt: v.number(),
     })
       .index("by_key", ["key"]),
+
+    // Audit logs
+    auditLogs: defineTable({
+      adminId: v.string(),
+      adminName: v.string(),
+      adminRole: v.optional(v.string()),
+      action: v.string(),
+      target: v.string(),
+      targetId: v.optional(v.string()),
+      details: v.optional(v.string()),
+      ipAddress: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_admin", ["adminId"])
+      .index("by_action", ["action"])
+      .index("by_created", ["createdAt"]),
   },
   {
     schemaValidation: false,

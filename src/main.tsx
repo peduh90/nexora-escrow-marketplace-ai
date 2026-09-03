@@ -84,6 +84,7 @@ const AdminSystem = lazy(() => import("./pages/admin/AdminSystem.tsx"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings.tsx"));
 const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications.tsx"));
 const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs.tsx"));
+const AdminCategories = lazy(() => import("./pages/admin/AdminCategories.tsx"));
 
 
 // Simple loading fallback for route transitions
@@ -268,6 +269,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/system" element={<RequireAdmin><AdminSystem /></RequireAdmin>} />
               <Route path="/admin/settings" element={<RequireAdmin><AdminSettings /></RequireAdmin>} />
               <Route path="/admin/notifications" element={<RequireAdmin><AdminNotifications /></RequireAdmin>} />
+              <Route path="/admin/categories" element={<RequireAdmin><AdminCategories /></RequireAdmin>} />
               <Route path="/admin/audit-logs" element={<RequireAdmin><AdminAuditLogs /></RequireAdmin>} />
 
               <Route path="*" element={<NotFound />} />

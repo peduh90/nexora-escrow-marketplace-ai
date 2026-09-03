@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
-import { CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
+import { CATEGORIES as FALLBACK_CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft } from "lucide-react";
 
 const TOTAL_STEPS = 5;
@@ -117,9 +117,23 @@ export default function SellerAddProduct() {
     images: [] as { file: File; preview: string }[],
   });
 
+  const dbCategories = useQuery(api.adminCategories.getActiveCategories);
+
+  // Use database categories if available, fall back to hardcoded
+  const categories = dbCategories && dbCategories.length > 0
+    ? dbCategories.map(c => ({
+        name: c.name,
+        slug: c.slug,
+        icon: c.icon,
+        image: c.image,
+        description: c.description,
+        subcategories: c.subcategories.map(s => ({ name: s, slug: s.toLowerCase().replace(/[^a-z0-9]+/g, "-") })),
+      }))
+    : FALLBACK_CATEGORIES;
+
   const update = (key: string, value: any) => setForm({ ...form, [key]: value });
 
-  const selectedCategory = CATEGORIES.find(c => c.slug === form.category);
+  const selectedCategory = categories.find(c => c.slug === form.category);
   const selectedSubcategory = selectedCategory?.subcategories.find(s => s.slug === form.subcategory);
   const specTemplate = SPECS_TEMPLATES[form.subcategory] || [];
 
@@ -208,7 +222,7 @@ export default function SellerAddProduct() {
               <p className="text-sm text-white/30">Choose the category that best fits your product</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {CATEGORIES.map(cat => (
+              {categories.map(cat => (
                 <button key={cat.slug}
                   onClick={() => { update("category", cat.slug); update("subcategory", ""); update("attributes", {}); setStep(1); }}
                   className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] ${
