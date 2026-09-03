@@ -144,11 +144,8 @@ export default function SellerEditProduct() {
         title: form.title,
         description: form.description || `${form.title} - ${form.condition}`,
         price: Number(form.price),
-        category: form.category,
         condition: form.condition,
         attributes: Object.keys(form.attributes).length > 0 ? form.attributes : undefined,
-        originCounty: form.county,
-        originTown: form.town,
       });
       navigate("/seller/products");
     } catch (err) {
