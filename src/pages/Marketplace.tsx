@@ -239,7 +239,7 @@ export default function Marketplace() {
                       <h3 className="text-[11px] text-white/70 font-medium truncate group-hover:text-white transition-colors">{listing.title}</h3>
                       <p className="text-xs font-bold text-white mt-0.5">KSh {(listing.price || 0).toLocaleString()}</p>
                       <div className="flex items-center gap-1 mt-1.5">
-                        {listing.originCounty && <span className="text-[8px] text-white/25 flex items-center gap-0.5"><MapPin className="w-2 h-2" />{listing.originTown || ""} {listing.originCounty}</span>}
+                        {listing.originCounty && <span className="text-[8px] text-white/10 flex items-center gap-0.5"><MapPin className="w-2 h-2" />{listing.originTown || ""} {listing.originCounty}</span>}
                       </div>
                       <div className="flex items-center gap-1 mt-1">
                         {listing.escrowProtection && <span className="flex items-center gap-0.5 text-[8px] text-nx-emerald bg-nx-emerald/10 px-1 py-0.5 rounded"><Shield className="w-1.5 h-1.5" />Escrow</span>}

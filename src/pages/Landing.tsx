@@ -243,10 +243,10 @@ export default function Landing() {
                       <h3 className="text-white text-sm font-semibold truncate">{item.title}</h3>
                       <div className="flex items-center justify-between mt-1.5">
                         <div className="flex items-center gap-1">
-                          <span className="text-[11px] text-white/40">{item.seller}</span>
+                          <span className="text-[11px] text-white/15">{item.seller}</span>
                           {item.verified && <span className="text-nx-emerald text-[10px]">✓</span>}
                         </div>
-                        <span className="text-[10px] text-white/30 flex items-center gap-1"><MapPin className="w-2.5 h-2.5" />{item.loc.split(",")[0]}</span>
+                        <span className="text-[10px] text-white/10 flex items-center gap-1"><MapPin className="w-2.5 h-2.5" />{item.loc.split(",")[0]}</span>
                       </div>
                     </div>
                   </div>
