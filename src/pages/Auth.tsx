@@ -37,7 +37,7 @@ function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/buyer") 
 type AuthStep = "roleSelect" | "signIn" | { email: string } | "adminEmail" | "adminOtp";
 
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
-  const { isLoading: authLoading, isAuthenticated, signIn } = useAuth();
+  const { isLoading: authLoading, isAuthenticated, signIn, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = resolveRedirectAfterAuth(searchParams.get("returnTo"), redirectAfterAuth);
@@ -59,14 +59,18 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
+      // For admin login, the OTP handler manages navigation after promotion.
+      // Only auto-navigate if the user already has admin role (e.g. returning visit).
       if (redirect === "/admin") {
-        checkAndPromoteAdmin().then((r) => {
-          if (r?.promoted) window.location.reload();
-        }).catch(() => {});
+        if (user?.role === "admin") {
+          navigate(redirect);
+        }
+        // If not admin yet, the handleAdminOtpSubmit or checkAndPromoteAdmin will navigate.
+        return;
       }
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, navigate, redirect]);
+  }, [authLoading, isAuthenticated, navigate, redirect, user?.role]);
 
   const handleRoleSelect = (role: "buyer" | "seller") => {
     setSelectedRole(role);
@@ -156,12 +160,16 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       formData.set("email", adminEmail);
       formData.set("code", otp);
       await signIn("email-otp", formData);
-      await new Promise((r) => setTimeout(r, 800));
+      // Wait for auth state to update
+      await new Promise((r) => setTimeout(r, 1000));
       try { await checkAndPromoteAdmin(); } catch {}
+      // Wait for promotion to propagate
+      await new Promise((r) => setTimeout(r, 500));
       sessionStorage.setItem("admin2fa_verified", "true");
-      navigate("/admin");
+      // Force full reload to ensure Convex auth state is fresh
+      window.location.href = "/admin";
     } catch (err: any) {
-      setAdminError("Invalid code.");
+      setAdminError("Invalid code. Please check and try again.");
       setOtp("");
     } finally {
       setIsLoading(false);
