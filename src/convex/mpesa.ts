@@ -15,11 +15,6 @@ const BASE_URL =
     ? "https://api.safaricom.co.ke"
     : "https://sandbox.safaricom.co.ke";
 
-/** Check if real Safaricom credentials are configured */
-function hasRealCredentials(): boolean {
-  return !!(MPESA_CONSUMER_KEY && MPESA_CONSUMER_SECRET && MPESA_PASSKEY);
-}
-
 /** Get OAuth token from Safaricom */
 async function getAccessToken(): Promise<string> {
   const credentials = Buffer.from(
@@ -34,9 +29,9 @@ async function getAccessToken(): Promise<string> {
     },
   });
 
-  const data = (await res.json()) as { access_token?: string; error?: string };
+  const data = (await res.json()) as { access_token?: string; error?: string; message?: string };
   if (!data.access_token) {
-    throw new Error(`M-Pesa OAuth failed: ${JSON.stringify(data)}`);
+    throw new Error(`M-Pesa OAuth failed: ${data.message || data.error || JSON.stringify(data)}. Check MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET in API Keys.`);
   }
   return data.access_token;
 }
@@ -61,42 +56,6 @@ function getTimestamp(): string {
   );
 }
 
-/** Simulate a successful STK Push for sandbox/demo mode */
-function simulateStkPush(args: {
-  phoneNumber: string;
-  amount: number;
-  accountReference: string;
-  description: string;
-}) {
-  // Format phone for display
-  let phone = args.phoneNumber.replace(/[^0-9]/g, "");
-  if (phone.startsWith("0")) {
-    phone = "254" + phone.slice(1);
-  }
-
-  const simulatedCheckoutId = `ws_CO_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const simulatedMerchantId = `M${Date.now()}`;
-
-  console.log(JSON.stringify({
-    mode: "sandbox_simulation",
-    message: args.description,
-    amount: args.amount,
-    phone,
-    accountReference: args.accountReference,
-    checkoutRequestId: simulatedCheckoutId,
-    merchantRequestId: simulatedMerchantId,
-    note: "No Safaricom credentials configured — simulating successful STK Push",
-  }));
-
-  return {
-    merchantRequestId: simulatedMerchantId,
-    checkoutRequestId: simulatedCheckoutId,
-    responseCode: "0",
-    customerMessage: `Success. Request accepted for processing. Check your phone ${phone} for the STK Push prompt.`,
-    simulated: true,
-  };
-}
-
 /** Initiate M-Pesa STK Push (Lipa Na M-Pesa Online) */
 export const initiateStkPush = action({
   args: {
@@ -106,13 +65,10 @@ export const initiateStkPush = action({
     description: v.string(),
   },
   handler: async (ctx, args) => {
-    // If no real credentials, simulate the STK Push
-    if (!hasRealCredentials()) {
-      console.log("[M-Pesa] Sandbox mode — no Daraja credentials configured. Simulating STK Push.");
-      return simulateStkPush(args);
+    if (!MPESA_CONSUMER_KEY || !MPESA_CONSUMER_SECRET) {
+      throw new Error("M-Pesa credentials not configured. Add MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET in API Keys.");
     }
 
-    // Real Safaricom Daraja API flow
     const accessToken = await getAccessToken();
     const timestamp = getTimestamp();
     const password = generatePassword(timestamp);
@@ -180,29 +136,10 @@ export const checkTransactionStatus = action({
     checkoutRequestId: v.string(),
   },
   handler: async (ctx, args) => {
-    // Sandbox simulation — always return success after a delay
-    if (!hasRealCredentials()) {
-      // Simulate a small delay to mimic network latency
-      await new Promise((r) => setTimeout(r, 1000));
-
-      console.log(JSON.stringify({
-        mode: "sandbox_simulation",
-        checkoutRequestId: args.checkoutRequestId,
-        resultCode: "0",
-        resultDesc: "The service request is processed successfully.",
-        note: "Simulated successful transaction",
-      }));
-
-      return {
-        responseCode: "0",
-        resultCode: "0",
-        resultDesc: "The service request is processed successfully.",
-        merchantRequestId: `M${Date.now()}`,
-        simulated: true,
-      };
+    if (!MPESA_CONSUMER_KEY || !MPESA_CONSUMER_SECRET) {
+      throw new Error("M-Pesa credentials not configured.");
     }
 
-    // Real Safaricom Daraja API flow
     const accessToken = await getAccessToken();
     const timestamp = getTimestamp();
     const password = generatePassword(timestamp);

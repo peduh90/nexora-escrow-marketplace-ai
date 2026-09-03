@@ -112,9 +112,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       await signIn("google");
-      navigate(selectedRole === "seller" ? "/seller" : "/buyer");
-    } catch (error) {
-      setError("Google sign-in is not configured yet. Please use email.");
+      // Navigation handled by useEffect after auth state updates
+    } catch (error: any) {
+      console.error("Google sign-in error:", error);
+      setError(error?.message?.includes("not configured")
+        ? "Google sign-in is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in API Keys."
+        : "Google sign-in failed. " + (error?.message || "Please try again or use email sign-in."));
       setIsLoading(false);
     }
   };
