@@ -12,12 +12,12 @@ const pexels = (id: number, w = 800, h = 600) =>
  */
 export const CATEGORY_BANNERS: Record<string, string> = {
   "mobile-phones": pexels(1092671),     // Modern smartphones on desk
-  "computers-laptops": pexels(18105),   // MacBook workspace
+  "computers-laptops": pexels(1029757), // Laptop on desk
   "fashion": pexels(1536619),           // Fashion clothing rack
   "home-living": pexels(1648776),       // Modern living room
   "services": pexels(3184418),          // Team collaboration
   "jobs": pexels(3184291),             // Professional workspace
-  "agriculture": pexels(250615),        // Farm field
+  "agriculture": pexels(4490616),        // Farm work / harvesting
   "gaming": pexels(3165335),           // Gaming controller
   "health-beauty": pexels(3373716),    // Beauty products
   "sports-fitness": pexels(2294361),   // Fitness equipment
@@ -27,7 +27,7 @@ export const CATEGORY_BANNERS: Record<string, string> = {
   "business-industrial": pexels(1181298), // Industrial machinery
   "tvs-video": pexels(1229861),        // Modern TV
   "pets": pexels(1108099),             // Dog portrait
-  "learning-books": pexels(159711),    // Stack of books
+  "learning-books": pexels(4210853),    // Study materials
   "vehicles": pexels(116675),          // Car interior
   "property": pexels(106399),          // Modern house
   "phones-tablets": pexels(699122),    // Tablet device
@@ -49,7 +49,7 @@ export const SUBCATEGORY_IMAGES: Record<string, string> = {
   "sim-cards-data": pexels(4042822),
 
   // Computers
-  laptops: pexels(18105),
+  laptops: pexels(1029757),
   desktops: pexels(1714208),
   monitors: pexels(1525041),
   printers: pexels(4792079),
@@ -92,11 +92,11 @@ export const SUBCATEGORY_IMAGES: Record<string, string> = {
   education: pexels(5212700),
 
   // Agriculture
-  tractors: pexels(250615),
-  seeds: pexels(1470171),
-  livestock: pexels(2255935),
-  produce: pexels(1068554),
-  irrigation: pexels(250615),
+  tractors: pexels(288644),
+  seeds: pexels(1595104),
+  livestock: pexels(1105019),
+  produce: pexels(1454360),
+  irrigation: pexels(4490616),
 
   // Gaming
   playstation: pexels(3165335),
@@ -149,7 +149,7 @@ export const SUBCATEGORY_IMAGES: Record<string, string> = {
   streaming: pexels(3165335),
 
   // Learning & Books
-  textbooks: pexels(159711),
+  textbooks: pexels(4210853),
   stationery: pexels(5717411),
   uniforms: pexels(8941588),
   courses: pexels(5212700),
@@ -174,12 +174,12 @@ export const SUBCATEGORY_IMAGES: Record<string, string> = {
  */
 export const CATEGORY_DEFAULTS: Record<string, string> = {
   "mobile-phones": pexels(1092671),
-  "computers-laptops": pexels(18105),
+  "computers-laptops": pexels(1029757),
   fashion: pexels(1536619),
   "home-living": pexels(1648776),
   services: pexels(3184418),
   jobs: pexels(3184291),
-  agriculture: pexels(250615),
+  agriculture: pexels(4490616),
   gaming: pexels(3165335),
   "health-beauty": pexels(3373716),
   "sports-fitness": pexels(2294361),
@@ -189,7 +189,7 @@ export const CATEGORY_DEFAULTS: Record<string, string> = {
   "business-industrial": pexels(1181298),
   "tvs-video": pexels(1229861),
   pets: pexels(1108099),
-  "learning-books": pexels(159711),
+  "learning-books": pexels(4210853),
   "animals-pets": pexels(1108099),
   "music-entertainment": pexels(1190298),
   "school-education": pexels(5212700),
@@ -222,12 +222,12 @@ export function getCategoryImage(categorySlug: string, subcategorySlug?: string)
  */
 export const PRODUCT_PLACEHOLDER: Record<string, string> = {
   "mobile-phones": pexels(699122, 400, 400),
-  "computers-laptops": pexels(18105, 400, 400),
+  "computers-laptops": pexels(1029757, 400, 400),
   fashion: pexels(934074, 400, 400),
   "home-living": pexels(1080696, 400, 400),
   services: pexels(3184418, 400, 400),
   jobs: pexels(3184291, 400, 400),
-  agriculture: pexels(250615, 400, 400),
+  agriculture: pexels(4490616, 400, 400),
   gaming: pexels(3165335, 400, 400),
   "health-beauty": pexels(3373716, 400, 400),
   "sports-fitness": pexels(2294361, 400, 400),
@@ -237,7 +237,7 @@ export const PRODUCT_PLACEHOLDER: Record<string, string> = {
   "business-industrial": pexels(1181298, 400, 400),
   "tvs-video": pexels(1229861, 400, 400),
   pets: pexels(1108099, 400, 400),
-  "learning-books": pexels(159711, 400, 400),
+  "learning-books": pexels(4210853, 400, 400),
   vehicles: pexels(116675, 400, 400),
   property: pexels(106399, 400, 400),
   "phones-tablets": pexels(699122, 400, 400),
