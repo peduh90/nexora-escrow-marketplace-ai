@@ -3,8 +3,9 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import SellerSidebar from "./SellerSidebar";
-import { Bell, Search, Wallet, ChevronDown, Home } from "lucide-react";
+import { Bell, Search, Wallet, ChevronDown, Home, MessageCircle } from "lucide-react";
 import AIChat from "@/components/AIChat";
+import { getWhatsAppSupportUrl, openWhatsApp } from "@/lib/whatsapp";
 
 const navLabels: Record<string, string> = {
   "/seller": "Dashboard",
@@ -73,6 +74,15 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
             {/* Notifications */}
             <button className="relative p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/70 transition-colors">
               <Bell className="w-4 h-4" />
+            </button>
+            {/* WhatsApp Support */}
+            <button
+              onClick={() => openWhatsApp(getWhatsAppSupportUrl('Hello, I need admin assistance as a seller on Nexora Market.'))}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+              title="Contact Admin via WhatsApp"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Admin</span>
             </button>
             {/* Profile */}
             <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">

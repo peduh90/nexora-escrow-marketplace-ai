@@ -3,8 +3,9 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
-  Send, Search, CheckCheck, Check, Package, Star, Verified, Loader2, MessageSquare,
+  Send, Search, CheckCheck, Check, Package, Star, Verified, Loader2, MessageSquare, Phone, MessageCircle,
 } from "lucide-react";
+import { getWhatsAppSupportUrl, openWhatsApp, WHATSAPP_CONFIG } from "@/lib/whatsapp";
 
 export default function SellerMessages() {
   const conversations = useQuery(api.messages.getConversations);
@@ -71,6 +72,14 @@ export default function SellerMessages() {
               <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search conversations..."
                 className="w-full pl-9 pr-4 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/30" />
             </div>
+            {/* WhatsApp Contact Admin */}
+            <button
+              onClick={() => openWhatsApp(getWhatsAppSupportUrl('Hello, I need admin assistance as a seller on Nexora Market.'))}
+              className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Contact Admin via WhatsApp
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto">
@@ -162,10 +171,27 @@ export default function SellerMessages() {
             </div>
           </div>
         ) : (
-          <div className="hidden sm:flex flex-1 items-center justify-center">
-            <div className="text-center">
+          <div className="hidden sm:flex flex-1 items-center justify-center">              <div className="text-center">
               <MessageSquare className="w-12 h-12 text-white/10 mx-auto mb-3" />
               <p className="text-sm text-white/30">Select a conversation to start chatting</p>
+              <p className="text-xs text-white/15 mt-2">Or contact support for assistance</p>
+              <div className="flex items-center justify-center gap-3 mt-4">
+                <button
+                  onClick={() => openWhatsApp(getWhatsAppSupportUrl('Hello, I need assistance as a seller on Nexora Market.'))}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-all hover:scale-105"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  WhatsApp Admin
+                </button>
+                <a
+                  href={`tel:${WHATSAPP_CONFIG.phoneNumber}`}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-nx-blue/10 border border-nx-blue/20 text-nx-blue text-xs font-semibold hover:bg-nx-blue/20 transition-all hover:scale-105"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  Call Support
+                </a>
+              </div>
+              <p className="text-[10px] text-white/15 mt-3">📞 {WHATSAPP_CONFIG.displayNumber}</p>
             </div>
           </div>
         )}

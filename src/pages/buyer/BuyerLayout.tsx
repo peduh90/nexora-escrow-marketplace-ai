@@ -3,7 +3,8 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import BuyerSidebar from "./BuyerSidebar";
-import { Bell, Search, Wallet, ChevronDown, ArrowLeft, Home } from "lucide-react";
+import { Bell, Search, Wallet, ChevronDown, ArrowLeft, Home, MessageCircle } from "lucide-react";
+import { getWhatsAppSupportUrl, openWhatsApp, WHATSAPP_CONFIG } from "@/lib/whatsapp";
 
 const navLabels: Record<string, string> = {
   "/buyer": "Dashboard",
@@ -64,6 +65,14 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
                   <span className="text-[8px] font-bold text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => openWhatsApp(getWhatsAppSupportUrl())}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+              title="Contact Support via WhatsApp"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Support</span>
             </button>
             <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
               {user?.image ? (

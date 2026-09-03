@@ -4,13 +4,14 @@ import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Shield, LayoutDashboard, Store, ShoppingCart, Truck, Scale,
-  Briefcase, Wallet, Settings, LogOut, ChevronLeft, ChevronRight, User,
+  Briefcase, Wallet, Settings, LogOut, ChevronLeft, ChevronRight, User, MessageCircle,
 } from "lucide-react";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/buyer" },
   { icon: Store, label: "Marketplace", path: "/buyer/marketplace" },
   { icon: ShoppingCart, label: "My Orders", path: "/buyer/orders" },
+  { icon: MessageCircle, label: "Messages", path: "/chat" },
   { icon: Truck, label: "Deliveries", path: "/buyer/deliveries" },
   { icon: Wallet, label: "Wallet", path: "/buyer/wallet" },
   { icon: Briefcase, label: "Job Board", path: "/buyer/jobs" },

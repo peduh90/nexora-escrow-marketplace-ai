@@ -3,8 +3,9 @@ import { useNavigate, useParams } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowLeft, Send, Paperclip, Image, Shield, Star, MoreVertical, Phone, Video, Info, MapPin, Clock, CheckCheck } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Image, Shield, Star, MoreVertical, Phone, Video, Info, MapPin, Clock, CheckCheck, MessageCircle } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
+import { getWhatsAppSupportUrl, getWhatsAppSellerUrl, openWhatsApp, WHATSAPP_CONFIG } from "@/lib/whatsapp";
 
 export default function Chat() {
   const { user } = useAuth();
@@ -114,11 +115,13 @@ export default function Chat() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-nx-blue transition-colors">
-              <Phone className="w-4 h-4" />
-            </button>
-            <button className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-nx-blue transition-colors">
-              <Video className="w-4 h-4" />
+            <button
+              onClick={() => openWhatsApp(getWhatsAppSupportUrl(`I need help with my conversation about: ${activeConvo?.listingTitle || 'general inquiry'}`))}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+              title="Contact Support via WhatsApp"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Support</span>
             </button>
             <button className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-nx-blue transition-colors">
               <Info className="w-4 h-4" />
@@ -224,6 +227,30 @@ export default function Chat() {
                     <div className="text-2xl font-bold text-nx-violet">✓</div>
                     <p className="text-[11px] text-white/40 mt-1">Verified</p>
                   </div>
+                </div>
+
+                {/* WhatsApp Contact Support */}
+                <div className="mt-8 space-y-3">
+                  <p className="text-white/30 text-xs mb-3">Need help? Contact us directly:</p>
+                  <div className="flex items-center justify-center gap-3">
+                    <button
+                      onClick={() => openWhatsApp(getWhatsAppSupportUrl())}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/20 transition-all hover:scale-105"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      WhatsApp Support
+                    </button>
+                    <a
+                      href={`tel:${WHATSAPP_CONFIG.phoneNumber}`}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-nx-blue/10 border border-nx-blue/20 text-nx-blue text-sm font-semibold hover:bg-nx-blue/20 transition-all hover:scale-105"
+                    >
+                      <Phone className="w-4 h-4" />
+                      Call Us
+                    </a>
+                  </div>
+                  <p className="text-[10px] text-white/15 mt-2">
+                    📞 {WHATSAPP_CONFIG.displayNumber} • Available 24/7
+                  </p>
                 </div>
               </div>
             </div>

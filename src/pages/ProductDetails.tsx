@@ -6,8 +6,9 @@ import { useAuth } from "@/hooks/use-auth"
 import { useState } from "react";
 import {
   Shield, Heart, Share2, MessageSquare, ShoppingCart, ArrowLeft, Star, MapPin, Clock,
-  CheckCircle2, Truck, ChevronRight, Package, Eye, X, Minus, Plus, Loader2, Send,
+  CheckCircle2, Truck, ChevronRight, Package, Eye, X, Minus, Plus, Loader2, Send, MessageCircle, Phone,
 } from "lucide-react";
+import { getWhatsAppSellerUrl, getWhatsAppSupportUrl, openWhatsApp } from "@/lib/whatsapp";
 
 /** Show the most relevant attributes per category */
 function CategoryAttributes({ category, attributes }: { category: string; attributes?: Record<string, string> }) {
@@ -411,8 +412,14 @@ export default function ProductDetails() {
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-nx-violet/10 text-nx-violet text-xs font-medium hover:bg-nx-violet/20 transition-colors">
                   <MessageSquare className="w-3.5 h-3.5" /> Chat Seller
                 </button>
+                <button
+                  onClick={() => openWhatsApp(getWhatsAppSupportUrl(`I'm interested in "${listing.title}" (KES ${listing.price.toLocaleString()}). Is it still available?`))}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                </button>
                 <button onClick={() => navigate(`/seller/${listing.sellerId}`)}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/50 text-xs font-medium hover:text-white/70 transition-colors">
+                  className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/50 text-xs font-medium hover:text-white/70 transition-colors">
                   View Profile
                 </button>
               </div>
@@ -436,9 +443,23 @@ export default function ProductDetails() {
                   </button>
                 )}
               </div>
-              <button onClick={handleChatSeller}
-                className="w-full py-3 rounded-xl bg-nx-cyan/10 text-nx-cyan text-sm font-medium hover:bg-nx-cyan/20 transition-colors flex items-center justify-center gap-2">
-                <MessageSquare className="w-4 h-4" /> Chat with {listing.sellerName}
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={handleChatSeller}
+                  className="py-3 rounded-xl bg-nx-cyan/10 text-nx-cyan text-sm font-medium hover:bg-nx-cyan/20 transition-colors flex items-center justify-center gap-2">
+                  <MessageSquare className="w-4 h-4" /> Chat with Seller
+                </button>
+                <button
+                  onClick={() => openWhatsApp(getWhatsAppSupportUrl(`I'm interested in "${listing.title}" (KES ${listing.price.toLocaleString()}). Is it still available?`))}
+                  className="py-3 rounded-xl bg-emerald-500/10 text-emerald-400 text-sm font-medium hover:bg-emerald-500/20 transition-colors flex items-center justify-center gap-2 border border-emerald-500/20"
+                >
+                  <MessageCircle className="w-4 h-4" /> WhatsApp Seller
+                </button>
+              </div>
+              <button
+                onClick={() => openWhatsApp(getWhatsAppSupportUrl(`I need help with: ${listing.title} (KES ${listing.price.toLocaleString()})`))}
+                className="w-full py-3 rounded-xl bg-white/[0.03] border border-white/5 text-white/40 text-sm font-medium hover:text-white/60 hover:bg-white/[0.05] transition-colors flex items-center justify-center gap-2"
+              >
+                <Phone className="w-4 h-4" /> Contact Nexora Support
               </button>
             </div>
 
