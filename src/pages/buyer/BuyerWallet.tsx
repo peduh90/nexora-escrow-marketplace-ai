@@ -191,24 +191,29 @@ export default function BuyerWallet() {
                   try {
                     // 1. Record pending deposit in Convex
                     await initiateDeposit({ amount: Number(depositAmount), phoneNumber: depositPhone });
-                    // 2. Send STK Push via Safaricom
-                    await initiateStkPush({
+                    // 2. Send STK Push via Safaricom (or sandbox simulation)
+                    const stkResult = await initiateStkPush({
                       phoneNumber: depositPhone,
                       amount: Number(depositAmount),
                       accountReference: `NX-DEP-${Date.now()}`,
                       description: `Wallet deposit of KES ${Number(depositAmount).toLocaleString()}`,
                     });
-                    setDepositStep("waiting");
-                    // 3. Simulate confirmation after 3 seconds (real flow waits for Safaricom callback)
-                    setTimeout(() => {
-                      setDepositStep("done");
+                    // 3. If sandbox simulation, auto-confirm immediately
+                    if (stkResult.simulated) {
+                      setDepositStep("waiting");
                       setTimeout(() => {
-                        setShowDeposit(false);
-                        setDepositStep("idle");
-                        setDepositAmount("");
-                        setDepositPhone("");
+                        setDepositStep("done");
+                        setTimeout(() => {
+                          setShowDeposit(false);
+                          setDepositStep("idle");
+                          setDepositAmount("");
+                          setDepositPhone("");
+                        }, 2000);
                       }, 2000);
-                    }, 3000);
+                    } else {
+                      // Real M-Pesa — show waiting for user to confirm on phone
+                      setDepositStep("waiting");
+                    }
                   } catch (err: any) {
                     setDepositStep("error");
                     setDepositError(err?.message || "M-Pesa payment failed. Please try again.");

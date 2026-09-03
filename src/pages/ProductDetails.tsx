@@ -138,7 +138,27 @@ export default function ProductDetails() {
           description: `Payment for ${listing.title}`,
         });
         setMpesaStep("waiting");
-        // Poll for status every 5 seconds, max 60 seconds
+
+        // Sandbox simulation — auto-confirm immediately
+        if (stkResult.simulated) {
+          setMpesaStep("confirming");
+          await createOrder({
+            listingId: listing._id,
+            sellerId: listing.sellerId,
+            amount: totalAmount,
+            deliveryCounty,
+            deliveryTown,
+            deliveryAddress,
+            paymentMethod: "mpesa",
+          });
+          setMpesaStep("done");
+          setOrderSuccess(true);
+          setShowCheckout(false);
+          setOrdering(false);
+          return;
+        }
+
+        // Real M-Pesa — poll for status every 5 seconds, max 60 seconds
         const checkoutId = stkResult.checkoutRequestId;
         let attempts = 0;
         const poll = async () => {
