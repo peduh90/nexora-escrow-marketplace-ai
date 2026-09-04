@@ -86,6 +86,7 @@ const AdminSystem = lazy(() => import("./pages/admin/AdminSystem.tsx"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings.tsx"));
 const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications.tsx"));
 const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs.tsx"));
+const AdminOwner = lazy(() => import("./pages/admin/AdminOwner.tsx"));
 const AdminCategories = lazy(() => import("./pages/admin/AdminCategories.tsx"));
 
 
@@ -274,6 +275,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/notifications" element={<RequireAdmin><AdminNotifications /></RequireAdmin>} />
               <Route path="/admin/categories" element={<RequireAdmin><AdminCategories /></RequireAdmin>} />
               <Route path="/admin/ai-operations" element={<RequireAdmin><AdminAI /></RequireAdmin>} />
+            <Route path="/admin/owner" element={<RequireAdmin><AdminOwner /></RequireAdmin>} />
             <Route path="/admin/audit-logs" element={<RequireAdmin><AdminAuditLogs /></RequireAdmin>} />
 
               <Route path="*" element={<NotFound />} />

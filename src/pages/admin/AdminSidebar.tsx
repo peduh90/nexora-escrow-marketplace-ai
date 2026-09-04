@@ -9,10 +9,15 @@ import {
   Package, CreditCard, MessageSquare, AlertTriangle,
   MapPin, Receipt, TrendingUp, Eye, Globe, FileText,
   Megaphone, Hash, Store, RefreshCw, Cpu,
-  MessageCircle,
+  MessageCircle, Crown, Zap, FileCheck, AlertOctagon,
 } from "lucide-react";
 
 const navSections = [
+  { label: "OWNER CONTROL", items: [
+    { icon: Crown, label: "Owner Command Center", path: "/admin/owner" },
+    { icon: Zap, label: "AI Automation", path: "/admin/ai" },
+    { icon: AlertOctagon, label: "Emergency AI", path: "/admin/owner" },
+  ]},
   { label: "OVERVIEW", items: [
     { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
   ]},
@@ -43,9 +48,9 @@ const navSections = [
     { icon: Truck, label: "Deliveries", path: "/admin/deliveries" },
   ]},
   { label: "AI OPERATIONS", items: [
-    { icon: Brain, label: "AI Control Center", path: "/admin/ai" },
+    { icon: Brain, label: "AI Control Center", path: "/admin/ai-operations" },
     { icon: Cpu, label: "AI Fraud Detection", path: "/admin/fraud" },
-    { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
+    { icon: FileCheck, label: "AI Audit Log", path: "/admin/audit-logs" },
   ]},
   { label: "COMMUNICATION", items: [
     { icon: MessageCircle, label: "WhatsApp", path: "/admin/whatsapp" },
