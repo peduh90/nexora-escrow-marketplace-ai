@@ -604,6 +604,41 @@ const schema = defineSchema(
       .index("by_status", ["status"])
       .index("by_risk", ["riskLevel"])
       .index("by_created", ["createdAt"]),
+
+    // AI Permissions — granular control over what AI can do
+    aiPermissions: defineTable({
+      key: v.string(), // e.g. "auto_moderate_listings", "auto_resolve_tickets", "auto_approve_kyc", "auto_escrow_release"
+      label: v.string(),
+      description: v.string(),
+      category: v.string(), // "support", "moderation", "kyc", "fraud", "disputes", "finance", "security"
+      enabled: v.boolean(),
+      riskLevel: v.string(), // "low", "medium", "high", "critical"
+      requiresOwnerApproval: v.boolean(),
+      maxConfidence: v.number(), // minimum AI confidence to auto-execute (0-100)
+      autoActionCount: v.number(), // times AI has auto-executed this action
+      lastTriggeredAt: v.optional(v.number()),
+      updatedBy: v.optional(v.string()),
+      updatedAt: v.number(),
+    })
+      .index("by_key", ["key"])
+      .index("by_category", ["category"]),
+
+    // AI Automation Log — tracks every automated action
+    aiAutomationLog: defineTable({
+      permissionKey: v.string(),
+      entityType: v.string(),
+      entityId: v.string(),
+      action: v.string(),
+      aiConfidence: v.number(),
+      result: v.string(), // "approved", "rejected", "escalated", "failed"
+      reasoning: v.optional(v.string()),
+      overriddenBy: v.optional(v.string()),
+      overrideReason: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_permission", ["permissionKey"])
+      .index("by_entity", ["entityType", "entityId"])
+      .index("by_created", ["createdAt"]),
   },
   {
     schemaValidation: false,
