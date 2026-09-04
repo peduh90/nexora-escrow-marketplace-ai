@@ -42,10 +42,10 @@ const navSections = [
   { label: "DELIVERY", items: [
     { icon: Truck, label: "Deliveries", path: "/admin/deliveries" },
   ]},
-  { label: "AI CENTER", items: [
-    { icon: Brain, label: "AI Overview", path: "/admin/fraud" },
-    { icon: Cpu, label: "AI Fraud Detection", path: "/admin/fraud-detection" },
-    { icon: BarChart3, label: "AI Analytics", path: "/admin/analytics" },
+  { label: "AI OPERATIONS", items: [
+    { icon: Brain, label: "AI Control Center", path: "/admin/ai" },
+    { icon: Cpu, label: "AI Fraud Detection", path: "/admin/fraud" },
+    { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
   ]},
   { label: "COMMUNICATION", items: [
     { icon: MessageCircle, label: "WhatsApp", path: "/admin/whatsapp" },

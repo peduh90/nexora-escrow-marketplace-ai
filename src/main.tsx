@@ -74,6 +74,7 @@ const AdminWithdrawals = lazy(() => import("./pages/admin/AdminWithdrawals.tsx")
 const AdminDeliveries = lazy(() => import("./pages/admin/AdminDeliveries.tsx"));
 const AdminDisputes = lazy(() => import("./pages/admin/AdminDisputes.tsx"));
 const AdminFraud = lazy(() => import("./pages/admin/AdminFraud.tsx"));
+const AdminAI = lazy(() => import("./pages/admin/AdminAI.tsx"));
 const AdminKYC = lazy(() => import("./pages/admin/AdminKYC.tsx"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages.tsx"));
 const AdminReviews = lazy(() => import("./pages/admin/AdminReviews.tsx"));
@@ -260,6 +261,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/zones" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
               <Route path="/admin/disputes" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />
               <Route path="/admin/fraud" element={<RequireAdmin><AdminFraud /></RequireAdmin>} />
+            <Route path="/admin/ai" element={<RequireAdmin><AdminAI /></RequireAdmin>} />
               <Route path="/admin/kyc" element={<RequireAdmin><AdminKYC /></RequireAdmin>} />
               <Route path="/admin/messages" element={<RequireAdmin><AdminMessages /></RequireAdmin>} />
               <Route path="/admin/reviews" element={<RequireAdmin><AdminReviews /></RequireAdmin>} />
@@ -271,7 +273,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/settings" element={<RequireAdmin><AdminSettings /></RequireAdmin>} />
               <Route path="/admin/notifications" element={<RequireAdmin><AdminNotifications /></RequireAdmin>} />
               <Route path="/admin/categories" element={<RequireAdmin><AdminCategories /></RequireAdmin>} />
-              <Route path="/admin/audit-logs" element={<RequireAdmin><AdminAuditLogs /></RequireAdmin>} />
+              <Route path="/admin/ai-operations" element={<RequireAdmin><AdminAI /></RequireAdmin>} />
+            <Route path="/admin/audit-logs" element={<RequireAdmin><AdminAuditLogs /></RequireAdmin>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

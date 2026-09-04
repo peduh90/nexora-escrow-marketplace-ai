@@ -480,6 +480,130 @@ const schema = defineSchema(
       .index("by_admin", ["adminId"])
       .index("by_action", ["action"])
       .index("by_created", ["createdAt"]),
+
+    // ─── AI OPERATIONS LAYER ───
+
+    // AI Knowledge Base — verified Nexora documentation for AI responses
+    aiKnowledgeBase: defineTable({
+      title: v.string(),
+      category: v.string(), // e.g. "escrow", "payments", "kyc", "seller_rules", "buyer_rules", "delivery", "disputes", "faq"
+      content: v.string(),
+      tags: v.array(v.string()),
+      active: v.boolean(),
+      updatedBy: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_category", ["category"])
+      .index("by_active", ["active"]),
+
+    // Support Tickets — AI-created or human-created
+    supportTickets: defineTable({
+      userId: v.string(),
+      userRole: v.string(), // buyer, seller, admin
+      userName: v.optional(v.string()),
+      userEmail: v.optional(v.string()),
+      subject: v.string(),
+      category: v.string(), // ORDER_PROBLEM, PAYMENT, REFUND, ESCROW, KYC, SELLER_ONBOARDING, PRODUCT_LISTING, ACCOUNT, DELIVERY, DISPUTE, FRAUD, TECHNICAL_PROBLEM, COMPLAINT, GENERAL_INFORMATION
+      priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+      status: v.union(v.literal("open"), v.literal("ai_handling"), v.literal("ai_resolved"), v.literal("escalated"), v.literal("human_review"), v.literal("resolved"), v.literal("closed")),
+      assignedTo: v.optional(v.string()), // team member userId or "ai"
+      relatedOrderId: v.optional(v.string()),
+      relatedListingId: v.optional(v.string()),
+      relatedEscrowId: v.optional(v.string()),
+      relatedDisputeId: v.optional(v.string()),
+      aiIntent: v.optional(v.string()),
+      aiConfidence: v.optional(v.number()),
+      aiSummary: v.optional(v.string()),
+      aiRecommendedAction: v.optional(v.string()),
+      escalationReason: v.optional(v.string()),
+      customerSatisfaction: v.optional(v.number()),
+      resolution: v.optional(v.string()),
+      resolvedBy: v.optional(v.string()), // "ai" or userId
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      resolvedAt: v.optional(v.number()),
+    })
+      .index("by_user", ["userId"])
+      .index("by_status", ["status"])
+      .index("by_category", ["category"])
+      .index("by_priority", ["priority"])
+      .index("by_created", ["createdAt"]),
+
+    // Ticket Messages — conversation history for each ticket
+    ticketMessages: defineTable({
+      ticketId: v.string(),
+      senderId: v.string(), // userId, "ai", or "system"
+      senderName: v.string(),
+      content: v.string(),
+      isAi: v.boolean(),
+      isSystem: v.boolean(),
+      createdAt: v.number(),
+    })
+      .index("by_ticket", ["ticketId"])
+      .index("by_created", ["createdAt"]),
+
+    // AI Audit Log — every AI decision is recorded
+    aiAuditLog: defineTable({
+      action: v.string(), // e.g. "intent_classification", "auto_resolve", "escalate", "moderation_review", "fraud_score", "kyc_review", "dispute_analysis"
+      entityType: v.string(), // ticket, listing, kyc, dispute, user, escrow
+      entityId: v.string(),
+      userId: v.optional(v.string()),
+      aiDecision: v.string(),
+      aiConfidence: v.number(),
+      riskLevel: v.optional(v.string()),
+      reasoning: v.optional(v.string()),
+      dataSourcesUsed: v.optional(v.array(v.string())),
+      humanOverride: v.optional(v.boolean()),
+      overrideBy: v.optional(v.string()),
+      overrideReason: v.optional(v.string()),
+      finalOutcome: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_entity", ["entityType", "entityId"])
+      .index("by_action", ["action"])
+      .index("by_created", ["createdAt"]),
+
+    // AI Metrics — daily snapshots for analytics
+    aiMetrics: defineTable({
+      date: v.string(), // YYYY-MM-DD
+      totalConversations: v.number(),
+      aiResolved: v.number(),
+      humanEscalated: v.number(),
+      aiAssisted: v.number(),
+      avgResolutionTime: v.number(), // ms
+      customerSatisfaction: v.number(), // 0-100
+      automationRate: v.number(), // 0-100
+      qualityScore: v.number(), // 0-100
+      ticketsCreated: v.number(),
+      ticketsResolved: v.number(),
+      hallucinationReports: v.number(),
+      incorrectAnswers: v.number(),
+      avgConfidence: v.number(),
+      aiCost: v.number(), // USD
+      aiRequests: v.number(),
+      createdAt: v.number(),
+    })
+      .index("by_date", ["date"]),
+
+    // Fraud Alerts — AI-detected suspicious activity
+    fraudAlerts: defineTable({
+      entityType: v.string(), // user, listing, transaction, escrow
+      entityId: v.string(),
+      userId: v.optional(v.string()),
+      riskScore: v.number(), // 0-100
+      riskLevel: v.string(), // low, medium, high, critical
+      flags: v.array(v.string()),
+      recommendation: v.string(),
+      status: v.union(v.literal("new"), v.literal("reviewing"), v.literal("confirmed"), v.literal("dismissed")),
+      reviewedBy: v.optional(v.string()),
+      reviewNotes: v.optional(v.string()),
+      createdAt: v.number(),
+      reviewedAt: v.optional(v.number()),
+    })
+      .index("by_status", ["status"])
+      .index("by_risk", ["riskLevel"])
+      .index("by_created", ["createdAt"]),
   },
   {
     schemaValidation: false,
