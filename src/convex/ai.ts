@@ -13,19 +13,49 @@ import { v } from "convex/values";
  * - getEmergencyFallback only used when API key is missing OR all retries exhausted
  */
 
-/** Whitelist: only truly deterministic cases the router intercepts */
-function tryWhitelist(input: string): string | null {
-  const trimmed = input.trim();
+/** Whitelist: deterministic cases the router intercepts — works without API key */
+function tryWhitelist(input: string, role?: string): string | null {
+  const msg = input.trim().toLowerCase();
 
-  // Slash commands
-  if (trimmed === "/help" || trimmed === "/support") {
-    return null; // Let LLM handle this — it knows the full context
-  }
-
-  // Explicit order tracking with an ID: "track order #12345" or "order #12345"
-  const orderMatch = trimmed.match(/(?:track|order)\s*#(\d{4,})/i);
+  // Explicit order tracking with an ID
+  const orderMatch = msg.match(/(?:track|order|order)\s*#?(\d{4,})/i);
   if (orderMatch) {
     return `📦 To track order #${orderMatch[1]}, go to **My Orders** in your dashboard and find it there. If you can't locate it, share the order ID and I'll help you look it up.`;
+  }
+
+  // Platform knowledge — works without LLM
+  const knowledge: [RegExp, string][] = [
+    [/what.*escrow|how.*escrow|escrow.*work/i, "**Escrow Protection** is Nexora's core safety feature:\n\n1. Buyer places an order → funds are locked in escrow\n2. Nexora collects from seller → delivers to buyer\n3. Buyer confirms receipt → funds released to seller\n4. Platform commission (2.5-5%) deducted automatically\n\nFunds are never sent directly to the seller until the buyer confirms. This protects both parties from fraud."],
+
+    [/what.*fee|how.*much.*fee|commission|charge/i, "**Nexora Fees:**\n\n• Transaction commission: 2.5% (Professional) to 5% (Free tier)\n• Escrow fee: 0.5-2%\n• Delivery: Varies by location (Free in Nairobi CBD & Westlands)\n• Premium seller plans: KES 999-4,999/month for lower fees & analytics\n\nAll fees are transparent and shown before you confirm any transaction."],
+
+    [/how.*sell|become.*seller|start.*sell|seller.*account/i, "**How to Start Selling on Nexora:**\n\n1. Sign up / Sign in → Go to **Seller Dashboard**\n2. Complete **KYC Verification** (upload ID + business docs)\n3. Add your first product: **Add Product** → Category → Details → Images → Price\n4. When buyer orders → Prepare product → Mark as 'Ready for Collection'\n5. Nexora collects & delivers → Buyer confirms → You get paid!\n\nPro tip: Verified sellers get more trust and sales. Complete KYC first."],
+
+    [/how.*buy|start.*buy|how.*purchase/i, "**How to Buy on Nexora:**\n\n1. Browse or search for products on the Marketplace\n2. Click on a product → Review details & seller info\n3. Click **Buy Now** → Pay via M-Pesa or Wallet\n4. Funds held in escrow (your money is safe!)\n5. Nexora delivers the product to you\n6. Inspect & confirm delivery → Seller gets paid\n\nIf anything is wrong, you can open a dispute and we'll help resolve it."],
+
+    [/delivery|shipping|how.*deliver/i, "**Nexora Delivery System:**\n\n• Delivery is **fully managed by Nexora** — sellers don't arrange delivery\n• Sellers mark products as 'Ready for Collection'\n• Nexora collects from seller → delivers to buyer\n• Delivery fee shown at checkout (varies by distance)\n• Free delivery available in Nairobi CBD & Westlands\n• Track your delivery in the **Deliveries** section of your dashboard"],
+
+    [/payment|mpesa|m-pesa|pay.*method/i, "**Payment Methods:**\n\n• **M-Pesa** (STK Push) — Most popular, instant\n• **Nexora Wallet** — Deposit funds, use for purchases\n• **Credit/Debit Card** — Via Stripe (coming soon)\n\nM-Pesa: Enter your phone number at checkout → STK push sent → Enter PIN → Done!\nWallet: Top up from M-Pesa → Use balance for faster checkout."],
+
+    [/refund|money.*back|return/i, "**Refund Policy:**\n\n• If delivery fails → Full refund automatically\n• If product doesn't match description → Open dispute → AI-assisted resolution\n• Buyer hasn't confirmed → Funds stay in escrow until resolved\n• Refunds processed within 24-48 hours to your wallet or M-Pesa\n\nAlways report issues within 7 days of delivery for fastest resolution."],
+
+    [/dispute|complain|issue|problem/i, "**Opening a Dispute:**\n\n1. Go to **My Orders** → Select the order\n2. Click **Open Dispute**\n3. Describe the issue & upload evidence (photos/videos)\n4. AI reviews the case and provides a recommendation\n5. Human specialist makes final decision if needed\n\nDisputes are typically resolved within 24-48 hours."],
+
+    [/withdraw|cash.*out|transfer.*money/i, "**Withdrawing Earnings:**\n\n1. Go to **Wallet** in your dashboard\n2. Click **Withdraw**\n3. Choose: M-Pesa or Bank Transfer\n4. Enter amount (minimum KES 100)\n5. Funds arrive within 1-24 hours\n\nNote: Funds must be in 'Available' balance (not in escrow)."],
+
+    [/kyc|verify|verification|verified/i, "**KYC Verification:**\n\n• **Individual**: Upload national ID/passport + selfie\n• **Business**: Upload business registration + KRA PIN\n• Review takes 24-48 hours\n• Verified sellers get: Verified badge, higher trust, lower fees, priority listing\n\nStart verification from your Seller Dashboard → Verification tab."],
+
+    [/who.*owner|who.*ceo|admin.*email|contact.*admin/i, "**Nexora Team:**\n\n• **CEO/Operations Lead**: murimiedwin227@gmail.com\n• **WhatsApp Support**: +254 706 116 043\n• **Email Support**: support@nexora.co.ke\n\nFor urgent matters, WhatsApp is the fastest way to reach the team."],
+
+    [/hello|hi|hey|help|what.*can.*you/i, role === "admin"
+      ? "🛡️ **NexoraAI Command Center** — I can help you with:\n\n• Platform stats & analytics\n• User management & verification\n• Fraud alerts & dispute resolution\n• Product moderation\n• Revenue & payment reports\n• System health monitoring\n\nWhat would you like to review?"
+      : role === "seller"
+        ? "👋 **Hey! I'm NexoraAI** — your seller copilot! I can help you:\n\n• Create & optimize product listings\n• Analyze pricing & competition\n• Manage orders & deliveries\n• Track your earnings\n• Improve your seller profile\n\nWhat do you need help with?"
+        : "👋 **Hey! I'm NexoraAI** — your smart marketplace assistant! I can help you:\n\n• Find products & compare prices\n• Track orders & deliveries\n• Answer payment & escrow questions\n• Resolve issues & disputes\n\nWhat are you looking for today?"],
+  ];
+
+  for (const [pattern, response] of knowledge) {
+    if (pattern.test(msg)) return response;
   }
 
   // Nothing matched — send to LLM
@@ -60,13 +90,13 @@ export const chat = action({
   handler: async (ctx, args) => {
     const lastMessage = args.messages[args.messages.length - 1]?.content || "";
 
-    // STEP 1: Check whitelist (deterministic cases only)
-    const whitelistResult = tryWhitelist(lastMessage);
+    // STEP 1: Check whitelist (deterministic cases — works without API key)
+    const whitelistResult = tryWhitelist(lastMessage, args.userRole);
     if (whitelistResult) {
       console.log(JSON.stringify({
         message: lastMessage,
         router_decision: "whitelist_match",
-        matched_rule: "order_tracking_or_slash_command",
+        matched_rule: "deterministic_knowledge_base",
       }));
       return whitelistResult;
     }
