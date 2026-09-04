@@ -242,7 +242,7 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`fixed right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
-          (panel === "buyer" || panel === "seller") ? "bottom-[8.5rem]" : "bottom-6"
+          (panel === "buyer" || panel === "seller") ? "bottom-22" : "bottom-6"
         } ${
           isOpen
             ? "bg-white/10 border border-white/20"
