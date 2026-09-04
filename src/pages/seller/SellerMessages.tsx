@@ -72,14 +72,20 @@ export default function SellerMessages() {
               <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search conversations..."
                 className="w-full pl-9 pr-4 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/30" />
             </div>
-            {/* WhatsApp Contact Admin */}
-            <button
-              onClick={() => openWhatsApp(getWhatsAppSupportUrl('Hello, I need admin assistance as a seller on Nexora Market.'))}
-              className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-              Contact Admin via WhatsApp
-            </button>
+            {/* In-app Support + WhatsApp */}
+            <div className="flex gap-2 mt-2">
+              <a href="/seller/help" className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-nx-violet/10 border border-nx-violet/20 text-nx-violet text-xs font-semibold hover:bg-nx-violet/20 transition-colors">
+                <MessageSquare className="w-3.5 h-3.5" />
+                Support
+              </a>
+              <button
+                onClick={() => openWhatsApp(getWhatsAppSupportUrl('Hello, I need admin assistance as a seller on Nexora Market.'))}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                WhatsApp
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">

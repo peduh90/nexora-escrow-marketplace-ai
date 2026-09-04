@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
 import { CATEGORIES as FALLBACK_CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
+import { CATEGORY_BANNERS } from "@/lib/category-images";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft } from "lucide-react";
 
 const TOTAL_STEPS = 5;
@@ -225,15 +226,28 @@ export default function SellerAddProduct() {
               {categories.map(cat => (
                 <button key={cat.slug}
                   onClick={() => { update("category", cat.slug); update("subcategory", ""); update("attributes", {}); setStep(1); }}
-                  className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] ${
+                  className={`relative overflow-hidden rounded-xl border text-left transition-all hover:scale-[1.02] ${
                     form.category === cat.slug
-                      ? "border-nx-cyan/40 bg-nx-cyan/5 shadow-[0_0_20px_rgba(6,182,212,0.1)]"
-                      : "border-white/[0.06] bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04]"
+                      ? "border-nx-cyan/40 shadow-[0_0_20px_rgba(6,182,212,0.1)]"
+                      : "border-white/[0.06] hover:border-white/10"
                   }`}
                 >
-                  <p className="text-2xl mb-2">{cat.icon}</p>
-                  <p className="text-sm font-semibold text-white mb-0.5">{cat.name}</p>
-                  <p className="text-[11px] text-white/30 leading-relaxed">{cat.description}</p>
+                  {CATEGORY_BANNERS[cat.slug] ? (
+                    <div className="h-28 overflow-hidden relative">
+                      <img src={CATEGORY_BANNERS[cat.slug]} alt={cat.name} className="w-full h-full object-cover" loading="lazy" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-3">
+                        <p className="text-sm font-bold text-white drop-shadow-sm">{cat.name}</p>
+                        <p className="text-[10px] text-white/60 leading-relaxed">{cat.description}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4">
+                      <p className="text-2xl mb-2">{cat.icon}</p>
+                      <p className="text-sm font-semibold text-white mb-0.5">{cat.name}</p>
+                      <p className="text-[11px] text-white/30 leading-relaxed">{cat.description}</p>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>

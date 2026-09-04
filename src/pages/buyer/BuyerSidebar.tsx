@@ -38,7 +38,7 @@ export default function BuyerSidebar() {
         </div>
 
         <div className={`mx-3 mt-3 mb-1 px-3 py-1.5 rounded-lg bg-nx-cyan/10 text-nx-cyan text-[10px] font-medium tracking-wider uppercase ${collapsed ? "text-center" : ""}`}>
-          {collapsed ? "B" : "BUYER PANEL"}
+          {collapsed ? "U" : "USER PANEL"}
         </div>
 
         <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
@@ -56,12 +56,16 @@ export default function BuyerSidebar() {
 
         <div className={`border-t border-white/5 p-3 ${collapsed ? "flex flex-col items-center" : ""}`}>
           <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
-            <div className="w-8 h-8 rounded-full bg-nx-cyan/15 flex items-center justify-center shrink-0">
-              <User className="w-4 h-4 text-nx-cyan" />
-            </div>
+            {user?.image ? (
+              <img src={user.image} alt="" className="w-8 h-8 rounded-full object-cover shrink-0 border border-nx-cyan/20" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-nx-cyan/15 flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-nx-cyan">{(user?.name || "U").charAt(0).toUpperCase()}</span>
+              </div>
+            )}
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-white truncate">{user?.name || "Buyer"}</p>
+                <p className="text-xs font-medium text-white truncate">{user?.name || "User"}</p>
                 <p className="text-[10px] text-white/30 truncate">{user?.email}</p>
               </div>
             )}

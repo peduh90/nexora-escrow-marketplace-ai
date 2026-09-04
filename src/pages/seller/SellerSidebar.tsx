@@ -64,12 +64,14 @@ export default function SellerSidebar() {
           <div className="px-3 py-2 border-b border-white/5">
             <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-nx-violet/5 border border-nx-violet/10">
               {user?.image ? (
-                <img src={user.image} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                <img src={user.image} alt="" className="w-6 h-6 rounded-full object-cover shrink-0 border border-nx-violet/20" />
               ) : (
-                <BadgeCheck className="w-4 h-4 text-nx-violet shrink-0" />
+                <div className="w-6 h-6 rounded-full bg-nx-violet/15 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-bold text-nx-violet">{(user?.name || "S").charAt(0).toUpperCase()}</span>
+                </div>
               )}
               <div className="min-w-0">
-                <p className="text-[10px] font-medium text-nx-violet truncate">{(user?.businessName || user?.name || "SELLER").toUpperCase()}</p>
+                <p className="text-[10px] font-medium text-nx-violet truncate">{user?.businessName || user?.name || "Seller"}</p>
                 <p className="text-[9px] text-white/30 truncate">{user?.kycStatus === "verified" ? "✓ Verified" : "Seller"}</p>
               </div>
             </div>
