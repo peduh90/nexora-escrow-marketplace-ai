@@ -246,6 +246,76 @@ export const markRead = mutation({
   },
 });
 
+/** Get support messages for current user */
+export const getSupportMessages = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+
+    if (!user) return [];
+
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_receiver", (q) => q.eq("receiverId", user._id))
+      .collect();
+
+    const sent = await ctx.db
+      .query("messages")
+      .filter((q) => q.eq(q.field("senderId"), user._id))
+      .collect();
+
+    // Filter to support messages (senderId or receiverId contains 'support' or admin)
+    const supportMsgs = [...messages, ...sent].filter(
+      (m) =>
+        m.listingId === "support" ||
+        m.content?.startsWith("[SUPPORT]")
+    );
+
+    return supportMsgs.sort((a, b) => a.createdAt - b.createdAt);
+  },
+});
+
+/** Send a support message */
+export const sendSupportMessage = mutation({
+  args: { content: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    // Find or create admin user
+    const adminUser = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("role"), "admin"))
+      .first();
+
+    const adminId = adminUser?._id || "admin";
+
+    await ctx.db.insert("messages", {
+      senderId: user._id,
+      receiverId: adminId as any,
+      listingId: "support",
+      content: args.content,
+      read: false,
+      createdAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
 /** Get unread message count */
 export const getUnreadCount = query({
   args: {},
