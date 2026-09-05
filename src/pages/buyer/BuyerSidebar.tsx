@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Shield, LayoutDashboard, Store, ShoppingCart, Truck, Scale,
-  Briefcase, Wallet, Settings, LogOut, ChevronLeft, ChevronRight, User, MessageCircle,
+  Briefcase, Wallet, Settings, LogOut, ChevronLeft, ChevronRight, User, MessageCircle, Phone,
 } from "lucide-react";
 
 const navItems = [
@@ -18,6 +18,7 @@ const navItems = [
   { icon: Briefcase, label: "Freelance", path: "/freelance" },
   { icon: Scale, label: "Disputes", path: "/buyer/disputes" },
   { icon: Settings, label: "Settings", path: "/buyer/settings" },
+  { icon: Phone, label: "Contact Admin", path: "", action: "whatsapp" },
 ];
 
 export default function BuyerSidebar() {
@@ -44,6 +45,18 @@ export default function BuyerSidebar() {
 
         <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
+            if (item.action === "whatsapp") {
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => window.open(`https://wa.me/254769739216?text=Hello%20Nexora%20Admin`, '_blank')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all group ${collapsed ? "justify-center" : ""}`}
+                >
+                  <Phone className="w-4 h-4 shrink-0 text-nx-cyan" />
+                  {!collapsed && <span className="whitespace-nowrap text-nx-cyan">{item.label}</span>}
+                </button>
+              );
+            }
             const isActive = location.pathname === item.path || (item.path !== "/buyer" && location.pathname.startsWith(item.path));
             return (
               <button key={item.path} onClick={() => navigate(item.path)}

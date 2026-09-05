@@ -9,7 +9,7 @@ import {
   Shield, LayoutDashboard, Search, Briefcase, FolderOpen, Users,
   Wallet, Settings, LogOut, ChevronLeft, ChevronRight, PenTool,
   MessageSquare, Star, FileText, TrendingUp, Bell, Home,
-  ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, Loader2,
+  ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, Loader2, Phone,
 } from "lucide-react";
 
 const sidebarItems = [
@@ -23,6 +23,7 @@ const sidebarItems = [
   { icon: MessageSquare, label: "Messages", path: "/freelance/messages" },
   { icon: Wallet, label: "Earnings", path: "/freelance/earnings" },
   { icon: Settings, label: "Settings", path: "/freelance/settings" },
+  { icon: Phone, label: "Contact Admin", path: "", action: "whatsapp" },
 ];
 
 export default function FreelanceDashboard() {
@@ -79,6 +80,18 @@ export default function FreelanceDashboard() {
 
         <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
           {sidebarItems.map((item) => {
+            if (item.action === "whatsapp") {
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => window.open(`https://wa.me/254769739216?text=Hello%20Nexora%20Admin`, '_blank')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all group ${collapsed ? "justify-center" : ""}`}
+                >
+                  <Phone className="w-4 h-4 shrink-0 text-emerald-400" />
+                  {!collapsed && <span className="whitespace-nowrap text-emerald-400">{item.label}</span>}
+                </button>
+              );
+            }
             const isActive = location.pathname === item.path || (item.path !== "/freelance/dashboard" && location.pathname.startsWith(item.path));
             // Show/hide based on role mode
             if (roleMode === "freelancer" && ["/freelance/post-task", "/freelance/find-freelancers"].includes(item.path)) return null;
@@ -289,7 +302,7 @@ export default function FreelanceDashboard() {
           </div>
         </div>
       </div>
-      <AIChat panel="buyer" />
+      <AIChat panel="freelance" />
     </div>
   );
 }
