@@ -5,7 +5,7 @@ import { action } from "./_generated/server";
 
 const MPESA_CONSUMER_KEY = process.env.MPESA_CONSUMER_KEY || "";
 const MPESA_CONSUMER_SECRET = process.env.MPESA_CONSUMER_SECRET || "";
-const MPESA_SHORTCODE = process.env.MPESA_SHORTCODE || "174379";
+const MPESA_SHORTCODE = process.env.MPESA_SHORTCODE || "607501";
 const MPESA_PASSKEY = process.env.MPESA_PASSKEY || "";
 const MPESA_CALLBACK_URL = process.env.MPESA_CALLBACK_URL || "";
 const MPESA_ENV = process.env.MPESA_ENV || "sandbox";
@@ -93,7 +93,7 @@ export const initiateStkPush = action({
       PhoneNumber: phone,
       CallBackURL: MPESA_CALLBACK_URL,
       AccountReference: args.accountReference,
-      TransactionDesc: args.description,
+      TransactionDesc: "NEXORA MARKETPLACE",
     };
 
     const res = await fetch(`${BASE_URL}/mpesa/stkpush/v1/processrequest`, {

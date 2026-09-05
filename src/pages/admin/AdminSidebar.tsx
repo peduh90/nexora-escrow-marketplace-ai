@@ -16,16 +16,13 @@ const navSections = [
   { label: "OWNER CONTROL", items: [
     { icon: Crown, label: "Owner Command Center", path: "/admin/owner" },
     { icon: Zap, label: "AI Automation", path: "/admin/ai" },
-    { icon: AlertOctagon, label: "Emergency AI", path: "/admin/owner" },
   ]},
   { label: "OVERVIEW", items: [
     { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
   ]},
-  { label: "USERS", items: [
+  { label: "USERS & VERIFICATION", items: [
     { icon: Users, label: "All Users", path: "/admin/users" },
-    { icon: User, label: "Buyers", path: "/admin/buyers" },
-    { icon: Briefcase, label: "Sellers", path: "/admin/sellers" },
-    { icon: Eye, label: "Verification", path: "/admin/kyc" },
+    { icon: Eye, label: "KYC & Verification", path: "/admin/kyc" },
   ]},
   { label: "MARKETPLACE", items: [
     { icon: Package, label: "Products", path: "/admin/products" },
@@ -40,31 +37,17 @@ const navSections = [
     { icon: Receipt, label: "Withdrawals", path: "/admin/withdrawals" },
     { icon: TrendingUp, label: "Revenue", path: "/admin/revenue" },
   ]},
-  { label: "ESCROW", items: [
+  { label: "ESCROW & DISPUTES", items: [
     { icon: Shield, label: "Active Escrows", path: "/admin/escrow" },
     { icon: Scale, label: "Disputes", path: "/admin/disputes" },
   ]},
   { label: "FREELANCE MARKETPLACE", items: [
-    { icon: Users, label: "Freelancers", path: "/admin/users" },
     { icon: Briefcase, label: "Jobs & Tasks", path: "/admin/jobs" },
     { icon: FileText, label: "Projects", path: "/admin/orders" },
-    { icon: MessageSquare, label: "Applications", path: "/admin/messages" },
   ]},
-  { label: "DELIVERY", items: [
-    { icon: Truck, label: "Deliveries", path: "/admin/deliveries" },
-  ]},
-  { label: "AI OPERATIONS", items: [
-    { icon: Brain, label: "AI Control Center", path: "/admin/ai-operations" },
-    { icon: Cpu, label: "AI Fraud Detection", path: "/admin/fraud" },
-    { icon: FileCheck, label: "AI Audit Log", path: "/admin/audit-logs" },
-  ]},
-  { label: "COMMUNICATION", items: [
-    { icon: MessageCircle, label: "WhatsApp", path: "/admin/whatsapp" },
+  { label: "SUPPORT & SETTINGS", items: [
     { icon: Bell, label: "Notifications", path: "/admin/notifications" },
-  ]},
-  { label: "SYSTEM", items: [
     { icon: Activity, label: "System Health", path: "/admin/system" },
-    { icon: RefreshCw, label: "Audit Logs", path: "/admin/audit-logs" },
     { icon: Settings, label: "Settings", path: "/admin/settings" },
   ]},
 ];

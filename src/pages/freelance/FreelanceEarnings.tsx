@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
   ArrowLeft, Wallet, TrendingUp, DollarSign, Clock,
-  ArrowUpRight, ArrowDownRight,
+  ArrowUpRight, ArrowDownRight, Phone, Loader2,
 } from "lucide-react";
 
 export default function FreelanceEarnings() {
@@ -73,6 +73,48 @@ export default function FreelanceEarnings() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Withdrawal Section */}
+          <div className="p-5 rounded-xl border border-emerald-400/10 bg-emerald-400/[0.02]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-sm font-semibold text-white">Withdraw to M-Pesa</h3>
+              </div>
+              <span className="text-[11px] text-white/30">Minimum: KES 500</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="md:col-span-2">
+                <label className="text-xs text-white/30 mb-1 block">M-Pesa Number</label>
+                <input
+                  type="tel"
+                  placeholder="254712345678"
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/10 text-white placeholder:text-white/20 text-sm focus:outline-none focus:border-emerald-400/30 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/30 mb-1 block">Amount (KES)</label>
+                <input
+                  type="number"
+                  placeholder="Enter amount"
+                  min="500"
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/10 text-white placeholder:text-white/20 text-sm focus:outline-none focus:border-emerald-400/30 transition-colors"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-400 transition-colors">
+                Request Withdrawal
+              </button>
+              <button
+                onClick={() => window.open(`https://wa.me/254769739216?text=Hello%20Nexora%20Admin%2C%20I%20need%20help%20with%20my%20withdrawal`, '_blank')}
+                className="px-4 py-2.5 rounded-xl border border-emerald-400/20 text-emerald-400 text-sm font-medium hover:bg-emerald-400/5 transition-colors flex items-center gap-2"
+              >
+                <Phone className="w-4 h-4" /> Contact Admin
+              </button>
+            </div>
+            <p className="text-[10px] text-white/20 mt-3 text-center">Withdrawals are processed within 24 hours. M-Pesa charges may apply.</p>
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  ArrowLeft, Save, Loader2, CheckCircle2, X, Plus, User,
+  ArrowLeft, Save, Loader2, CheckCircle2, X, Plus, User, Phone,
 } from "lucide-react";
 
 const ALL_SKILLS = [
@@ -174,6 +174,28 @@ export default function FreelanceSettings() {
                 );
               })}
             </div>
+          </div>
+
+          {/* Contact Admin */}
+          <div className="p-5 rounded-xl border border-nx-gold/10 bg-nx-gold/[0.02]">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Phone className="w-4 h-4 text-nx-gold" />
+                <h3 className="text-sm font-semibold text-white">Contact Admin/Support</h3>
+              </div>
+            </div>
+            <p className="text-xs text-white/40 mb-3">Need help with your account, profile verification, payment issues, or any other support? Reach out to the Nexora admin team directly via WhatsApp.</p>
+            <button
+              onClick={() => window.open(`https://wa.me/254769739216?text=Hello%20Nexora%20Admin%2C%20I%20need%20help%20with%20my%20${roleMode === "employer" ? "employer" : "freelancer"}%20account`, '_blank')}
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-nx-gold/10 border border-nx-gold/20 text-nx-gold hover:bg-nx-gold/20 transition-colors"
+            >
+              <Phone className="w-5 h-5" />
+              <div className="flex-1 text-left">
+                <p className="text-sm font-medium">Chat on WhatsApp</p>
+                <p className="text-[11px] text-white/30">+254 769 739 216 — Fast response</p>
+              </div>
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm3.24 13.44c-.25.25-.66.25-.91 0l-2.04-2.04c-.25-.25-.25-.66 0-.91l.4-.4c.76-.26 1.6-.56 2.37-.88-.93-.39-1.93-.63-2.96-.63-1.08 0-2.12.26-2.99.72l2.04-2.04C5.19 9.61 4.32 8.46 4.02 7.15l-.4.4c-.25.25-.25.66 0 .91l2.04 2.04c.3.3.68.38 1.05.26.75-.21 1.54-.54 2.26-.99.24-.14.52-.07.66.17l.49.49c.15.14.2.35.14.54-.05.15-.16.26-.3.29l-2.04-2.04c.43-.23.89-.43 1.37-.59.36-.12.73-.19 1.1-.19 1.05 0 2.02.3 2.82.87.34.24.5.66.41 1.05l-.49.49c-.08.08-.13.19-.13.3s.05.22.13.3c.21.14.42.28.64.38.07.03.14.05.21.05.32 0 .64-.1 .92-.29.28-.18.5-.44.66-.76.15-.3.21-.62.16-.95-.05-.28-.17-.5-.36-.67l-.4-.4z"/></svg>
+            </button>
           </div>
 
           {/* Skills */}

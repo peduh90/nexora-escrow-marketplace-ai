@@ -1,6 +1,6 @@
 import { useState } from "react";
 import SellerLayout from "./SellerLayout";
-import { Settings, Shield, Bell, CreditCard, User, Lock, Globe, Palette, ChevronRight } from "lucide-react";
+import { Settings,  Shield, Bell, CreditCard, User, Lock, Globe, Palette, ChevronRight, Phone } from "lucide-react";
 
 const sections = [
   { icon: User, label: "Account", description: "Personal information and preferences" },
@@ -73,6 +73,15 @@ export default function SellerSettings() {
                   <span className="text-[10px] text-emerald-400">Active</span>
                 </div>
                 <button className="w-full p-3 rounded-lg border border-dashed border-white/10 text-sm text-white/40 hover:text-white/60 hover:border-white/20 transition-colors">+ Add Bank Account</button>
+                <div className="pt-4 border-t border-white/5 mt-4">
+                  <button
+                    onClick={() => window.open(`https://wa.me/254769739216?text=Hello%20Nexora%20Admin%2C%20I%20need%20help%20with%20my%20seller%20account`, '_blank')}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-nx-gold/5 border border-nx-gold/10 text-nx-gold hover:bg-nx-gold/10 transition-colors"
+                  >
+                    <Phone className="w-4 h-4" />
+                    <div><p className="text-sm font-medium">Contact Admin via WhatsApp</p><p className="text-[11px] text-white/30">For account issues, verification help, or support</p></div>
+                  </button>
+                </div>
               </div>
             )}
             {["Verification", "Language", "Theme"].includes(activeSection) && (
