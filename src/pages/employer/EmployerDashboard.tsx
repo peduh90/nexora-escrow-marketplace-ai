@@ -150,7 +150,7 @@ export default function EmployerDashboard() {
               { label: "Jobs Posted", value: myJobs, icon: Briefcase, color: "#8B5CF6" },
               { label: "Active Projects", value: myActiveProjects, icon: FolderOpen, color: "#06B6D4" },
               { label: "Total Projects", value: (projects ?? []).length, icon: FileText, color: "#F59E0B" },
-              { label: "Hired Freelancers", value: stats?.totalApplications || 0, icon: Users, color: "#10B981" },
+              { label: "Proposals Received", value: stats?.totalApplications || 0, icon: Users, color: "#10B981" },
             ].map((card) => (
               <div key={card.label} className="p-4 rounded-xl border border-white/5 bg-white/[0.02]">
                 <div className="flex items-center justify-between mb-3">
