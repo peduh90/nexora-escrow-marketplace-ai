@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
 import { CATEGORIES as FALLBACK_CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
 import { CATEGORY_BANNERS } from "@/lib/category-images";
-import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 
 const TOTAL_STEPS = 5;
 
@@ -103,29 +103,23 @@ export default function SellerAddProduct() {
   const generateUploadUrl = useMutation(api.listings.generateUploadUrl);
   const [step, setStep] = useState(0);
   const [publishing, setPublishing] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     category: "",
     subcategory: "",
     title: "",
     description: "",
     condition: "Brand New",
-    price: "100",
+    price: "",
     originalPrice: "",
     negotiable: false,
-    county: "Nairobi",
-    town: "Westlands",
+    county: "",
+    town: "",
     attributes: {} as Record<string, string>,
     images: [] as { file: File; preview: string }[],
   });
 
-  // Debug: log form state when Next/Back clicked
-  const logForm = () => {
-    console.log("Form state:", JSON.stringify(form, null, 2));
-  };
-
   const dbCategories = useQuery(api.adminCategories.getActiveCategories);
-
-  // Use database categories if available, fall back to hardcoded
   const categories = dbCategories && dbCategories.length > 0
     ? dbCategories.map(c => ({
         name: c.name,
@@ -137,21 +131,25 @@ export default function SellerAddProduct() {
       }))
     : FALLBACK_CATEGORIES;
 
-  // Removed unused logForm function
-  const update = (key: string, value: any) => setForm({ ...form, [key]: value });
+  const update = (key: string, value: any) => {
+    setForm(prev => ({ ...prev, [key]: value }));
+    if (error) setError("");
+  };
 
   const selectedCategory = categories.find(c => c.slug === form.category);
   const selectedSubcategory = selectedCategory?.subcategories.find(s => s.slug === form.subcategory);
   const specTemplate = SPECS_TEMPLATES[form.subcategory] || [];
 
   const handlePublish = async () => {
-    if (!form.title || !form.price || !form.category || !form.county || !form.town) {
-      alert("Please fill in all required fields: Title, Price, Category, County, Town");
-      return;
-    }
+    setError("");
+    if (!form.title.trim()) { setError("Please enter a product title"); return; }
+    if (!form.price || Number(form.price) <= 0) { setError("Please enter a valid price"); return; }
+    if (!form.category) { setError("Please select a category"); return; }
+    if (!form.county.trim()) { setError("Please enter the county"); return; }
+    if (!form.town.trim()) { setError("Please enter the town"); return; }
+
     setPublishing(true);
     try {
-      // Upload each image to Convex storage
       const imageUrls: string[] = [];
       for (let i = 0; i < form.images.length; i++) {
         const img = form.images[i];
@@ -166,7 +164,7 @@ export default function SellerAddProduct() {
         imageUrls.push(data.storageId || data.url || uploadUrl);
       }
 
-      const result = await createListing({
+      await createListing({
         title: form.title,
         description: form.description || `${form.title} — ${form.condition}`,
         price: Number(form.price),
@@ -187,31 +185,17 @@ export default function SellerAddProduct() {
         sellerVerified: user?.kycStatus === "verified",
       });
 
-      console.log("Published listing:", result.listingId);
-      navigate(`/marketplace?category=${form.category}`);
+      navigate("/marketplace");
     } catch (err: any) {
-      console.error("Failed to publish:", err);
-      alert(`Failed to publish: ${err.message || "Unknown error"}`);
+      setError(err.message || "Failed to publish. Please try again.");
     } finally {
       setPublishing(false);
     }
   };
 
-  const getPreviewSpecs = () => {
-    const specs: string[] = [];
-    for (const [, val] of Object.entries(form.attributes)) {
-      if (val) specs.push(val);
-    }
-    return specs;
-  };
-
-  // Determine current logical step name
-  const stepLabel = step === 0 ? "Category" : step === 1 ? "Details" : step === 2 ? "Specifications" : step === 3 ? "Images" : step === 4 ? "Location & Pricing" : "Preview";
-
   return (
     <SellerLayout>
       <div className="max-w-4xl mx-auto">
-        {/* Top bar with back, logo, step indicator */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button onClick={() => step > 0 ? setStep(step - 1) : navigate(-1)}
@@ -228,7 +212,12 @@ export default function SellerAddProduct() {
           <span className="text-xs text-white/40">Step {step + 1} of {TOTAL_STEPS}</span>
         </div>
 
-        {/* Step 0: Category Grid — matching screenshot layout */}
+        {error && (
+          <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          </div>
+        )}
+
         {step === 0 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
@@ -267,7 +256,6 @@ export default function SellerAddProduct() {
           </div>
         )}
 
-        {/* Step 1: Subcategory Selection */}
         {step === 1 && selectedCategory && (
           <div className="space-y-4">
             <div className="text-center mb-6">
@@ -295,7 +283,6 @@ export default function SellerAddProduct() {
           </div>
         )}
 
-        {/* Step 2: Product Details + Specs */}
         {step === 2 && (
           <div className="space-y-5">
             <div className="text-center mb-6">
@@ -305,7 +292,6 @@ export default function SellerAddProduct() {
               </p>
             </div>
 
-            {/* Core fields */}
             <div className="space-y-4">
               <div>
                 <label className="text-xs text-white/40 mb-1.5 block font-medium">Product Title *</label>
@@ -327,7 +313,7 @@ export default function SellerAddProduct() {
                     {["Brand New", "Used - Like New", "Used - Good", "Used - Fair", "Refurbished"].map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
-                <div>
+                <div className="flex flex-col gap-1.5">
                   <label className="text-xs text-white/40 mb-1.5 block font-medium">Negotiable</label>
                   <button onClick={() => update("negotiable", !form.negotiable)}
                     className={`w-full px-3 py-2.5 rounded-lg border text-sm text-left transition-colors ${
@@ -339,7 +325,6 @@ export default function SellerAddProduct() {
               </div>
             </div>
 
-            {/* Category-specific specs */}
             {specTemplate.length > 0 && (
               <div className="pt-4 border-t border-white/5 space-y-4">
                 <h3 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -373,10 +358,8 @@ export default function SellerAddProduct() {
           </div>
         )}
 
-        {/* Step 3: Images */}
         {step === 3 && <ImageUploadStep form={form} update={update} />}
 
-        {/* Step 4: Location & Pricing */}
         {step === 4 && (
           <div className="space-y-6">
             <div className="text-center mb-6">
@@ -384,17 +367,16 @@ export default function SellerAddProduct() {
               <p className="text-sm text-white/30">Where is the product and how much?</p>
             </div>
 
-            {/* Location */}
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-white">📍 Product Location</h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-white/40 mb-1.5 block">County *</label>
+                  <label className="text-xs text-white/40 mb-1.5 block font-medium">County *</label>
                   <input value={form.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi"
                     className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 mb-1.5 block">Town / Area *</label>
+                  <label className="text-xs text-white/40 mb-1.5 block font-medium">Town / Area *</label>
                   <input value={form.town} onChange={(e) => update("town", e.target.value)} placeholder="e.g. Westlands"
                     className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
                 </div>
@@ -404,16 +386,15 @@ export default function SellerAddProduct() {
               </div>
             </div>
 
-            {/* Pricing */}
             <div className="space-y-4 pt-4 border-t border-white/5">
               <h3 className="text-sm font-semibold text-white">💰 Pricing</h3>
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block">Price (KES) *</label>
+                <label className="text-xs text-white/40 mb-1.5 block font-medium">Price (KES) *</label>
                 <input type="number" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="0"
                   className="w-full px-3 py-3 rounded-lg bg-white/[0.03] border border-white/10 text-xl text-white font-bold placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block">Original Price (KES) — optional, for discount display</label>
+                <label className="text-xs text-white/40 mb-1.5 block font-medium">Original Price (KES) — optional, for discount display</label>
                 <input type="number" value={form.originalPrice} onChange={(e) => update("originalPrice", e.target.value)} placeholder="Optional"
                   className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
               </div>
@@ -431,29 +412,25 @@ export default function SellerAddProduct() {
           </div>
         )}
 
-        {/* Navigation */}
         <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/5">
           <button onClick={() => step > 0 ? setStep(step - 1) : navigate(-1)}
             className="px-4 py-2.5 rounded-xl text-sm text-white/40 hover:text-white/60 transition-colors flex items-center gap-1">
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
           {step < TOTAL_STEPS - 1 ? (
-            <button onClick={() => { console.log('Step', step, 'Form:', JSON.stringify({ title: form.title, price: form.price, category: form.category, county: form.county, town: form.town })); setStep(step + 1); }}
+            <button onClick={() => setStep(step + 1)}
               className="px-6 py-2.5 rounded-xl bg-nx-cyan text-black text-sm font-semibold hover:bg-nx-cyan/80 transition-colors flex items-center gap-1">
               Next <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
-            <div className="flex items-center gap-2">
-              <button onClick={handlePublish} disabled={publishing || !form.title || !form.price}
-                className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-500/80 transition-colors flex items-center gap-2 disabled:opacity-50">
-                {publishing ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Publishing...</>
-                ) : (
-                  <><Check className="w-4 h-4" /> Publish Product</>
-                )}
-              </button>
-              <p className="text-[10px] text-white/20 hidden sm:block">Images will appear on marketplace</p>
-            </div>
+            <button onClick={handlePublish} disabled={publishing}
+              className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-500/80 transition-colors flex items-center gap-2 disabled:opacity-50">
+              {publishing ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Publishing...</>
+              ) : (
+                <><Check className="w-4 h-4" /> Publish Product</>
+              )}
+            </button>
           )}
         </div>
       </div>
