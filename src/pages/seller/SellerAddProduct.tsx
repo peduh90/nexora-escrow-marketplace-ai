@@ -118,6 +118,11 @@ export default function SellerAddProduct() {
     images: [] as { file: File; preview: string }[],
   });
 
+  // Debug: log form state when Next/Back clicked
+  const logForm = () => {
+    console.log("Form state:", JSON.stringify(form, null, 2));
+  };
+
   const dbCategories = useQuery(api.adminCategories.getActiveCategories);
 
   // Use database categories if available, fall back to hardcoded
@@ -316,14 +321,14 @@ export default function SellerAddProduct() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-white/40 mb-1.5 block font-medium">Condition *</label>
-                  <select value={form.condition} onChange={(e) => update("condition", e.target.value)}
+                  <select value={form.condition} onChange={(e) => { update("condition", e.target.value); logForm(); }}
                     className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-cyan/50 focus:outline-none">
                     {["Brand New", "Used - Like New", "Used - Good", "Used - Fair", "Refurbished"].map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs text-white/40 mb-1.5 block font-medium">Negotiable</label>
-                  <button onClick={() => update("negotiable", !form.negotiable)}
+                  <button onClick={() => { update("negotiable", !form.negotiable); logForm(); }}
                     className={`w-full px-3 py-2.5 rounded-lg border text-sm text-left transition-colors ${
                       form.negotiable ? "border-nx-cyan/30 bg-nx-cyan/5 text-nx-cyan" : "border-white/10 bg-white/[0.03] text-white/40"
                     }`}>
@@ -432,7 +437,7 @@ export default function SellerAddProduct() {
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
           {step < TOTAL_STEPS - 1 ? (
-            <button onClick={() => setStep(step + 1)}
+            <button onClick={() => { logForm(); setStep(step + 1); }}
               className="px-6 py-2.5 rounded-xl bg-nx-cyan text-black text-sm font-semibold hover:bg-nx-cyan/80 transition-colors flex items-center gap-1">
               Next <ChevronRight className="w-4 h-4" />
             </button>
