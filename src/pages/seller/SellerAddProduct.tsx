@@ -430,14 +430,17 @@ export default function SellerAddProduct() {
               Next <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
-            <button onClick={handlePublish} disabled={publishing || !form.title || !form.price}
-              className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-500/80 transition-colors flex items-center gap-2 disabled:opacity-50">
-              {publishing ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Publishing...</>
-              ) : (
-                <><Check className="w-4 h-4" /> Publish Product</>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={handlePublish} disabled={publishing || !form.title || !form.price}
+                className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-500/80 transition-colors flex items-center gap-2 disabled:opacity-50">
+                {publishing ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Publishing...</>
+                ) : (
+                  <><Check className="w-4 h-4" /> Publish Product</>
+                )}
+              </button>
+              <p className="text-[10px] text-white/20 hidden sm:block">Images will appear on marketplace</p>
+            </div>
           )}
         </div>
       </div>

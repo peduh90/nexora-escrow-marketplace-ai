@@ -379,7 +379,7 @@ export default function Landing() {
                     </span>
                   </button>
                   <button onClick={() => navigate("/marketplace")}
-                    className="px-8 py-3.5 rounded-xl text-white/60 font-medium text-sm border border-white/10 hover:border-nx-cyan/30 hover:text-white transition-all">
+                    className="px-8 py-3.5 rounded-xl text-white/80 font-medium text-sm border border-white/10 hover:border-nx-cyan/30 hover:text-white transition-all">
                     Browse Marketplace
                   </button>
                 </div>
@@ -429,10 +429,9 @@ export default function Landing() {
                       <CheckCircle2 className="w-3.5 h-3.5 text-nx-cyan/50 shrink-0" />{f}
                     </div>
                   ))}
-                </div>
-                <button onClick={() => navigate('/marketplace')}
+                </div>                  <button onClick={() => navigate('/marketplace')}
                   className="w-full py-2.5 rounded-xl bg-nx-cyan/10 text-nx-cyan font-medium text-xs hover:bg-nx-cyan/20 transition-colors border border-nx-cyan/20">
-                  Browse Marketplace →
+                  Browse Marketplace
                 </button>
               </div>
             </FadeIn>
@@ -454,10 +453,9 @@ export default function Landing() {
                       <CheckCircle2 className="w-3.5 h-3.5 text-nx-violet/50 shrink-0" />{f}
                     </div>
                   ))}
-                </div>
-                <button onClick={() => navigate('/auth?returnTo=/seller')}
+                </div>                  <button onClick={() => navigate('/auth?returnTo=/seller')}
                   className="w-full py-2.5 rounded-xl bg-nx-violet/10 text-nx-violet font-medium text-xs hover:bg-nx-violet/20 transition-colors border border-nx-violet/20">
-                  Start Selling →
+                  Start Selling
                 </button>
               </div>
             </FadeIn>
@@ -488,7 +486,7 @@ export default function Landing() {
                 </div>
                 <button onClick={() => navigate('/auth?returnTo=/freelance/dashboard')}
                   className="w-full py-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 font-medium text-xs hover:bg-emerald-500/20 transition-colors border border-emerald-500/20">
-                  Find Work →
+                  Find Work
                 </button>
               </div>
             </FadeIn>
@@ -513,7 +511,7 @@ export default function Landing() {
                 </div>
                 <button onClick={() => navigate('/auth?returnTo=/freelance/dashboard')}
                   className="w-full py-2.5 rounded-xl bg-amber-500/10 text-amber-400 font-medium text-xs hover:bg-amber-500/20 transition-colors border border-amber-500/20">
-                  Post a Job →
+                  Post a Job
                 </button>
               </div>
             </FadeIn>
