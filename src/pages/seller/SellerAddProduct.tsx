@@ -139,25 +139,30 @@ export default function SellerAddProduct() {
   const specTemplate = SPECS_TEMPLATES[form.subcategory] || [];
 
   const handlePublish = async () => {
-    if (!form.title || !form.price || !form.category || !form.county || !form.town) return;
+    if (!form.title || !form.price || !form.category || !form.county || !form.town) {
+      alert("Please fill in all required fields: Title, Price, Category, County, Town");
+      return;
+    }
     setPublishing(true);
     try {
-      // Upload images to Convex storage
+      // Upload each image to Convex storage
       const imageUrls: string[] = [];
-      for (const img of form.images) {
+      for (let i = 0; i < form.images.length; i++) {
+        const img = form.images[i];
         const uploadUrl = await generateUploadUrl();
         const response = await fetch(uploadUrl, {
           method: "POST",
           headers: { "Content-Type": img.file.type },
           body: img.file,
         });
-        const { storageId } = await response.json();
-        imageUrls.push(storageId);
+        if (!response.ok) throw new Error(`Upload failed for image ${i + 1}`);
+        const data = await response.json();
+        imageUrls.push(data.storageId || data.url || uploadUrl);
       }
 
-      await createListing({
+      const result = await createListing({
         title: form.title,
-        description: form.description || `${form.title} - ${form.condition}`,
+        description: form.description || `${form.title} — ${form.condition}`,
         price: Number(form.price),
         currency: "KES",
         category: form.category,
@@ -175,10 +180,12 @@ export default function SellerAddProduct() {
         sellerReputation: user?.reputation || 0,
         sellerVerified: user?.kycStatus === "verified",
       });
+
+      console.log("Published listing:", result.listingId);
       navigate(`/marketplace?category=${form.category}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to publish:", err);
-      alert("Failed to publish product. Please try again.");
+      alert(`Failed to publish: ${err.message || "Unknown error"}`);
     } finally {
       setPublishing(false);
     }
