@@ -286,22 +286,14 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/deliveries" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
               <Route path="/admin/zones" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
               <Route path="/admin/disputes" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />
-              <Route path="/admin/fraud" element={<RequireAdmin><AdminFraud /></RequireAdmin>} />
-            <Route path="/admin/ai" element={<RequireAdmin><AdminAI /></RequireAdmin>} />
+              <Route path="/admin/fraud" element={<RequireAdmin><AdminFraud /></RequireAdmin>} />              <Route path="/admin/ai" element={<RequireAdmin><AdminAI /></RequireAdmin>} />
               <Route path="/admin/kyc" element={<RequireAdmin><AdminKYC /></RequireAdmin>} />
               <Route path="/admin/messages" element={<RequireAdmin><AdminMessages /></RequireAdmin>} />
               <Route path="/admin/reviews" element={<RequireAdmin><AdminReviews /></RequireAdmin>} />
               <Route path="/admin/reports" element={<RequireAdmin><AdminReports /></RequireAdmin>} />
               <Route path="/admin/jobs" element={<RequireAdmin><AdminJobs /></RequireAdmin>} />
-              <Route path="/admin/analytics" element={<RequireAdmin><AdminAnalytics /></RequireAdmin>} />
-              <Route path="/admin/revenue" element={<RequireAdmin><AdminRevenue /></RequireAdmin>} />
-              <Route path="/admin/system" element={<RequireAdmin><AdminSystem /></RequireAdmin>} />
-              <Route path="/admin/settings" element={<RequireAdmin><AdminSettings /></RequireAdmin>} />
-              <Route path="/admin/notifications" element={<RequireAdmin><AdminNotifications /></RequireAdmin>} />
               <Route path="/admin/categories" element={<RequireAdmin><AdminCategories /></RequireAdmin>} />
-              <Route path="/admin/ai-operations" element={<RequireAdmin><AdminAI /></RequireAdmin>} />
-            <Route path="/admin/owner" element={<RequireAdmin><AdminOwner /></RequireAdmin>} />
-            <Route path="/admin/audit-logs" element={<RequireAdmin><AdminAuditLogs /></RequireAdmin>} />
+              <Route path="/admin/owner" element={<RequireAdmin><AdminOwner /></RequireAdmin>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

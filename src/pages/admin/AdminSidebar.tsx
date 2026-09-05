@@ -9,26 +9,21 @@ import {
   Package, CreditCard, MessageSquare, AlertTriangle,
   MapPin, Receipt, TrendingUp, Eye, Globe, FileText,
   Megaphone, Hash, Store, RefreshCw, Cpu,
-  MessageCircle, Crown, Zap, FileCheck, AlertOctagon,
+  MessageCircle, Crown, Zap, FileCheck, AlertOctagon, Star,
 } from "lucide-react";
 
 const navSections = [
-  { label: "OWNER CONTROL", items: [
-    { icon: Crown, label: "Owner Command Center", path: "/admin/owner" },
-    { icon: Zap, label: "AI Automation", path: "/admin/ai" },
-  ]},
   { label: "OVERVIEW", items: [
     { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
   ]},
-  { label: "USERS & VERIFICATION", items: [
+  { label: "USERS", items: [
     { icon: Users, label: "All Users", path: "/admin/users" },
     { icon: Eye, label: "KYC & Verification", path: "/admin/kyc" },
   ]},
   { label: "MARKETPLACE", items: [
     { icon: Package, label: "Products", path: "/admin/products" },
-    { icon: Hash, label: "Categories", path: "/admin/categories" },
     { icon: MessageSquare, label: "Messages", path: "/admin/messages" },
-    { icon: Scale, label: "Reviews", path: "/admin/reviews" },
+    { icon: Star, label: "Reviews", path: "/admin/reviews" },
   ]},
   { label: "ORDERS & PAYMENTS", items: [
     { icon: ShoppingCart, label: "Orders", path: "/admin/orders" },
@@ -45,10 +40,9 @@ const navSections = [
     { icon: Briefcase, label: "Jobs & Tasks", path: "/admin/jobs" },
     { icon: FileText, label: "Projects", path: "/admin/orders" },
   ]},
-  { label: "SUPPORT & SETTINGS", items: [
-    { icon: Bell, label: "Notifications", path: "/admin/notifications" },
-    { icon: Activity, label: "System Health", path: "/admin/system" },
-    { icon: Settings, label: "Settings", path: "/admin/settings" },
+  { label: "ADMIN COMMAND", items: [
+    { icon: Shield, label: "Owner Control", path: "/admin/owner" },
+    { icon: Zap, label: "AI Assistant", path: "/admin/ai" },
   ]},
 ];
 

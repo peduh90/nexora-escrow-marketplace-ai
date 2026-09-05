@@ -10,21 +10,21 @@ export default function AdminUsers() {
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
 
-  const users = (allUsers ?? []).filter((u: any) =>
-    u.email && u.email.includes("@") && u.name !== "Guest User"
-  );
+  const users = (allUsers ?? []).filter((u: any) => u.email && u.email.includes("@") && u.name !== "Guest User");
 
   const filtered = users.filter((u: any) => {
     if (filter === "Buyers" && u.role !== "buyer" && u.role !== undefined) return false;
     if (filter === "Sellers" && u.role !== "seller") return false;
+    if (filter === "Freelancers" && u.role !== "freelancer") return false;
     if (filter === "Admins" && u.role !== "admin") return false;
     if (search && !(u.name || "").toLowerCase().includes(search.toLowerCase()) && !(u.email || "").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const buyerCount = users.filter((u: any) => u.role === "buyer" || (!u.role && !u.businessName)).length;
-  const sellerCount = users.filter((u: any) => u.role === "seller").length;
-  const adminCount = users.filter((u: any) => u.role === "admin").length;
+  const buyerCount = counts?.buyers ?? users.filter((u: any) => u.role === "buyer" || (!u.role && !u.businessName)).length;
+  const sellerCount = counts?.sellers ?? users.filter((u: any) => u.role === "seller").length;
+  const freelancerCount = counts?.freelancers ?? users.filter((u: any) => u.role === "freelancer" || (u.freelanceProfile)).length;
+  const adminCount = counts?.admins ?? users.filter((u: any) => u.role === "admin").length;
 
   return (
     <AdminLayout>
@@ -38,7 +38,7 @@ export default function AdminUsers() {
           { label: "Total Users", value: (counts?.total ?? users.length).toString(), color: "#8B5CF6" },
           { label: "Buyers", value: (counts?.buyers ?? buyerCount).toString(), color: "#06B6D4" },
           { label: "Sellers", value: (counts?.sellers ?? sellerCount).toString(), color: "#10B981" },
-          { label: "Freelancers", value: (counts?.freelancers ?? 0).toString(), color: "#10B981" },
+          { label: "Freelancers", value: freelancerCount.toString(), color: "#10B981" },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-white/5 bg-[#0A0A12]">
             <p className="text-[10px] text-white/30 uppercase">{s.label}</p>
@@ -54,7 +54,7 @@ export default function AdminUsers() {
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0A12] border border-white/5 text-sm text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none" />
         </div>
         <div className="flex gap-1">
-          {["All", "Buyers", "Sellers", "Admins"].map(f => (
+          {["All", "Buyers", "Sellers", "Freelancers", "Admins"].map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${filter === f ? "bg-nx-violet/10 text-nx-violet" : "text-white/30 hover:text-white/50 bg-[#0A0A12] border border-white/5"}`}>{f}</button>
           ))}
         </div>

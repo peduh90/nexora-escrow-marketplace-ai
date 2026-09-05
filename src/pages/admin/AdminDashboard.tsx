@@ -117,9 +117,7 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        )}          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
             <div className="flex items-center gap-2 mb-2"><Users className="w-4 h-4 text-nx-violet" /><span className="text-xs font-medium text-white/50">User Activity</span></div>
             <div className="space-y-1.5">
@@ -145,22 +143,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl border border-nx-gold/10 bg-nx-gold/[0.02]">
-            <div className="flex items-center gap-2 mb-2"><Phone className="w-4 h-4 text-nx-gold" /><span className="text-xs font-medium text-white/50">Admin Contact</span></div>
-            <div className="space-y-2">
-              <button
-                onClick={() => window.open(`https://wa.me/254769739216?text=Hello%20Nexora%20Admin`, '_blank')}
-                className="w-full flex items-center gap-2 p-2 rounded-lg bg-nx-gold/5 border border-nx-gold/10 hover:bg-nx-gold/10 transition-colors text-left"
-              >
-                <Phone className="w-3.5 h-3.5 text-nx-gold" />
-                <div>
-                  <p className="text-xs text-nx-gold font-medium">WhatsApp Admin</p>
-                  <p className="text-[10px] text-white/30">+254 769 739 216</p>
-                </div>
-              </button>
-              <p className="text-[10px] text-white/20 text-center">Admin AI is active and monitoring the platform</p>
-            </div>
-          </div>
+
         </div>
       </div>
     </AdminLayout>

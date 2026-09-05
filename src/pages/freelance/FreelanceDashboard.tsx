@@ -23,7 +23,6 @@ const sidebarItems = [
   { icon: MessageSquare, label: "Messages", path: "/freelance/messages" },
   { icon: Wallet, label: "Earnings", path: "/freelance/earnings" },
   { icon: Settings, label: "Settings", path: "/freelance/settings" },
-  { icon: Phone, label: "Contact Admin", path: "", action: "whatsapp" },
 ];
 
 export default function FreelanceDashboard() {
@@ -80,7 +79,7 @@ export default function FreelanceDashboard() {
 
         <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
           {sidebarItems.map((item) => {
-            if (item.action === "whatsapp") {
+            if ((item as any).action === "whatsapp") {
               return (
                 <button
                   key={item.label}

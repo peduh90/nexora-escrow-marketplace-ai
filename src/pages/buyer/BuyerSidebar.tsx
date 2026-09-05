@@ -18,7 +18,6 @@ const navItems = [
   { icon: Briefcase, label: "Freelance", path: "/freelance" },
   { icon: Scale, label: "Disputes", path: "/buyer/disputes" },
   { icon: Settings, label: "Settings", path: "/buyer/settings" },
-  { icon: Phone, label: "Contact Admin", path: "", action: "whatsapp" },
 ];
 
 export default function BuyerSidebar() {
@@ -45,7 +44,7 @@ export default function BuyerSidebar() {
 
         <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
-            if (item.action === "whatsapp") {
+            if ((item as any).action === "whatsapp") {
               return (
                 <button
                   key={item.label}
