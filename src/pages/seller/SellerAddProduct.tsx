@@ -175,7 +175,7 @@ export default function SellerAddProduct() {
         sellerReputation: user?.reputation || 0,
         sellerVerified: user?.kycStatus === "verified",
       });
-      navigate("/seller/products");
+      navigate(`/marketplace?category=${form.category}`);
     } catch (err) {
       console.error("Failed to publish:", err);
       alert("Failed to publish product. Please try again.");
