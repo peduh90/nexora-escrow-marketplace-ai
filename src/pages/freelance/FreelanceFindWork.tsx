@@ -20,14 +20,6 @@ const BUDGET_RANGES = [
   { label: "KES 50,000+", min: 50000, max: 999999 },
 ];
 
-const SAMPLE_TASKS = [
-  { _id: "t1", title: "Build a Restaurant Website with Online Ordering", description: "Looking for a React developer to build a modern restaurant website with online ordering, payment integration via M-Pesa, and admin dashboard.", category: "web-development", skills: ["React", "Node.js", "M-Pesa"], budget: 45000, budgetType: "fixed", deadline: "2 weeks", priority: "high", applicants: 12, employerName: "TechStartup KE", remote: true },
-  { _id: "t2", title: "Write 20 SEO-Optimized Blog Posts", description: "Need a skilled content writer to create 20 high-quality blog posts about technology and fintech in Africa.", category: "writing", skills: ["SEO", "Blog Writing", "Fintech"], budget: 25000, budgetType: "fixed", deadline: "1 month", priority: "medium", applicants: 8, employerName: "ContentPro KE", remote: true },
-  { _id: "t3", title: "Design Mobile App UI/UX for Fintech", description: "Need a UI/UX designer to design a mobile app for a fintech startup. Wireframes and prototypes required.", category: "design", skills: ["Figma", "UI/UX", "Mobile Design"], budget: 35000, budgetType: "milestone", deadline: "3 weeks", priority: "high", applicants: 15, employerName: "FinAfrica", remote: true },
-  { _id: "t4", title: "Social Media Management for E-commerce Brand", description: "Looking for a social media manager to handle Instagram, TikTok, and Twitter for a fashion brand.", category: "marketing", skills: ["Instagram", "TikTok", "Content Strategy"], budget: 15000, budgetType: "hourly", deadline: "Ongoing", priority: "medium", applicants: 6, employerName: "FashionHub KE", remote: false },
-  { _id: "t5", title: "Python Data Analysis Project", description: "Need a data analyst to clean, analyze and visualize sales data from a retail business.", category: "ai-tech", skills: ["Python", "Pandas", "Matplotlib", "SQL"], budget: 20000, budgetType: "fixed", deadline: "1 week", priority: "urgent", applicants: 3, employerName: "RetailData KE", remote: true },
-  { _id: "t6", title: "Logo and Brand Identity Design", description: "Looking for a creative designer to design a complete brand identity for a new organic food startup.", category: "design", skills: ["Logo Design", "Branding", "Illustrator"], budget: 12000, budgetType: "fixed", deadline: "1 week", priority: "medium", applicants: 18, employerName: "GreenFoods KE", remote: true },
-];
 
 const priorityColors: Record<string, string> = {
   low: "text-white/40 bg-white/5",
@@ -49,7 +41,7 @@ export default function FreelanceFindWork() {
     query: search || undefined,
   });
 
-  const displayTasks = (tasks && tasks.length > 0) ? tasks : SAMPLE_TASKS;
+  const displayTasks = tasks ?? [];
   const filteredTasks = displayTasks.filter((t: any) => {
     if (budgetIdx > 0) {
       const range = BUDGET_RANGES[budgetIdx];
@@ -123,8 +115,8 @@ export default function FreelanceFindWork() {
             {filteredTasks.length === 0 ? (
               <div className="text-center py-16 rounded-xl bg-white/[0.02] border border-white/5">
                 <Briefcase className="w-12 h-12 text-white/10 mx-auto mb-3" />
-                <p className="text-sm text-white/40 font-medium">No tasks found</p>
-                <p className="text-[11px] text-white/20 mt-1">Try adjusting your search or filters</p>
+                <p className="text-sm text-white/40 font-medium">No jobs available yet</p>
+                <p className="text-[11px] text-white/20 mt-1">Check back soon or adjust your search</p>
               </div>
             ) : (
               filteredTasks.map((task: any, i: number) => (

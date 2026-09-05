@@ -37,8 +37,8 @@ export default function FreelanceDashboard() {
   const projects = useQuery(api.freelance.getMyProjects);
   const walletBalance = useQuery(api.wallet.getWalletBalance);
 
-  const totalPages = projects ?? [];
-  const activeProjects = totalPages.filter((p: any) => p.status === "active");
+  const allProjects = projects ?? [];
+  const activeProjects = allProjects.filter((p: any) => p.status === "active");
 
   return (
     <div className="flex min-h-screen bg-[#05050A]">
@@ -172,9 +172,8 @@ export default function FreelanceDashboard() {
 
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { label: "Active Projects", value: activeProjects.length, icon: FolderOpen, color: "#8B5CF6" },
-              { label: "Total Projects", value: totalPages.length, icon: Briefcase, color: "#06B6D4" },
+            {[                { label: "Active Projects", value: activeProjects.length, icon: FolderOpen, color: "#8B5CF6" },
+              { label: "Total Projects", value: allProjects.length, icon: Briefcase, color: "#06B6D4" },
               { label: "Applications", value: stats?.totalApplications || 0, icon: FileText, color: "#F59E0B" },
               { label: "Tasks Posted", value: stats?.totalTasks || 0, icon: PenTool, color: "#10B981" },
             ].map((card, i) => (
@@ -257,7 +256,7 @@ export default function FreelanceDashboard() {
                 View All <ArrowUpRight className="w-3 h-3" />
               </button>
             </div>
-            {totalPages.length === 0 ? (
+            {allProjects.length === 0 ? (
               <div className="text-center py-12">
                 <FolderOpen className="w-8 h-8 text-white/10 mx-auto mb-2" />
                 <p className="text-sm text-white/30">No projects yet</p>
@@ -267,7 +266,7 @@ export default function FreelanceDashboard() {
               </div>
             ) : (
               <div className="space-y-2">
-                {totalPages.slice(0, 5).map((proj: any) => (
+                {allProjects.slice(0, 5).map((proj: any) => (
                   <div key={proj._id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/[0.02] transition-colors cursor-pointer"
                     onClick={() => navigate("/freelance/projects")}>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${proj.status === "active" ? "bg-nx-violet/10" : proj.status === "completed" ? "bg-nx-emerald/10" : "bg-white/5"}`}>

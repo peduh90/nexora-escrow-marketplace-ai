@@ -21,31 +21,17 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
 }
 
 const FREELANCE_CATEGORIES = [
-  { icon: Code, name: "Web Development", slug: "web-development", count: "2.4k+" },
-  { icon: PenTool, name: "Writing & Content", slug: "writing", count: "1.8k+" },
-  { icon: Palette, name: "Design & Creative", slug: "design", count: "1.5k+" },
-  { icon: Megaphone, name: "Digital Marketing", slug: "marketing", count: "1.2k+" },
-  { icon: FileText, name: "Business & Consulting", slug: "business", count: "800+" },
-  { icon: Camera, name: "Video & Animation", slug: "video", count: "600+" },
-  { icon: GraduationCap, name: "Education & Tutoring", slug: "education", count: "900+" },
-  { icon: Zap, name: "AI & Tech", slug: "ai-tech", count: "500+" },
+  { icon: Code, name: "Web Development", slug: "web-development" },
+  { icon: PenTool, name: "Writing & Content", slug: "writing" },
+  { icon: Palette, name: "Design & Creative", slug: "design" },
+  { icon: Megaphone, name: "Digital Marketing", slug: "marketing" },
+  { icon: FileText, name: "Business & Consulting", slug: "business" },
+  { icon: Camera, name: "Video & Animation", slug: "video" },
+  { icon: GraduationCap, name: "Education & Tutoring", slug: "education" },
+  { icon: Zap, name: "AI & Tech", slug: "ai-tech" },
 ];
 
-const SAMPLE_FREELANCERS = [
-  { name: "Faith Wanjiku", title: "Full-Stack Developer", rating: 4.9, projects: 47, hourlyRate: 2500, avatar: "F", skills: ["React", "Node.js", "TypeScript"] },
-  { name: "James Ochieng", title: "Content Writer", rating: 4.8, projects: 63, hourlyRate: 1200, avatar: "J", skills: ["SEO", "Blog Writing", "Copywriting"] },
-  { name: "Amina Hassan", title: "UI/UX Designer", rating: 5.0, projects: 38, hourlyRate: 3000, avatar: "A", skills: ["Figma", "UI Design", "Prototyping"] },
-  { name: "Peter Kamau", title: "Mobile Developer", rating: 4.7, projects: 29, hourlyRate: 3500, avatar: "P", skills: ["Flutter", "React Native", "iOS"] },
-  { name: "Grace Nyambura", title: "Digital Marketer", rating: 4.9, projects: 51, hourlyRate: 1800, avatar: "G", skills: ["SEO", "Social Media", "Ads"] },
-  { name: "David Mutua", title: "Data Analyst", rating: 4.6, projects: 22, hourlyRate: 2000, avatar: "D", skills: ["Python", "SQL", "Excel"] },
-];
 
-const SAMPLE_TASKS = [
-  { title: "Build E-commerce Website", budget: 45000, category: "Web Development", skills: ["React", "Node.js"], applicants: 12, deadline: "2 weeks" },
-  { title: "Write 20 SEO Blog Posts", budget: 25000, category: "Writing", skills: ["SEO", "Content Writing"], applicants: 8, deadline: "1 month" },
-  { title: "Design Mobile App UI", budget: 35000, category: "Design", skills: ["Figma", "UI/UX"], applicants: 15, deadline: "3 weeks" },
-  { title: "Social Media Management", budget: 15000, category: "Marketing", skills: ["Instagram", "TikTok"], applicants: 6, deadline: "Ongoing" },
-];
 
 export default function FreelanceLanding() {
   const navigate = useNavigate();
@@ -54,8 +40,8 @@ export default function FreelanceLanding() {
   const topFreelancers = useQuery(api.freelance.getTopFreelancers, { limit: 6 });
   const openTasks = useQuery(api.freelance.getOpenTasks, { limit: 4 });
 
-  const displayFreelancers = (topFreelancers && topFreelancers.length > 0) ? topFreelancers : SAMPLE_FREELANCERS;
-  const displayTasks = (openTasks && openTasks.length > 0) ? openTasks : SAMPLE_TASKS;
+  const displayFreelancers = topFreelancers ?? [];
+  const displayTasks = openTasks ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -67,9 +53,11 @@ export default function FreelanceLanding() {
               <Shield className="w-5 h-5 text-nx-violet" />
               <span className="text-sm font-bold text-white">NEXORA<span className="text-nx-violet">.</span></span>
             </button>
-            <div className="hidden md:flex items-center gap-1 text-sm">
-              <span className="text-white/60 font-medium">Freelance</span>
-              <span className="text-nx-violet">Marketplace</span>
+            <div className="hidden md:flex items-center gap-6 text-sm">
+              <button onClick={() => navigate("/freelance")} className="text-white font-medium">Freelance</button>
+              <button onClick={() => navigate("/freelance/find-work")} className="text-white/50 hover:text-white transition-colors">Find Work</button>
+              <button onClick={() => navigate("/freelance/find-freelancers")} className="text-white/50 hover:text-white transition-colors">Find Talent</button>
+              <button onClick={() => navigate("/freelance/services")} className="text-white/50 hover:text-white transition-colors">Services</button>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -164,7 +152,6 @@ export default function FreelanceLanding() {
               {[
                 { label: "Escrow Protected", icon: Shield },
                 { label: "AI Matched", icon: Zap },
-                { label: "500+ Freelancers", icon: Users },
                 { label: "Secure Payments", icon: Globe },
               ].map((b, i) => (
                 <div key={b.label} className="flex items-center gap-2 text-xs text-white/35">
@@ -195,10 +182,44 @@ export default function FreelanceLanding() {
                     <cat.icon className="w-5 h-5 text-nx-violet" />
                   </div>
                   <span className="text-xs font-medium text-white">{cat.name}</span>
-                  <span className="text-[10px] text-white/25">{cat.count}</span>
+
                 </button>
               </FadeIn>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Academic & Writing Services */}
+      <section className="py-10 px-6">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 text-nx-violet text-xs font-medium tracking-widest uppercase mb-3">
+              <GraduationCap className="w-3.5 h-3.5" />
+              Professional Services
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              Academic & <span className="bg-gradient-to-r from-nx-violet to-nx-cyan bg-clip-text text-transparent">Writing Services</span>
+            </h2>
+            <p className="text-sm text-white/40 max-w-lg mx-auto">
+              Legitimate editing, proofreading, research assistance, technical writing, and educational content creation.
+            </p>
+          </FadeIn>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {["Editing & Proofreading", "Research Assistance", "Technical Writing", "Report Writing", "Data Analysis", "CV & Resume Services", "Translation", "Tutoring", "Content Creation", "Formatting & Referencing", "Presentation Design", "Business Writing"].map((svc, i) => (
+              <FadeIn key={svc} delay={i * 0.03}>
+                <button onClick={() => navigate(`/freelance/find-freelancers?category=writing`)}
+                  className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-violet/20 hover:bg-nx-violet/5 transition-all text-left">
+                  <p className="text-xs font-medium text-white">{svc}</p>
+                  <p className="text-[10px] text-white/25 mt-1">Browse experts</p>
+                </button>
+              </FadeIn>
+            ))}
+          </div>
+          <div className="mt-6 p-4 rounded-xl bg-nx-gold/5 border border-nx-gold/10">
+            <p className="text-[11px] text-white/40 text-center">
+              <span className="text-nx-gold font-medium">Platform Policy:</span> Nexora prohibits academic cheating, exam impersonation, plagiarism, selling completed assignments for submission, and other prohibited academic misconduct. Only legitimate educational and writing assistance is permitted.
+            </p>
           </div>
         </div>
       </section>
@@ -212,37 +233,45 @@ export default function FreelanceLanding() {
             </h2>
             <p className="text-sm text-white/40">Work with the best talent on the continent</p>
           </FadeIn>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {displayFreelancers.map((fl: any, i: number) => (
-              <FadeIn key={fl._id || i} delay={i * 0.06}>
-                <div onClick={() => navigate(`/freelance/profile/${fl.userId || "sample"}`)}
-                  className="p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-violet/20 hover:bg-white/[0.04] transition-all cursor-pointer group">
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-full bg-nx-violet/15 flex items-center justify-center text-nx-violet font-bold text-lg shrink-0">
-                      {fl.avatar || (fl.displayName || "U")[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-white group-hover:text-nx-violet transition-colors">{fl.displayName || fl.name}</h3>
-                      <p className="text-xs text-white/40 mt-0.5">{fl.title || "Freelancer"}</p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 text-nx-gold fill-nx-gold" />
-                          <span className="text-xs font-medium text-white">{fl.avgRating || fl.rating || 4.8}</span>
+          {displayFreelancers.length === 0 ? (
+            <div className="text-center py-16 rounded-xl bg-white/[0.02] border border-white/5">
+              <Users className="w-12 h-12 text-white/10 mx-auto mb-3" />
+              <p className="text-sm text-white/40 font-medium">No freelancers available yet</p>
+              <p className="text-[11px] text-white/20 mt-1">Be among the first to create a freelancer profile</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {displayFreelancers.map((fl: any, i: number) => (
+                <FadeIn key={fl._id} delay={i * 0.06}>
+                  <div onClick={() => navigate(`/freelance/profile/${fl.userId}`)}
+                    className="p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-violet/20 hover:bg-white/[0.04] transition-all cursor-pointer group">
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-full bg-nx-violet/15 flex items-center justify-center text-nx-violet font-bold text-lg shrink-0">
+                        {(fl.displayName || "U")[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-white group-hover:text-nx-violet transition-colors">{fl.displayName}</h3>
+                        <p className="text-xs text-white/40 mt-0.5">{fl.title || "Freelancer"}</p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3 h-3 text-nx-gold fill-nx-gold" />
+                            <span className="text-xs font-medium text-white">{fl.avgRating?.toFixed(1) || "0.0"}</span>
+                          </div>
+                          <span className="text-[10px] text-white/25">{fl.completedProjects} projects</span>
+                          <span className="text-[10px] text-nx-emerald font-medium">KES {(fl.hourlyRate || 0).toLocaleString()}/hr</span>
                         </div>
-                        <span className="text-[10px] text-white/25">{fl.completedProjects || fl.projects || 0} projects</span>
-                        <span className="text-[10px] text-nx-emerald font-medium">KES {(fl.hourlyRate || 0).toLocaleString()}/hr</span>
                       </div>
                     </div>
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {(fl.skills || []).slice(0, 3).map((s: string) => (
+                        <span key={s} className="text-[10px] px-2 py-0.5 rounded bg-nx-violet/10 text-nx-violet/70">{s}</span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {(fl.skills || []).slice(0, 3).map((s: string) => (
-                      <span key={s} className="text-[10px] px-2 py-0.5 rounded bg-nx-violet/10 text-nx-violet/70">{s}</span>
-                    ))}
-                  </div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
+                </FadeIn>
+              ))}
+            </div>
+          )}
           <FadeIn delay={0.3}>
             <div className="text-center mt-6">
               <button onClick={() => navigate("/freelance/find-freelancers")}
@@ -263,36 +292,44 @@ export default function FreelanceLanding() {
             </h2>
             <p className="text-sm text-white/40">Find projects that match your skills</p>
           </FadeIn>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {displayTasks.map((task: any, i: number) => (
-              <FadeIn key={task._id || i} delay={i * 0.06}>
-                <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-violet/20 transition-all">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-nx-violet/10 text-nx-violet font-medium">{task.category}</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-nx-emerald/10 text-nx-emerald font-medium">Escrow</span>
+          {displayTasks.length === 0 ? (
+            <div className="text-center py-16 rounded-xl bg-white/[0.02] border border-white/5">
+              <Briefcase className="w-12 h-12 text-white/10 mx-auto mb-3" />
+              <p className="text-sm text-white/40 font-medium">No jobs available yet</p>
+              <p className="text-[11px] text-white/20 mt-1">Check back soon or create your own service profile</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {displayTasks.map((task: any, i: number) => (
+                <FadeIn key={task._id} delay={i * 0.06}>
+                  <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-violet/20 transition-all">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-nx-violet/10 text-nx-violet font-medium">{task.category}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-nx-emerald/10 text-nx-emerald font-medium">Escrow</span>
+                        </div>
+                        <h3 className="text-sm font-semibold text-white">{task.title}</h3>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {(task.skills || []).map((s: string) => (
+                            <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-white/40">{s}</span>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-3 mt-3 text-[10px] text-white/25">
+                          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{task.deadline || "Flexible"}</span>
+                          <span className="flex items-center gap-1"><Users className="w-3 h-3" />{task.applicants || 0} applicants</span>
+                        </div>
                       </div>
-                      <h3 className="text-sm font-semibold text-white">{task.title}</h3>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {(task.skills || []).map((s: string) => (
-                          <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-white/40">{s}</span>
-                        ))}
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold text-nx-emerald">KES {(task.budget || 0).toLocaleString()}</p>
+                        <p className="text-[10px] text-white/25 mt-0.5 capitalize">{task.budgetType || "fixed"}</p>
                       </div>
-                      <div className="flex items-center gap-3 mt-3 text-[10px] text-white/25">
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{task.deadline || "Flexible"}</span>
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" />{task.applicants || 0} applicants</span>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-nx-emerald">KES {(task.budget || 0).toLocaleString()}</p>
-                      <p className="text-[10px] text-white/25 mt-0.5 capitalize">{task.budgetType || "fixed"}</p>
                     </div>
                   </div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
+                </FadeIn>
+              ))}
+            </div>
+          )}
           <FadeIn delay={0.3}>
             <div className="text-center mt-6">
               <button onClick={() => navigate("/freelance/find-work")}
@@ -345,7 +382,7 @@ export default function FreelanceLanding() {
                   Ready to <span className="bg-gradient-to-r from-nx-violet to-nx-cyan bg-clip-text text-transparent">Start</span>?
                 </h2>
                 <p className="text-white/40 max-w-lg mx-auto text-sm mb-8">
-                  Join thousands of African freelancers and employers building the future of work.
+                  Join African freelancers and employers building the future of work.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <button onClick={() => navigate(user ? "/freelance/post-task" : "/auth?returnTo=/freelance/post-task")}

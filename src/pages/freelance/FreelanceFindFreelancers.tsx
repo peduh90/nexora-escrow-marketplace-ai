@@ -12,14 +12,6 @@ const CATEGORIES = [
   "business", "video", "education", "ai-tech",
 ];
 
-const SAMPLE_FREELANCERS = [
-  { userId: "f1", displayName: "Faith Wanjiku", title: "Full-Stack Developer", bio: "Experienced full-stack developer with 5+ years building web apps for African startups.", skills: ["React", "Node.js", "TypeScript", "PostgreSQL"], categories: ["web-development"], hourlyRate: 2500, avgRating: 4.9, completedProjects: 47, availability: "available", location: "Nairobi", languages: ["English", "Swahili"] },
-  { userId: "f2", displayName: "James Ochieng", title: "Content Writer & SEO Specialist", bio: "Professional content writer specializing in tech and fintech content for African markets.", skills: ["SEO", "Blog Writing", "Copywriting", "Content Strategy"], categories: ["writing"], hourlyRate: 1200, avgRating: 4.8, completedProjects: 63, availability: "available", location: "Mombasa", languages: ["English"] },
-  { userId: "f3", displayName: "Amina Hassan", title: "UI/UX Designer", bio: "Creative UI/UX designer with expertise in mobile app design and fintech interfaces.", skills: ["Figma", "UI Design", "Prototyping", "User Research"], categories: ["design"], hourlyRate: 3000, avgRating: 5.0, completedProjects: 38, availability: "available", location: "Nairobi", languages: ["English", "Swahili", "Somali"] },
-  { userId: "f4", displayName: "Peter Kamau", title: "Mobile App Developer", bio: "Specialized in cross-platform mobile development with Flutter and React Native.", skills: ["Flutter", "React Native", "iOS", "Android"], categories: ["web-development", "ai-tech"], hourlyRate: 3500, avgRating: 4.7, completedProjects: 29, availability: "busy", location: "Kisumu", languages: ["English", "Swahili"] },
-  { userId: "f5", displayName: "Grace Nyambura", title: "Digital Marketing Expert", bio: "Helping businesses grow through social media marketing and paid advertising.", skills: ["SEO", "Social Media", "Google Ads", "Facebook Ads"], categories: ["marketing"], hourlyRate: 1800, avgRating: 4.9, completedProjects: 51, availability: "available", location: "Nairobi", languages: ["English"] },
-  { userId: "f6", displayName: "David Mutua", title: "Data Analyst & Python Developer", bio: "Turning data into actionable insights for businesses across East Africa.", skills: ["Python", "SQL", "Excel", "Machine Learning"], categories: ["ai-tech", "business"], hourlyRate: 2000, avgRating: 4.6, completedProjects: 22, availability: "available", location: "Nairobi", languages: ["English", "Swahili"] },
-];
 
 export default function FreelanceFindFreelancers() {
   const navigate = useNavigate();
@@ -33,7 +25,7 @@ export default function FreelanceFindFreelancers() {
     category: category === "all" ? undefined : category,
   });
 
-  const display = (freelancers && freelancers.length > 0) ? freelancers : SAMPLE_FREELANCERS;
+  const display = freelancers ?? [];
 
   return (
     <div className="flex min-h-screen bg-[#05050A]">
@@ -80,6 +72,13 @@ export default function FreelanceFindFreelancers() {
           )}
 
           {/* Freelancer Cards */}
+          {display.length === 0 ? (
+            <div className="text-center py-16 rounded-xl bg-white/[0.02] border border-white/5">
+              <Users className="w-12 h-12 text-white/10 mx-auto mb-3" />
+              <p className="text-sm text-white/40 font-medium">No freelancers available yet</p>
+              <p className="text-[11px] text-white/20 mt-1">Be among the first to create a freelancer profile</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {display.map((fl: any, i: number) => (
               <div key={fl._id || fl.userId || i} className="p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-violet/20 hover:bg-white/[0.04] transition-all cursor-pointer"
@@ -122,6 +121,7 @@ export default function FreelanceFindFreelancers() {
               </div>
             ))}
           </div>
+          )}
         </div>
       </div>
     </div>

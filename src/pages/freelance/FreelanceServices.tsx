@@ -6,13 +6,6 @@ import {
   ArrowLeft, Search, Star, Clock, Package, Filter, ChevronDown, Plus,
 } from "lucide-react";
 
-const SAMPLE_SERVICES = [
-  { _id: "s1", freelancerId: "f1", freelancerName: "Faith Wanjiku", title: "I will build a professional React website for your business", description: "Modern, responsive React websites with clean code and fast performance.", category: "web-development", price: 25000, priceType: "fixed" as const, deliveryTime: "7 days", revisions: 3, features: ["Responsive design", "SEO optimized", "Contact form", "Admin panel"], tags: ["react", "website", "web development"], orders: 47, views: 230, status: "active" as const },
-  { _id: "s2", freelancerId: "f2", freelancerName: "James Ochieng", title: "I will write 10 SEO-optimized articles for your blog", description: "High-quality, engaging content that ranks on Google and drives traffic.", category: "writing", price: 8000, priceType: "fixed" as const, deliveryTime: "5 days", revisions: 2, features: ["10 articles", "SEO optimized", "1500+ words each", "Topic research"], tags: ["seo", "blog", "writing", "content"], orders: 63, views: 180, status: "active" as const },
-  { _id: "s3", freelancerId: "f3", freelancerName: "Amina Hassan", title: "I will design a stunning mobile app UI in Figma", description: "Professional UI/UX design for mobile apps with prototypes and design system.", category: "design", price: 35000, priceType: "starting_at" as const, deliveryTime: "10 days", revisions: 5, features: ["UI/UX design", "Prototyping", "Design system", "Figma file"], tags: ["figma", "ui", "ux", "mobile", "design"], orders: 38, views: 310, status: "active" as const },
-  { _id: "s4", freelancerId: "f5", freelancerName: "Grace Nyambura", title: "I will manage your social media for 30 days", description: "Complete social media management with content creation and analytics.", category: "marketing", price: 15000, priceType: "fixed" as const, deliveryTime: "30 days", revisions: 0, features: ["Content calendar", "Post creation", "Engagement", "Analytics report"], tags: ["social media", "marketing", "instagram", "tiktok"], orders: 51, views: 150, status: "active" as const },
-  { _id: "s5", freelancerId: "f4", freelancerName: "Peter Kamau", title: "I will develop a cross-platform mobile app with Flutter", description: "Beautiful, performant mobile apps for iOS and Android from a single codebase.", category: "web-development", price: 50000, priceType: "starting_at" as const, deliveryTime: "21 days", revisions: 3, features: ["iOS + Android", "Clean code", "API integration", "Push notifications"], tags: ["flutter", "mobile", "app", "ios", "android"], orders: 29, views: 200, status: "active" as const },
-];
 
 export default function FreelanceServices() {
   const navigate = useNavigate();
@@ -24,7 +17,7 @@ export default function FreelanceServices() {
     category: category === "all" ? undefined : category,
   });
 
-  const display = (services && services.length > 0) ? services : SAMPLE_SERVICES;
+  const display = services ?? [];
 
   return (
     <div className="flex min-h-screen bg-[#05050A]">
@@ -52,6 +45,13 @@ export default function FreelanceServices() {
             </div>
           </div>
 
+          {display.length === 0 ? (
+            <div className="text-center py-16 rounded-xl bg-white/[0.02] border border-white/5">
+              <Package className="w-12 h-12 text-white/10 mx-auto mb-3" />
+              <p className="text-sm text-white/40 font-medium">No services available yet</p>
+              <p className="text-[11px] text-white/20 mt-1">Be the first to offer your services</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {display.map((svc: any, i: number) => (
               <div key={svc._id || i} className="rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-violet/20 transition-all overflow-hidden group cursor-pointer">
@@ -84,6 +84,7 @@ export default function FreelanceServices() {
               </div>
             ))}
           </div>
+          )}
         </div>
       </div>
     </div>

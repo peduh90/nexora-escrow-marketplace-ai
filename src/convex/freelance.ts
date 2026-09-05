@@ -679,6 +679,103 @@ export const getProjectMessages = query({
   },
 });
 
+// ─── PRICING ENGINE ───
+
+/** Calculate freelance pricing — server-side only */
+export const calculateFreelancePricing = query({
+  args: { amount: v.number() },
+  handler: async (ctx, args) => {
+    const amount = args.amount;
+    // Freelancer commission tiers
+    let freelancerFee: number;
+    if (amount <= 5000) freelancerFee = Math.round(amount * 0.03);
+    else if (amount <= 50000) freelancerFee = Math.round(amount * 0.02);
+    else if (amount <= 250000) freelancerFee = Math.round(amount * 0.015);
+    else freelancerFee = Math.round(amount * 0.01);
+
+    // Employer protection fee tiers
+    let employerFee: number;
+    if (amount <= 10000) employerFee = Math.round(amount * 0.01);
+    else if (amount <= 50000) employerFee = Math.round(amount * 0.0075);
+    else if (amount <= 200000) employerFee = Math.round(amount * 0.005);
+    else employerFee = Math.round(amount * 0.0025);
+
+    return {
+      projectAmount: amount,
+      freelancerCommission: freelancerFee,
+      freelancerNetEarnings: amount - freelancerFee,
+      employerProtectionFee: employerFee,
+      employerTotalPayable: amount + employerFee,
+      currency: "KES",
+    };
+  },
+});
+
+// ─── FILE UPLOAD (via Convex storage) ───
+
+/** Generate a Convex file storage upload URL for project files */
+export const generateFileUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// ─── SUBMISSIONS ───
+
+/** Submit work for a project */
+export const submitWork = mutation({
+  args: {
+    projectId: v.id("freelanceProjects"),
+    message: v.string(),
+    fileIds: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error("Project not found");
+    if (project.freelancerId !== user._id) throw new Error("Not authorized");
+
+    const now = Date.now();
+    const existingSubmissions = project.files || [];
+    const version = existingSubmissions.length + 1;
+
+    const submissionFiles = (args.fileIds || []).map((fileId, idx) => ({
+      name: `submission-v${version}-file${idx + 1}`,
+      url: fileId, // will be resolved by storage on read
+      uploadedBy: user._id,
+      uploadedAt: now,
+    }));
+
+    await ctx.db.patch(args.projectId, {
+      files: [...existingSubmissions, ...submissionFiles],
+      status: "active",
+      updatedAt: now,
+    });
+
+    // Create a notification-like message in freelanceMessages
+    await ctx.db.insert("freelanceMessages", {
+      projectId: args.projectId,
+      senderId: user._id,
+      content: `[Submission v${version}] ${args.message}`,
+      read: false,
+      createdAt: now,
+    });
+
+    return { version, submissionCount: version };
+  },
+});
+
 /** Get total freelance stats for current user */
 export const getFreelanceStats = query({
   args: {},
