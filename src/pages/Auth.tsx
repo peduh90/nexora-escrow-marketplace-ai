@@ -44,7 +44,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const isAdminLogin = redirect === "/admin";
 
   const [step, setStep] = useState<AuthStep>(isAdminLogin ? "adminEmail" : "roleSelect");
-  const [selectedRole, setSelectedRole] = useState<"buyer" | "seller" | null>(null);
+  const [selectedRole, setSelectedRole] = useState<"buyer" | "seller" | "freelancer" | null>(null);
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +72,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     }
   }, [authLoading, isAuthenticated, navigate, redirect, user?.role]);
 
-  const handleRoleSelect = (role: "buyer" | "seller") => {
+  const isFreelanceRoute = redirect.startsWith("/freelance");
+
+  const handleRoleSelect = (role: "buyer" | "seller" | "freelancer") => {
     setSelectedRole(role);
     setStep("signIn");
   };
@@ -99,7 +101,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     try {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
-      navigate(selectedRole === "seller" ? "/seller" : "/buyer");
+      // Respect returnTo parameter for freelance routes
+      if (isFreelanceRoute) {
+        navigate(redirect);
+      } else {
+        navigate(selectedRole === "seller" ? "/seller" : "/buyer");
+      }
     } catch (error) {
       setError("The verification code you entered is incorrect.");
       setIsLoading(false);
@@ -127,7 +134,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       await signIn("anonymous");
-      navigate("/buyer");
+      navigate(isFreelanceRoute ? redirect : "/buyer");
     } catch (error) {
       setError(`Failed to sign in as guest: ${error instanceof Error ? error.message : "Unknown error"}`);
       setIsLoading(false);
@@ -270,10 +277,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           {step === "roleSelect" && (
             <div className="w-full max-w-[640px]">
               <div className="text-center mb-8">
-                <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Choose Your Path</h1>
-                <p className="text-white/40 text-sm">How will you use Nexora Market?</p>
+                <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{isFreelanceRoute ? "Join Nexora Freelance" : "Choose Your Path"}</h1>
+                <p className="text-white/40 text-sm">{isFreelanceRoute ? "How will you use Nexora Freelance?" : "How will you use Nexora Market?"}</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={`grid grid-cols-1 ${isFreelanceRoute ? "md:grid-cols-2" : "md:grid-cols-2"} gap-4`}>
                 <button onClick={() => handleRoleSelect("buyer")} className="group relative p-6 rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-sm hover:border-nx-cyan/30 hover:bg-nx-cyan/5 transition-all duration-300 text-left">
                   <div className="w-14 h-14 rounded-xl bg-nx-cyan/10 flex items-center justify-center mb-4 group-hover:bg-nx-cyan/20 transition-colors">
                     <ShoppingBag className="w-7 h-7 text-nx-cyan" />
@@ -306,6 +313,45 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                   <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-nx-violet/50 transition-colors" />
                 </button>
               </div>
+
+              {/* Freelance role options when coming from /freelance */}
+              {isFreelanceRoute && (
+                <>
+                  <p className="text-xs text-white/30 text-center mt-6 mb-2">Or choose a freelance role:</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onClick={() => handleRoleSelect("freelancer")} className="group relative p-6 rounded-2xl border border-emerald-500/10 bg-emerald-500/[0.02] backdrop-blur-sm hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all duration-300 text-left">
+                      <div className="w-14 h-14 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
+                        <span className="text-2xl">✍️</span>
+                      </div>
+                      <h3 className="text-lg font-semibold text-white mb-1">Writer / Freelancer</h3>
+                      <p className="text-white/40 text-sm leading-relaxed mb-4">Find work, submit proposals, get paid securely.</p>
+                      <div className="flex flex-col gap-1.5">
+                        {["Browse & apply to jobs", "Escrow-protected earnings", "M-Pesa withdrawals"].map((f) => (
+                          <div key={f} className="flex items-center gap-2 text-xs text-white/30">
+                            <Check className="w-3 h-3 text-emerald-500/60" /><span>{f}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </button>
+
+                    <button onClick={() => handleRoleSelect("freelancer")} className="group relative p-6 rounded-2xl border border-amber-500/10 bg-amber-500/[0.02] backdrop-blur-sm hover:border-amber-500/30 hover:bg-amber-500/5 transition-all duration-300 text-left">
+                      <div className="w-14 h-14 rounded-xl bg-amber-500/10 flex items-center justify-center mb-4 group-hover:bg-amber-500/20 transition-colors">
+                        <span className="text-2xl">💼</span>
+                      </div>
+                      <h3 className="text-lg font-semibold text-white mb-1">Employer</h3>
+                      <p className="text-white/40 text-sm leading-relaxed mb-4">Post jobs, hire freelancers, manage projects.</p>
+                      <div className="flex flex-col gap-1.5">
+                        {["Post jobs & tasks", "Review proposals", "Escrow-protected payments"].map((f) => (
+                          <div key={f} className="flex items-center gap-2 text-xs text-white/30">
+                            <Check className="w-3 h-3 text-amber-500/60" /><span>{f}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+
               <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-[11px] text-white/20">
                 <div className="flex items-center gap-1.5"><Lock className="w-3 h-3" /> Bank-Level Encryption</div>
                 <div className="flex items-center gap-1.5"><Shield className="w-3 h-3" /> CBK Compliant</div>
@@ -323,10 +369,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               <CardHeader className="text-center pt-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Change</button>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "🏪 Seller" : "🛒 Buyer"}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "🏪 Seller" : selectedRole === "freelancer" ? "✍️ Freelancer" : "🛒 Buyer"}</span>
                 </div>
-                <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : "Create Buyer Account"}</CardTitle>
-                <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : "Create your account to start shopping securely"}</CardDescription>
+                <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : "Create Buyer Account"}</CardTitle>
+                <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : "Create your account to start shopping securely"}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button type="button" variant="outline" className="w-full bg-white/[0.03] border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 h-11" onClick={handleGoogleLogin} disabled={isLoading}>
@@ -344,7 +390,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Send Verification Code <ArrowRight className="ml-2 h-4 w-4" /></>}
                   </Button>
                 </form>
-                <p className="text-[11px] text-white/20 text-center">{selectedRole === "seller" ? "Sellers must complete KYC verification before listing products" : "By creating an account, you agree to Nexora's Terms & Privacy Policy"}</p>
+                <p className="text-[11px] text-white/20 text-center">{selectedRole === "seller" ? "Sellers must complete KYC verification before listing products" : selectedRole === "freelancer" ? "Freelancers can set up their profile after account creation" : "By creating an account, you agree to Nexora's Terms & Privacy Policy"}</p>
               </CardContent>
               <div className="py-3 px-6 text-xs text-center text-white/20 bg-white/[0.02] border-t border-white/5 rounded-b-lg flex items-center justify-center gap-1.5">
                 <Shield className="w-3 h-3" /> Protected by Nexora Escrow Security
