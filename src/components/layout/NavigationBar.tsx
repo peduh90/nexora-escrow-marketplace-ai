@@ -2,15 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router";
-
-const navLinks = [
-  { label: "Platform", href: "#platform" },
-  { label: "Marketplace", href: "/marketplace" },
-  { label: "Freelance", href: "/freelance" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Trust", href: "#trust" },
-  { label: "Pricing", href: "#pricing" },
-];
+import { useAuth } from "@/hooks/use-auth";
 
 function scrollToSection(hash: string) {
   const id = hash.replace("#", "");
@@ -24,6 +16,7 @@ function scrollToSection(hash: string) {
 
 export default function NavigationBar() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -33,6 +26,15 @@ export default function NavigationBar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const getDashboardPath = () => {
+    if (!user) return "/auth";
+    switch (user.role) {
+      case "admin": return "/admin";
+      case "seller": return "/seller";
+      default: return "/buyer";
+    }
+  };
+
   return (
     <>
       <motion.nav
@@ -40,14 +42,12 @@ export default function NavigationBar() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.1 }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          scrolled
-            ? "nx-glass py-3"
-            : "bg-transparent py-5"
+          scrolled ? "nx-glass py-3" : "bg-transparent py-5"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2.5 group">
+          <a href="/" className="flex items-center gap-2.5 group shrink-0">
             <div className="relative">
               <Shield className="w-7 h-7 text-nx-violet transition-colors group-hover:text-nx-cyan" />
               <div className="absolute inset-0 bg-nx-violet/20 rounded-full blur-lg group-hover:bg-nx-cyan/20 transition-colors" />
@@ -57,54 +57,75 @@ export default function NavigationBar() {
             </span>
           </a>
 
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (link.href.startsWith("/")) {
-                    navigate(link.href);
-                  } else if (link.href.startsWith("#")) {
-                    if (window.location.pathname !== "/") {
-                      window.location.href = "/" + link.href;
-                    } else {
-                      scrollToSection(link.href);
-                    }
-                  }
-                }}
-                className="text-sm text-white/60 hover:text-white transition-colors duration-300"
-              >
-                {link.label}
-              </a>
-            ))}
+          {/* Center navigation - the key fix */}
+          <div className="hidden lg:flex items-center gap-1">
+            <button
+              onClick={() => { window.location.pathname === "/" ? scrollToSection("#platform") : navigate("/"); }}
+              className="px-3 py-1.5 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+            >
+              Home
+            </button>
+            <button
+              onClick={() => navigate("/marketplace")}
+              className="px-3 py-1.5 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+            >
+              Marketplace
+            </button>
+            <button
+              onClick={() => navigate("/freelance")}
+              className="px-3 py-1.5 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+            >
+              Freelance
+            </button>
+            <button
+              onClick={() => { window.location.pathname === "/" ? scrollToSection("#how-it-works") : navigate("/"); }}
+              className="px-3 py-1.5 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+            >
+              How It Works
+            </button>
+            <button
+              onClick={() => { window.location.pathname === "/" ? scrollToSection("#trust") : navigate("/"); }}
+              className="px-3 py-1.5 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+            >
+              Trust
+            </button>
           </div>
 
-          {/* CTA */}
+          {/* Right side - Auth / Dashboard */}
           <div className="hidden md:flex items-center gap-3">
-            <button
-              onClick={() => navigate("/auth")}
-              className="text-sm text-white/70 hover:text-white px-4 py-2 transition-colors"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => navigate("/auth")}
-              className="relative text-sm font-medium text-white px-5 py-2.5 rounded-lg overflow-hidden group"
-              style={{
-                background: "linear-gradient(135deg, #8B5CF6, #6D28D9)",
-              }}
-            >
-              <span className="relative z-10">Get Started</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-nx-violet to-nx-cyan opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            </button>
+            {user ? (
+              <button
+                onClick={() => navigate(getDashboardPath())}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-nx-violet/10 border border-nx-violet/20 text-nx-violet text-sm font-medium hover:bg-nx-violet/20 transition-colors"
+              >
+                <div className="w-5 h-5 rounded-full bg-nx-violet/20 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-nx-violet">{(user.name || "U")[0].toUpperCase()}</span>
+                </div>
+                Dashboard
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate("/auth")}
+                  className="text-sm text-white/70 hover:text-white px-4 py-2 transition-colors"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => navigate("/auth")}
+                  className="relative text-sm font-medium text-white px-5 py-2.5 rounded-lg overflow-hidden group"
+                  style={{ background: "linear-gradient(135deg, #8B5CF6, #6D28D9)" }}
+                >
+                  <span className="relative z-10">Get Started</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-nx-violet to-nx-cyan opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden text-white/70 hover:text-white"
+            className="lg:hidden text-white/70 hover:text-white"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
           >
@@ -120,38 +141,52 @@ export default function NavigationBar() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="fixed inset-x-0 top-[60px] z-40 nx-glass p-6 md:hidden"
+            className="fixed inset-x-0 top-[60px] z-40 nx-glass p-6 lg:hidden"
           >
-            <div className="flex flex-col gap-4">
-              {navLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  className="text-white/70 hover:text-white text-sm py-2"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (link.href.startsWith("/")) {
-                      navigate(link.href);
-                    } else if (link.href.startsWith("#")) {
-                      if (window.location.pathname !== "/") {
-                        window.location.href = "/" + link.href;
-                      } else {
-                        scrollToSection(link.href);
-                      }
-                    }
-                    setMobileOpen(false);
-                  }}
-                >
-                  {link.label}
-                </a>
-              ))}
+            <div className="flex flex-col gap-2">
               <button
-                onClick={() => { navigate("/auth"); setMobileOpen(false); }}
-                className="text-sm font-medium text-white px-5 py-2.5 rounded-lg mt-2"
-                style={{ background: "linear-gradient(135deg, #8B5CF6, #6D28D9)" }}
+                onClick={() => { navigate("/"); setMobileOpen(false); }}
+                className="text-white/70 hover:text-white text-sm py-2 text-left"
               >
-                Get Started
+                Home
               </button>
+              <button
+                onClick={() => { navigate("/marketplace"); setMobileOpen(false); }}
+                className="text-white/70 hover:text-white text-sm py-2 text-left"
+              >
+                Marketplace
+              </button>
+              <button
+                onClick={() => { navigate("/freelance"); setMobileOpen(false); }}
+                className="text-white/70 hover:text-white text-sm py-2 text-left"
+              >
+                Freelance Marketplace
+              </button>
+              {user && (
+                <button
+                  onClick={() => { navigate(getDashboardPath()); setMobileOpen(false); }}
+                  className="text-nx-violet hover:text-nx-violet text-sm py-2 text-left font-medium"
+                >
+                  Dashboard
+                </button>
+              )}
+              <div className="border-t border-white/5 my-2" />
+              {user ? (
+                <button
+                  onClick={() => { navigate("/"); setMobileOpen(false); }}
+                  className="text-white/40 hover:text-white text-sm py-2 text-left"
+                >
+                  Sign Out
+                </button>
+              ) : (
+                <button
+                  onClick={() => { navigate("/auth"); setMobileOpen(false); }}
+                  className="text-sm font-medium text-white px-5 py-2.5 rounded-lg mt-2"
+                  style={{ background: "linear-gradient(135deg, #8B5CF6, #6D28D9)" }}
+                >
+                  Get Started
+                </button>
+              )}
             </div>
           </motion.div>
         )}

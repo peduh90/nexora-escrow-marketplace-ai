@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
   Users, Package, ShoppingCart, DollarSign, Shield, Truck,
-  TrendingUp, AlertTriangle, MessageSquare, Loader2,
+  TrendingUp, AlertTriangle, MessageSquare, Loader2, Briefcase,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -17,7 +17,7 @@ export default function AdminDashboard() {
   );
 
   const statCards = [
-    { label: "Total Users", value: stats.users.total, sub: `${stats.users.buyers} buyers · ${stats.users.sellers} sellers`, icon: Users, bgClass: "bg-nx-violet/10", textClass: "text-nx-violet" },
+    { label: "Total Users", value: stats.users.total, sub: `${stats.users.buyers} buyers · ${stats.users.sellers} sellers · ${stats.users.freelancers || 0} freelancers`, icon: Users, bgClass: "bg-nx-violet/10", textClass: "text-nx-violet" },
     { label: "Products", value: stats.products.total, sub: `${stats.products.active} active · ${stats.products.pending} pending`, icon: Package, bgClass: "bg-emerald-400/10", textClass: "text-emerald-400" },
     { label: "GMV", value: `KES ${stats.finance.totalGMV.toLocaleString()}`, sub: `Revenue: KES ${stats.finance.platformRevenue.toLocaleString()}`, icon: DollarSign, bgClass: "bg-nx-cyan/10", textClass: "text-nx-cyan" },
     { label: "In Escrow", value: `KES ${stats.finance.heldInEscrow.toLocaleString()}`, sub: `${stats.orders.active} active orders`, icon: Shield, bgClass: "bg-amber-400/10", textClass: "text-amber-400" },
@@ -90,6 +90,34 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+
+        {/* Freelance Marketplace Stats */}
+        {stats.freelance && (
+          <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5">
+            <div className="flex items-center gap-2 mb-4">
+              <Briefcase className="w-4 h-4 text-nx-violet" />
+              <h2 className="text-sm font-semibold text-white">Freelance Marketplace</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-[11px] text-white/30">Freelancers</p>
+                <p className="text-lg font-bold text-white">{stats.freelance.profiles}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-white/30">Open Jobs</p>
+                <p className="text-lg font-bold text-white">{stats.freelance.openTasks}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-white/30">Active Projects</p>
+                <p className="text-lg font-bold text-white">{stats.freelance.activeProjects}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-white/30">Applications</p>
+                <p className="text-lg font-bold text-white">{stats.freelance.applications}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">

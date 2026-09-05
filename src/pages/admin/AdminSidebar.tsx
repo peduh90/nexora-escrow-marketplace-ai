@@ -44,6 +44,12 @@ const navSections = [
     { icon: Shield, label: "Active Escrows", path: "/admin/escrow" },
     { icon: Scale, label: "Disputes", path: "/admin/disputes" },
   ]},
+  { label: "FREELANCE MARKETPLACE", items: [
+    { icon: Users, label: "Freelancers", path: "/admin/users" },
+    { icon: Briefcase, label: "Jobs & Tasks", path: "/admin/jobs" },
+    { icon: FileText, label: "Projects", path: "/admin/orders" },
+    { icon: MessageSquare, label: "Applications", path: "/admin/messages" },
+  ]},
   { label: "DELIVERY", items: [
     { icon: Truck, label: "Deliveries", path: "/admin/deliveries" },
   ]},

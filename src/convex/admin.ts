@@ -91,15 +91,34 @@ export const getDashboardStats = query({
     const newListingsToday = listings.filter((l) => l.createdAt > dayAgo).length;
     const newOrdersToday = escrows.filter((e) => e.createdAt > dayAgo).length;
 
+    // Freelance marketplace stats
+    const freelanceProfiles = await ctx.db.query("freelanceProfiles").collect();
+    const freelanceTasks = await ctx.db.query("freelanceTasks").collect();
+    const freelanceProjects = await ctx.db.query("freelanceProjects").collect();
+    const freelanceApplications = await ctx.db.query("freelanceApplications").collect();
+    const freelanceServices = await ctx.db.query("freelanceServices").collect();
+
     return {
       users: {
         total: users.length,
         buyers: buyers.length,
         sellers: sellers.length,
         admins: users.filter((u) => u.role === "admin").length,
+        freelancers: freelanceProfiles.length,
+        employers: new Set(freelanceTasks.map((t) => t.employerId)).size,
         newToday: newUsersToday,
         verified: users.filter((u) => u.kycStatus === "verified").length,
         pendingKyc: users.filter((u) => u.kycStatus === "pending").length,
+      },
+      freelance: {
+        profiles: freelanceProfiles.length,
+        tasks: freelanceTasks.length,
+        openTasks: freelanceTasks.filter((t) => t.status === "open").length,
+        projects: freelanceProjects.length,
+        activeProjects: freelanceProjects.filter((p) => p.status === "active").length,
+        completedProjects: freelanceProjects.filter((p) => p.status === "completed").length,
+        applications: freelanceApplications.length,
+        services: freelanceServices.length,
       },
       products: {
         total: listings.length,
@@ -417,6 +436,51 @@ export const getAuditLogs = query({
       .filter((n: any) => n.type === "admin_audit")
       .sort((a: any, b: any) => b.createdAt - a.createdAt)
       .slice(0, 200);
+  },
+});
+
+// ─── FREELANCE MARKETPLACE MONITORING ───
+
+/** Admin: get all freelance profiles */
+export const getAllFreelanceProfiles = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("freelanceProfiles").collect();
+  },
+});
+
+/** Admin: get all freelance tasks */
+export const getAllFreelanceTasks = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("freelanceTasks").collect();
+  },
+});
+
+/** Admin: get all freelance projects */
+export const getAllFreelanceProjects = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("freelanceProjects").collect();
+  },
+});
+
+/** Admin: get all freelance applications */
+export const getAllFreelanceApplications = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("freelanceApplications").collect();
+  },
+});
+
+/** Admin: suspend a freelancer */
+export const suspendFreelancer = mutation({
+  args: { profileId: v.string(), reason: v.string() },
+  handler: async (ctx, args) => {
+    const { user } = await requireAdmin(ctx);
+    await ctx.db.patch(args.profileId as any, { status: "suspended" });
+    await auditLog(ctx as any, user._id, "SUSPEND_FREELANCER", "freelanceProfile", args.profileId, args.reason);
+    return { success: true };
   },
 });
 
