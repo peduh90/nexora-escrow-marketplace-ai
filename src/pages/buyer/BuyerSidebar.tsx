@@ -15,6 +15,7 @@ const navItems = [
   { icon: Truck, label: "Deliveries", path: "/buyer/deliveries" },
   { icon: Wallet, label: "Wallet", path: "/buyer/wallet" },
   { icon: Briefcase, label: "Job Board", path: "/buyer/jobs" },
+  { icon: Briefcase, label: "Freelance", path: "/freelance" },
   { icon: Scale, label: "Disputes", path: "/buyer/disputes" },
   { icon: Settings, label: "Settings", path: "/buyer/settings" },
 ];

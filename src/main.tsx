@@ -51,6 +51,18 @@ const SellerWithdrawals = lazy(() => import("./pages/seller/SellerWithdrawals.ts
 const SellerPromotions = lazy(() => import("./pages/seller/SellerPromotions.tsx"));
 const SellerAddProduct = lazy(() => import("./pages/seller/SellerAddProduct.tsx"));
 const SellerEditProduct = lazy(() => import("./pages/seller/SellerEditProduct.tsx"));
+// Freelance marketplace
+const FreelanceLanding = lazy(() => import("./pages/freelance/FreelanceLanding.tsx"));
+const FreelanceDashboard = lazy(() => import("./pages/freelance/FreelanceDashboard.tsx"));
+const FreelanceFindWork = lazy(() => import("./pages/freelance/FreelanceFindWork.tsx"));
+const FreelanceFindFreelancers = lazy(() => import("./pages/freelance/FreelanceFindFreelancers.tsx"));
+const FreelancePostTask = lazy(() => import("./pages/freelance/FreelancePostTask.tsx"));
+const FreelanceProjects = lazy(() => import("./pages/freelance/FreelanceProjects.tsx"));
+const FreelanceApplications = lazy(() => import("./pages/freelance/FreelanceApplications.tsx"));
+const FreelanceServices = lazy(() => import("./pages/freelance/FreelanceServices.tsx"));
+const FreelanceEarnings = lazy(() => import("./pages/freelance/FreelanceEarnings.tsx"));
+const FreelanceSettings = lazy(() => import("./pages/freelance/FreelanceSettings.tsx"));
+const FreelanceMessages = lazy(() => import("./pages/freelance/FreelanceMessages.tsx"));
 const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
 const Chat = lazy(() => import("./pages/Chat.tsx"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails.tsx"));
@@ -199,6 +211,19 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/auth" element={<AuthPage redirectAfterAuth="/buyer" />} />
               <Route path="/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
+
+              {/* Freelance Marketplace */}
+              <Route path="/freelance" element={<FreelanceLanding />} />
+              <Route path="/freelance/dashboard" element={<RequireAuth><FreelanceDashboard /></RequireAuth>} />
+              <Route path="/freelance/find-work" element={<RequireAuth><FreelanceFindWork /></RequireAuth>} />
+              <Route path="/freelance/find-freelancers" element={<RequireAuth><FreelanceFindFreelancers /></RequireAuth>} />
+              <Route path="/freelance/post-task" element={<RequireAuth><FreelancePostTask /></RequireAuth>} />
+              <Route path="/freelance/projects" element={<RequireAuth><FreelanceProjects /></RequireAuth>} />
+              <Route path="/freelance/applications" element={<RequireAuth><FreelanceApplications /></RequireAuth>} />
+              <Route path="/freelance/services" element={<RequireAuth><FreelanceServices /></RequireAuth>} />
+              <Route path="/freelance/earnings" element={<RequireAuth><FreelanceEarnings /></RequireAuth>} />
+              <Route path="/freelance/settings" element={<RequireAuth><FreelanceSettings /></RequireAuth>} />
+              <Route path="/freelance/messages" element={<RequireAuth><FreelanceMessages /></RequireAuth>} />
               <Route path="/product/:id" element={<ProductDetails />} />
               <Route path="/chat" element={<RequireAuth><Chat /></RequireAuth>} />
               <Route path="/chat/:conversationId" element={<RequireAuth><Chat /></RequireAuth>} />

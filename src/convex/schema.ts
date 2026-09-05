@@ -639,6 +639,242 @@ const schema = defineSchema(
       .index("by_permission", ["permissionKey"])
       .index("by_entity", ["entityType", "entityId"])
       .index("by_created", ["createdAt"]),
+
+    // ─── NEXORA FREELANCE MARKETPLACE ───
+
+    // Freelancer profiles
+    freelanceProfiles: defineTable({
+      userId: v.string(),
+      displayName: v.string(),
+      title: v.optional(v.string()), // e.g. "Full-Stack Developer"
+      bio: v.optional(v.string()),
+      avatar: v.optional(v.string()),
+      skills: v.array(v.string()),
+      categories: v.array(v.string()),
+      languages: v.optional(v.array(v.string())),
+      hourlyRate: v.optional(v.number()),
+      currency: v.string(),
+      availability: v.union(
+        v.literal("available"),
+        v.literal("busy"),
+        v.literal("offline"),
+      ),
+      location: v.optional(v.string()),
+      portfolio: v.optional(v.array(v.object({
+        title: v.string(),
+        description: v.optional(v.string()),
+        url: v.optional(v.string()),
+        imageUrl: v.optional(v.string()),
+      }))),
+      completedProjects: v.number(),
+      totalEarnings: v.number(),
+      successRate: v.number(), // 0-100
+      responseRate: v.number(), // 0-100
+      avgRating: v.number(), // 0-5
+      totalReviews: v.number(),
+      isVerified: v.boolean(),
+      status: v.union(
+        v.literal("active"),
+        v.literal("suspended"),
+        v.literal("pending_review"),
+      ),
+      roleMode: v.union(v.literal("freelancer"), v.literal("employer"), v.literal("both")),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_status", ["status"])
+      .index("by_categories", ["categories"]),
+
+    // Freelance tasks/projects posted by employers
+    freelanceTasks: defineTable({
+      employerId: v.string(),
+      employerName: v.string(),
+      employerImage: v.optional(v.string()),
+      title: v.string(),
+      description: v.string(),
+      category: v.string(),
+      subcategory: v.optional(v.string()),
+      skills: v.array(v.string()),
+      budget: v.number(),
+      budgetType: v.union(v.literal("fixed"), v.literal("milestone"), v.literal("hourly")),
+      currency: v.string(),
+      deadline: v.optional(v.number()),
+      priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent")),
+      experienceLevel: v.optional(v.string()), // beginner, intermediate, expert
+      remote: v.boolean(),
+      location: v.optional(v.string()),
+      attachments: v.optional(v.array(v.string())),
+      freelancerCount: v.number(), // how many freelancers needed
+      applicants: v.number(),
+      views: v.number(),
+      status: v.union(
+        v.literal("open"),
+        v.literal("in_progress"),
+        v.literal("completed"),
+        v.literal("cancelled"),
+        v.literal("closed"),
+      ),
+      assignedFreelancerId: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_employer", ["employerId"])
+      .index("by_status", ["status"])
+      .index("by_category", ["category"])
+      .index("by_created", ["createdAt"]),
+
+    // Freelance task applications
+    freelanceApplications: defineTable({
+      taskId: v.string(),
+      freelancerId: v.string(),
+      freelancerName: v.string(),
+      freelancerImage: v.optional(v.string()),
+      freelancerRating: v.number(),
+      freelancerCompletedProjects: v.number(),
+      proposal: v.string(),
+      proposedBudget: v.number(),
+      estimatedDuration: v.optional(v.string()),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("shortlisted"),
+        v.literal("accepted"),
+        v.literal("rejected"),
+        v.literal("withdrawn"),
+      ),
+      createdAt: v.number(),
+    })
+      .index("by_task", ["taskId"])
+      .index("by_freelancer", ["freelancerId"])
+      .index("by_status", ["status"]),
+
+    // Freelance projects (accepted tasks with milestones)
+    freelanceProjects: defineTable({
+      taskId: v.string(),
+      employerId: v.string(),
+      freelancerId: v.string(),
+      title: v.string(),
+      description: v.string(),
+      budget: v.number(),
+      budgetType: v.union(v.literal("fixed"), v.literal("milestone"), v.literal("hourly")),
+      currency: v.string(),
+      milestones: v.optional(v.array(v.object({
+        id: v.string(),
+        title: v.string(),
+        amount: v.number(),
+        status: v.union(
+          v.literal("pending"),
+          v.literal("in_progress"),
+          v.literal("submitted"),
+          v.literal("approved"),
+          v.literal("rejected"),
+        ),
+        dueDate: v.optional(v.number()),
+        completedAt: v.optional(v.number()),
+      }))),
+      status: v.union(
+        v.literal("active"),
+        v.literal("on_hold"),
+        v.literal("completed"),
+        v.literal("cancelled"),
+        v.literal("disputed"),
+      ),
+      progress: v.number(), // 0-100
+      totalPaid: v.number(),
+      escrowId: v.optional(v.string()),
+      files: v.optional(v.array(v.object({
+        name: v.string(),
+        url: v.string(),
+        uploadedBy: v.string(),
+        uploadedAt: v.number(),
+      }))),
+      messages: v.number(), // unread message count
+      startedAt: v.number(),
+      deadline: v.optional(v.number()),
+      completedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_task", ["taskId"])
+      .index("by_employer", ["employerId"])
+      .index("by_freelancer", ["freelancerId"])
+      .index("by_status", ["status"]),
+
+    // Freelance reviews
+    freelanceReviews: defineTable({
+      projectId: v.string(),
+      reviewerId: v.string(),
+      revieweeId: v.string(),
+      rating: v.number(), // 1-5
+      comment: v.optional(v.string()),
+      type: v.union(v.literal("employer_to_freelancer"), v.literal("freelancer_to_employer")),
+      createdAt: v.number(),
+    })
+      .index("by_project", ["projectId"])
+      .index("by_reviewee", ["revieweeId"]),
+
+    // Freelance messages (project-specific)
+    freelanceMessages: defineTable({
+      projectId: v.string(),
+      senderId: v.string(),
+      content: v.string(),
+      attachmentUrl: v.optional(v.string()),
+      read: v.boolean(),
+      createdAt: v.number(),
+    })
+      .index("by_project", ["projectId"])
+      .index("by_sender", ["senderId"]),
+
+    // Freelance earnings/wallet
+    freelanceEarnings: defineTable({
+      freelancerId: v.string(),
+      projectId: v.string(),
+      milestoneId: v.optional(v.string()),
+      amount: v.number(),
+      currency: v.string(),
+      fee: v.number(), // platform fee
+      netAmount: v.number(),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("in_escrow"),
+        v.literal("released"),
+        v.literal("paid_out"),
+      ),
+      createdAt: v.number(),
+      releasedAt: v.optional(v.number()),
+    })
+      .index("by_freelancer", ["freelancerId"])
+      .index("by_project", ["projectId"]),
+
+    // Freelance service listings (accounts marketplace)
+    freelanceServices: defineTable({
+      freelancerId: v.string(),
+      freelancerName: v.string(),
+      freelancerImage: v.optional(v.string()),
+      title: v.string(),
+      description: v.string(),
+      category: v.string(),
+      price: v.number(),
+      priceType: v.union(v.literal("fixed"), v.literal("hourly"), v.literal("starting_at")),
+      currency: v.string(),
+      deliveryTime: v.string(), // e.g. "3 days"
+      revisions: v.number(),
+      features: v.array(v.string()),
+      images: v.optional(v.array(v.string())),
+      tags: v.array(v.string()),
+      orders: v.number(), // completed orders
+      views: v.number(),
+      status: v.union(
+        v.literal("active"),
+        v.literal("paused"),
+        v.literal("removed"),
+      ),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_freelancer", ["freelancerId"])
+      .index("by_category", ["category"])
+      .index("by_status", ["status"]),
   },
   {
     schemaValidation: false,

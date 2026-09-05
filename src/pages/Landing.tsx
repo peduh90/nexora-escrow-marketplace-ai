@@ -111,14 +111,12 @@ export default function Landing() {
         </motion.div>
 
         <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.8 }}
-          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-center max-w-4xl leading-tight tracking-tight mt-2">
-          <span className="text-white">Buy. Sell. </span>
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-center max-w-4xl leading-tight tracking-tight mt-2">                <span className="text-white">Buy. Sell. Work. </span>
           <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-cyan-200 bg-clip-text text-transparent">Securely.</span>
         </motion.h1>
 
         <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.0 }}
-          className="text-xs sm:text-sm md:text-base text-white/40 text-center max-w-2xl mt-2 leading-relaxed">
-          AI-powered marketplace with protected transactions. Every trade backed by escrow.
+          className="text-xs sm:text-sm md:text-base text-white/40 text-center max-w-2xl mt-2 leading-relaxed">              AI-powered marketplace with protected transactions. Every trade backed by escrow. Plus a freelance marketplace for writers, developers & creatives.
         </motion.p>
 
         {/* Search Bar */}
@@ -472,7 +470,7 @@ export default function Landing() {
               <div className="mt-3"><SocialLinks size="sm" /></div>
             </div>
             {[
-              { title: "Platform", links: ["Marketplace", "Escrow", "Wallet", "Seller Hub"] },
+              { title: "Platform", links: ["Marketplace", "Freelance", "Escrow", "Wallet", "Seller Hub"] },
               { title: "Company", links: ["About", "Blog", "Careers", "Press"] },
               { title: "Support", links: ["Help Center", "API Docs", "Status", "Contact"] },
             ].map((col) => (
@@ -486,8 +484,7 @@ export default function Landing() {
               </div>
             ))}
           </div>
-          <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-[11px] text-white/15">&copy; 2025 Nexora Market. All rights reserved. HQ: Nairobi, Kenya.</p>
+          <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">              <p className="text-[11px] text-white/15">&copy; 2025 Nexora Market. All rights reserved. HQ: Nairobi, Kenya. | <a href="/freelance" className="hover:text-white/30 transition-colors">Freelance Marketplace</a></p>
             <div className="flex items-center gap-4 text-[11px] text-white/15">
               <a href="/privacy" className="hover:text-white/30 transition-colors">Privacy</a>
               <a href="/terms" className="hover:text-white/30 transition-colors">Terms</a>

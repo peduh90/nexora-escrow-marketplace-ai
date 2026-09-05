@@ -53,7 +53,7 @@ interface Message {
   timestamp: Date;
 }
 
-export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin" }) {
+export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin" | "freelance" }) {
   const { user } = useAuth();
   const chat = useAction(api.ai.chat);
   const [isOpen, setIsOpen] = useState(false);

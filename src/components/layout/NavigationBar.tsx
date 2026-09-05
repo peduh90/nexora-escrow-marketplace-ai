@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 const navLinks = [
   { label: "Platform", href: "#platform" },
   { label: "Marketplace", href: "/marketplace" },
+  { label: "Freelance", href: "/freelance" },
   { label: "How It Works", href: "#how-it-works" },
   { label: "Trust", href: "#trust" },
   { label: "Pricing", href: "#pricing" },
