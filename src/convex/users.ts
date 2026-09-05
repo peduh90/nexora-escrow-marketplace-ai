@@ -60,11 +60,45 @@ export const promoteToAdmin = mutation({
 /**
  * Check if the current user is an admin
  */
-/** Admin: get all users */
+/** Admin: get all real users (excludes anonymous/guest accounts) */
 export const getAllUsers = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("users").collect();
+    const all = await ctx.db.query("users").collect();
+    return all.filter((u: any) =>
+      u.email && u.email.includes("@") &&
+      u.name !== "Guest User" &&
+      !u.email?.toLowerCase().includes("anonymous")
+    );
+  },
+});
+
+/** Admin: get user count summary */
+export const getUserCounts = query({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("users").collect();
+    const realUsers = all.filter((u: any) =>
+      u.email && u.email.includes("@") &&
+      u.name !== "Guest User" &&
+      !u.email?.toLowerCase().includes("anonymous")
+    );
+    const buyers = realUsers.filter((u: any) => u.role === "buyer" || (!u.role && !u.businessName));
+    const sellers = realUsers.filter((u: any) => u.role === "seller");
+    const freelancers = realUsers.filter((u: any) => u.role === "freelancer");
+    const admins = realUsers.filter((u: any) => u.role === "admin");
+    const verified = realUsers.filter((u: any) => u.kycStatus === "verified");
+    const pendingKyc = realUsers.filter((u: any) => u.kycStatus === "pending");
+    return {
+      total: realUsers.length,
+      buyers: buyers.length,
+      sellers: sellers.length,
+      freelancers: freelancers.length,
+      admins: admins.length,
+      verified: verified.length,
+      pendingKyc: pendingKyc.length,
+      recent: realUsers.filter((u: any) => (u._creationTime || 0) > Date.now() - 86400000).length,
+    };
   },
 });
 
@@ -84,7 +118,8 @@ export const getAllEscrows = query({
   },
 });
 
-/** Auto-promote first admin — anyone signing up with this email gets admin role */
+/** Auto-promote first admin — anyone signing up with this email gets admin role.
+ * Also ensures new users get proper role assignment on signup. */
 const ADMIN_EMAIL = "murimiedwin227@gmail.com";
 
 export const checkAndPromoteAdmin = mutation({
@@ -93,15 +128,24 @@ export const checkAndPromoteAdmin = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
 
-    if (!user) throw new Error("User not found");
+    // If user not found in DB (e.g. just created via auth), create the user record
+    if (!user) {
+      const role: "admin" | "buyer" | "seller" | "driver" | undefined = identity.email === ADMIN_EMAIL ? "admin" : "buyer";
+      user = await ctx.db.insert("users", {
+        name: identity.name || identity.email?.split("@")[0] || "User",
+        email: identity.email,
+        role: role as any,
+        kycStatus: "not_started",
+      }) as any;
+    }
 
     // Auto-promote if email matches admin email and not already admin
-    if (identity.email === ADMIN_EMAIL && user.role !== "admin") {
+    if (identity.email === ADMIN_EMAIL && user && user.role !== "admin") {
       await ctx.db.patch(user._id, { role: "admin" });
       return { promoted: true, message: "You have been promoted to admin!" };
     }

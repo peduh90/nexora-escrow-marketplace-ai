@@ -6,10 +6,13 @@ import { Users, Search, Shield, CheckCircle2, Eye, Ban, Mail } from "lucide-reac
 
 export default function AdminUsers() {
   const allUsers = useQuery(api.users.getAllUsers);
+  const counts = useQuery(api.users.getUserCounts);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
 
-  const users = (allUsers ?? []).filter((u: any) => u.name || u.email);
+  const users = (allUsers ?? []).filter((u: any) =>
+    u.email && u.email.includes("@") && u.name !== "Guest User"
+  );
 
   const filtered = users.filter((u: any) => {
     if (filter === "Buyers" && u.role !== "buyer" && u.role !== undefined) return false;
@@ -27,15 +30,15 @@ export default function AdminUsers() {
     <AdminLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">User Management</h1>
-        <p className="text-sm text-white/40 mt-1">Manage all platform users — {users.length} total</p>
+        <p className="text-sm text-white/40 mt-1">Manage all platform users — {counts?.total ?? users.length} total</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Total Users", value: users.length.toString(), color: "#8B5CF6" },
-          { label: "Buyers", value: buyerCount.toString(), color: "#06B6D4" },
-          { label: "Sellers", value: sellerCount.toString(), color: "#10B981" },
-          { label: "Admins", value: adminCount.toString(), color: "#F59E0B" },
+          { label: "Total Users", value: (counts?.total ?? users.length).toString(), color: "#8B5CF6" },
+          { label: "Buyers", value: (counts?.buyers ?? buyerCount).toString(), color: "#06B6D4" },
+          { label: "Sellers", value: (counts?.sellers ?? sellerCount).toString(), color: "#10B981" },
+          { label: "Freelancers", value: (counts?.freelancers ?? 0).toString(), color: "#10B981" },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-white/5 bg-[#0A0A12]">
             <p className="text-[10px] text-white/30 uppercase">{s.label}</p>
