@@ -53,6 +53,7 @@ const SellerAddProduct = lazy(() => import("./pages/seller/SellerAddProduct.tsx"
 const SellerEditProduct = lazy(() => import("./pages/seller/SellerEditProduct.tsx"));
 // Freelance marketplace
 const FreelanceLanding = lazy(() => import("./pages/freelance/FreelanceLanding.tsx"));
+const FreelanceEmployer = lazy(() => import("./pages/employer/EmployerDashboard.tsx"));
 const FreelanceDashboard = lazy(() => import("./pages/freelance/FreelanceDashboard.tsx"));
 const FreelanceFindWork = lazy(() => import("./pages/freelance/FreelanceFindWork.tsx"));
 const FreelanceFindFreelancers = lazy(() => import("./pages/freelance/FreelanceFindFreelancers.tsx"));
@@ -271,6 +272,15 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/seller/notifications" element={<RequireAuth><SellerNotifications /></RequireAuth>} />
               <Route path="/seller/settings" element={<RequireAuth><SellerSettings /></RequireAuth>} />
               <Route path="/seller/help" element={<RequireAuth><SellerHelp /></RequireAuth>} />
+
+              {/* Employer panel */}
+              <Route path="/employer" element={<RequireAuth><FreelanceEmployer /></RequireAuth>} />
+              <Route path="/employer/post-job" element={<RequireAuth><FreelancePostTask /></RequireAuth>} />
+              <Route path="/employer/jobs" element={<RequireAuth><FreelanceApplications /></RequireAuth>} />
+              <Route path="/employer/projects" element={<RequireAuth><FreelanceProjects /></RequireAuth>} />
+              <Route path="/employer/messages" element={<RequireAuth><FreelanceMessages /></RequireAuth>} />
+              <Route path="/employer/earnings" element={<RequireAuth><FreelanceEarnings /></RequireAuth>} />
+              <Route path="/employer/settings" element={<RequireAuth><FreelanceSettings /></RequireAuth>} />
 
               {/* Admin routes */}
               <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />

@@ -69,9 +69,8 @@ export default function FreelanceDashboard() {
                   {roleMode === "freelancer" ? "Writer / Freelancer" : "Employer"}
                 </span>
               </div>
-              <button onClick={() => setRoleMode(roleMode === "freelancer" ? "employer" : "freelancer")}
-                className="mt-1.5 text-[10px] text-nx-violet/50 hover:text-nx-violet transition-colors">
-                Switch to {roleMode === "freelancer" ? "Employer" : "Writer"} →
+              <button onClick={() => navigate("/employer")} className="mt-1.5 text-[10px] text-nx-amber-400 hover:text-nx-amber-400 transition-colors">
+                Switch to Employer →
               </button>
             </div>
           )}

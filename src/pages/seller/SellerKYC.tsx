@@ -3,19 +3,7 @@ import { motion, useInView } from "framer-motion";
 import SellerLayout from "./SellerLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { KENYA_COUNTIES } from "@/lib/kenya-locations";
-import {
-  FileCheck,
-  Upload,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
-  Building2,
-  User,
-  Phone,
-  MapPin,
-  Shield,
-  ChevronRight,
-} from "lucide-react";
+import { Upload, CheckCircle2, Clock, AlertTriangle, Building2, ChevronRight } from "lucide-react";
 
 function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -49,25 +37,25 @@ export default function SellerKYC() {
         {/* Status Card */}
         <FadeIn delay={0.05}>
           <div className={`p-5 rounded-xl border ${
-            kycStatus === "verified" ? "border-nx-emerald/15 bg-nx-emerald/[0.03]" :
-            kycStatus === "pending" ? "border-nx-gold/15 bg-nx-gold/[0.03]" :
+            kycStatus === "verified" ? "border-emerald-400/15 bg-emerald-400/[0.03]" :
+            kycStatus === "pending" ? "border-amber-400/15 bg-amber-400/[0.03]" :
             kycStatus === "rejected" ? "border-red-400/15 bg-red-400/[0.03]" :
-            "border-white/5 bg-nx-surface/50"
+            "border-white/5 bg-white/5"
           }`}>
             <div className="flex items-center gap-3">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                kycStatus === "verified" ? "bg-nx-emerald/10" :
-                kycStatus === "pending" ? "bg-nx-gold/10" :
+                kycStatus === "verified" ? "bg-emerald-400/10" :
+                kycStatus === "pending" ? "bg-amber-400/10" :
                 "bg-white/5"
               }`}>
-                {kycStatus === "verified" ? <CheckCircle2 className="w-6 h-6 text-nx-emerald" /> :
-                 kycStatus === "pending" ? <Clock className="w-6 h-6 text-nx-gold" /> :
-                 <FileCheck className="w-6 h-6 text-white/30" />}
+                {kycStatus === "verified" ? <CheckCircle2 className="w-6 h-6 text-emerald-400" /> :
+                 kycStatus === "pending" ? <Clock className="w-6 h-6 text-amber-400" /> :
+                 <Upload className="w-6 h-6 text-white/30" />}
               </div>
               <div>
                 <h3 className={`text-base font-semibold ${
-                  kycStatus === "verified" ? "text-nx-emerald" :
-                  kycStatus === "pending" ? "text-nx-gold" :
+                  kycStatus === "verified" ? "text-emerald-400" :
+                  kycStatus === "pending" ? "text-amber-400" :
                   "text-white"
                 }`}>
                   {kycStatus === "verified" ? "Business Verified ✓" :
@@ -90,11 +78,11 @@ export default function SellerKYC() {
         <FadeIn delay={0.08}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {[
-              { title: "List Products", desc: "Post up to unlimited items", icon: Shield, color: "#8B5CF6" },
+              { title: "List Products", desc: "Post up to unlimited items", icon: Building2, color: "#8B5CF6" },
               { title: "Lower Fees", desc: "5% instead of 10% commission", icon: CheckCircle2, color: "#06B6D4" },
-              { title: "Verified Badge", desc: "Trust signal for buyers", icon: Shield, color: "#10B981" },
+              { title: "Verified Badge", desc: "Trust signal for buyers", icon: CheckCircle2, color: "#10B981" },
             ].map((b) => (
-              <div key={b.title} className="p-4 rounded-xl border border-white/5 bg-nx-surface/50">
+              <div key={b.title} className="p-4 rounded-xl border border-white/5 bg-white/5">
                 <b.icon className="w-5 h-5 mb-2" style={{ color: b.color }} />
                 <h4 className="text-sm font-semibold text-white">{b.title}</h4>
                 <p className="text-[11px] text-white/30 mt-0.5">{b.desc}</p>
@@ -106,7 +94,7 @@ export default function SellerKYC() {
         {/* KYC Form */}
         {kycStatus !== "verified" && (
           <FadeIn delay={0.1}>
-            <div className="p-6 rounded-xl border border-white/5 bg-nx-surface/50">
+            <div className="p-6 rounded-xl border border-white/5 bg-white/5">
               <div className="flex items-center gap-2 mb-6">
                 <Building2 className="w-5 h-5 text-nx-violet" />
                 <h3 className="text-base font-semibold text-white">Business Information</h3>
@@ -243,7 +231,7 @@ export default function SellerKYC() {
                     Next <ChevronRight className="w-4 h-4" />
                   </button>
                 ) : (
-                  <button className="px-5 py-2 rounded-lg bg-nx-emerald text-white text-sm font-medium hover:bg-nx-emerald/80 transition-colors">
+                  <button className="px-5 py-2 rounded-lg bg-emerald-400 text-white text-sm font-medium hover:bg-emerald-400/80 transition-colors">
                     Submit for Review
                   </button>
                 )}

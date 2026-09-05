@@ -30,6 +30,8 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
       admin: "/admin",
       seller: "/seller",
       buyer: "/buyer",
+      freelancer: "/freelance/dashboard",
+      employer: "/freelance/dashboard",
       driver: "/driver",
     };
     return <Navigate to={roleRedirects[role] || "/buyer"} replace />;
@@ -46,6 +48,11 @@ export function getDashboardPath(role?: string): string {
     case "seller":
       return "/seller";
     case "buyer":
+      return "/buyer";
+    case "freelancer":
+      return "/freelance/dashboard";
+    case "employer":
+      return "/freelance/dashboard";
     default:
       return "/buyer";
   }
