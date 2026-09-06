@@ -1,4 +1,4 @@
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthUserId, hashPassword, verifyPassword } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 
@@ -112,7 +112,7 @@ export const verifyLogin = mutation({
     const validPassword =
       typeof u.passwordHash === "string" &&
       (u.passwordHash === args.password ||
-        (u.passwordHash.startsWith("pbkdf2:") && verifyPasswordHash(u.passwordHash, args.password)));
+        (u.passwordHash.startsWith("pbkdf2:") && verifyStoredPasswordHash(u.passwordHash, args.password)));
 
     if (!validPassword) {
       return { success: false, error: "Invalid email or password." };
@@ -121,44 +121,58 @@ export const verifyLogin = mutation({
     if (!u.role) {
       const inferred = inferRole(u);
       if (inferred) {
-        await ctx.db.patch(u._id, { role: inferred as any });
+        await ctx.db.patch(u._id, { role: inferred });
       }
     }
 
-    const beforeFresh = await ctx.db.get(u._id) as any;
-    await ctx.db.patch(beforeFresh?._id ?? u._id, { lastActivityAt: Date.now() });
+    await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
 
     const fresh = await ctx.db.get(u._id);
     const resolved = fresh as any;
 
+    // IMPORTANT: Read the role from the persistent DB record. Do NOT default
+    // to "buyer" here — doing so is the root cause of the seller -> buyer bug.
+    const role = resolved.role;
+    if (typeof role !== "string" || !role) {
+      // If the DB record somehow lacks a role (legacy/half-migrated account),
+      // infer it once and persist it, but never expose "buyer" as a fallback
+      // to the client. If we truly cannot determine the role, return null so
+      // the frontend can show an account-setup state.
+      const inferred = inferRole(resolved);
+      if (typeof inferred === "string" && inferred) {
+        await ctx.db.patch(resolved._id, { role: inferred });
+        return {
+          success: true,
+          userId: resolved._id,
+          email: resolved.email,
+          name: resolved.name,
+          role: inferred,
+        };
+      }
+      return {
+        success: true,
+        userId: resolved._id,
+        email: resolved.email,
+        name: resolved.name,
+        role: null,
+      };
+    }
     return {
       success: true,
       userId: resolved._id,
       email: resolved.email,
       name: resolved.name,
-      role: resolved.role || inferRole(resolved) || "buyer",
+      role,
     };
   },
 });
 
 function inferRole(user: any): string | null {
-  if (user.role) return user.role;
+  if (typeof user.role === "string" && user.role) return user.role;
+  if (user.email === ADMIN_EMAIL) return "admin";
+  if (typeof user.businessName === "string" && user.businessName) return "seller";
   if (user.email === process.env.ADMIN_EMAIL) return "admin";
-  if (user.businessName) return "seller";
   return null;
-}
-
-function verifyPasswordHash(storedHash: string, password: string): boolean {
-  if (!storedHash.startsWith("pbkdf2:")) return false;
-  try {
-    const parts = storedHash.split(":");
-    const [, , salt, iterations, keyLength, algorithm, expected] = parts;
-    if (!salt || !iterations || !keyLength || !algorithm || !expected) return false;
-    const key = crypto.subtle;
-    return false;
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -218,7 +232,7 @@ export const ensureUserProfile = mutation({
                 ? "seller"
                 : "buyer"));
 
-      if (u.role !== targetRole) {
+      if (typeof u.role !== "string" || u.role !== targetRole) {
         await ctx.db.patch(u._id, { role: targetRole });
       }
 
@@ -268,9 +282,8 @@ export const updatePassword = mutation({
       u.passwordHash !== args.currentPassword
     ) {
       throw new Error("Current password is incorrect.");
-    }
-
-    await ctx.db.patch(u._id, { passwordHash: hashPasswordForStorage(args.newPassword) });
+    }      await ctx.db.patch(u._id, { passwordHash: hashPasswordForStorage(args.newPassword) });
+    await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
     return { success: true };
   },
 });
@@ -421,11 +434,14 @@ export const checkAndPromoteAdmin = mutation({
       const targetRole: "admin" | "buyer" | "seller" | "driver" | undefined =
         u.email === ADMIN_EMAIL ? "admin"
           : (args.role === "seller" ? "seller" : args.role === "admin" ? "admin" : args.role === "driver" ? "driver" : "buyer");
-      if (targetRole && u.role !== targetRole) {
+          if (targetRole && u.role !== targetRole) {
         await ctx.db.patch(u._id, { role: targetRole });
         // Refresh user record after patch (type assertion needed since db.get is generic)
         user = (await ctx.db.get(u._id)) as typeof user;
       }
+
+      // Update activity timestamp on every login, even when the role does not change.
+      await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
     }
 
     if (!user) return { promoted: false, message: "User not found" };
@@ -437,9 +453,11 @@ export const checkAndPromoteAdmin = mutation({
       if (finalUser && finalUser.role !== "admin") {
         await ctx.db.patch(finalUser._id, { role: "admin" });
       }
+      await ctx.db.patch(finalUser?._id ?? (user as any)._id, { lastActivityAt: Date.now() });
       return { promoted: true, message: "You have been promoted to admin!" };
     }
 
+    await ctx.db.patch((user as any)._id, { lastActivityAt: Date.now() });
     return { promoted: false, message: "No auto-promotion needed" };
   },
 });

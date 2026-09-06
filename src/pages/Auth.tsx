@@ -22,6 +22,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { isPasswordValid } from "@/lib/password-strength";
 
 interface AuthProps {
   redirectAfterAuth?: string;
@@ -52,10 +53,18 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
+  // ---- Strong password auth fields (shared across all panels) ----
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordValid, setPasswordValid] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
+
   const [adminEmail, setAdminEmail] = useState("");
   const [adminError, setAdminError] = useState<string | null>(null);
 
   const checkAndPromoteAdmin = useMutation(api.users.checkAndPromoteAdmin);
+  const ensureUserProfile = useMutation(api.users.ensureUserProfile);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -70,7 +79,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       }
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, navigate, redirect, user?.role]);
+  }, [authLoading, isAuthenticated, user, navigate, redirect]);
 
   const isFreelanceRoute = redirect.startsWith("/freelance");
 
@@ -83,6 +92,34 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
+    setPasswordError(null);
+    setConfirmPasswordError(null);
+
+    // ---- Strong password validation (same policy for every panel) ----
+    if (usePasswordAuth) {
+      const passwordTrimmed = password.trim();
+      if (passwordTrimmed.length === 0) {
+        setPasswordError("Password is required.");
+        setIsLoading(false);
+        return;
+      }
+      if (!isPasswordValid(passwordTrimmed)) {
+        setPasswordError("Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a symbol.");
+        setIsLoading(false);
+        return;
+      }
+      if (confirmPassword !== password) {
+        setConfirmPasswordError("Passwords do not match.");
+        setIsLoading(false);
+        return;
+      }
+      if (passwordTrimmed.toLowerCase().includes((formDataGet("email") || "").toLowerCase()) || passwordTrimmed.toLowerCase().includes(fullName.toLowerCase())) {
+        setPasswordError("Password should not contain your email or name.");
+        setIsLoading(false);
+        return;
+      }
+    }
+
     try {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
@@ -94,6 +131,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     }
   };
 
+  function formDataGet(form: FormData, name: string): string | null {
+    return form.get(name) as string | null;
+  }
+
   const handleOtpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
@@ -101,22 +142,22 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     try {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
-      // Ensure user profile exists in DB with the correct role
-      try {
-        await checkAndPromoteAdmin({ role: selectedRole || "buyer" });
-      } catch {}
-      // Respect returnTo parameter for freelance routes
-      if (isFreelanceRoute) {
-        navigate(redirect);
-      } else {
-        navigate(selectedRole === "seller" ? "/seller" : "/buyer");
-      }
-    } catch (error) {
-      setError("The verification code you entered is incorrect.");
+      // Ensure the persistent DB profile exists with the correct role.
+      // This is the authoritative source of truth for role — do NOT rely on the
+      // email-OTP path or React state alone. Even if the user just authenticated
+      // with OTP, we sync the role here so a later password-login reads it.
+      const formData = new FormData(event.currentTarget);
+      const email = formDataGet(formData, "email") || "";
+      await signIn("email-otp", formData);
+      setStep({ email });
       setIsLoading(false);
-      setOtp("");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to send verification code.");
+      setIsLoading(false);
     }
   };
+
+  const handleOtpSubmit
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -151,23 +192,50 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [showLogin, setShowLogin] = useState(false);
   const verifyLogin = useMutation(api.users.verifyLogin);
 
+
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+
+    // ---- Client-side pre-check so we reject obviously weak input before hitting
+    // the network. Real enforcement still happens in verifyLogin (server-side). ----
+    if (loginPassword.trim().length === 0) {
+      setError("Password is required.");
+      setIsLoading(false);
+      return;
+    }
+    if (!isPasswordValid(loginPassword)) {
+      setError("Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a symbol.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const result = await verifyLogin({ email: loginEmail, password: loginPassword });
       if (result?.success) {
-        // Navigate to the right page based on role
-        const r: string = result.role || "";
+        // Navigate using the role returned from the backend, which is read from
+        // the persistent DB record. Do NOT fallback to /buyer when the role is
+        // missing — instead route to the auth page so the profile can be repaired.
+        const r = result.role;
+        if (!r) {
+          setError("Your account role could not be loaded. Please set up your account.");
+          setLoginPassword("");
+          return;
+        }
         if (r === "admin") {
           navigate("/admin");
         } else if (r === "seller" || r === "driver") {
           navigate("/seller");
         } else if (r === "freelancer") {
           navigate("/freelance");
-        } else {
+        } else if (r === "buyer") {
           navigate("/buyer");
+        } else if (r === "employer") {
+          navigate("/employer");
+        } else {
+          setError("Your account role is not recognised. Please contact support.");
+          setLoginPassword("");
         }
       } else {
         setError("Invalid email or password. Please check your details.");
@@ -296,6 +364,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   }
 
   // ===== REGULAR BUYER/SELLER AUTH =====
+  // Toggle password-auth step on/off per panel. Enabled for all panels that
+  // create an account (buyer / seller / freelancer). The policy is the same one
+  // defined in src/lib/password-strength.ts and enforced server-side in
+  // src/convex/users.ts (verifyLogin + updatePassword).
+  const usePasswordAuth = true;
+
   return (
     <div className="min-h-screen bg-[#05050A] flex flex-col items-center justify-center relative overflow-hidden">
       <div className="absolute inset-0 z-0">
@@ -447,7 +521,38 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="relative"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/5" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-nx-surface px-2 text-white/20 tracking-wider">or sign in with email</span></div></div>
+
+                {/* ---- PASSWORD STEP (strong policy, same across all panels) ---- */}
+                {usePasswordAuth && (
+                  <>
+                    <PasswordField
+                      label="Create a secure password"
+                      value={password}
+                      onChange={setPassword}
+                      placeholder="Choose a strong password"
+                      error={passwordError}
+                      disabled={isLoading}
+                      onValidChange={(valid) => setPasswordValid(valid)}
+                    />
+                    <PasswordField
+                      label="Confirm password"
+                      value={confirmPassword}
+                      onChange={setConfirmPassword}
+                      placeholder="Re-enter your password"
+                      error={confirmPasswordError}
+                      disabled={isLoading}
+                      autoComplete="new-password"
+                    />
+                    <p className="text-[11px] text-white/20 text-center leading-relaxed">
+                      Your password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a symbol.
+                    </p>
+                  </>
+                )}
+
                 <form onSubmit={handleEmailSubmit} className="space-y-3">
+                  {usePasswordAuth && (
+                    <input type="hidden" name="password" value={password} />
+                  )}
                   {selectedRole === "seller" && (
                     <div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="displayName" placeholder="Business / Display Name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
                   )}

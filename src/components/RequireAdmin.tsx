@@ -97,8 +97,10 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
     );
   }
 
-  // Check if user has admin role (after promotion attempt)
-  if (user?.role !== "admin" && !promoted) {
+  // Check if user has admin role (after promotion attempt).
+  // NOTE: user?.role !== "admin" still reads frontend state for display only.
+  // Authorization is enforced server-side in convex/admin.ts via requireAdmin().
+  if ((user === null || user.role !== "admin") && !promoted) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#05050A] px-4">
         <div className="text-center p-8 max-w-md">
