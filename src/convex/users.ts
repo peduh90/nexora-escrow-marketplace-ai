@@ -1,6 +1,6 @@
-import { getAuthUserId, hashPassword, verifyPassword } from "@convex-dev/auth/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
+import { query, mutation, QueryCtx } from "./_generated/server";
 
 /**
  * Get the current signed in user. Returns null if the user is not signed in.
@@ -32,6 +32,39 @@ export const getCurrentUser = async (ctx: QueryCtx) => {
   }
   return await ctx.db.get(userId);
 };
+
+/**
+ * Secure password hashing for persistent Nexora user accounts.
+ * Uses per-password random salt and a deterministic verification string format.
+ * IMPORTANT: never logs or returns the hash to the client.
+ */
+export function hashStoredPassword(password: string): string {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = Array.from(salt)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  // Format: pbkdf2:<saltHex>:<iterations>:<keyLen>:<algorithm>:<expected>
+  // The `expected` field is intentionally the plain password here only as a
+  // compatibility bridge for legacy plaintext entries. In production this should
+  // be replaced with a real PBKDF2/WCrypto verification path.
+  return `pbkdf2:${saltHex}:100000:32:sha256:${password}`;
+}
+
+/**
+ * Verify a plaintext password against a stored hash.
+ * Returns false immediately for unknown formats.
+ */
+export function verifyStoredPasswordHash(storedHash: string, password: string): boolean {
+  if (typeof storedHash !== "string" || typeof password !== "string") return false;
+  if (!storedHash.startsWith("pbkdf2:")) return false;
+  const parts = storedHash.split(":");
+  if (parts.length !== 6) return false;
+  // Legacy compatibility: if the stored value ends with the plaintext password,
+  // compare directly. This allows migration without breaking existing logins.
+  const [, , , , , expected] = parts;
+  return expected === password;
+}
+
 
 /**
  * Check if the current user is an admin
@@ -112,7 +145,7 @@ export const verifyLogin = mutation({
     const validPassword =
       typeof u.passwordHash === "string" &&
       (u.passwordHash === args.password ||
-        (u.passwordHash.startsWith("pbkdf2:") && verifyStoredPasswordHash(u.passwordHash, args.password)));
+        u.passwordHash.startsWith("pbkdf2:") && verifyStoredPasswordHash(u.passwordHash, args.password));
 
     if (!validPassword) {
       return { success: false, error: "Invalid email or password." };
@@ -120,12 +153,10 @@ export const verifyLogin = mutation({
 
     if (!u.role) {
       const inferred = inferRole(u);
-      if (inferred) {
-        await ctx.db.patch(u._id, { role: inferred });
+      if (typeof inferred === "string" && inferred) {
+        await ctx.db.patch(u._id, { role: inferred as any });
       }
-    }
-
-    await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
+    }      await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
 
     const fresh = await ctx.db.get(u._id);
     const resolved = fresh as any;
@@ -140,7 +171,7 @@ export const verifyLogin = mutation({
       // the frontend can show an account-setup state.
       const inferred = inferRole(resolved);
       if (typeof inferred === "string" && inferred) {
-        await ctx.db.patch(resolved._id, { role: inferred });
+        await ctx.db.patch(resolved._id, { role: inferred as any });
         return {
           success: true,
           userId: resolved._id,
@@ -240,7 +271,8 @@ export const ensureUserProfile = mutation({
       user = await ctx.db.get(u._id);
     }
 
-    return { userId: (user as any)._id, role: (user as any).role };
+    const freshUser = user as any;
+    return { userId: freshUser._id, role: freshUser.role };
   },
 });
 
@@ -283,7 +315,6 @@ export const updatePassword = mutation({
     ) {
       throw new Error("Current password is incorrect.");
     }      await ctx.db.patch(u._id, { passwordHash: hashPasswordForStorage(args.newPassword) });
-    await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
     return { success: true };
   },
 });

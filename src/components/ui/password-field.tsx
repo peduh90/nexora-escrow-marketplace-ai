@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { Eye, EyeOff, ShieldAlert, ShieldCheck, Shield } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -52,7 +52,7 @@ export function PasswordField({
         <Input
           type={show ? "text" : "password"}
           value={value}
-          onChange={(e) => {
+          onChange={(e: ChangeEvent<HTMLInputElement>) => {
             onChange(e.target.value);
             onValidChange?.(isPasswordValid(e.target.value));
           }}
@@ -65,18 +65,16 @@ export function PasswordField({
             "focus:border-nx-violet/50",
             inputClassName,
           )}
-          addonAfter={
-            <button
-              type="button"
-              tabIndex={-1}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50 transition-colors"
-              onClick={() => setShow((s) => !s)}
-              aria-label={show ? "Hide password" : "Show password"}
-            >
-              {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          }
         />
+        <button
+          type="button"
+          tabIndex={-1}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50 transition-colors"
+          onClick={() => setShow((s) => !s)}
+          aria-label={show ? "Hide password" : "Show password"}
+        >
+          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
       </div>
 
       {strength.level !== "too-short" && (
