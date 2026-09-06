@@ -188,6 +188,22 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       }
 
       setIsLoading(false);
+
+      // Keep the authenticated session pointing at the correct panel for this
+      // role. Without this, the OTP path could leave the user on the auth page
+      // even when registration succeeded (a regression path for the seller->buyer
+      // bug where role was never persisted / never used to navigate).
+      if (selectedRole && user) {
+        const target =
+          selectedRole === "seller"
+            ? "/seller"
+            : selectedRole === "buyer"
+            ? "/buyer"
+            : selectedRole === "freelancer"
+            ? "/freelance/dashboard"
+            : "/buyer";
+        try { navigate(target); } catch {}
+      }
     } catch (error) {
       setError(error instanceof Error ? error.message : "Failed to send verification code.");
       setIsLoading(false);

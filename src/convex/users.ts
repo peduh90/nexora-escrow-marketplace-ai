@@ -37,61 +37,92 @@ export const getCurrentUser = async (ctx: QueryCtx) => {
 
 /**
  * Secure password hashing for persistent Nexora user accounts.
- * Uses a per-password random salt and stores only a hash-derived verifier.
+ * Uses PBKDF2-HMAC-SHA256 with a per-password random salt and a derived key.
  * IMPORTANT: never logs or returns the hash to the client, and never stores
  * the plaintext password.
  *
- * Format: pbkdf2:<saltHex>:<iterations>:<keyLen>:<algorithm>:<verifierHash>
+ * Format: pbkdf2:<saltHex>:<iterations>:<keyLen>:<algorithm>:<derivedHex>
  *
- * The verifier is a SHA-256 hash of `salt + password`, never the plaintext.
- * Legacy entries that embed the plaintext in the verifier field still verify
- * (so existing users are not locked out), but new/updated passwords are never
- * stored as plaintext.
+ * `derivedHex` is a hex-encoded 256-bit PBKDF2 output, not the plaintext and
+ * not a single SHA-256 round over `salt + password`.
  */
 export async function hashStoredPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const saltHex = Array.from(salt)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  const verifier = Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array([...salt, ...new TextEncoder().encode(password)])))
-  )
+
+  const deriveBitsPBKDF2 = (crypto.subtle.deriveBits as unknown as (
+    algo: { name: "PBKDF2"; salt: BufferSource; iterations: number; hash: "SHA-256" },
+    baseKey: BufferSource,
+    derivedKeyType: { name: "SHA-256"; length: number },
+  ) => Promise<ArrayBuffer>);
+  const derivedKey = await deriveBitsPBKDF2(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    new TextEncoder().encode(password),
+    { name: "SHA-256", length: 256 },
+  );
+  const derivedBytes = new Uint8Array(derivedKey);
+  const derivedHex = Array.from(derivedBytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  return `pbkdf2:${saltHex}:100000:32:sha256:${verifier}`;
+
+  return `pbkdf2:${saltHex}:100000:32:sha256:${derivedHex}`;
 }
 
 /**
- * Verify a password against a stored hash.
+ * Verify a password against a stored PBKDF2 hash.
  * Returns false for unknown formats or missing inputs.
  *
- * Legacy compatibility: some older entries embed the plaintext password as the
- * verifier field. Those still verify so existing users are not locked out, but
- * we never write new entries in that form.
+ * Legacy handling: entries whose stored value does not parse as a real PBKDF2
+ * record are treated as INVALID for authentication purposes. We no longer accept
+ * plaintext-equal verifiers as valid logins. If an existing user's stored hash is
+ * somehow legacy/invalid, the correct recovery path is a password reset, not
+ * silent plaintext acceptance.
  */
 export async function verifyStoredPasswordHash(storedHash: string, password: string): Promise<boolean> {
   if (typeof storedHash !== "string" || typeof password !== "string") return false;
   if (!storedHash.startsWith("pbkdf2:")) return false;
   const parts = storedHash.split(":");
   if (parts.length !== 6) return false;
-  const [, saltHex, , , , verifier] = parts;
-  if (!saltHex || !verifier) return false;
 
+  const [, saltHex, iterationsStr, keyLengthStr, algorithm, derivedHex] = parts;
+  if (!saltHex || !iterationsStr || !keyLengthStr || !algorithm || !derivedHex) return false;
+  if (algorithm !== "sha256") return false;
+
+  const iterations = Number(iterationsStr);
+  const keyLength = Number(keyLengthStr);
+  if (!Number.isFinite(iterations) || iterations <= 0 || !Number.isFinite(keyLength) || keyLength <= 0) return false;
+
+  let saltBytes: Uint8Array;
   try {
-    const saltBytes = new Uint8Array(saltHex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
-    const derived = Array.from(
-      new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array([...saltBytes, ...new TextEncoder().encode(password)])))
-    )
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    if (derived === verifier) return true;
+    if (saltHex.length % 2 !== 0) return false;
+    saltBytes = new Uint8Array(saltHex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
   } catch {
-    // If crypto fails for any reason, fall through to legacy check.
+    return false;
   }
 
-  // Legacy compatibility: older entries may store the plaintext password as the
-  // verifier. Compare directly so existing users are not locked out.
-  return verifier === password;
+  if (saltBytes.length === 0) return false;
+
+  try {
+  const deriveBitsPBKDF2 = (crypto.subtle.deriveBits as unknown as (
+    algo: { name: "PBKDF2"; salt: BufferSource; iterations: number; hash: "SHA-256" },
+    baseKey: BufferSource,
+    derivedKeyType: { name: "SHA-256"; length: number },
+  ) => Promise<ArrayBuffer>);
+    const derivedKey = await deriveBitsPBKDF2(
+      { name: "PBKDF2", salt: saltBytes as BufferSource, iterations, hash: "SHA-256" },
+      new TextEncoder().encode(password),
+      { name: "SHA-256", length: keyLength },
+    );
+    const derivedBytes = new Uint8Array(derivedKey);
+    const computedHex = Array.from(derivedBytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    return computedHex === derivedHex;
+  } catch {
+    return false;
+  }
 }
 
 
