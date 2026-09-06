@@ -212,7 +212,7 @@ export const seedDefaultCategories = mutation({
       { name: "Mobile Phones", slug: "mobile-phones", icon: "📱", subcategories: ["iPhone", "Samsung", "Google Pixel", "Tecno", "Infinix", "Xiaomi", "Oppo", "Other"] },
       { name: "Computers & Laptops", slug: "computers-laptops", icon: "💻", subcategories: ["Laptops", "Desktops", "Monitors", "Accessories", "Software"] },
       { name: "Fashion & Clothing", slug: "fashion", icon: "👕", subcategories: ["Men's Wear", "Women's Wear", "Shoes", "Accessories", "Bags", "Watches"] },
-      { name: "Home & Living", slug: "home-living", icon: "🏠", subcategories: ["Furniture", "Kitchen", "Bedroom", "Bathroom", "Decor", "Appliances"] },
+      { name: "Home & Living", slug: "home-living", icon: "🏠", subcategories: ["Furniture", "Kitchen", "Bedroom", "Bathroom", "Decor", "Appliances", "Cooking Gas & Fuel"] },
       { name: "Vehicles", slug: "vehicles", icon: "🚗", subcategories: ["Cars", "Motorcycles", "Trucks", "Spare Parts", "Accessories"] },
       { name: "Electronics", slug: "electronics", icon: "📺", subcategories: ["TVs", "Audio", "Cameras", "Gadgets", "Wearables"] },
       { name: "Health & Beauty", slug: "health-beauty", icon: "💄", subcategories: ["Skincare", "Makeup", "Hair Care", "Supplements", "Personal Care"] },
