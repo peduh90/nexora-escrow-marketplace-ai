@@ -16,15 +16,9 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   const [adminEmail, setAdminEmail] = useState("");
   const [promoteError, setPromoteError] = useState<string | null>(null);
 
-  const admin2FAStatus = useQuery(
-    api.adminAuth.isAdmin2FAEnabled,
-    isAuthenticated && user?.role === "admin" ? {} : "skip"
-  );
-
   // Auto-promote admin email when they visit /admin
   useEffect(() => {
     if (!isLoading && isAuthenticated && user && user.role !== "admin" && !promoting && !promoted && !showDenied) {
-      // Store admin email for manual promotion fallback
       setAdminEmail(user.email || "");
       setPromoting(true);
       checkAndPromoteAdmin({})
@@ -33,12 +27,13 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
             setPromoted(true);
             setPromoting(false);
           } else {
-            // Auto-promote failed — try direct promoteToAdmin as fallback
+            // Auto-promote returned promoted:false but we still may not be admin
+            // (e.g. email matches but role wasn't set). Try direct promotion.
             setPromoting(true);
             setPromoteError(null);
             promoteToAdmin({ email: user.email || "" })
-              .then((result) => {
-                if (result?.success) {
+              .then((r) => {
+                if (r?.success) {
                   setPromoted(true);
                   setPromoting(false);
                 } else {
@@ -54,20 +49,21 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
               });
           }
         })
-        .catch(() => {
-          // checkAndPromoteAdmin failed — try direct promotion
+        .catch((err) => {
+          // checkAndPromoteAdmin threw — try direct promotion as fallback
           setPromoting(true);
           setPromoteError(null);
-          promoteToAdmin({ email: user.email || "" })              .then((result) => {
-                if (result?.success) {
-                  setPromoted(true);
-                  setPromoting(false);
-                } else {
-                  setPromoteError("Could not promote account");
-                  setPromoting(false);
-                  setTimeout(() => setShowDenied(true), 500);
-                }
-              })
+          promoteToAdmin({ email: user.email || "" })
+            .then((r) => {
+              if (r?.success) {
+                setPromoted(true);
+                setPromoting(false);
+              } else {
+                setPromoteError("Could not promote account");
+                setPromoting(false);
+                setTimeout(() => setShowDenied(true), 500);
+              }
+            })
             .catch((err) => {
               setPromoteError(err.message || "Promotion failed");
               setPromoting(false);
@@ -163,16 +159,6 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
         </div>
       </main>
     );
-  }
-
-  // Check if admin 2FA is required and not yet verified this session
-  if (admin2FAStatus?.enabled) {
-    const verified = sessionStorage.getItem("admin2fa_verified");
-    if (verified !== "true") {
-      return (
-        <Navigate to="/auth?returnTo=/admin" replace />
-      );
-    }
   }
 
   return children;

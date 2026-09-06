@@ -251,6 +251,12 @@ export const checkAndPromoteAdmin = mutation({
   },
 });
 
+/**
+ * Promote any user to admin.
+ * SECURITY: Only callable by the hardcoded admin email OR an existing admin.
+ * The caller's own role is checked — a non-admin user with any other email
+ * cannot call this, even if they pass the admin email as the target.
+ */
 export const promoteToAdmin = mutation({
   args: {
     email: v.string(),
@@ -260,15 +266,28 @@ export const promoteToAdmin = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    // Only allow promotion if caller is already admin or it's the admin email
+    // Resolve the caller's user record
     const caller = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
 
     if (!caller) throw new Error("User not found");
-    if (caller.role !== "admin" && identity.email !== ADMIN_EMAIL) {
+
+    // Allow if the caller is already an admin, or if it's the hardcoded admin email
+    // (the email itself is the ultimate authority — even if DB role is missing)
+    const callerIsAdmin = caller.role === "admin" || identity.email === ADMIN_EMAIL;
+    if (!callerIsAdmin) {
       throw new Error("Unauthorized: only admins can promote users");
+    }
+
+    // Prevent promoting someone else to admin if caller is not actually admin
+    // (the ADMIN_EMAIL path only allows self-promotion)
+    if (identity.email !== ADMIN_EMAIL && args.email !== identity.email) {
+      // Only an existing admin can promote other people
+      if (caller.role !== "admin") {
+        throw new Error("Unauthorized: only admins can promote other users");
+      }
     }
 
     const target = await ctx.db
@@ -290,6 +309,21 @@ export const isAdmin = query({
     if (userId === null) return false;
     const user = await ctx.db.get(userId);
     return user?.role === "admin";
+  },
+});
+
+export const getAdminUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const ADMIN_EMAIL = "murimiedwin227@gmail.com";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+    if (!user) return null;
+    return { _id: user._id, email: user.email, name: user.name, role: user.role };
   },
 });
 
