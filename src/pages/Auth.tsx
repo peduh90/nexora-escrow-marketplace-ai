@@ -145,6 +145,41 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     }
   };
 
+  // ---- PASSWORD LOGIN ----
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [showLogin, setShowLogin] = useState(false);
+  const verifyLogin = useMutation(api.users.verifyLogin);
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await verifyLogin({ email: loginEmail, password: loginPassword });
+      if (result?.success) {
+        // Navigate to the right page based on role
+        const r: string = result.role || "";
+        if (r === "admin") {
+          navigate("/admin");
+        } else if (r === "seller" || r === "driver") {
+          navigate("/seller");
+        } else if (r === "freelancer") {
+          navigate("/freelance");
+        } else {
+          navigate("/buyer");
+        }
+      } else {
+        setError("Invalid email or password. Please check your details.");
+        setLoginPassword("");
+      }
+    } catch (err: any) {
+      setError(err.message || "Login failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // --- Admin: Email → sends OTP ---
   const handleAdminEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -365,6 +400,38 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               <div className="mt-6 text-center">
                 <button onClick={handleGuestLogin} className="text-xs text-white/20 hover:text-white/40 transition-colors">Continue as Guest →</button>
               </div>
+              <div className="mt-4 text-center">
+                <button onClick={() => setShowLogin(!showLogin)} className="text-xs text-nx-cyan hover:text-nx-cyan/80 transition-colors flex items-center gap-1 mx-auto">
+                  {showLogin ? "← Back to sign up" : "Already have an account? Sign in"}
+                </button>
+              </div>
+              {showLogin && (
+                <div className="mt-4 w-full max-w-[440px] mx-auto">
+                  <Card className="border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
+                    <CardHeader className="text-center pt-6">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-nx-violet/10 text-nx-violet font-medium">Sign In</span>
+                      </div>
+                      <CardTitle className="text-xl text-white">Sign in to your account</CardTitle>
+                      <CardDescription className="text-white/40">Enter your email and password to access your account</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <form onSubmit={handlePasswordLogin} className="space-y-3">
+                        <div className="relative"><Mail className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="email" placeholder="Email address" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" required autoFocus /></div>
+                        <div className="relative"><Lock className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="password" placeholder="Password" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" required /></div>
+                        {error && <p className="text-sm text-red-400">{error}</p>}
+                        <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>
+                          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign In <ArrowRight className="ml-2 h-4 w-4" /></>}
+                        </Button>
+                      </form>
+                      <p className="text-[11px] text-white/20 text-center">Don't have an account? Use the options above to sign up.</p>
+                    </CardContent>
+                    <div className="py-3 px-6 text-xs text-center text-white/20 bg-white/[0.02] border-t border-white/5 rounded-b-lg flex items-center justify-center gap-1.5">
+                      <Shield className="w-3 h-3" /> Protected by Nexora Escrow Security
+                    </div>
+                  </Card>
+                </div>
+              )}
             </div>
           )}
 
@@ -379,16 +446,18 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                 <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : "Create your account to start shopping securely"}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button type="button" variant="outline" className="w-full bg-white/[0.03] border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 h-11" onClick={handleGoogleLogin} disabled={isLoading}>
-                  <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                  Continue with Google
-                </Button>
-                <div className="relative"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/5" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-nx-surface px-2 text-white/20 tracking-wider">or create with email</span></div></div>
+                <div className="relative"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/5" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-nx-surface px-2 text-white/20 tracking-wider">or sign in with email</span></div></div>
                 <form onSubmit={handleEmailSubmit} className="space-y-3">
-                  <div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="name" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
+                  {selectedRole === "seller" && (
+                    <div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="displayName" placeholder="Business / Display Name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
+                  )}
+                  {selectedRole !== "seller" && (
+                    <div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="name" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
+                  )}
                   <div className="relative"><Mail className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="email" placeholder="Email address" type="email" className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
                   <div className="relative"><Phone className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="phone" placeholder="Phone number (e.g. 0712 345 678)" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
                   <input type="hidden" name="role" value={selectedRole || "buyer"} />
+                  <input type="hidden" name="displayName" value={fullName} />
                   {error && <p className="text-sm text-red-400">{error}</p>}
                   <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Send Verification Code <ArrowRight className="ml-2 h-4 w-4" /></>}

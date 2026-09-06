@@ -74,6 +74,8 @@ const schema = defineSchema(
       facebook: v.optional(v.string()),
       instagram: v.optional(v.string()),
       tiktok: v.optional(v.string()),
+      // Auth password (simple hash for email/password login)
+      passwordHash: v.optional(v.string()),
       // Admin auth
       adminPasswordHash: v.optional(v.string()),
       adminPasswordSalt: v.optional(v.string()),

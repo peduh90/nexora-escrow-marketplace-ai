@@ -34,32 +34,9 @@ export const getCurrentUser = async (ctx: QueryCtx) => {
 };
 
 /**
- * Promote a user to admin. In production, this should be restricted
- * to existing super-admins or done via a server-side script.
- */
-export const promoteToAdmin = mutation({
-  args: { email: v.string() },
-  handler: async (ctx, args) => {
-    // Find user by email
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", args.email))
-      .first();
-
-    if (!user) {
-      throw new Error(`User with email ${args.email} not found`);
-    }
-
-    // Update role to admin
-    await ctx.db.patch(user._id, { role: "admin" });
-
-    return { success: true, userId: user._id };
-  },
-});
-
-/**
  * Check if the current user is an admin
  */
+
 /** Admin: get all real users (excludes anonymous/guest accounts) */
 export const getAllUsers = query({
   args: {},
@@ -70,6 +47,81 @@ export const getAllUsers = query({
       u.name !== "Guest User" &&
       !u.email?.toLowerCase().includes("anonymous")
     );
+  },
+});
+
+/**
+ * Check if email/phone/business name already exists
+ */
+export const checkDuplicateUser = query({
+  args: {
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    businessName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const all = await ctx.db.query("users").collect();
+    const results: any = { emailExists: false, phoneExists: false, businessNameExists: false };
+
+    for (const user of all) {
+      if (args.email && user.email?.toLowerCase() === args.email.toLowerCase()) {
+        results.emailExists = true;
+      }
+      if (args.phone && user.phone?.replace(/\D/g, "") === args.phone.replace(/\D/g, "")) {
+        results.phoneExists = true;
+      }
+      if (args.businessName && user.businessName?.toLowerCase() === args.businessName.toLowerCase()) {
+        results.businessNameExists = true;
+      }
+    }
+    return results;
+  },
+});
+
+/**
+ * Verify login with email + password
+ */
+export const verifyLogin = mutation({
+  args: {
+    email: v.string(),
+    password: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const all = await ctx.db.query("users").collect();
+    const user = all.find((u: any) =>
+      u.email?.toLowerCase() === args.email.toLowerCase() &&
+      u.passwordHash === args.password
+    );
+    return user ? { success: true, userId: user._id, name: user.name, role: user.role } : { success: false };
+  },
+});
+
+/**
+ * Update user password
+ */
+export const updatePassword = mutation({
+  args: {
+    currentPassword: v.optional(v.string()),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    // If changing own password, verify current
+    if (args.currentPassword && user.passwordHash !== args.currentPassword) {
+      throw new Error("Current password is incorrect");
+    }
+
+    await ctx.db.patch(user._id, { passwordHash: args.newPassword });
+    return { success: true };
   },
 });
 
@@ -125,6 +177,8 @@ const ADMIN_EMAIL = "murimiedwin227@gmail.com";
 export const checkAndPromoteAdmin = mutation({
   args: {
     role: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    displayName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -137,30 +191,48 @@ export const checkAndPromoteAdmin = mutation({
 
     // If user not found in DB (e.g. just created via auth), create the user record
     if (!user) {
-      const role: "admin" | "buyer" | "seller" | "driver" | undefined =
+      const validRole: "admin" | "buyer" | "seller" | "driver" | undefined =
         identity.email === ADMIN_EMAIL ? "admin"
           : (args.role === "seller" ? "seller" : args.role === "admin" ? "admin" : args.role === "driver" ? "driver" : "buyer");
+
+      const name = identity.name || identity.email?.split("@")[0] || "User";
+      const phoneFromForm = typeof args.phone === "string" ? args.phone : undefined;
+
       user = await ctx.db.insert("users", {
-        name: identity.name || identity.email?.split("@")[0] || "User",
+        name,
         email: identity.email,
-        role: role,
+        role: validRole,
+        phone: phoneFromForm,
         kycStatus: "not_started",
       }) as any;
-    } else if (args.role && user.role !== args.role && user.role !== "admin") {
-      // Update role if user chose a different one (only for valid schema roles)
+    } else {
+      // Loose typing for user since Convex generated types may not have all fields
+      const u = user as any;
+      // Update phone if provided
+      const phoneFromForm = typeof args.phone === "string" ? args.phone : undefined;
+      if (phoneFromForm && u.phone !== phoneFromForm) {
+        await ctx.db.patch(u._id, { phone: phoneFromForm });
+      }
+    }
+
+    if (!user) return { promoted: false, message: "User not found" };
+
+    // Update role if user chose a different one (only for valid schema roles)
+    const curUser = user as any;
+    if (args.role && curUser.role !== args.role && curUser.role !== "admin") {
       const validRole = args.role === "seller" ? "seller"
         : args.role === "admin" ? "admin"
         : args.role === "driver" ? "driver"
         : undefined;
       if (validRole) {
-        await ctx.db.patch(user._id, { role: validRole });
-        user = await ctx.db.get(user._id);
+        await ctx.db.patch(curUser._id, { role: validRole });
       }
     }
 
     // Auto-promote if email matches admin email and not already admin
-    if (identity.email === ADMIN_EMAIL && user && user.role !== "admin") {
-      await ctx.db.patch(user._id, { role: "admin" });
+    const finalUser = user as any;
+    if (identity.email === ADMIN_EMAIL && finalUser.role !== "admin") {
+      await ctx.db.patch(finalUser._id, { role: "admin" });
       return { promoted: true, message: "You have been promoted to admin!" };
     }
 

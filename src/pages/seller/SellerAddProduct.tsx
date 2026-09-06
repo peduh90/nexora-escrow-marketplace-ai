@@ -8,7 +8,16 @@ import { CATEGORIES as FALLBACK_CATEGORIES, SPECS_TEMPLATES } from "@/lib/catego
 import { CATEGORY_BANNERS } from "@/lib/category-images";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 
-const TOTAL_STEPS = 5;
+const KENYA_COUNTIES: Record<string, string[]> = {
+  "Nairobi": ["Westlands", "Kilimani", "Karen", "CBD", "Industrial Area", "South B", "South C", "Langata", "Ruiru", "Roysambu", "Kasarani", "Embakasi", "Mathare", "Gigiri", "Kahawa", "Juja", "Thika"],
+  "Coast": ["Mombasa", "Likoni", "Nyali", "Kilifi", "Malindi", "Watamu", "Diani", "Kwale", "Lamu", "Takaungu"],
+  "Central": ["Nyeri", "Murang'a", "Kiambu", "Kirinyaga", "Embu", "Makuyu", "Limuru", "Kahiga", "Othaya", "Mwea"],
+  "Eastern": ["Meru", "Embu", "Isiolo", "Marsabit", "Meru Town", "Mbooni", "Chuka", "Tigoni", "Kibwezi", "Mackinnon"],
+  "Rift Valley": ["Eldoret", "Nakuru", "Kericho", "Kapsabet", "Iten", "Kitale", "Bomet", "Nandi", "Uasin Gishu", "Trans Nzoia", "Laikipia"],
+  "Western": ["Kakamega", "Busia", "Bungoma", "Kwale", "Bondo", "Siaya", "Migori", "Nyatike"],
+  "Nyanza": ["Kisumu", "Siaya", "Kisii", "Nyamira", "Homa Bay", "Migori", "Rongo", "Awendo", "Uriri"],
+  "North Eastern": ["Garissa", "Wajir", "Mandera", "Masalani", "Dadaab", "Wajir Town", "Fafi"],
+};
 
 function ImageUploadStep({ form, update }: { form: any; update: (key: string, val: any) => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,9 +66,7 @@ function ImageUploadStep({ form, update }: { form: any; update: (key: string, va
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`relative aspect-[2/1] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
-          dragOver ? "border-nx-cyan bg-nx-cyan/5" : "border-white/10 hover:border-nx-cyan/30 hover:bg-white/[0.01]"
-        }`}
+        className={`relative aspect-[2/1] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${dragOver ? "border-nx-cyan bg-nx-cyan/5" : "border-white/10 hover:border-nx-cyan/30 hover:bg-white/[0.01]"}`}
       >
         <input ref={fileInputRef} type="file" multiple accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
         <ImagePlus className="w-10 h-10 text-white/15 mb-2" />
@@ -95,6 +102,8 @@ function ImageUploadStep({ form, update }: { form: any; update: (key: string, va
     </div>
   );
 }
+
+const TOTAL_STEPS = 5;
 
 export default function SellerAddProduct() {
   const navigate = useNavigate();
@@ -139,14 +148,15 @@ export default function SellerAddProduct() {
   const selectedCategory = categories.find(c => c.slug === form.category);
   const selectedSubcategory = selectedCategory?.subcategories.find(s => s.slug === form.subcategory);
   const specTemplate = SPECS_TEMPLATES[form.subcategory] || [];
+  const countyTowns = form.county ? KENYA_COUNTIES[form.county] : [];
 
   const handlePublish = async () => {
     setError("");
     if (!form.title.trim()) { setError("Please enter a product title"); return; }
     if (!form.price || Number(form.price) <= 0) { setError("Please enter a valid price"); return; }
     if (!form.category) { setError("Please select a category"); return; }
-    if (!form.county.trim()) { setError("Please enter the county"); return; }
-    if (!form.town.trim()) { setError("Please enter the town"); return; }
+    if (!form.county.trim()) { setError("Please select a county"); return; }
+    if (!form.town.trim()) { setError("Please select a town"); return; }
 
     setPublishing(true);
     try {
@@ -228,11 +238,7 @@ export default function SellerAddProduct() {
               {categories.map(cat => (
                 <button key={cat.slug}
                   onClick={() => { update("category", cat.slug); update("subcategory", ""); update("attributes", {}); setStep(1); }}
-                  className={`relative overflow-hidden rounded-xl border text-left transition-all hover:scale-[1.02] ${
-                    form.category === cat.slug
-                      ? "border-nx-cyan/40 shadow-[0_0_20px_rgba(6,182,212,0.1)]"
-                      : "border-white/[0.06] hover:border-white/10"
-                  }`}
+                  className={`relative overflow-hidden rounded-xl border text-left transition-all hover:scale-[1.02] ${form.category === cat.slug ? "border-nx-cyan/40 shadow-[0_0_20px_rgba(6,182,212,0.1)]" : "border-white/[0.06] hover:border-white/10"}`}
                 >
                   {CATEGORY_BANNERS[cat.slug] ? (
                     <div className="h-28 overflow-hidden relative">
@@ -266,11 +272,7 @@ export default function SellerAddProduct() {
               {selectedCategory.subcategories.map(sub => (
                 <button key={sub.slug}
                   onClick={() => { update("subcategory", sub.slug); setStep(2); }}
-                  className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] ${
-                    form.subcategory === sub.slug
-                      ? "border-nx-cyan/40 bg-nx-cyan/5"
-                      : "border-white/[0.06] bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04]"
-                  }`}
+                  className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] ${form.subcategory === sub.slug ? "border-nx-cyan/40 bg-nx-cyan/5" : "border-white/[0.06] bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04]"}`}
                 >
                   <p className="text-sm font-medium text-white">{sub.name}</p>
                 </button>
@@ -316,9 +318,7 @@ export default function SellerAddProduct() {
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs text-white/40 mb-1.5 block font-medium">Negotiable</label>
                   <button onClick={() => update("negotiable", !form.negotiable)}
-                    className={`w-full px-3 py-2.5 rounded-lg border text-sm text-left transition-colors ${
-                      form.negotiable ? "border-nx-cyan/30 bg-nx-cyan/5 text-nx-cyan" : "border-white/10 bg-white/[0.03] text-white/40"
-                    }`}>
+                    className={`w-full px-3 py-2.5 rounded-lg border text-sm text-left transition-colors ${form.negotiable ? "border-nx-cyan/30 bg-nx-cyan/5 text-nx-cyan" : "border-white/10 bg-white/[0.03] text-white/40"}`}>
                     {form.negotiable ? "Yes — Price negotiable" : "No — Fixed price"}
                   </button>
                 </div>
@@ -372,13 +372,24 @@ export default function SellerAddProduct() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-white/40 mb-1.5 block font-medium">County *</label>
-                  <input value={form.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi"
-                    className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
+                  <select value={form.county} onChange={(e) => { update("county", e.target.value); update("town", ""); }} required
+                    className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-cyan/50 focus:outline-none">
+                    <option value="">Select county</option>
+                    {Object.keys(KENYA_COUNTIES).map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs text-white/40 mb-1.5 block font-medium">Town / Area *</label>
-                  <input value={form.town} onChange={(e) => update("town", e.target.value)} placeholder="e.g. Westlands"
-                    className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
+                  {countyTowns.length > 0 ? (
+                    <select value={form.town} onChange={(e) => update("town", e.target.value)} required
+                      className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-cyan/50 focus:outline-none">
+                      <option value="">Select town</option>
+                      {countyTowns.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  ) : (
+                    <input value={form.town} onChange={(e) => update("town", e.target.value)} placeholder="e.g. Westlands"
+                      className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
+                  )}
                 </div>
               </div>
               <div className="p-3 rounded-lg bg-nx-cyan/5 border border-nx-cyan/10">

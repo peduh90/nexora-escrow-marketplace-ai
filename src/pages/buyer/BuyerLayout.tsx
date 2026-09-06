@@ -97,7 +97,7 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
       </div>
       {/* WhatsApp floating button - bottom right, smaller */}
       <a
-        href="https://wa.me/254706116043?text=Hello%20Nexora%20Market%20Support%20%F0%9F%91%8B"
+        href="https://wa.me/254769739216?text=Hello%20Nexora%20Market%20Support%20%F0%9F%91%8B"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-[#25D366] flex items-center justify-center shadow-2xl hover:scale-110 transition-all duration-300 hover:shadow-[0_0_20px_rgba(37,211,102,0.4)]"

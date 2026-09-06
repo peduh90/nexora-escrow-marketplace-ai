@@ -3,7 +3,7 @@
 
 export const WHATSAPP_CONFIG = {
   // Nexora Market support WhatsApp number (Kenya format without +)
-  phoneNumber: "254706116043",
+  phoneNumber: "254769739216",
   displayNumber: "0706 116 043",
   // Meta API key for WhatsApp Cloud API
   metaApiKey: "LLM_1112645931218236_TXyJlKx_ujur5I4CiHCyK_AjwMc",
