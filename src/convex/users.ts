@@ -234,18 +234,7 @@ export const checkAndPromoteAdmin = mutation({
 
     if (!user) return { promoted: false, message: "User not found" };
 
-    // Update role if user chose a different one (only for valid schema roles)
-    const curUser = user as any;
-    const targetRole: "admin" | "buyer" | "seller" | "driver" | undefined =
-      curUser.email === ADMIN_EMAIL ? "admin"
-        : (args.role === "seller" ? "seller" : args.role === "admin" ? "admin" : args.role === "driver" ? "driver" : "buyer");
-    if (targetRole && curUser.role !== targetRole && curUser.role !== "admin") {
-      await ctx.db.patch(curUser._id, { role: targetRole });
-    }
-
     // Auto-promote if email matches admin email
-    // At this point the role should already be "admin" from the earlier logic.
-    // This is the final safety net — idempotent, always returns promoted:true for admin email.
     if (identity.email === ADMIN_EMAIL) {
       const fresh = await ctx.db.get((user as any)._id);
       const finalUser = fresh as any;
@@ -270,7 +259,6 @@ export const promoteToAdmin = mutation({
     email: v.string(),
   },
   handler: async (ctx, args) => {
-    const ADMIN_EMAIL = "murimiedwin227@gmail.com";
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
