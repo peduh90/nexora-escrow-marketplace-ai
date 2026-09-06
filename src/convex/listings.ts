@@ -131,16 +131,21 @@ export const getActiveListings = query({
       .order("desc")
       .take(args.limit ?? 50);
 
-    // Resolve image URLs from storage
+    // Resolve image URLs from storage or keep external URLs as-is
     const listings = await Promise.all(
       allActive.map(async (listing) => {
         const imageUrls: string[] = [];
         if (listing.images) {
           for (const img of listing.images) {
+            // Try Convex storage first
             try {
               const url = await ctx.storage.getUrl(img);
-              if (url) imageUrls.push(url);
-            } catch { /* skip invalid */ }
+              if (url) { imageUrls.push(url); continue; }
+            } catch { /* not a storage key, try as external URL */ }
+            // Fallback: treat as external URL (e.g. Unsplash)
+            if (typeof img === "string" && img.startsWith("http")) {
+              imageUrls.push(img);
+            }
           }
         }
         return { ...listing, images: imageUrls };
@@ -170,7 +175,7 @@ export const getSellerListings = query({
       .order("desc")
       .collect();
 
-    // Resolve image URLs from storage
+    // Resolve image URLs from storage or keep external URLs as-is
     return Promise.all(
       listings.map(async (listing) => {
         const imageUrls: string[] = [];
@@ -178,8 +183,11 @@ export const getSellerListings = query({
           for (const img of listing.images) {
             try {
               const url = await ctx.storage.getUrl(img);
-              if (url) imageUrls.push(url);
-            } catch { /* skip invalid */ }
+              if (url) { imageUrls.push(url); continue; }
+            } catch { /* not a storage key, try as external URL */ }
+            if (typeof img === "string" && img.startsWith("http")) {
+              imageUrls.push(img);
+            }
           }
         }
         return { ...listing, images: imageUrls };
@@ -195,14 +203,17 @@ export const getListing = query({
     const listing = await ctx.db.get(args.listingId);
     if (!listing) return null;
 
-    // Resolve image URLs from storage
+    // Resolve image URLs from storage or keep external URLs as-is
     const imageUrls: string[] = [];
     if (listing.images) {
       for (const img of listing.images) {
         try {
           const url = await ctx.storage.getUrl(img);
-          if (url) imageUrls.push(url);
-        } catch { /* skip invalid */ }
+          if (url) { imageUrls.push(url); continue; }
+        } catch { /* not a storage key, try as external URL */ }
+        if (typeof img === "string" && img.startsWith("http")) {
+          imageUrls.push(img);
+        }
       }
     }
 
@@ -218,9 +229,7 @@ export const incrementViews = mutation({
     if (!listing) return;
     await ctx.db.patch(args.listingId, { views: listing.views + 1 });
   },
-});
-
-/** Search listings by text (basic title/description match) */
+});/** Search listings by text (basic title/description match) */
 export const searchListings = query({
   args: {
     query: v.string(),
@@ -272,7 +281,7 @@ export const searchListings = query({
       results = results.filter((l) => l.condition === args.condition);
     }
 
-    // Resolve image URLs from storage
+    // Resolve image URLs from storage or keep external URLs as-is
     return Promise.all(
       results.map(async (listing) => {
         const imageUrls: string[] = [];
@@ -280,8 +289,11 @@ export const searchListings = query({
           for (const img of listing.images) {
             try {
               const url = await ctx.storage.getUrl(img);
-              if (url) imageUrls.push(url);
-            } catch { /* skip invalid */ }
+              if (url) { imageUrls.push(url); continue; }
+            } catch { /* not a storage key, try as external URL */ }
+            if (typeof img === "string" && img.startsWith("http")) {
+              imageUrls.push(img);
+            }
           }
         }
         return { ...listing, images: imageUrls };

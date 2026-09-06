@@ -73,6 +73,7 @@ export const SUBCATEGORY_IMAGES: Record<string, string> = {
   lighting: pexels(1112080),
   decor: pexels(1090638),
   mattresses: pexels(5858742),
+  "cooking-gas": pexels(6216300),
 
   // Services
   construction: pexels(544966),
@@ -245,4 +246,5 @@ export const PRODUCT_PLACEHOLDER: Record<string, string> = {
   "animals-pets": pexels(1108099, 400, 400),
   "music-entertainment": pexels(1190298, 400, 400),
   "school-education": pexels(5212700, 400, 400),
+  "cooking-gas": pexels(6216300, 400, 400),
 };

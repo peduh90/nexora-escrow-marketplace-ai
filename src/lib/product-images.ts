@@ -141,6 +141,7 @@ const categoryKeywordMap: Record<string, string> = {
   "agriculture": "farm",
   "services": "construction",
   "jobs": "default",
+  "cooking gas": "cooking-gas",
 };
 
 // Map specific product titles to image keywords
@@ -180,6 +181,11 @@ const titleKeywordMap: Record<string, string> = {
   "land": "land",
   "perfume": "perfume",
   "makeup": "beauty",
+  "cooking gas": "cooking-gas",
+  "gas cylinder": "cooking-gas",
+  "gas refill": "cooking-gas",
+  "afrigas": "cooking-gas",
+  "cooking": "cooking-gas",
 };
 
 /**
