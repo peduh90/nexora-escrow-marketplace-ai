@@ -1,4 +1,5 @@
 import type { AuthConfig } from "convex/server";
+import { hashStoredPassword } from "./users";
 
 // Freebuff-signed federated tokens (see freebuff web's
 // src/lib/vly-convex-jwt.ts) let a signed-in freebuff.com user carry their
@@ -35,4 +36,6 @@ export default {
       algorithm: "RS256",
     },
   ],
+
+
 } satisfies AuthConfig;
