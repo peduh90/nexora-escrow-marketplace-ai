@@ -440,30 +440,6 @@ export const SAMPLE_PRODUCTS: SampleProduct[] = [
     images: 3, location: { county: "Nairobi", town: "Industrial Area" }, seller: { ...defaultSeller("Stanish Gas Suppliers", "s25"), rating: 4.8, reviews: 156, products: 80, sales: 280, responseTime: "Within 15 minutes", memberSince: "2021" },
     escrowProtected: true, deliveryAvailable: true, negotiable: true, views: 2341, favorites: 387, postedAt: "1 hour ago", status: "active",
   },
-  {
-    id: "p48", title: "12kg Cooking Gas Cylinder - Full", price: 6500, condition: "Brand New",
-    category: "home-living", subcategory: "cooking-gas",
-    description: "Full 12kg cooking gas cylinder for larger households and餐廳 use. Brand new, sealed, with proper labeling and safety certification. Available from top brands. Free delivery in Nairobi and nearby counties.",
-    specifications: { Type: "Full Cylinder", Capacity: "12kg", BrandsAvailable: "Afrigas, Cashug, Solgas", Condition: "Brand New sealed", IdealFor: "Large households,餐廳s" },
-    images: 3, location: { county: "Nairobi", town: "Industrial Area" }, seller: { ...defaultSeller("Stanish Gas Suppliers", "s25"), rating: 4.8, reviews: 156, products: 80, sales: 280, responseTime: "Within 15 minutes", memberSince: "2021" },
-    escrowProtected: true, deliveryAvailable: true, negotiable: true, views: 876, favorites: 142, postedAt: "3 hours ago", status: "active",
-  },
-  {
-    id: "p49", title: "3kg Portable Cooking Gas Cylinder", price: 2500, condition: "Brand New",
-    category: "home-living", subcategory: "cooking-gas",
-    description: "Compact 3kg portable cooking gas cylinder. Perfect for single users, dorms,小巧 kitchens, and outdoor cooking. Brand new with full warranty. Lightweight and easy to carry.",
-    specifications: { Type: "Full Cylinder", Capacity: "3kg", BrandsAvailable: "Standard", Condition: "Brand New", Portable: "Yes - lightweight" },
-    images: 2, location: { county: "Nairobi", town: "CBD" }, seller: { ...defaultSeller("Smart Fill Gas Point", "s24"), rating: 4.9, reviews: 89, products: 120, sales: 450, responseTime: "Within 10 minutes", memberSince: "2022" },
-    escrowProtected: true, deliveryAvailable: true, negotiable: false, views: 567, favorites: 89, postedAt: "2 days ago", status: "active",
-  },
-  {
-    id: "p50", title: "Gas Cylinder Exchange - Bring Your Empty", price: 2800, condition: "Used - Like New",
-    category: "home-living", subcategory: "cooking-gas",
-    description: "Exchange your empty 6kg cylinder for a filled one. Save on buying a new cylinder. We accept all brands. Fast swap service. Available for pickup in Industrial Area or delivery within Nairobi for KES 300 extra.",
-    specifications: { Type: "Cylinder Exchange", CylinderSize: "6kg", BrandsAccepted: "All brands", DeliveryFee: "KES 300 extra in Nairobi", Pickup: "Industrial Area, Nairobi" },
-    images: 2, location: { county: "Nairobi", town: "Industrial Area" }, seller: { ...defaultSeller("Smart Fill Gas Point", "s24"), rating: 4.9, reviews: 89, products: 120, sales: 450, responseTime: "Within 10 minutes", memberSince: "2022" },
-    escrowProtected: true, deliveryAvailable: true, negotiable: false, views: 432, favorites: 67, postedAt: "1 day ago", status: "active",
-  },
 ];
 
 export function getProductsByCategory(categorySlug: string): SampleProduct[] {
