@@ -183,6 +183,20 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           role: selectedRole || undefined,
           businessName: selectedRole === "seller" ? fullName || undefined : undefined,
         });
+
+        // Keep the authenticated session pointing at the correct panel for this
+        // role. Without this, the OTP path could leave the user on the auth page
+        // even when registration succeeded (a regression path for the seller->buyer
+        // bug where role was never persisted / never used to navigate).
+        if (selectedRole && user) {
+          const target =
+            selectedRole === "seller"
+              ? "/seller"
+              : selectedRole === "freelancer"
+              ? "/freelance/dashboard"
+              : "/buyer";
+          try { navigate(target); } catch {}
+        }
       } catch (syncErr) {
         console.error("Account profile sync failed:", syncErr);
       }
@@ -605,16 +619,16 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                   {usePasswordAuth && (
                     <input type="hidden" name="password" value={password} />
                   )}
+                  <input type="hidden" name="role" value={selectedRole || "buyer"} />
+                  <input type="hidden" name="businessName" value={selectedRole === "seller" ? fullName || undefined : undefined} />
                   {selectedRole === "seller" && (
-                    <div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="displayName" placeholder="Business / Display Name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
+                    <div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="businessName" placeholder="Business / Store Name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
                   )}
                   {selectedRole !== "seller" && (
                     <div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="name" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
                   )}
                   <div className="relative"><Mail className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="email" placeholder="Email address" type="email" className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
                   <div className="relative"><Phone className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="phone" placeholder="Phone number (e.g. 0712 345 678)" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
-                  <input type="hidden" name="role" value={selectedRole || "buyer"} />
-                  <input type="hidden" name="displayName" value={fullName} />
                   {error && <p className="text-sm text-red-400">{error}</p>}
                   <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Send Verification Code <ArrowRight className="ml-2 h-4 w-4" /></>}

@@ -218,7 +218,8 @@ export const verifyLogin = mutation({
       if (typeof inferred === "string" && inferred) {
         await ctx.db.patch(u._id, { role: inferred as any });
       }
-    }      await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
+    }
+    await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
 
     const fresh = await ctx.db.get(u._id);
     const resolved = fresh as any;
