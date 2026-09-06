@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { api } from "./_generated/api";
 
 const ADMIN_EMAIL = "murimiedwin227@gmail.com";
 
@@ -96,7 +97,7 @@ export const getDashboardStats = query({
     );
     // Freelancers are tracked in freelanceProfiles, not in users.role.
     // Count them here from the freelanceProfiles table separately.
-    const freelancers = [];
+    const freelancers = [] as any[];
     const activeListings = listings.filter((l) => l.status === "active");
     const pendingListings = listings.filter((l) => l.status === "paused");
 
@@ -236,15 +237,8 @@ export const suspendUser = mutation({
     const target = await ctx.db.get(args.userId as any);
     if (!target) throw new Error("User not found");
 
-    await ctx.db.patch(args.userId as any, { role: undefined });    await auditLog(
-      ctx as any,
-      user._id,
-      user.name || user.email || "Admin",
-      "SUSPEND_USER",
-      "user",
-      args.userId,
-      args.reason
-    );
+    await ctx.db.patch(args.userId as any, { role: undefined });
+    await auditLog(ctx as any, user._id, "SUSPEND_USER", "user", args.userId, args.reason);
     return { success: true };
   },
 });
@@ -317,7 +311,14 @@ export const resolveDispute = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await requireAdmin(ctx);
-    const dispute = await ctx.db.get(args.disputeId as any);
+
+    // Fetch the dispute via a typed index query so TypeScript sees the correct
+    // shape. The disputes table has a by_escrow index; we look it up by escrowId.
+    const dispute = await ctx.db
+      .query("disputes")
+      .withIndex("by_escrow", (q: any) => q.eq("escrowId", args.disputeId))
+      .first();
+
     if (!dispute) throw new Error("Dispute not found");
 
     await ctx.db.patch(args.disputeId as any, {
@@ -329,8 +330,8 @@ export const resolveDispute = mutation({
 
     if (args.refundAmount && args.refundAmount > 0) {
       try {
-        await ctx.runMutation("wallet:refundEscrow", {
-          escrowId: dispute.escrowId,
+        await ctx.runMutation(api.wallet.refundEscrow, {
+          escrowId: args.disputeId,
           reason: `Admin dispute resolution: ${args.resolution}`,
         }).catch(() => {});
       } catch {
@@ -338,8 +339,8 @@ export const resolveDispute = mutation({
       }
     } else {
       try {
-        await ctx.runMutation("wallet:markDelivered", {
-          escrowId: dispute.escrowId,
+        await ctx.runMutation(api.wallet.markDelivered, {
+          escrowId: args.disputeId,
         }).catch(() => {});
       } catch {
         // mutation path may not exist yet; safe to ignore
@@ -403,7 +404,7 @@ export const reviewKYC = mutation({
       `KYC_${args.status.toUpperCase()}`,
       "kycApplication",
       args.applicationId,
-      (args.notes || "No notes")
+      args.notes || "No notes"
     );
     return { success: true };
   },

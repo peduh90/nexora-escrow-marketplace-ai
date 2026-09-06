@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { api } from "./_generated/api";
 
 /** File a dispute for an escrow transaction */
 export const fileDispute = mutation({
@@ -116,10 +117,10 @@ export const updateDisputeStatus = mutation({
     // If resolved with a refund amount, trigger refund via server-side wallet mutation.
     if (args.status === "resolved" && args.refundAmount !== undefined && args.refundAmount > 0) {
       try {
-        await ctx.runMutation("wallet:refundEscrow", {
-          escrowId: args.disputeId,
-          reason: `Admin dispute resolution: ${args.resolution || "resolved"}`,
-        }).catch(() => {});
+      await ctx.runMutation(api.wallet.refundEscrow, {
+        escrowId: args.disputeId,
+        reason: `Admin dispute resolution: ${args.resolution || "resolved"}`,
+      }).catch(() => {});
       } catch {
         // mutation path may not exist yet; safe to ignore
       }
