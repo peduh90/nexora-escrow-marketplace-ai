@@ -425,19 +425,19 @@ export const SAMPLE_PRODUCTS: SampleProduct[] = [
 
   // ===== COOKING GAS & FUEL =====
   {
-    id: "p46", title: "Cooking Gas Refill - 6kg (Delivered)", price: 1100, condition: "Brand New",
+    id: "p46", title: "6kg Gas Cylinder Refill - Delivery to Doorstep", price: 1200, condition: "Brand New",
     category: "home-living", subcategory: "cooking-gas",
-    description: "Complete cooking gas refill service. 6kg cylinder filled and delivered to your doorstep anywhere in Nairobi and surrounding areas. Safe, certified, and fast same-day delivery. WhatsApp / Call to order.",
-    specifications: { Type: "Gas Refill", CylinderSize: "6kg", Brand: "Any Cylinder", Delivery: "Same-day Nairobi and surrounds", Safety: "Certified fill" },
-    images: 3, location: { county: "Nairobi", town: "Industrial Area" }, seller: { ...defaultSeller("Smart Fill Gas Point", "s24"), rating: 4.9, reviews: 89, products: 120, sales: 450, responseTime: "Within 10 minutes", memberSince: "2022" },
+    description: "Complete 6kg cooking gas refill delivered to your doorstep anywhere in Nairobi and surrounding areas. EPRA-certified fill, safe and fast same-day delivery. Compare prices from verified vendors. Pay via M-Pesa.",
+    specifications: { Type: "Gas Refill", CylinderSize: "6kg", Brand: "Total Gas, Afrigas, Jamii, Cashug", Delivery: "Same-day Nairobi - 20 min express", Safety: "EPRA certified fill", Payment: "M-Pesa or Card" },
+    images: 3, location: { county: "Nairobi", town: "Kayole" }, seller: { ...defaultSeller("Smart Fill Gas Point", "s24"), rating: 4.9, reviews: 89, products: 120, sales: 450, responseTime: "Within 10 minutes", memberSince: "2022" },
     escrowProtected: true, deliveryAvailable: true, negotiable: false, views: 1247, favorites: 203, postedAt: "Just now", status: "active",
   },
   {
-    id: "p47", title: "6kg Cooking Gas Cylinder - Full", price: 3900, condition: "Brand New",
+    id: "p47", title: "6kg Cooking Gas Cylinder - New Full Cylinder with Valve", price: 2500, condition: "Brand New",
     category: "home-living", subcategory: "cooking-gas",
-    description: "Brand new 6kg full cooking gas cylinder. Ready for immediate use. Includes proper valve, safety seal, and weight certificate. Available in Afrigas, Cashug, and standard green cylinders. Delivery available within Nairobi.",
-    specifications: { Type: "Full Cylinder", Capacity: "6kg", BrandsAvailable: "Afrigas, Cashug, Standard", Condition: "Brand New with seal", Includes: "Valve + Safety Seal" },
-    images: 3, location: { county: "Nairobi", town: "Industrial Area" }, seller: { ...defaultSeller("Stanish Gas Suppliers", "s25"), rating: 4.8, reviews: 156, products: 80, sales: 280, responseTime: "Within 15 minutes", memberSince: "2021" },
+    description: "Brand new 6kg full cooking gas cylinder. Ready for immediate use. Includes proper valve, safety seal, and weight certificate. Choose from Total Gas, Afrigas, Jamii Gas, Cashug, and Handi Gas brands. Delivery available within Nairobi.",
+    specifications: { Type: "New Cylinder + Gas", Capacity: "6kg", BrandsAvailable: "Total Gas, Afrigas, Jamii Gas, Cashug, Handi Gas", Condition: "Brand New with valve + safety seal", Includes: "Valve + Safety Seal + 6kg Gas", Delivery: "Nairobi doorstep", Payment: "M-Pesa or Card" },
+    images: 3, location: { county: "Nairobi", town: "Kayole" }, seller: { ...defaultSeller("Stanish Gas Suppliers", "s25"), rating: 4.8, reviews: 156, products: 80, sales: 280, responseTime: "Within 15 minutes", memberSince: "2021" },
     escrowProtected: true, deliveryAvailable: true, negotiable: true, views: 2341, favorites: 387, postedAt: "1 hour ago", status: "active",
   },
 ];

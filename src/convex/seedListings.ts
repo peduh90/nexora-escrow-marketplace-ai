@@ -30,11 +30,11 @@ export const seedListings = mutation({
     ];
 
     const listings = [
-      // ===== COOKING GAS - REFILL (KES 1,100) =====
+      // ===== COOKING GAS - REFILL (KES 1,200) - Real prices from CylinTech =====
       {
-        title: "Cooking Gas Refill - 6kg (Delivered)",
-        description: "Complete cooking gas refill service. 6kg cylinder filled and delivered to your doorstep anywhere in Nairobi and surrounding areas. Safe, certified, and fast same-day delivery. WhatsApp / Call to order.",
-        price: 1100,
+        title: "6kg Gas Cylinder Refill - Delivery to Doorstep",
+        description: "Complete 6kg cooking gas refill delivered to your doorstep anywhere in Nairobi and surrounding areas. EPRA-certified fill, safe and fast same-day delivery. Compare prices from verified vendors. Pay via M-Pesa.",
+        price: 1200,
         currency: "KES",
         category: "home-living",
         subcategory: "cooking-gas",
@@ -45,7 +45,7 @@ export const seedListings = mutation({
         ],
         transportAvailable: true,
         originCounty: "Nairobi",
-        originTown: "Industrial Area",
+        originTown: "Kayole",
         escrowProtection: true,
         condition: "Brand New",
         verified: true,
@@ -56,9 +56,10 @@ export const seedListings = mutation({
         attributes: {
           "Type": "Gas Refill",
           "CylinderSize": "6kg",
-          "Brand": "Any Cylinder",
-          "Delivery": "Same-day Nairobi and surrounds",
-          "Safety": "Certified fill",
+          "Brand": "Any Cylinder - Total Gas, Afrigas, Jamii, Cashug",
+          "Delivery": "Same-day Nairobi and surrounds - 20 min express",
+          "Safety": "EPRA certified fill",
+          "Payment": "M-Pesa or Card",
           "SellerPhone": "0796342951",
           "SellerAltPhone": "0701976130",
           "BusinessName": "Smart Fill Gas Point",
@@ -67,11 +68,11 @@ export const seedListings = mutation({
         views: 1247,
         favorites: 203,
       },
-      // ===== COOKING GAS - 6KG FULL CYLINDER (KES 3,900) =====
+      // ===== COOKING GAS - 6KG FULL CYLINDER (KES 2,500) - Real prices from CylinTech =====
       {
-        title: "6kg Cooking Gas Cylinder - Full",
-        description: "Brand new 6kg full cooking gas cylinder. Ready for immediate use. Includes proper valve, safety seal, and weight certificate. Available in Afrigas, Cashug, and standard green cylinders. Delivery available within Nairobi.",
-        price: 3900,
+        title: "6kg Cooking Gas Cylinder - New Full Cylinder with Valve",
+        description: "Brand new 6kg full cooking gas cylinder. Ready for immediate use. Includes proper valve, safety seal, and weight certificate. Choose from Total Gas, Afrigas, Jamii Gas, Cashug, and Handi Gas brands. Delivery available within Nairobi.",
+        price: 2500,
         currency: "KES",
         category: "home-living",
         subcategory: "cooking-gas",
@@ -82,7 +83,7 @@ export const seedListings = mutation({
         ],
         transportAvailable: true,
         originCounty: "Nairobi",
-        originTown: "Industrial Area",
+        originTown: "Kayole",
         escrowProtection: true,
         condition: "Brand New",
         verified: true,
@@ -91,11 +92,13 @@ export const seedListings = mutation({
         sellerVerified: true,
         negotiable: true,
         attributes: {
-          "Type": "Full Cylinder",
+          "Type": "New Cylinder + Gas",
           "Capacity": "6kg",
-          "BrandsAvailable": "Afrigas, Cashug, Standard",
-          "Condition": "Brand New with seal",
-          "Includes": "Valve + Safety Seal",
+          "BrandsAvailable": "Total Gas, Afrigas, Jamii Gas, Cashug, Handi Gas",
+          "Condition": "Brand New with valve + safety seal",
+          "Includes": "Valve + Safety Seal + 6kg Gas",
+          "Delivery": "Nairobi doorstep delivery",
+          "Payment": "M-Pesa or Card",
           "SellerPhone": "0796342951",
           "SellerAltPhone": "0701976130",
           "BusinessName": "Stanish Gas Suppliers",
