@@ -240,6 +240,38 @@ export const checkAndPromoteAdmin = mutation({
   },
 });
 
+export const promoteToAdmin = mutation({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const ADMIN_EMAIL = "murimiedwin227@gmail.com";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    // Only allow promotion if caller is already admin or it's the admin email
+    const caller = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+
+    if (!caller) throw new Error("User not found");
+    if (caller.role !== "admin" && identity.email !== ADMIN_EMAIL) {
+      throw new Error("Unauthorized: only admins can promote users");
+    }
+
+    const target = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (!target) throw new Error(`User with email ${args.email} not found`);
+
+    await ctx.db.patch(target._id, { role: "admin" });
+    return { success: true, userId: target._id };
+  },
+});
+
 export const isAdmin = query({
   args: {},
   handler: async (ctx) => {
