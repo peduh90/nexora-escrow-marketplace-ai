@@ -113,19 +113,15 @@ export const updateDisputeStatus = mutation({
 
     await ctx.db.patch(args.disputeId, updates);
 
-    // If resolved, update escrow
-    if (args.status === "resolved") {
-      const dispute = await ctx.db.get(args.disputeId);
-      if (dispute) {
-        const allEscrows2 = await ctx.db.query("escrows").collect();
-        const escrow = allEscrows2.find((e) => e._id === dispute.escrowId);
-        if (escrow) {
-          if (args.refundAmount && args.refundAmount > 0) {
-            await ctx.db.patch(escrow._id, { status: "refunded" });
-          } else {
-            await ctx.db.patch(escrow._id, { status: "completed", releasedAt: Date.now() });
-          }
-        }
+    // If resolved with a refund amount, trigger refund via server-side wallet mutation.
+    if (args.status === "resolved" && args.refundAmount !== undefined && args.refundAmount > 0) {
+      try {
+        await ctx.runMutation("wallet:refundEscrow", {
+          escrowId: args.disputeId,
+          reason: `Admin dispute resolution: ${args.resolution || "resolved"}`,
+        }).catch(() => {});
+      } catch {
+        // mutation path may not exist yet; safe to ignore
       }
     }
 

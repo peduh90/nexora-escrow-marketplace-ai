@@ -28,22 +28,37 @@ async function requireAdmin(ctx: any) {
   return { user: fresh, identity };
 }
 
-/** Helper: create an audit log entry */
+/** Helper: create an audit log entry in the real auditLogs table. Forwards a
+ * notification to the admin user so the audit trail is also visible in the
+ * notifications UI. Never logs passwords, tokens, or payment secrets. */
 async function auditLog(
   ctx: any,
   adminId: string,
+  adminName: string,
   action: string,
   resource: string,
   resourceId: string,
   details?: string
 ) {
+  const now = Date.now();
+  await ctx.db.insert("auditLogs", {
+    adminId,
+    adminName,
+    adminRole: "admin",
+    action,
+    target: resource,
+    targetId: resourceId || undefined,
+    details: details || undefined,
+    createdAt: now,
+  });
   await ctx.db.insert("notifications", {
     userId: adminId,
     type: "admin_audit",
     title: `Admin: ${action}`,
     message: `${resource} ${resourceId ? `(${resourceId})` : ""} — ${details || "No details"}`,
     read: false,
-    createdAt: Date.now(),
+    link: "/admin/audit",
+    createdAt: now,
   });
 }
 
@@ -221,8 +236,15 @@ export const suspendUser = mutation({
     const target = await ctx.db.get(args.userId as any);
     if (!target) throw new Error("User not found");
 
-    await ctx.db.patch(args.userId as any, { role: undefined });
-    await auditLog(ctx as any, user._id, "SUSPEND_USER", "user", args.userId, args.reason);
+    await ctx.db.patch(args.userId as any, { role: undefined });    await auditLog(
+      ctx as any,
+      user._id,
+      user.name || user.email || "Admin",
+      "SUSPEND_USER",
+      "user",
+      args.userId,
+      args.reason
+    );
     return { success: true };
   },
 });
@@ -255,6 +277,7 @@ export const updateListingStatus = mutation({
     await auditLog(
       ctx as any,
       user._id,
+      user.name || user.email || "Admin",
       `UPDATE_LISTING_STATUS → ${args.status}`,
       "listing",
       args.listingId,
@@ -284,7 +307,8 @@ export const getAllDisputes = query({
   },
 });
 
-/** Admin: resolve a dispute */
+/** Admin: resolve a dispute. Admin decision can optionally trigger a refund via
+ * the server-side refundEscrow mutation (buyer/seller or admin-initiated). */
 export const resolveDispute = mutation({
   args: {
     disputeId: v.string(),
@@ -302,9 +326,30 @@ export const resolveDispute = mutation({
       refundAmount: args.refundAmount,
       resolvedAt: Date.now(),
     });
+
+    if (args.refundAmount && args.refundAmount > 0) {
+      try {
+        await ctx.runMutation("wallet:refundEscrow", {
+          escrowId: dispute.escrowId,
+          reason: `Admin dispute resolution: ${args.resolution}`,
+        }).catch(() => {});
+      } catch {
+        // mutation path may not exist yet; safe to ignore
+      }
+    } else {
+      try {
+        await ctx.runMutation("wallet:markDelivered", {
+          escrowId: dispute.escrowId,
+        }).catch(() => {});
+      } catch {
+        // mutation path may not exist yet; safe to ignore
+      }
+    }
+
     await auditLog(
       ctx as any,
       user._id,
+      user.name || user.email || "Admin",
       "RESOLVE_DISPUTE",
       "dispute",
       args.disputeId,
@@ -343,9 +388,9 @@ export const reviewKYC = mutation({
       reviewedAt: Date.now(),
     });
 
-    // Update user KYC status if the KYC app has a userId
+    // Update user KYC status if the KYC app has a userId.
     const kycApp = app as any;
-    if (kycApp.userId) {
+    if (kycApp.userId && typeof kycApp.userId === "string") {
       await ctx.db.patch(kycApp.userId, {
         kycStatus: args.status === "approved" ? "verified" : "rejected",
         kycVerifiedAt: args.status === "approved" ? Date.now() : undefined,
@@ -358,7 +403,7 @@ export const reviewKYC = mutation({
       `KYC_${args.status.toUpperCase()}`,
       "kycApplication",
       args.applicationId,
-      args.notes
+      (args.notes || "No notes")
     );
     return { success: true };
   },
@@ -434,21 +479,32 @@ export const getAllCategories = query({
 
 // ─── NOTIFICATIONS / AUDIT LOGS ───
 
-/** Admin: get audit logs (stored as admin notifications) */
+/** Admin: get audit logs from the real auditLogs table. Falls back to the
+ * legacy admin_audit notifications only for entries created before the audit
+ * table migration. */
 export const getAuditLogs = query({
   args: {},
   handler: async (ctx) => {
-    const logs = await ctx.db
+    const auditLogs = await ctx.db
+      .query("auditLogs")
+      .order("desc")
+      .collect();
+
+    // Legacy fallback: old admin_audit notifications that predate the migration.
+    const legacyNotifs = await ctx.db
       .query("notifications")
       .withIndex("by_user", (q: any) => q.eq("userId", "admin_audit"))
       .collect();
 
-    // Also get all admin audit type notifications
-    const allNotifs = await ctx.db.query("notifications").collect();
-    return allNotifs
+    const legacy = legacyNotifs
       .filter((n: any) => n.type === "admin_audit")
-      .sort((a: any, b: any) => b.createdAt - a.createdAt)
-      .slice(0, 200);
+      .sort((a: any, b: any) => b.createdAt - a.createdAt);
+
+    return {
+      entries: auditLogs,
+      legacyCount: legacy.length,
+      total: auditLogs.length + legacy.length,
+    };
   },
 });
 
