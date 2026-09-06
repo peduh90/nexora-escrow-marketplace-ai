@@ -113,7 +113,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         setIsLoading(false);
         return;
       }
-      if (passwordTrimmed.toLowerCase().includes((formDataGet("email") || "").toLowerCase()) || passwordTrimmed.toLowerCase().includes(fullName.toLowerCase())) {
+      if (passwordTrimmed.toLowerCase().includes((formDataGet(formData, "email") || "").toLowerCase()) || passwordTrimmed.toLowerCase().includes(fullName.toLowerCase())) {
         setPasswordError("Password should not contain your email or name.");
         setIsLoading(false);
         return;
