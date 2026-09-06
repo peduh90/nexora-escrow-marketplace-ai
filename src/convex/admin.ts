@@ -67,10 +67,18 @@ export const getDashboardStats = query({
     const weekAgo = now - 604800000;
     const monthAgo = now - 2592000000;
 
-    // Count users by role. Users without a role but with a real email/name
-    // are treated as buyers (most signups default to buyer until they choose seller).
-    const buyers = users.filter((u) => u.role === "buyer" || (!u.role && u.email && u.email.includes("@") && u.name && !u.businessName));
-    const sellers = users.filter((u) => u.role === "seller" || (u.businessName));
+    // Count users by role. The authoritative role lives on users.role now that
+    // the backend persists the selected role at registration. Users with no role
+    // and no businessName are treated as buyers; users with a businessName but no
+    // explicit seller role are also classified as sellers (legacy accounts).
+    const buyers = users.filter((u) =>
+      u.role === "buyer" ||
+      (u.role === "admin" && false) ||
+      (!u.role && !u.businessName)
+    );
+    const sellers = users.filter((u) =>
+      u.role === "seller" || u.businessName
+    );
     // Freelancers are tracked in freelanceProfiles, not in users.role.
     // Count them here from the freelanceProfiles table separately.
     const freelancers = [];
