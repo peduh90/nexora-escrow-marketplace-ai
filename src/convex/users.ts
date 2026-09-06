@@ -302,11 +302,15 @@ export const ensureUserProfile = mutation({
     );
 
     if (!user) {
+      const passwordHash = (typeof (args as any).password === "string" && (args as any).password.trim().length > 0)
+        ? await hashStoredPassword((args as any).password)
+        : undefined;
       user = await ctx.db.insert("users", {
         name: args.name || identity.name || identity.email?.split("@")[0] || "User",
         email: identity.email,
         phone: typeof args.phone === "string" ? args.phone : undefined,
         role: targetRole,
+        passwordHash,
         businessName: typeof args.businessName === "string" ? args.businessName : undefined,
       }) as any;
     } else {
