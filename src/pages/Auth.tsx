@@ -182,6 +182,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           phone: phoneNumber || undefined,
           role: selectedRole || undefined,
           businessName: selectedRole === "seller" ? fullName || undefined : undefined,
+          password: password.trim(),
         });
 
         // Keep the authenticated session pointing at the correct panel for this

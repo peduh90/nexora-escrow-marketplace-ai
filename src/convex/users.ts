@@ -279,6 +279,7 @@ export const ensureUserProfile = mutation({
     phone: v.optional(v.string()),
     role: v.optional(v.string()),
     businessName: v.optional(v.string()),
+    password: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
