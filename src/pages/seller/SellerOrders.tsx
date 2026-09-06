@@ -24,46 +24,55 @@ const statusConfig: Record<
   funded: {
     label: "New Order",
     color: "bg-amber-400/10 text-amber-400",
+    bg: "bg-amber-400/10",
     icon: Clock,
   },
   active: {
     label: "Processing",
     color: "bg-nx-cyan/10 text-nx-cyan",
+    bg: "bg-nx-cyan/10",
     icon: Check,
   },
   delivery: {
     label: "In Transit",
     color: "bg-blue-400/10 text-blue-400",
+    bg: "bg-blue-400/10",
     icon: Truck,
   },
   inspection: {
     label: "Delivered",
     color: "bg-purple-400/10 text-purple-400",
+    bg: "bg-purple-400/10",
     icon: Package,
   },
   released: {
     label: "Completed",
     color: "bg-emerald-400/10 text-emerald-400",
+    bg: "bg-emerald-400/10",
     icon: Check,
   },
   completed: {
     label: "Completed",
     color: "bg-emerald-400/10 text-emerald-400",
+    bg: "bg-emerald-400/10",
     icon: Check,
   },
   refunded: {
     label: "Refunded",
     color: "bg-red-400/10 text-red-400",
+    bg: "bg-red-400/10",
     icon: RotateCcw,
   },
   disputed: {
     label: "Disputed",
     color: "bg-red-400/10 text-red-400",
+    bg: "bg-red-400/10",
     icon: AlertTriangle,
   },
   cancelled: {
     label: "Cancelled",
     color: "bg-white/5 text-white/40",
+    bg: "bg-white/5",
     icon: X,
   },
 };
@@ -195,7 +204,7 @@ export default function SellerOrders() {
               >
                 <div className="w-10 h-10 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0">
                   <StatusIcon
-                    className={`w-5 h-5 ${status.color.split(" ")[1]}`}
+                    className={`w-5 h-5 ${status.bg}`}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
