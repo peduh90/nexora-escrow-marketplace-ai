@@ -52,7 +52,7 @@ export default function SellerHelp() {
     { q: "How does Nexora Market escrow work?", a: "When a buyer places an order, their payment is held in escrow. Once you prepare the product and Nexora Market collects and delivers it, the buyer confirms receipt, and funds are released to your wallet." },
     { q: "When can I withdraw my earnings?", a: "You can withdraw funds that are marked as 'Available' in your wallet. Funds in escrow cannot be withdrawn until the transaction is completed and the buyer confirms receipt." },
     { q: "How does Nexora Market handle delivery?", a: "Nexora Market manages all delivery. You only need to prepare the product and mark it as 'Ready for Collection'. Nexora Market will collect and deliver it to the buyer." },
-    { q: "What are the fees?", a: "Nexora Market charges a platform fee of 5% per transaction for the free tier. Professional sellers pay 2.5%, and Enterprise sellers pay 0.5%. Delivery fees are calculated by Nexora Market and shown to the buyer at checkout." },
+    { q: "What are the fees?", a: "Nexora Market charges a platform fee of 5% per transaction for the free tier. Professional sellers pay 3%, and Enterprise sellers pay 1%. Delivery fees and insurance are calculated by Nexora Market and shown to the buyer at checkout." },
   ];
 
   return (

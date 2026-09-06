@@ -78,9 +78,9 @@ export default function AdminSettings() {
             <h3 className="text-sm font-semibold text-white mb-4">Commission Structure</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { tier: "Starter (Free)", fee: "5%", desc: "Standard sellers" },
-                { tier: "Professional (KES 999/mo)", fee: "2.5%", desc: "Active sellers" },
-                { tier: "Enterprise (KES 4,999/mo)", fee: "0.5%", desc: "High-volume sellers" },
+              { tier: "Starter (Free)", fee: "5%", desc: "Standard sellers" },
+              { tier: "Professional (KES 1,499/mo)", fee: "3%", desc: "Active sellers" },
+              { tier: "Enterprise (KES 3,999/mo)", fee: "1%", desc: "High-volume sellers" },
               ].map(t => (
                 <div key={t.tier} className="p-4 rounded-lg bg-white/[0.02] border border-white/5">
                   <p className="text-xs text-white/50 font-medium">{t.tier}</p>
@@ -95,11 +95,11 @@ export default function AdminSettings() {
             <h3 className="text-sm font-semibold text-white mb-4">Platform Fees</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { label: "Escrow Fee", value: "1%" },
-                { label: "Delivery Commission", value: "5%" },
+                { label: "Escrow Fee", value: "1.5%" },
+                { label: "Delivery Commission", value: "8%" },
                 { label: "Withdrawal Fee (M-Pesa)", value: "KES 50" },
                 { label: "Withdrawal Fee (Bank)", value: "KES 100" },
-                { label: "Insurance Fee", value: "2% of item value" },
+                { label: "Insurance Fee", value: "3% of item value" },
                 { label: "Promoted Listing Fee", value: "KES 200/day" },
               ].map(f => (
                 <div key={f.label} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02]">

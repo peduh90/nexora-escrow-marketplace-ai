@@ -55,10 +55,10 @@ export default function TermsOfService() {
         <section className="space-y-4">
           <h2 className="text-lg font-semibold text-white">5. Fees & Commissions</h2>
           <ul className="space-y-2 text-sm text-white/50 leading-relaxed ml-4">
-            <li>• Transaction commission: 2.5% – 5% (varies by category)</li>
-            <li>• Escrow fee: 0.5% – 2% (tiered based on transaction value)</li>
+            <li>• Transaction commission: 1% – 5% (Starter 5%, Professional 3%, Enterprise 1%)</li>
+            <li>• Escrow fee: 1.5% (tiered based on transaction value)</li>
             <li>• Delivery fees are managed by Nexora Market and displayed before checkout</li>
-            <li>• Premium seller subscriptions: KES 999 – 4,999/month</li>
+            <li>• Premium seller subscriptions: KES 1,499 – 3,999/month</li>
             <li>• All fees are displayed transparently before any transaction</li>
           </ul>
         </section>

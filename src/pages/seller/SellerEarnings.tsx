@@ -73,9 +73,9 @@ export default function SellerEarnings() {
         <h3 className="text-sm font-semibold text-white mb-3">Commission Structure</h3>
         <div className="space-y-2">
           {[
-            { tier: "Standard", rate: "3%", desc: "Applied to all transactions", current: true },
-            { tier: "Professional", rate: "2.5%", desc: "KES 999/month subscription" },
-            { tier: "Enterprise", rate: "0.5%", desc: "KES 4,999/month subscription" },
+          { tier: "Starter", rate: "5%", desc: "Applied to all transactions by default", current: true },
+          { tier: "Professional", rate: "3%", desc: "KES 1,499/month subscription" },
+          { tier: "Enterprise", rate: "1%", desc: "KES 3,999/month subscription" },
           ].map((t) => (
             <div key={t.tier} className={`flex items-center gap-4 p-3 rounded-lg ${t.current ? "bg-nx-violet/5 border border-nx-violet/10" : "bg-white/[0.01]"}`}>
               <span className={`text-sm font-bold ${t.current ? "text-nx-violet" : "text-white/30"}`}>{t.rate}</span>

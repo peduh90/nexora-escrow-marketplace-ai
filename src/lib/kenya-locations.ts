@@ -471,27 +471,27 @@ export const JOB_CATEGORIES = [
 export const TRANSPORT_RATES = {
   baseFee: 200, // KES base fee
   perKm: 15, // KES per km
-  insuranceRate: 0.02, // 2% of item value for insurance
+  insuranceRate: 0.03, // 3% of item value for insurance
   minimumFee: 300,
   maximumFee: 50000,
   // Platform transport commission
-  transportCommission: 0.05, // 5% of transport fee
+  transportCommission: 0.08, // 8% of transport fee
 };
 
 // Commission structure
 export const COMMISSION_STRUCTURE = {
   // Transaction commission by tier
   free: { rate: 0.05, label: "5%" },         // Free tier
-  professional: { rate: 0.025, label: "2.5%" }, // KES 999/mo
-  enterprise: { rate: 0.005, label: "0.5%" },   // KES 4,999/mo
+  professional: { rate: 0.03, label: "3%" },   // KES 1,499/mo
+  enterprise: { rate: 0.01, label: "1%" },     // KES 3,999/mo
   
   // Escrow fee
-  escrowFeeRate: 0.01, // 1% escrow protection fee
+  escrowFeeRate: 0.015, // 1.5% escrow protection fee
   
   // Subscription prices (KES/month)
   subscriptions: {
-    professional: { price: 999, name: "Professional" },
-    enterprise: { price: 4999, name: "Enterprise" },
+    professional: { price: 1499, name: "Professional" },
+    enterprise: { price: 3999, name: "Enterprise" },
   },
 
   // Minimum transaction for escrow protection
