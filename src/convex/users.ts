@@ -135,9 +135,11 @@ export const getUserCounts = query({
       u.name !== "Guest User" &&
       !u.email?.toLowerCase().includes("anonymous")
     );
-    const buyers = realUsers.filter((u: any) => u.role === "buyer" || (!u.role && !u.businessName));
-    const sellers = realUsers.filter((u: any) => u.role === "seller");
-    const freelancers = realUsers.filter((u: any) => u.role === "freelancer");
+    // Users with businessName are sellers regardless of role field.
+    // Users with a real email/name but no role default to buyer.
+    const buyers = realUsers.filter((u: any) => u.role === "buyer" || (!u.role && u.email && u.email.includes("@") && u.name && !u.businessName));
+    const sellers = realUsers.filter((u: any) => u.role === "seller" || !!u.businessName);
+    const freelancers = realUsers.filter((u: any) => u.role === "freelancer" || (u.name && u.businessName && !u.role));
     const admins = realUsers.filter((u: any) => u.role === "admin");
     const verified = realUsers.filter((u: any) => u.kycStatus === "verified");
     const pendingKyc = realUsers.filter((u: any) => u.kycStatus === "pending");
@@ -206,12 +208,24 @@ export const checkAndPromoteAdmin = mutation({
         kycStatus: "not_started",
       }) as any;
     } else {
-      // Loose typing for user since Convex generated types may not have all fields
+      // User already exists in DB — ensure role is set correctly
       const u = user as any;
-      // Update phone if provided
       const phoneFromForm = typeof args.phone === "string" ? args.phone : undefined;
+
+      // Update phone if provided
       if (phoneFromForm && u.phone !== phoneFromForm) {
         await ctx.db.patch(u._id, { phone: phoneFromForm });
+      }
+
+      // Always assign the correct role if the user doesn't have one yet
+      // This fixes the admin dashboard showing 0 buyers/sellers
+      if (!u.role || u.role === "buyer") {
+        const targetRole: "admin" | "buyer" | "seller" | "driver" | undefined =
+          u.email === ADMIN_EMAIL ? "admin"
+            : (args.role === "seller" ? "seller" : args.role === "admin" ? "admin" : args.role === "driver" ? "driver" : "buyer");
+        if (targetRole) {
+          await ctx.db.patch(u._id, { role: targetRole });
+        }
       }
     }
 
@@ -219,14 +233,11 @@ export const checkAndPromoteAdmin = mutation({
 
     // Update role if user chose a different one (only for valid schema roles)
     const curUser = user as any;
-    if (args.role && curUser.role !== args.role && curUser.role !== "admin") {
-      const validRole = args.role === "seller" ? "seller"
-        : args.role === "admin" ? "admin"
-        : args.role === "driver" ? "driver"
-        : undefined;
-      if (validRole) {
-        await ctx.db.patch(curUser._id, { role: validRole });
-      }
+    const targetRole: "admin" | "buyer" | "seller" | "driver" | undefined =
+      curUser.email === ADMIN_EMAIL ? "admin"
+        : (args.role === "seller" ? "seller" : args.role === "admin" ? "admin" : args.role === "driver" ? "driver" : "buyer");
+    if (targetRole && curUser.role !== targetRole && curUser.role !== "admin") {
+      await ctx.db.patch(curUser._id, { role: targetRole });
     }
 
     // Auto-promote if email matches admin email and not already admin

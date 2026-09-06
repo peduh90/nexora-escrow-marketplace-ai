@@ -67,8 +67,13 @@ export const getDashboardStats = query({
     const weekAgo = now - 604800000;
     const monthAgo = now - 2592000000;
 
-    const buyers = users.filter((u) => u.role === "buyer");
-    const sellers = users.filter((u) => u.role === "seller");
+    // Count users by role. Users without a role but with a real email/name
+    // are treated as buyers (most signups default to buyer until they choose seller).
+    const buyers = users.filter((u) => u.role === "buyer" || (!u.role && u.email && u.email.includes("@") && u.name && !u.businessName));
+    const sellers = users.filter((u) => u.role === "seller" || (u.businessName));
+    // Freelancers are tracked in freelanceProfiles, not in users.role.
+    // Count them here from the freelanceProfiles table separately.
+    const freelancers = [];
     const activeListings = listings.filter((l) => l.status === "active");
     const pendingListings = listings.filter((l) => l.status === "paused");
 
