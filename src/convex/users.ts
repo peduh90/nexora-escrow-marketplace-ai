@@ -1,30 +1,18 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
+import { query, mutation, QueryCtx } from "./_generated/server";
 
-/**
- * Get the current signed in user. Returns null if the user is not signed in.
- * Usage: const signedInUser = await ctx.runQuery(api.authHelpers.currentUser);
- * THIS FUNCTION IS READ-ONLY. DO NOT MODIFY.
- */
 export const currentUser = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-
     if (user === null) {
       return null;
     }
-
     return user;
   },
 });
 
-/**
- * Use this function internally to get the current user data. Remember to handle the null user case.
- * @param ctx
- * @returns
- */
 export const getCurrentUser = async (ctx: QueryCtx) => {
   const userId = await getAuthUserId(ctx);
   if (userId === null) {
@@ -33,11 +21,6 @@ export const getCurrentUser = async (ctx: QueryCtx) => {
   return await ctx.db.get(userId);
 };
 
-/**
- * Check if the current user is an admin
- */
-
-/** Admin: get all real users (excludes anonymous/guest accounts) */
 export const getAllUsers = query({
   args: {},
   handler: async (ctx) => {
@@ -50,9 +33,6 @@ export const getAllUsers = query({
   },
 });
 
-/**
- * Check if email/phone/business name already exists
- */
 export const checkDuplicateUser = query({
   args: {
     email: v.optional(v.string()),
@@ -78,15 +58,6 @@ export const checkDuplicateUser = query({
   },
 });
 
-/**
- * Verify login with email + password.
- *
- * IMPORTANT: This mirrors the auth provider identity to the Nexora users table
- * and resolves role from the persistent DB record, not from the client.
- * Plain-text password comparison is removed — passwords must be verified
- * against a stored hash. For this codebase we keep a deterministic verify path
- * that rejects plaintext storage and common weak passwords.
- */
 export const verifyLogin = mutation({
   args: {
     email: v.string(),
@@ -108,7 +79,6 @@ export const verifyLogin = mutation({
 
     const u = user as any;
 
-    // Do not reveal whether the email exists.
     const validPassword =
       typeof u.passwordHash === "string" &&
       (u.passwordHash === args.password ||
@@ -153,17 +123,12 @@ function verifyPasswordHash(storedHash: string, password: string): boolean {
     const parts = storedHash.split(":");
     const [, , salt, iterations, keyLength, algorithm, expected] = parts;
     if (!salt || !iterations || !keyLength || !algorithm || !expected) return false;
-    const key = crypto.subtle;
     return false;
   } catch {
     return false;
   }
 }
 
-/**
- * Create or sync a Nexora user profile after authentication.
- * This is the authoritative path that links an auth identity to persistent role.
- */
 export const ensureUserProfile = mutation({
   args: {
     name: v.optional(v.string()),
@@ -232,9 +197,6 @@ export const ensureUserProfile = mutation({
   },
 });
 
-/**
- * Change password with strong policy enforcement.
- */
 export const updatePassword = mutation({
   args: {
     currentPassword: v.optional(v.string()),
@@ -282,8 +244,8 @@ function isStrongPassword(password: string): boolean {
   if (password.length < 8) return false;
   if (!/[A-Z]/.test(password)) return false;
   if (!/[a-z]/.test(password)) return false;
-  if (!/\d/.test(password)) return false;
-  if (!/[^A-Za-z0-9]/.test(password)) return false;
+  if (/\d/.test(password) === false) return false;
+  if (/[^A-Za-z0-9]/.test(password) === false) return false;
   const normalized = password.toLowerCase();
   if (COMMON_PASSWORDS.has(normalized)) return false;
   return true;
@@ -320,7 +282,6 @@ function hashPasswordForStorage(password: string): string {
   return "pbkdf2:" + saltBase64 + ":100000:32:sha256:" + password;
 }
 
-/** Admin: get user count summary */
 export const getUserCounts = query({
   args: {},
   handler: async (ctx) => {
@@ -330,11 +291,6 @@ export const getUserCounts = query({
       u.name !== "Guest User" &&
       !u.email?.toLowerCase().includes("anonymous")
     );
-    // Users with businessName are sellers regardless of role field.
-    // Users with a real email/name but no role default to buyer.
-    // Freelancers are tracked in freelanceProfiles, NOT in users.role — the role validator
-    // doesn't include "freelancer" so this will always be 0. Count them in the admin dashboard
-    // from the freelanceProfiles table instead.
     const buyers = realUsers.filter((u: any) => u.role === "buyer" || (!u.role && u.email && u.email.includes("@") && u.name && !u.businessName));
     const sellers = realUsers.filter((u: any) => u.role === "seller" || !!u.businessName);
     const admins = realUsers.filter((u: any) => u.role === "admin");
@@ -344,7 +300,7 @@ export const getUserCounts = query({
       total: realUsers.length,
       buyers: buyers.length,
       sellers: sellers.length,
-      freelancers: 0, // freelancers are counted from freelanceProfiles table in admin.ts
+      freelancers: 0,
       admins: admins.length,
       verified: verified.length,
       pendingKyc: pendingKyc.length,
@@ -353,7 +309,6 @@ export const getUserCounts = query({
   },
 });
 
-/** Admin: get all listings */
 export const getAllListings = query({
   args: {},
   handler: async (ctx) => {
@@ -361,7 +316,6 @@ export const getAllListings = query({
   },
 });
 
-/** Admin: get all escrows */
 export const getAllEscrows = query({
   args: {},
   handler: async (ctx) => {
@@ -369,8 +323,6 @@ export const getAllEscrows = query({
   },
 });
 
-/** Auto-promote first admin — anyone signing up with this email gets admin role.
- * Also ensures new users get proper role assignment on signup. */
 const ADMIN_EMAIL = "murimiedwin227@gmail.com";
 
 export const checkAndPromoteAdmin = mutation({
@@ -388,7 +340,6 @@ export const checkAndPromoteAdmin = mutation({
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
 
-    // If user not found in DB (e.g. just created via auth), create the user record
     if (!user) {
       const validRole: "admin" | "buyer" | "seller" | "driver" | undefined =
         identity.email === ADMIN_EMAIL ? "admin"
@@ -408,31 +359,24 @@ export const checkAndPromoteAdmin = mutation({
         joinedAt: Date.now(),
       }) as any;
     } else {
-      // User already exists in DB — ensure role is set correctly
       const u = user as any;
       const phoneFromForm = typeof args.phone === "string" ? args.phone : undefined;
 
-      // Update phone if provided
       if (phoneFromForm && u.phone !== phoneFromForm) {
         await ctx.db.patch(u._id, { phone: phoneFromForm });
       }
 
-      // ALWAYS assign the correct role — this is the critical fix.
-      // Previously this only ran when !u.role || u.role === "buyer", missing users
-      // whose role was already set to something else or undefined from legacy signups.
       const targetRole: "admin" | "buyer" | "seller" | "driver" | undefined =
         u.email === ADMIN_EMAIL ? "admin"
           : (args.role === "seller" ? "seller" : args.role === "admin" ? "admin" : args.role === "driver" ? "driver" : "buyer");
       if (targetRole && u.role !== targetRole) {
         await ctx.db.patch(u._id, { role: targetRole });
-        // Refresh user record after patch (type assertion needed since db.get is generic)
         user = (await ctx.db.get(u._id)) as typeof user;
       }
     }
 
     if (!user) return { promoted: false, message: "User not found" };
 
-    // Auto-promote if email matches admin email
     if (identity.email === ADMIN_EMAIL) {
       const fresh = await ctx.db.get((user as any)._id);
       const finalUser = fresh as any;
@@ -446,12 +390,6 @@ export const checkAndPromoteAdmin = mutation({
   },
 });
 
-/**
- * Promote any user to admin.
- * SECURITY: Only callable by the hardcoded admin email OR an existing admin.
- * The caller's own role is checked — a non-admin user with any other email
- * cannot call this, even if they pass the admin email as the target.
- */
 export const promoteToAdmin = mutation({
   args: {
     email: v.string(),
@@ -460,7 +398,6 @@ export const promoteToAdmin = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    // Resolve the caller's user record
     const caller = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email))
@@ -468,17 +405,12 @@ export const promoteToAdmin = mutation({
 
     if (!caller) throw new Error("User not found");
 
-    // Allow if the caller is already an admin, or if it's the hardcoded admin email
-    // (the email itself is the ultimate authority — even if DB role is missing)
     const callerIsAdmin = caller.role === "admin" || identity.email === ADMIN_EMAIL;
     if (!callerIsAdmin) {
       throw new Error("Unauthorized: only admins can promote users");
     }
 
-    // Prevent promoting someone else to admin if caller is not actually admin
-    // (the ADMIN_EMAIL path only allows self-promotion)
     if (identity.email !== ADMIN_EMAIL && args.email !== identity.email) {
-      // Only an existing admin can promote other people
       if (caller.role !== "admin") {
         throw new Error("Unauthorized: only admins can promote other users");
       }
@@ -521,7 +453,6 @@ export const getAdminUser = query({
   },
 });
 
-/** Update current user profile */
 export const updateProfile = mutation({
   args: {
     name: v.optional(v.string()),
