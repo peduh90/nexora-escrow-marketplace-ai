@@ -12,19 +12,29 @@ export default function AdminUsers() {
 
   const users = (allUsers ?? []).filter((u: any) => u.email && u.email.includes("@") && u.name !== "Guest User");
 
+  // Determine effective role: prefer role field, fall back to businessName (seller) or buyer
+  const effectiveRole = (u: any) => {
+    if (u.role === "admin") return "admin";
+    if (u.role === "seller") return "seller";
+    if (u.role === "freelancer") return "freelancer";
+    if (u.role === "driver") return "driver";
+    if (u.businessName) return "seller";
+    return "buyer";
+  };
   const filtered = users.filter((u: any) => {
-    if (filter === "Buyers" && u.role !== "buyer" && u.role !== undefined) return false;
-    if (filter === "Sellers" && u.role !== "seller") return false;
-    if (filter === "Freelancers" && u.role !== "freelancer") return false;
-    if (filter === "Admins" && u.role !== "admin") return false;
+    const role = effectiveRole(u);
+    if (filter === "Buyers" && role !== "buyer") return false;
+    if (filter === "Sellers" && role !== "seller") return false;
+    if (filter === "Freelancers" && role !== "freelancer") return false;
+    if (filter === "Admins" && role !== "admin") return false;
     if (search && !(u.name || "").toLowerCase().includes(search.toLowerCase()) && !(u.email || "").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const buyerCount = counts?.buyers ?? users.filter((u: any) => u.role === "buyer" || (!u.role && !u.businessName)).length;
-  const sellerCount = counts?.sellers ?? users.filter((u: any) => u.role === "seller").length;
-  const freelancerCount = counts?.freelancers ?? users.filter((u: any) => u.role === "freelancer" || (u.freelanceProfile)).length;
-  const adminCount = counts?.admins ?? users.filter((u: any) => u.role === "admin").length;
+  const buyerCount = counts?.buyers ?? users.filter((u: any) => effectiveRole(u) === "buyer").length;
+  const sellerCount = counts?.sellers ?? users.filter((u: any) => effectiveRole(u) === "seller").length;
+  const freelancerCount = counts?.freelancers ?? users.filter((u: any) => effectiveRole(u) === "freelancer").length;
+  const adminCount = counts?.admins ?? users.filter((u: any) => effectiveRole(u) === "admin").length;
 
   return (
     <AdminLayout>
@@ -97,7 +107,7 @@ export default function AdminUsers() {
                       </div>
                     </td>
                     <td className="px-4 py-3.5 hidden md:table-cell">
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${user.role === "seller" ? "bg-nx-violet/10 text-nx-violet" : user.role === "admin" ? "bg-nx-gold/10 text-nx-gold" : "bg-nx-cyan/10 text-nx-cyan"}`}>{user.role || "buyer"}</span>
+                      {(() => { const r = effectiveRole(user); return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${r === "seller" ? "bg-nx-violet/10 text-nx-violet" : r === "admin" ? "bg-nx-gold/10 text-nx-gold" : r === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{r}</span>); })()}
                     </td>
                     <td className="px-4 py-3.5 hidden lg:table-cell">
                       <p className="text-[10px] text-white/25">{[user.county, user.town].filter(Boolean).join(", ") || "—"}</p>

@@ -137,9 +137,11 @@ export const getUserCounts = query({
     );
     // Users with businessName are sellers regardless of role field.
     // Users with a real email/name but no role default to buyer.
+    // Freelancers are tracked in freelanceProfiles, NOT in users.role — the role validator
+    // doesn't include "freelancer" so this will always be 0. Count them in the admin dashboard
+    // from the freelanceProfiles table instead.
     const buyers = realUsers.filter((u: any) => u.role === "buyer" || (!u.role && u.email && u.email.includes("@") && u.name && !u.businessName));
     const sellers = realUsers.filter((u: any) => u.role === "seller" || !!u.businessName);
-    const freelancers = realUsers.filter((u: any) => u.role === "freelancer" || (u.name && u.businessName && !u.role));
     const admins = realUsers.filter((u: any) => u.role === "admin");
     const verified = realUsers.filter((u: any) => u.kycStatus === "verified");
     const pendingKyc = realUsers.filter((u: any) => u.kycStatus === "pending");
@@ -147,7 +149,7 @@ export const getUserCounts = query({
       total: realUsers.length,
       buyers: buyers.length,
       sellers: sellers.length,
-      freelancers: freelancers.length,
+      freelancers: 0, // freelancers are counted from freelanceProfiles table in admin.ts
       admins: admins.length,
       verified: verified.length,
       pendingKyc: pendingKyc.length,
@@ -217,15 +219,16 @@ export const checkAndPromoteAdmin = mutation({
         await ctx.db.patch(u._id, { phone: phoneFromForm });
       }
 
-      // Always assign the correct role if the user doesn't have one yet
-      // This fixes the admin dashboard showing 0 buyers/sellers
-      if (!u.role || u.role === "buyer") {
-        const targetRole: "admin" | "buyer" | "seller" | "driver" | undefined =
-          u.email === ADMIN_EMAIL ? "admin"
-            : (args.role === "seller" ? "seller" : args.role === "admin" ? "admin" : args.role === "driver" ? "driver" : "buyer");
-        if (targetRole) {
-          await ctx.db.patch(u._id, { role: targetRole });
-        }
+      // ALWAYS assign the correct role — this is the critical fix.
+      // Previously this only ran when !u.role || u.role === "buyer", missing users
+      // whose role was already set to something else or undefined from legacy signups.
+      const targetRole: "admin" | "buyer" | "seller" | "driver" | undefined =
+        u.email === ADMIN_EMAIL ? "admin"
+          : (args.role === "seller" ? "seller" : args.role === "admin" ? "admin" : args.role === "driver" ? "driver" : "buyer");
+      if (targetRole && u.role !== targetRole) {
+        await ctx.db.patch(u._id, { role: targetRole });
+        // Refresh user record after patch (type assertion needed since db.get is generic)
+        user = (await ctx.db.get(u._id)) as typeof user;
       }
     }
 
@@ -241,10 +244,12 @@ export const checkAndPromoteAdmin = mutation({
     }
 
     // Auto-promote if email matches admin email
-    const finalUser = user as any;
+    // At this point the role should already be "admin" from the earlier logic.
+    // This is the final safety net — idempotent, always returns promoted:true for admin email.
     if (identity.email === ADMIN_EMAIL) {
-      // Ensure role is admin (idempotent — safe to call multiple times)
-      if (finalUser.role !== "admin") {
+      const fresh = await ctx.db.get((user as any)._id);
+      const finalUser = fresh as any;
+      if (finalUser && finalUser.role !== "admin") {
         await ctx.db.patch(finalUser._id, { role: "admin" });
       }
       return { promoted: true, message: "You have been promoted to admin!" };
