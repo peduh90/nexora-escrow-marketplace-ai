@@ -101,6 +101,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     try {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
+      // Ensure user profile exists in DB with the correct role
+      try {
+        await checkAndPromoteAdmin({ role: selectedRole || "buyer" });
+      } catch {}
       // Respect returnTo parameter for freelance routes
       if (isFreelanceRoute) {
         navigate(redirect);
@@ -172,7 +176,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       await signIn("email-otp", formData);
       // Wait for auth state to update
       await new Promise((r) => setTimeout(r, 1000));
-      try { await checkAndPromoteAdmin(); } catch {}
+      try { await checkAndPromoteAdmin({}); } catch {}
       // Wait for promotion to propagate
       await new Promise((r) => setTimeout(r, 500));
       sessionStorage.setItem("admin2fa_verified", "true");

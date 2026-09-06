@@ -22,7 +22,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoading && isAuthenticated && user && user.role !== "admin" && !promoting && !promoted && !showDenied) {
       setPromoting(true);
-      checkAndPromoteAdmin()
+      checkAndPromoteAdmin({})
         .then((result) => {
           if (result?.promoted) {
             setPromoted(true);
@@ -92,7 +92,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
               Return to Home
             </a>
             <a
-              href="https://wa.me/254706116043?text=Hello%2C%20I%20need%20admin%20access%20for%20Nexora%20Market%20admin%20panel.%20My%20email%20is%3A%20"
+              href="https://wa.me/254769739216?text=Hello%2C%20I%20need%20admin%20access%20for%20Nexora%20Market%20admin%20panel.%20My%20email%20is%3A%20"
               target="_blank"
               rel="noopener noreferrer"
               className="px-6 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium hover:bg-emerald-500/20 transition-colors inline-flex items-center justify-center gap-2"

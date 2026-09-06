@@ -123,8 +123,10 @@ export const getAllEscrows = query({
 const ADMIN_EMAIL = "murimiedwin227@gmail.com";
 
 export const checkAndPromoteAdmin = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    role: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -135,13 +137,25 @@ export const checkAndPromoteAdmin = mutation({
 
     // If user not found in DB (e.g. just created via auth), create the user record
     if (!user) {
-      const role: "admin" | "buyer" | "seller" | "driver" | undefined = identity.email === ADMIN_EMAIL ? "admin" : "buyer";
+      const role: "admin" | "buyer" | "seller" | "driver" | undefined =
+        identity.email === ADMIN_EMAIL ? "admin"
+          : (args.role === "seller" ? "seller" : args.role === "admin" ? "admin" : args.role === "driver" ? "driver" : "buyer");
       user = await ctx.db.insert("users", {
         name: identity.name || identity.email?.split("@")[0] || "User",
         email: identity.email,
-        role: role as any,
+        role: role,
         kycStatus: "not_started",
       }) as any;
+    } else if (args.role && user.role !== args.role && user.role !== "admin") {
+      // Update role if user chose a different one (only for valid schema roles)
+      const validRole = args.role === "seller" ? "seller"
+        : args.role === "admin" ? "admin"
+        : args.role === "driver" ? "driver"
+        : undefined;
+      if (validRole) {
+        await ctx.db.patch(user._id, { role: validRole });
+        user = await ctx.db.get(user._id);
+      }
     }
 
     // Auto-promote if email matches admin email and not already admin

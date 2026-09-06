@@ -40,9 +40,9 @@ const navSections = [
     { icon: Briefcase, label: "Jobs & Tasks", path: "/admin/jobs" },
     { icon: FileText, label: "Projects", path: "/admin/orders" },
   ]},
-  { label: "ADMIN COMMAND", items: [
-    { icon: Shield, label: "Owner Control", path: "/admin/owner" },
-    { icon: Zap, label: "AI Assistant", path: "/admin/ai" },
+  { label: "ADMIN", items: [
+    { icon: Shield, label: "AI & Fraud", path: "/admin/fraud" },
+    { icon: Settings, label: "Settings", path: "/admin/categories" },
   ]},
 ];
 

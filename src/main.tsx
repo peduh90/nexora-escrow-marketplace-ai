@@ -287,14 +287,14 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/deliveries" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
               <Route path="/admin/zones" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
               <Route path="/admin/disputes" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />
-              <Route path="/admin/fraud" element={<RequireAdmin><AdminFraud /></RequireAdmin>} />              <Route path="/admin/ai" element={<RequireAdmin><AdminAI /></RequireAdmin>} />
+              <Route path="/admin/fraud" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />              <Route path="/admin/ai" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
               <Route path="/admin/kyc" element={<RequireAdmin><AdminKYC /></RequireAdmin>} />
               <Route path="/admin/messages" element={<RequireAdmin><AdminMessages /></RequireAdmin>} />
               <Route path="/admin/reviews" element={<RequireAdmin><AdminReviews /></RequireAdmin>} />
               <Route path="/admin/reports" element={<RequireAdmin><AdminReports /></RequireAdmin>} />
               <Route path="/admin/jobs" element={<RequireAdmin><AdminJobs /></RequireAdmin>} />
               <Route path="/admin/categories" element={<RequireAdmin><AdminCategories /></RequireAdmin>} />
-              <Route path="/admin/owner" element={<RequireAdmin><AdminOwner /></RequireAdmin>} />
+              <Route path="/admin/owner" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
