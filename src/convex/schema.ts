@@ -20,8 +20,21 @@ export const roleValidator = v.union(
   v.literal(ROLES.BUYER),
   v.literal(ROLES.SELLER),
   v.literal(ROLES.DRIVER),
+  v.literal("freelancer"),
+  v.literal("employer"),
 );
 export type Role = Infer<typeof roleValidator>;
+
+export const ALL_ROLES = [
+  ROLES.ADMIN,
+  ROLES.BUYER,
+  ROLES.SELLER,
+  ROLES.DRIVER,
+  "freelancer",
+  "employer",
+] as const;
+
+export type AnyRole = (typeof ALL_ROLES)[number];
 
 export const KYC_STATUS = {
   NOT_STARTED: "not_started",
@@ -58,6 +71,8 @@ const schema = defineSchema(
       reputation: v.optional(v.number()),
       totalTransactions: v.optional(v.number()),
       joinedAt: v.optional(v.number()),
+      lastLoginAt: v.optional(v.number()),
+      lastActivityAt: v.optional(v.number()),
       // Seller-specific
       businessName: v.optional(v.string()),
       businessType: v.optional(v.string()),

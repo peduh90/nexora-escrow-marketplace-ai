@@ -3,6 +3,11 @@ import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
 
+// NOTE: RequireAuth now requires the user record to be loaded via useAuth
+// before it can authorise. If the user record has not loaded yet the component
+// falls through to the loading state above.
+const { user } = useAuth();
+
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
@@ -34,7 +39,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     );
   }
 
-  if (user.role === null || user.role === undefined) {
+  if (!user?.role) {
     // Profile exists but role has not been set — do not assume buyer.
     return (
       <main className="flex min-h-screen items-center justify-center bg-background">

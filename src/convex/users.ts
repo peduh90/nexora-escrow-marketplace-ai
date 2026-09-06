@@ -268,11 +268,11 @@ export const ensureUserProfile = mutation({
       }
 
       await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
-      user = await ctx.db.get(u._id);
+      user = await ctx.db.get(u._id) as any;
     }
 
     const freshUser = user as any;
-    return { userId: freshUser._id, role: freshUser.role };
+    return { userId: freshUser._id, role: (freshUser?.role ?? null) as any };
   },
 });
 

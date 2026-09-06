@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Navigate } from "react-router";
 
 interface RoleRouterProps {

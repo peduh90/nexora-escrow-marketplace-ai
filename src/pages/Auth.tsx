@@ -23,6 +23,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isPasswordValid } from "@/lib/password-strength";
+import { PasswordField } from "@/components/ui/password-field";
 
 interface AuthProps {
   redirectAfterAuth?: string;
@@ -113,7 +114,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         setIsLoading(false);
         return;
       }
-      if (passwordTrimmed.toLowerCase().includes((formDataGet(formData, "email") || "").toLowerCase()) || passwordTrimmed.toLowerCase().includes(fullName.toLowerCase())) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const currentForm = (event as any)?.currentTarget as HTMLFormElement | null;
+      const emailFromForm = currentForm ? new FormData(currentForm).get("email") as string : "";
+      if (passwordTrimmed.toLowerCase().includes(emailFromForm.toLowerCase()) || passwordTrimmed.toLowerCase().includes(fullName.toLowerCase())) {
         setPasswordError("Password should not contain your email or name.");
         setIsLoading(false);
         return;
@@ -368,6 +372,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   // create an account (buyer / seller / freelancer). The policy is the same one
   // defined in src/lib/password-strength.ts and enforced server-side in
   // src/convex/users.ts (verifyLogin + updatePassword).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const usePasswordAuth = true;
 
   return (
