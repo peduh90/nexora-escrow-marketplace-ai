@@ -3,19 +3,20 @@ import { useNavigate } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowLeft, Briefcase, Plus, FolderOpen, FileText, MessageSquare, Wallet, Settings, Phone, Search, Users, Loader2 } from "lucide-react";
+import { ArrowLeft, Briefcase, Plus, FolderOpen, FileText, MessageSquare, Wallet, Settings, Phone, Search, Users, Loader2, Eye } from "lucide-react";
 
 export default function EmployerDashboard() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const profile = useQuery(api.freelance.getMyProfile);
   const stats = useQuery(api.freelance.getFreelanceStats);
+  const myTasks = useQuery(api.freelance.getMyTasks);
   const projects = useQuery(api.freelance.getMyProjects);
 
   const [collapsed, setCollapsed] = useState(false);
 
   const userId = user?._id || profile?._id;
-  const myJobs = stats?.totalTasks || 0;
+  const myJobs = (myTasks ?? []).length;
   const myActiveProjects = (projects ?? []).filter((p: any) =>
     p.employerId === userId && (p.status === "active" || p.status === "submitted" || p.status === "under_review")
   ).length;
@@ -50,29 +51,19 @@ export default function EmployerDashboard() {
         <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
           {[
             { icon: Briefcase, label: "Dashboard", path: "/employer" },
-            { icon: Plus, label: "Post a Job", path: "/employer/post-job" },
+            { icon: Plus, label: "Post a Job", path: "/freelance/post-task" },
             { icon: Search, label: "Find Freelancers", path: "/freelance/find-freelancers" },
-            { icon: FolderOpen, label: "My Projects", path: "/employer/projects" },
-            { icon: FileText, label: "My Jobs", path: "/employer/jobs" },
-            { icon: MessageSquare, label: "Messages", path: "/employer/messages" },
-            { icon: Wallet, label: "Earnings", path: "/employer/earnings" },
-            { icon: Settings, label: "Settings", path: "/employer/settings" },
+            { icon: FolderOpen, label: "My Projects", path: "/freelance/projects" },
+            { icon: FileText, label: "My Jobs", path: "/freelance/applications" },
+            { icon: MessageSquare, label: "Messages", path: "/freelance/messages" },
+            { icon: Wallet, label: "Earnings", path: "/freelance/earnings" },
+            { icon: Settings, label: "Settings", path: "/freelance/settings" },
           ].map((item) => {
-            const isActive = item.path === "/employer" ? navigate && navigate.toString() === "/employer" : item.path !== "/employer";
+            const isActive = item.path === "/employer" ? (typeof window !== "undefined" && window.location.pathname === "/employer") : item.path !== "/employer";
             return (
               <button
                 key={item.path}
-                onClick={() => {
-                  if (item.path === "/employer") navigate(item.path);
-                  else if (item.path === "/employer/post-job") navigate("/freelance/post-task");
-                  else if (item.path === "/employer/jobs") navigate("/freelance/applications");
-                  else if (item.path === "/employer/projects") navigate("/freelance/projects");
-                  else if (item.path === "/employer/messages") navigate("/freelance/messages");
-                  else if (item.path === "/employer/earnings") navigate("/freelance/earnings");
-                  else if (item.path === "/employer/settings") navigate("/freelance/settings");
-                  else if (item.path === "/freelance/find-freelancers") navigate("/freelance/find-freelancers");
-                  else navigate(item.path);
-                }}
+                onClick={() => navigate(item.path)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all group ${collapsed ? "justify-center" : ""}`}
               >
                 <item.icon className="w-4 h-4 shrink-0" />
@@ -112,7 +103,7 @@ export default function EmployerDashboard() {
       <div className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#08080F]/95 backdrop-blur-xl border-t border-white/5">
         <nav className="flex items-center justify-around py-2 px-2 overflow-x-auto">
           {[
-            { icon: Briefcase, label: "Dashboard", path: "/employer" },
+            { icon: Briefcase, label: "Home", path: "/employer" },
             { icon: Plus, label: "Post Job", path: "/freelance/post-task" },
             { icon: FolderOpen, label: "Projects", path: "/freelance/projects" },
             { icon: Wallet, label: "Earnings", path: "/freelance/earnings" },
@@ -204,6 +195,7 @@ export default function EmployerDashboard() {
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${proj.status === "active" ? "bg-nx-violet/10" : proj.status === "completed" ? "bg-nx-emerald/10" : "bg-white/5"}`}>
                       {proj.status === "active" ? <FolderOpen className="w-4 h-4 text-nx-violet" /> : <FileText className="w-4 h-4 text-nx-emerald" />}
                     </div>
+                    <Eye className="w-3 h-3 text-white/20 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white truncate">{proj.title}</p>
                       <p className="text-[11px] text-white/30">KES {proj.budget?.toLocaleString()} • {proj.status}</p>

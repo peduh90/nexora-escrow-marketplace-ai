@@ -32,6 +32,7 @@ export default function FreelanceDashboard() {
 
   const profile = useQuery(api.freelance.getMyProfile);
   const stats = useQuery(api.freelance.getFreelanceStats);
+  const myTasks = useQuery(api.freelance.getMyTasks);
   const projects = useQuery(api.freelance.getMyProjects);
   const walletBalance = useQuery(api.wallet.getWalletBalance);
 
@@ -74,7 +75,7 @@ export default function FreelanceDashboard() {
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-white truncate">{user?.name || "User"}</p>
-                <p className="text-[10px] text-white/30 truncate">Writer / Freelancer</p>
+                <p className="text-[10px] text-white/30 truncate">{profile?.roleMode === "employer" ? "Employer" : profile?.roleMode === "both" ? "Writer & Employer" : "Writer / Freelancer"}</p>
               </div>
             )}
           </div>
@@ -114,9 +115,11 @@ export default function FreelanceDashboard() {
         <div className="p-4 md:p-6 space-y-6">
           {/* Welcome */}
           <div>
-            <h1 className="text-2xl font-bold text-white">✍️ Writer Dashboard</h1>
+            <h1 className="text-2xl font-bold text-white">
+              {profile?.roleMode === "employer" ? "💼 Employer Dashboard" : profile?.roleMode === "both" ? "✍️⚔️ Writer & Employer" : "✍️ Writer Dashboard"}
+            </h1>
             <p className="text-sm text-white/40 mt-1">
-              Welcome back, {user?.name || "there"}. Here's your freelance overview.
+              {profile?.roleMode === "employer" ? "Manage your jobs, hire freelancers, track projects." : profile?.roleMode === "both" ? "You're both a writer and an employer. Switch modes anytime." : "Welcome back, " + (user?.name || "there") + ". Here's your freelance overview."}
             </p>
           </div>
 
@@ -142,7 +145,7 @@ export default function FreelanceDashboard() {
               { label: "Active Projects", value: activeProjects.length, icon: FolderOpen, color: "#8B5CF6" },
               { label: "Total Projects", value: allProjects.length, icon: Briefcase, color: "#06B6D4" },
               { label: "Applications", value: stats?.totalApplications || 0, icon: FileText, color: "#F59E0B" },
-              { label: "Tasks Posted", value: stats?.totalTasks || 0, icon: PenTool, color: "#10B981" },
+              { label: "Tasks Posted", value: (myTasks ?? []).length, icon: PenTool, color: "#10B981" },
             ].map((card) => (
               <div key={card.label} className="p-4 rounded-xl border border-white/5 bg-white/[0.02]">
                 <div className="flex items-center justify-between mb-3">

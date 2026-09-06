@@ -55,6 +55,8 @@ const SellerEditProduct = lazy(() => import("./pages/seller/SellerEditProduct.ts
 const FreelanceLanding = lazy(() => import("./pages/freelance/FreelanceLanding.tsx"));
 
 const FreelanceDashboard = lazy(() => import("./pages/freelance/FreelanceDashboard.tsx"));
+// Employer panel
+const EmployerDashboard = lazy(() => import("./pages/employer/EmployerDashboard.tsx"));
 const FreelanceFindWork = lazy(() => import("./pages/freelance/FreelanceFindWork.tsx"));
 const FreelanceFindFreelancers = lazy(() => import("./pages/freelance/FreelanceFindFreelancers.tsx"));
 const FreelancePostTask = lazy(() => import("./pages/freelance/FreelancePostTask.tsx"));
@@ -216,6 +218,14 @@ createRoot(document.getElementById("root")!).render(
               {/* Freelance Marketplace */}
               <Route path="/freelance" element={<FreelanceLanding />} />
               <Route path="/freelance/dashboard" element={<RequireAuth><FreelanceDashboard /></RequireAuth>} />
+              {/* Employer routes */}
+              <Route path="/employer" element={<RequireAuth><EmployerDashboard /></RequireAuth>} />
+              <Route path="/employer/post-job" element={<RequireAuth><FreelancePostTask /></RequireAuth>} />
+              <Route path="/employer/jobs" element={<RequireAuth><FreelanceApplications /></RequireAuth>} />
+              <Route path="/employer/projects" element={<RequireAuth><FreelanceProjects /></RequireAuth>} />
+              <Route path="/employer/messages" element={<RequireAuth><FreelanceMessages /></RequireAuth>} />
+              <Route path="/employer/earnings" element={<RequireAuth><FreelanceEarnings /></RequireAuth>} />
+              <Route path="/employer/settings" element={<RequireAuth><FreelanceSettings /></RequireAuth>} />
               <Route path="/freelance/find-work" element={<RequireAuth><FreelanceFindWork /></RequireAuth>} />
               <Route path="/freelance/find-freelancers" element={<RequireAuth><FreelanceFindFreelancers /></RequireAuth>} />
               <Route path="/freelance/post-task" element={<RequireAuth><FreelancePostTask /></RequireAuth>} />
@@ -287,15 +297,14 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/deliveries" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
               <Route path="/admin/zones" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
               <Route path="/admin/disputes" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />
-              <Route path="/admin/fraud" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />              <Route path="/admin/ai" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+              <Route path="/admin/fraud" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />              <Route path="/admin/ai" element={<RequireAdmin><AdminAI /></RequireAdmin>} />
+              <Route path="/admin/owner" element={<RequireAdmin><AdminOwner /></RequireAdmin>} />
               <Route path="/admin/kyc" element={<RequireAdmin><AdminKYC /></RequireAdmin>} />
               <Route path="/admin/messages" element={<RequireAdmin><AdminMessages /></RequireAdmin>} />
               <Route path="/admin/reviews" element={<RequireAdmin><AdminReviews /></RequireAdmin>} />
               <Route path="/admin/reports" element={<RequireAdmin><AdminReports /></RequireAdmin>} />
               <Route path="/admin/jobs" element={<RequireAdmin><AdminJobs /></RequireAdmin>} />
               <Route path="/admin/categories" element={<RequireAdmin><AdminCategories /></RequireAdmin>} />
-              <Route path="/admin/owner" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
-
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
