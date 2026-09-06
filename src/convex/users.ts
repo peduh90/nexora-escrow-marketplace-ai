@@ -240,10 +240,13 @@ export const checkAndPromoteAdmin = mutation({
       await ctx.db.patch(curUser._id, { role: targetRole });
     }
 
-    // Auto-promote if email matches admin email and not already admin
+    // Auto-promote if email matches admin email
     const finalUser = user as any;
-    if (identity.email === ADMIN_EMAIL && finalUser.role !== "admin") {
-      await ctx.db.patch(finalUser._id, { role: "admin" });
+    if (identity.email === ADMIN_EMAIL) {
+      // Ensure role is admin (idempotent — safe to call multiple times)
+      if (finalUser.role !== "admin") {
+        await ctx.db.patch(finalUser._id, { role: "admin" });
+      }
       return { promoted: true, message: "You have been promoted to admin!" };
     }
 
