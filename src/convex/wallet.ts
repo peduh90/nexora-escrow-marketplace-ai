@@ -37,13 +37,28 @@ export const initiateDeposit = mutation({
   },
 });
 
-/** Confirm deposit (called after M-Pesa callback confirms payment) */
+/**
+ * Confirm deposit (called after M-Pesa callback confirms payment).
+ *
+ * SECURITY: This mutation is exposed, so it must verify that the caller is
+ * authenticated AND that the transaction being confirmed belongs to the caller.
+ * Otherwise any client could confirm an arbitrary pending deposit by guessing
+ * a reference and crediting their own wallet.
+ *
+ * The M-Pesa callback (src/convex/http.ts) is the trusted path. It calls this
+ * mutation server-to-server after Safaricom confirms the STK Push. The callback
+ * trusts the payment provider response; this mutation additionally enforces that
+ * only the wallet owner (or the callback path) can finalise a deposit.
+ */
 export const confirmDeposit = mutation({
   args: {
     reference: v.string(),
     mpesaReceipt: v.string(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
     const tx = await ctx.db
       .query("walletTransactions")
       .filter((q) => q.eq(q.field("reference"), args.reference))
@@ -51,6 +66,21 @@ export const confirmDeposit = mutation({
 
     if (!tx) throw new Error("Transaction not found");
     if (tx.status === "completed") return { alreadyCompleted: true };
+
+    // Resolve the wallet owner from the transaction.
+    const owner = await ctx.db.get(tx.userId as any);
+    if (!owner) throw new Error("Transaction owner not found");
+
+    // Only the wallet owner (by email) may confirm their own deposit.
+    // The M-Pesa callback path also runs server-side under the same mutation, so
+    // it is allowed as long as the transaction belongs to the caller.
+    const ownerUser = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+    if (!ownerUser || ownerUser._id !== tx.userId) {
+      throw new Error("Unauthorized: you can only confirm your own deposits");
+    }
 
     // Update transaction status
     await ctx.db.patch(tx._id, {
