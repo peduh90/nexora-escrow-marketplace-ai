@@ -3,13 +3,12 @@ import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
 
-// NOTE: RequireAuth now requires the user record to be loaded via useAuth
-// before it can authorise. If the user record has not loaded yet the component
-// falls through to the loading state above.
-const { user } = useAuth();
-
+// NOTE: RequireAuth reads the user record via useAuth() *inside* the component
+// render, where ConvexAuthProvider is present. Do NOT call useAuth() at module
+// scope — that crashes with "Cannot read properties of null (reading 'useContext')"
+// because there is no React context outside a component tree.
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -39,7 +38,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user?.role) {
+  if (!user.role) {
     // Profile exists but role has not been set — do not assume buyer.
     return (
       <main className="flex min-h-screen items-center justify-center bg-background">
@@ -48,16 +47,6 @@ export function RequireAuth({ children }: { children: ReactNode }) {
           <p className="text-sm text-white/70">Your account is still being set up.</p>
         </div>
       </main>
-    );
-  }
-
-  if (!isAuthenticated) {
-    const returnTo = `${location.pathname}${location.search}`;
-    return (
-      <Navigate
-        to={`/auth?returnTo=${encodeURIComponent(returnTo)}`}
-        replace
-      />
     );
   }
 

@@ -1,6 +1,8 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { query, mutation, QueryCtx } from "./_generated/server";
+import { ALLOWED_ROLES, resolveRole, resolveRoleForAdminFlow, ADMIN_EMAIL } from "./roles";
+import type { AllowedRole } from "./roles";
 
 /**
  * Get the current signed in user. Returns null if the user is not signed in.
@@ -35,34 +37,61 @@ export const getCurrentUser = async (ctx: QueryCtx) => {
 
 /**
  * Secure password hashing for persistent Nexora user accounts.
- * Uses per-password random salt and a deterministic verification string format.
- * IMPORTANT: never logs or returns the hash to the client.
+ * Uses a per-password random salt and stores only a hash-derived verifier.
+ * IMPORTANT: never logs or returns the hash to the client, and never stores
+ * the plaintext password.
+ *
+ * Format: pbkdf2:<saltHex>:<iterations>:<keyLen>:<algorithm>:<verifierHash>
+ *
+ * The verifier is a SHA-256 hash of `salt + password`, never the plaintext.
+ * Legacy entries that embed the plaintext in the verifier field still verify
+ * (so existing users are not locked out), but new/updated passwords are never
+ * stored as plaintext.
  */
-export function hashStoredPassword(password: string): string {
+export async function hashStoredPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const saltHex = Array.from(salt)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  // Format: pbkdf2:<saltHex>:<iterations>:<keyLen>:<algorithm>:<expected>
-  // The `expected` field is intentionally the plain password here only as a
-  // compatibility bridge for legacy plaintext entries. In production this should
-  // be replaced with a real PBKDF2/WCrypto verification path.
-  return `pbkdf2:${saltHex}:100000:32:sha256:${password}`;
+  const verifier = Array.from(
+    new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array([...salt, ...new TextEncoder().encode(password)])))
+  )
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `pbkdf2:${saltHex}:100000:32:sha256:${verifier}`;
 }
 
 /**
- * Verify a plaintext password against a stored hash.
- * Returns false immediately for unknown formats.
+ * Verify a password against a stored hash.
+ * Returns false for unknown formats or missing inputs.
+ *
+ * Legacy compatibility: some older entries embed the plaintext password as the
+ * verifier field. Those still verify so existing users are not locked out, but
+ * we never write new entries in that form.
  */
-export function verifyStoredPasswordHash(storedHash: string, password: string): boolean {
+export async function verifyStoredPasswordHash(storedHash: string, password: string): Promise<boolean> {
   if (typeof storedHash !== "string" || typeof password !== "string") return false;
   if (!storedHash.startsWith("pbkdf2:")) return false;
   const parts = storedHash.split(":");
   if (parts.length !== 6) return false;
-  // Legacy compatibility: if the stored value ends with the plaintext password,
-  // compare directly. This allows migration without breaking existing logins.
-  const [, , , , , expected] = parts;
-  return expected === password;
+  const [, saltHex, , , , verifier] = parts;
+  if (!saltHex || !verifier) return false;
+
+  try {
+    const saltBytes = new Uint8Array(saltHex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
+    const derived = Array.from(
+      new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array([...saltBytes, ...new TextEncoder().encode(password)])))
+    )
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    if (derived === verifier) return true;
+  } catch {
+    // If crypto fails for any reason, fall through to legacy check.
+  }
+
+  // Legacy compatibility: older entries may store the plaintext password as the
+  // verifier. Compare directly so existing users are not locked out.
+  return verifier === password;
 }
 
 
@@ -142,10 +171,12 @@ export const verifyLogin = mutation({
     const u = user as any;
 
     // Do not reveal whether the email exists.
+    // Reject new plaintext password storage: a stored value equal to the
+    // plaintext password is not a valid hash and must not be accepted.
     const validPassword =
       typeof u.passwordHash === "string" &&
-      (u.passwordHash === args.password ||
-        u.passwordHash.startsWith("pbkdf2:") && verifyStoredPasswordHash(u.passwordHash, args.password));
+      u.passwordHash.startsWith("pbkdf2:") &&
+      (await verifyStoredPasswordHash(u.passwordHash, args.password));
 
     if (!validPassword) {
       return { success: false, error: "Invalid email or password." };
@@ -226,12 +257,19 @@ export const ensureUserProfile = mutation({
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
 
-    if (!user) {
-      const targetRole =
-        identity.email === process.env.ADMIN_EMAIL
-          ? "admin"
-          : (args.role as any) || (args.businessName ? "seller" : "buyer");
+    const existingBusinessName =
+      user && typeof (user as any).businessName === "string" ? (user as any).businessName : undefined;
+    const existingRole =
+      user && typeof (user as any).role === "string" ? (user as any).role : undefined;
 
+    const targetRole = resolveRole(
+      identity.email,
+      typeof args.role === "string" ? args.role : undefined,
+      existingRole,
+      typeof args.businessName === "string" ? args.businessName : existingBusinessName,
+    );
+
+    if (!user) {
       user = await ctx.db.insert("users", {
         name: args.name || identity.name || identity.email?.split("@")[0] || "User",
         email: identity.email,
@@ -251,17 +289,6 @@ export const ensureUserProfile = mutation({
       if (args.businessName !== undefined && u.businessName !== args.businessName) {
         await ctx.db.patch(u._id, { businessName: args.businessName });
       }
-
-      const targetRole =
-        identity.email === process.env.ADMIN_EMAIL
-          ? "admin"
-          : (args.role as any) ||
-            (u.businessName
-              ? "seller"
-              : u.role ||
-              (args.businessName
-                ? "seller"
-                : "buyer"));
 
       if (typeof u.role !== "string" || u.role !== targetRole) {
         await ctx.db.patch(u._id, { role: targetRole });
@@ -311,10 +338,12 @@ export const updatePassword = mutation({
     if (
       args.currentPassword &&
       typeof u.passwordHash === "string" &&
-      u.passwordHash !== args.currentPassword
+      !(await verifyStoredPasswordHash(u.passwordHash, args.currentPassword))
     ) {
       throw new Error("Current password is incorrect.");
-    }      await ctx.db.patch(u._id, { passwordHash: hashPasswordForStorage(args.newPassword) });
+    }
+
+    await ctx.db.patch(u._id, { passwordHash: await hashStoredPassword(args.newPassword) });
     return { success: true };
   },
 });
@@ -354,12 +383,8 @@ const COMMON_PASSWORDS = new Set([
   "test1234",
 ]);
 
-function hashPasswordForStorage(password: string): string {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const saltBase64 = Array.from(new Uint8Array(salt))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return "pbkdf2:" + saltBase64 + ":100000:32:sha256:" + password;
+async function hashPasswordForStorage(password: string): Promise<string> {
+  return hashStoredPassword(password);
 }
 
 /** Admin: get user count summary */
@@ -413,8 +438,6 @@ export const getAllEscrows = query({
 
 /** Auto-promote first admin — anyone signing up with this email gets admin role.
  * Also ensures new users get proper role assignment on signup. */
-const ADMIN_EMAIL = "murimiedwin227@gmail.com";
-
 export const checkAndPromoteAdmin = mutation({
   args: {
     role: v.optional(v.string()),
@@ -432,17 +455,13 @@ export const checkAndPromoteAdmin = mutation({
 
     // If user not found in DB (e.g. just created via auth), create the user record
     if (!user) {
-      const validRole: "admin" | "buyer" | "seller" | "driver" | undefined =
-        identity.email === ADMIN_EMAIL ? "admin"
-          : (args.role === "seller" ? "seller" : args.role === "admin" ? "admin" : args.role === "driver" ? "driver" : "buyer");
-
       const name = identity.name || identity.email?.split("@")[0] || "User";
       const phoneFromForm = typeof args.phone === "string" ? args.phone : undefined;
 
       user = await ctx.db.insert("users", {
         name,
         email: identity.email,
-        role: validRole,
+        role: resolveRoleForAdminFlow(identity.email, typeof args.role === "string" ? args.role : undefined, null),
         phone: phoneFromForm,
         kycStatus: "not_started",
         lastLoginAt: Date.now(),
@@ -462,10 +481,8 @@ export const checkAndPromoteAdmin = mutation({
       // ALWAYS assign the correct role — this is the critical fix.
       // Previously this only ran when !u.role || u.role === "buyer", missing users
       // whose role was already set to something else or undefined from legacy signups.
-      const targetRole: "admin" | "buyer" | "seller" | "driver" | undefined =
-        u.email === ADMIN_EMAIL ? "admin"
-          : (args.role === "seller" ? "seller" : args.role === "admin" ? "admin" : args.role === "driver" ? "driver" : "buyer");
-          if (targetRole && u.role !== targetRole) {
+      const targetRole = resolveRoleForAdminFlow(identity.email, typeof args.role === "string" ? args.role : undefined, user as any);
+      if (targetRole && u.role !== targetRole) {
         await ctx.db.patch(u._id, { role: targetRole });
         // Refresh user record after patch (type assertion needed since db.get is generic)
         user = (await ctx.db.get(u._id)) as typeof user;

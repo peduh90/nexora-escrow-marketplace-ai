@@ -143,25 +143,56 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
+
+    if (usePasswordAuth) {
+      const passwordTrimmed = password.trim();
+      if (passwordTrimmed.length === 0) {
+        setPasswordError("Password is required.");
+        setIsLoading(false);
+        return;
+      }
+      if (!isPasswordValid(passwordTrimmed)) {
+        setPasswordError("Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a symbol.");
+        setIsLoading(false);
+        return;
+      }
+      if (confirmPassword !== password) {
+        setConfirmPasswordError("Passwords do not match.");
+        setIsLoading(false);
+        return;
+      }
+      const emailFromForm = new FormData(event.currentTarget).get("email") as string | null;
+      if (passwordTrimmed.toLowerCase().includes((emailFromForm || "").toLowerCase()) || passwordTrimmed.toLowerCase().includes(fullName.toLowerCase())) {
+        setPasswordError("Password should not contain your email or name.");
+        setIsLoading(false);
+        return;
+      }
+    }
+
     try {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
-      // Ensure the persistent DB profile exists with the correct role.
-      // This is the authoritative source of truth for role — do NOT rely on the
-      // email-OTP path or React state alone. Even if the user just authenticated
-      // with OTP, we sync the role here so a later password-login reads it.
-      const formData = new FormData(event.currentTarget);
+
       const email = formDataGet(formData, "email") || "";
-      await signIn("email-otp", formData);
       setStep({ email });
+
+      try {
+        await ensureUserProfile({
+          name: fullName || undefined,
+          phone: phoneNumber || undefined,
+          role: selectedRole || undefined,
+          businessName: selectedRole === "seller" ? fullName || undefined : undefined,
+        });
+      } catch (syncErr) {
+        console.error("Account profile sync failed:", syncErr);
+      }
+
       setIsLoading(false);
     } catch (error) {
       setError(error instanceof Error ? error.message : "Failed to send verification code.");
       setIsLoading(false);
     }
   };
-
-  const handleOtpSubmit
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
