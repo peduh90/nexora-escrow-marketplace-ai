@@ -121,11 +121,12 @@ export const verifyLogin = mutation({
     if (!u.role) {
       const inferred = inferRole(u);
       if (inferred) {
-        await ctx.db.patch(u._id, { role: inferred });
+        await ctx.db.patch(u._id, { role: inferred as any });
       }
     }
 
-    await ctx.db.patch(u._id, { lastLoginAt: Date.now(), lastActivityAt: Date.now() });
+    const beforeFresh = await ctx.db.get(u._id) as any;
+    await ctx.db.patch(beforeFresh?._id ?? u._id, { lastActivityAt: Date.now() });
 
     const fresh = await ctx.db.get(u._id);
     const resolved = fresh as any;
@@ -192,9 +193,6 @@ export const ensureUserProfile = mutation({
         phone: typeof args.phone === "string" ? args.phone : undefined,
         role: targetRole,
         businessName: typeof args.businessName === "string" ? args.businessName : undefined,
-        lastLoginAt: Date.now(),
-        lastActivityAt: Date.now(),
-        joinedAt: Date.now(),
       }) as any;
     } else {
       const u = user as any;
@@ -224,7 +222,7 @@ export const ensureUserProfile = mutation({
         await ctx.db.patch(u._id, { role: targetRole });
       }
 
-      await ctx.db.patch(u._id, { lastLoginAt: Date.now(), lastActivityAt: Date.now() });
+      await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
       user = await ctx.db.get(u._id);
     }
 
@@ -491,7 +489,7 @@ export const promoteToAdmin = mutation({
 
     if (!target) throw new Error(`User with email ${args.email} not found`);
 
-    await ctx.db.patch(target._id, { role: "admin" });
+    await ctx.db.patch(target._id, { role: "admin" as const });
     return { success: true, userId: target._id };
   },
 });

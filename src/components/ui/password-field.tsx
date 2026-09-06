@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, ShieldAlert, Shield-check, Shield } from "lucide-react";
+import { Eye, EyeOff, ShieldAlert, ShieldCheck, Shield } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   passwordRequirements,
@@ -87,7 +87,7 @@ export function PasswordField({
             ) : strength.level === "fair" ? (
               <Shield className={cn("w-3.5 h-3.5", strength.color)} />
             ) : (
-              <Shield-check className={cn("w-3.5 h-3.5", strength.color)} />
+              <ShieldCheck className={cn("w-3.5 h-3.5", strength.color)} />
             )}
             <span className={cn("font-medium", strength.color)}>{strength.text}</span>
           </div>
@@ -116,7 +116,7 @@ export function PasswordField({
                 )}
               >
                 {req.met ? (
-                  <Shield-check className="w-3 h-3" />
+                  <ShieldCheck className="w-3 h-3" />
                 ) : (
                   <Shield className="w-3 h-3" />
                 )}
