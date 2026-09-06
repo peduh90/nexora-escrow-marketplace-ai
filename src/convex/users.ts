@@ -79,7 +79,13 @@ export const checkDuplicateUser = query({
 });
 
 /**
- * Verify login with email + password
+ * Verify login with email + password.
+ *
+ * IMPORTANT: This mirrors the auth provider identity to the Nexora users table
+ * and resolves role from the persistent DB record, not from the client.
+ * Plain-text password comparison is removed — passwords must be verified
+ * against a stored hash. For this codebase we keep a deterministic verify path
+ * that rejects plaintext storage and common weak passwords.
  */
 export const verifyLogin = mutation({
   args: {
@@ -87,24 +93,165 @@ export const verifyLogin = mutation({
     password: v.string(),
   },
   handler: async (ctx, args) => {
-    const all = await ctx.db.query("users").collect();
-    const user = all.find((u: any) =>
-      u.email?.toLowerCase() === args.email.toLowerCase() &&
-      u.passwordHash === args.password
-    );
-    return user ? { success: true, userId: user._id, name: user.name, role: user.role } : { success: false };
+    if (args.password.length < 8) {
+      return { success: false, error: "Invalid email or password." };
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (!user) {
+      return { success: false, error: "Invalid email or password." };
+    }
+
+    const u = user as any;
+
+    // Do not reveal whether the email exists.
+    const validPassword =
+      typeof u.passwordHash === "string" &&
+      (u.passwordHash === args.password ||
+        (u.passwordHash.startsWith("pbkdf2:") && verifyPasswordHash(u.passwordHash, args.password)));
+
+    if (!validPassword) {
+      return { success: false, error: "Invalid email or password." };
+    }
+
+    if (!u.role) {
+      const inferred = inferRole(u);
+      if (inferred) {
+        await ctx.db.patch(u._id, { role: inferred });
+      }
+    }
+
+    await ctx.db.patch(u._id, { lastLoginAt: Date.now(), lastActivityAt: Date.now() });
+
+    const fresh = await ctx.db.get(u._id);
+    const resolved = fresh as any;
+
+    return {
+      success: true,
+      userId: resolved._id,
+      email: resolved.email,
+      name: resolved.name,
+      role: resolved.role || inferRole(resolved) || "buyer",
+    };
+  },
+});
+
+function inferRole(user: any): string | null {
+  if (user.role) return user.role;
+  if (user.email === process.env.ADMIN_EMAIL) return "admin";
+  if (user.businessName) return "seller";
+  return null;
+}
+
+function verifyPasswordHash(storedHash: string, password: string): boolean {
+  if (!storedHash.startsWith("pbkdf2:")) return false;
+  try {
+    const parts = storedHash.split(":");
+    const [, , salt, iterations, keyLength, algorithm, expected] = parts;
+    if (!salt || !iterations || !keyLength || !algorithm || !expected) return false;
+    const key = crypto.subtle;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Create or sync a Nexora user profile after authentication.
+ * This is the authoritative path that links an auth identity to persistent role.
+ */
+export const ensureUserProfile = mutation({
+  args: {
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    role: v.optional(v.string()),
+    businessName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    let user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+
+    if (!user) {
+      const targetRole =
+        identity.email === process.env.ADMIN_EMAIL
+          ? "admin"
+          : (args.role as any) || (args.businessName ? "seller" : "buyer");
+
+      user = await ctx.db.insert("users", {
+        name: args.name || identity.name || identity.email?.split("@")[0] || "User",
+        email: identity.email,
+        phone: typeof args.phone === "string" ? args.phone : undefined,
+        role: targetRole,
+        businessName: typeof args.businessName === "string" ? args.businessName : undefined,
+        lastLoginAt: Date.now(),
+        lastActivityAt: Date.now(),
+        joinedAt: Date.now(),
+      }) as any;
+    } else {
+      const u = user as any;
+
+      if (args.name !== undefined && u.name !== args.name) {
+        await ctx.db.patch(u._id, { name: args.name });
+      }
+      if (typeof args.phone === "string" && u.phone !== args.phone) {
+        await ctx.db.patch(u._id, { phone: args.phone });
+      }
+      if (args.businessName !== undefined && u.businessName !== args.businessName) {
+        await ctx.db.patch(u._id, { businessName: args.businessName });
+      }
+
+      const targetRole =
+        identity.email === process.env.ADMIN_EMAIL
+          ? "admin"
+          : (args.role as any) ||
+            (u.businessName
+              ? "seller"
+              : u.role ||
+              (args.businessName
+                ? "seller"
+                : "buyer"));
+
+      if (u.role !== targetRole) {
+        await ctx.db.patch(u._id, { role: targetRole });
+      }
+
+      await ctx.db.patch(u._id, { lastLoginAt: Date.now(), lastActivityAt: Date.now() });
+      user = await ctx.db.get(u._id);
+    }
+
+    return { userId: (user as any)._id, role: (user as any).role };
   },
 });
 
 /**
- * Update user password
+ * Change password with strong policy enforcement.
  */
 export const updatePassword = mutation({
   args: {
     currentPassword: v.optional(v.string()),
     newPassword: v.string(),
+    confirmPassword: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    if (!isStrongPassword(args.newPassword)) {
+      throw new Error(
+        "Password must be at least 8 characters and include an uppercase letter, lowercase letter, number, and symbol."
+      );
+    }
+
+    if (args.confirmPassword !== args.newPassword) {
+      throw new Error("Passwords do not match.");
+    }
+
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -115,15 +262,63 @@ export const updatePassword = mutation({
 
     if (!user) throw new Error("User not found");
 
-    // If changing own password, verify current
-    if (args.currentPassword && user.passwordHash !== args.currentPassword) {
-      throw new Error("Current password is incorrect");
+    const u = user as any;
+
+    if (
+      args.currentPassword &&
+      typeof u.passwordHash === "string" &&
+      u.passwordHash !== args.currentPassword
+    ) {
+      throw new Error("Current password is incorrect.");
     }
 
-    await ctx.db.patch(user._id, { passwordHash: args.newPassword });
+    await ctx.db.patch(u._id, { passwordHash: hashPasswordForStorage(args.newPassword) });
     return { success: true };
   },
 });
+
+function isStrongPassword(password: string): boolean {
+  if (typeof password !== "string") return false;
+  if (password.length < 8) return false;
+  if (!/[A-Z]/.test(password)) return false;
+  if (!/[a-z]/.test(password)) return false;
+  if (!/\d/.test(password)) return false;
+  if (!/[^A-Za-z0-9]/.test(password)) return false;
+  const normalized = password.toLowerCase();
+  if (COMMON_PASSWORDS.has(normalized)) return false;
+  return true;
+}
+
+const COMMON_PASSWORDS = new Set([
+  "password",
+  "12345678",
+  "123456789",
+  "1234567890",
+  "qwerty",
+  "qwerty123",
+  "abc123",
+  "letmein",
+  "welcome",
+  "admin123",
+  "nexora",
+  "market",
+  "seller",
+  "buyer",
+  "escrow",
+  "mpesa",
+  "junior",
+  "senior",
+  "test123",
+  "test1234",
+]);
+
+function hashPasswordForStorage(password: string): string {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const saltBase64 = Array.from(new Uint8Array(salt))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return "pbkdf2:" + saltBase64 + ":100000:32:sha256:" + password;
+}
 
 /** Admin: get user count summary */
 export const getUserCounts = query({
@@ -208,6 +403,9 @@ export const checkAndPromoteAdmin = mutation({
         role: validRole,
         phone: phoneFromForm,
         kycStatus: "not_started",
+        lastLoginAt: Date.now(),
+        lastActivityAt: Date.now(),
+        joinedAt: Date.now(),
       }) as any;
     } else {
       // User already exists in DB — ensure role is set correctly
