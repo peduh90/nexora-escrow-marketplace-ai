@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Package, Search, Eye, CheckCircle2, XCircle, Trash2, Shield, Flag } from "lucide-react";
+import { Package, Search, CheckCircle2, XCircle, Trash2, Shield, Loader2, Eye } from "lucide-react";
 
 export default function AdminProducts() {
-  const allListings = useQuery(api.users.getAllListings);
+  const allListings = useQuery(api.admin.getAllListings);
   const allUsers = useQuery(api.users.getAllUsers);
+  const updateListingStatus = useMutation(api.admin.updateListingStatus);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
+  const [acting, setActing] = useState<string | null>(null);
 
   const listings = allListings ?? [];
   const users = allUsers ?? [];
@@ -27,11 +29,22 @@ export default function AdminProducts() {
     return true;
   });
 
+  const setStatus = async (listingId: string, status: "active" | "paused" | "sold" | "removed") => {
+    setActing(listingId);
+    try {
+      await updateListingStatus({ listingId, status });
+    } catch (err: any) {
+      console.error("Failed to update listing status:", err);
+    } finally {
+      setActing(null);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Product Moderation</h1>
-        <p className="text-sm text-white/40 mt-1">Review, approve, and manage all marketplace listings</p>
+        <p className="text-sm text-white/40 mt-1">Review, approve, pause, and remove marketplace listings</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
@@ -51,12 +64,22 @@ export default function AdminProducts() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products or sellers..."
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0A12] border border-white/5 text-sm text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search products or sellers..."
+            className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0A12] border border-white/5 text-sm text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none"
+          />
         </div>
         <div className="flex gap-1 flex-wrap">
           {["All", "Published", "Paused", "Sold"].map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${filter === f ? "bg-nx-violet/10 text-nx-violet" : "text-white/30 hover:text-white/50 bg-[#0A0A12] border border-white/5"}`}>{f}</button>
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${filter === f ? "bg-nx-violet/10 text-nx-violet" : "text-white/30 hover:text-white/50 bg-[#0A0A12] border border-white/5"}`}
+            >
+              {f}
+            </button>
           ))}
         </div>
       </div>
@@ -112,13 +135,49 @@ export default function AdminProducts() {
                       <p className="text-xs text-white/40">{product.views || 0}</p>
                     </td>
                     <td className="px-4 py-3.5">
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${product.status === "active" ? "bg-nx-emerald/10 text-nx-emerald" : product.status === "paused" ? "bg-nx-gold/10 text-nx-gold" : "bg-white/5 text-white/30"}`}>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${product.status === "active" ? "bg-nx-emerald/10 text-nx-emerald" : product.status === "paused" ? "bg-nx-gold/10 text-nx-gold" : product.status === "sold" ? "bg-white/5 text-white/30" : "bg-red-400/10 text-red-400"}`}>
                         {product.status}
                       </span>
                     </td>
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors" title="View"><Eye className="w-3.5 h-3.5" /></button>
+                        <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors" title="View">
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        {product.status !== "sold" && product.status !== "removed" && (
+                          <>
+                            {product.status !== "active" && (
+                              <button
+                                disabled={acting === product._id}
+                                className="p-1.5 rounded text-white/20 hover:text-nx-emerald hover:bg-nx-emerald/10 transition-colors disabled:opacity-40"
+                                title="Approve / activate"
+                                onClick={() => setStatus(product._id, "active")}
+                              >
+                                {acting === product._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
+                            {product.status !== "paused" && (
+                              <button
+                                disabled={acting === product._id}
+                                className="p-1.5 rounded text-white/20 hover:text-nx-gold hover:bg-nx-gold/10 transition-colors disabled:opacity-40"
+                                title="Pause listing"
+                                onClick={() => setStatus(product._id, "paused")}
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {product.status !== "removed" && (
+                              <button
+                                disabled={acting === product._id}
+                                className="p-1.5 rounded text-white/20 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
+                                title="Remove listing"
+                                onClick={() => setStatus(product._id, "removed")}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
