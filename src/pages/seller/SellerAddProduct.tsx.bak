@@ -160,8 +160,7 @@ export default function SellerAddProduct() {
 
     setPublishing(true);
     try {
-      // Upload each image to Convex storage and collect storage keys
-      const imageKeys: string[] = [];
+      const imageUrls: string[] = [];
       for (let i = 0; i < form.images.length; i++) {
         const img = form.images[i];
         const uploadUrl = await generateUploadUrl();
@@ -170,14 +169,9 @@ export default function SellerAddProduct() {
           headers: { "Content-Type": img.file.type },
           body: img.file,
         });
-        if (!response.ok) {
-          throw new Error(`Image upload failed for image ${i + 1}`);
-        }
-        // Convex's generateUploadUrl + POST returns the storage key in the response body
-        const data = (await response.json()) as { storageKey?: string; storageId?: string; key?: string; url?: string };
-        const key = data.storageKey || data.storageId || data.key;
-        if (!key) throw new Error(`No storage key returned for image ${i + 1}`);
-        imageKeys.push(key);
+        if (!response.ok) throw new Error(`Upload failed for image ${i + 1}`);
+        const data = await response.json();
+        imageUrls.push(data.storageId || data.url || uploadUrl);
       }
 
       await createListing({
@@ -187,7 +181,7 @@ export default function SellerAddProduct() {
         currency: "KES",
         category: form.category,
         subcategory: form.subcategory || undefined,
-        images: imageKeys,
+        images: imageUrls,
         transportAvailable: true,
         originCounty: form.county,
         originTown: form.town,
