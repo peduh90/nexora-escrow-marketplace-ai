@@ -1,37 +1,29 @@
 import { authTables } from "@convex-dev/auth/server";
-import { defineSchema, defineTable } from "convex/server";
-import { Infer, v } from "convex/values";
-
-export const ROLES = {
-  ADMIN: "admin",
-  BUYER: "buyer",
-  SELLER: "seller",
-  DRIVER: "driver",
-} as const;
-
-export const ADMIN_ROLES = {
-  SUPER_ADMIN: "super_admin",
-  MARKETPLACE_ADMIN: "marketplace_admin",
-  FINANCE_ADMIN: "finance_admin",
-} as const;
+import { defineSchema, defineTable } from "convex/server";import { Infer, v } from "convex/values";
 
 export const roleValidator = v.union(
-  v.literal(ROLES.ADMIN),
-  v.literal(ROLES.BUYER),
-  v.literal(ROLES.SELLER),
-  v.literal(ROLES.DRIVER),
+  v.literal("admin"),
+  v.literal("buyer"),
+  v.literal("seller"),
+  v.literal("driver"),
   v.literal("freelancer"),
   v.literal("employer"),
+  v.literal("super_admin"),
+  v.literal("marketplace_admin"),
+  v.literal("finance_admin"),
 );
 export type Role = Infer<typeof roleValidator>;
 
 export const ALL_ROLES = [
-  ROLES.ADMIN,
-  ROLES.BUYER,
-  ROLES.SELLER,
-  ROLES.DRIVER,
+  "admin",
+  "buyer",
+  "seller",
+  "driver",
   "freelancer",
   "employer",
+  "super_admin",
+  "marketplace_admin",
+  "finance_admin",
 ] as const;
 
 export type AnyRole = (typeof ALL_ROLES)[number];
@@ -47,8 +39,7 @@ export const kycStatusValidator = v.union(
   v.literal(KYC_STATUS.NOT_STARTED),
   v.literal(KYC_STATUS.PENDING),
   v.literal(KYC_STATUS.VERIFIED),
-  v.literal(KYC_STATUS.REJECTED),
-);
+  v.literal(KYC_STATUS.REJECTED),);
 
 const schema = defineSchema(
   {
