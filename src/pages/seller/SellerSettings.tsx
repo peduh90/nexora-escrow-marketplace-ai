@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import SellerLayout from "./SellerLayout";
-import { Settings,  Shield, Bell, CreditCard, User, Lock, Globe, Palette, ChevronRight, Phone } from "lucide-react";
+import { api } from "../../convex/_generated/api";
+import { Settings, Shield, Bell, CreditCard, User, Lock, Globe, Palette, Phone } from "lucide-react";
 
 const sections = [
   { icon: User, label: "Account", description: "Personal information and preferences" },
@@ -12,8 +15,75 @@ const sections = [
   { icon: Palette, label: "Theme", description: "Dark mode (active)" },
 ];
 
+function AccountSection({ user }: { user: any }) {
+  const [name, setName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [phone, setPhone] = useState(user?.phone || user?.whatsapp || "");
+  const [businessName, setBusinessName] = useState(user?.businessName || "");
+  const updateProfile = useMutation(api.users.updateProfile);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateProfile({ name, phone });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {user?.role === "seller" && (
+        <div>
+          <label className="text-xs text-white/40 mb-1.5 block">Business Name</label>
+          <input value={businessName} onChange={e => setBusinessName(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" />
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-white/40 mb-1.5 block">Display Name</label>
+          <input value={name} onChange={e => setName(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" />
+        </div>
+        <div>
+          <label className="text-xs text-white/40 mb-1.5 block">Email</label>
+          <input value={email} disabled className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white/40 cursor-not-allowed focus:outline-none" />
+        </div>
+      </div>
+      <div>
+        <label className="text-xs text-white/40 mb-1.5 block">Phone</label>
+        <input value={phone} onChange={e => setPhone(e.target.value)}
+          placeholder="+254 7XX XXX XXX"
+          className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" />
+      </div>
+      <button onClick={handleSave} disabled={saving || !name.trim()}
+        className="px-4 py-2 rounded-lg bg-nx-violet text-white text-sm font-medium hover:bg-nx-violet/80 transition-colors disabled:opacity-50 flex items-center gap-2">
+        <span className={saved ? "text-emerald-400" : ""}>{saved ? "✓ Saved" : "Save Changes"}</span>
+      </button>
+      {user?.role === "seller" && user?.kycStatus !== "verified" && (
+        <div className="p-4 rounded-lg bg-amber-400/5 border border-amber-400/10">
+          <p className="text-sm text-white/40">Complete <a href="/seller/kyc" className="text-nx-violet hover:underline">business verification</a> to unlock full seller features.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SellerSettings() {
+  const user = useQuery(api.users.currentUser);
   const [activeSection, setActiveSection] = useState("Account");
+
+  if (!user) return (
+    <SellerLayout>
+      <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-nx-violet/30 border-t-nx-violet rounded-full animate-spin" /></div>
+    </SellerLayout>
+  );
+
   return (
     <SellerLayout>
       <div className="space-y-6">
@@ -33,14 +103,7 @@ export default function SellerSettings() {
           </div>
           <div className="lg:col-span-3 p-6 rounded-xl bg-white/[0.02] border border-white/5">
             <h3 className="text-lg font-semibold text-white mb-4">{activeSection}</h3>
-            {activeSection === "Account" && (
-              <div className="space-y-4">
-                <div><label className="text-xs text-white/40 mb-1.5 block">Display Name</label><input defaultValue="TechZone Kenya" className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:outline-none focus:border-nx-violet/50" /></div>
-                <div><label className="text-xs text-white/40 mb-1.5 block">Email</label><input defaultValue="sales@techzone.co.ke" className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:outline-none focus:border-nx-violet/50" /></div>
-                <div><label className="text-xs text-white/40 mb-1.5 block">Phone</label><input defaultValue="+254 712 345 678" className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:outline-none focus:border-nx-violet/50" /></div>
-                <button className="px-4 py-2 rounded-lg bg-nx-violet text-white text-sm font-medium">Save Changes</button>
-              </div>
-            )}
+            {activeSection === "Account" && <AccountSection user={user} />}
             {activeSection === "Security" && (
               <div className="space-y-4">
                 <div className="p-4 rounded-lg bg-white/[0.02] border border-white/5 flex items-center justify-between">
@@ -68,7 +131,7 @@ export default function SellerSettings() {
                 <div className="p-4 rounded-lg bg-emerald-400/5 border border-emerald-400/10 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-emerald-400/10 flex items-center justify-center text-emerald-400 text-lg font-bold">M</div>
-                    <div><p className="text-sm text-white">M-Pesa</p><p className="text-xs text-white/30">+254 712 ***678</p></div>
+                    <div><p className="text-sm text-white">M-Pesa Business</p><p className="text-xs text-white/30">{user?.phone ? `+254 7${user.phone.slice(-7)} ***${user.phone.slice(-3)}` : "Not set"}</p></div>
                   </div>
                   <span className="text-[10px] text-emerald-400">Active</span>
                 </div>
@@ -84,8 +147,65 @@ export default function SellerSettings() {
                 </div>
               </div>
             )}
-            {["Verification", "Language", "Theme"].includes(activeSection) && (
-              <p className="text-sm text-white/40">Configure your {activeSection.toLowerCase()} settings here.</p>
+            {activeSection === "Verification" && (
+              <div className="space-y-4">
+                <div className={`p-5 rounded-xl border ${
+                  user?.kycStatus === "verified" ? "border-emerald-400/15 bg-emerald-400/[0.03]" :
+                  user?.kycStatus === "pending" ? "border-amber-400/15 bg-amber-400/[0.03]" :
+                  "border-white/5 bg-white/5"
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      user?.kycStatus === "verified" ? "bg-emerald-400/10" :
+                      user?.kycStatus === "pending" ? "bg-amber-400/10" : "bg-white/5"
+                    }`}>
+                      {user?.kycStatus === "verified" ? <Shield className="w-6 h-6 text-emerald-400" /> :
+                       user?.kycStatus === "pending" ? <div className="w-6 h-6 rounded-full border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" /> :
+                       <Shield className="w-6 h-6 text-white/30" />}
+                    </div>
+                    <div>
+                      <h3 className={`text-base font-semibold ${
+                        user?.kycStatus === "verified" ? "text-emerald-400" :
+                        user?.kycStatus === "pending" ? "text-amber-400" : "text-white"
+                      }`}>
+                        {user?.kycStatus === "verified" ? "Business Verified ✓" :
+                         user?.kycStatus === "pending" ? "Verification In Progress" :
+                         "Not Yet Verified"}
+                      </h3>
+                      <p className="text-sm text-white/40 mt-1">
+                        {user?.kycStatus === "verified" ? "Your business is verified. You can list products and receive payments." :
+                         user?.kycStatus === "pending" ? "We are reviewing your documents. This takes 24-48 hours." :
+                         "Complete verification to unlock all seller features."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                {user?.kycStatus !== "verified" && (
+                  <a href="/seller/kyc" className="w-full p-4 rounded-lg bg-nx-violet/5 border border-nx-violet/10 text-center text-sm text-nx-violet hover:bg-nx-violet/10 transition-colors font-medium">
+                    Start Business Verification
+                  </a>
+                )}
+              </div>
+            )}
+            {activeSection === "Language" && (
+              <div className="space-y-4">
+                <p className="text-sm text-white/40 mb-3">Choose your preferred language.</p>
+                <div className="flex flex-wrap gap-2">
+                  {["English (default)", "Swahili", "French", "Arabic"].map(lang => (
+                    <button key={lang} className="px-4 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white hover:bg-white/[0.06] hover:border-white/20 transition-colors">{lang}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {activeSection === "Theme" && (
+              <div className="space-y-4">
+                <p className="text-sm text-white/40 mb-3">Theme preferences.</p>
+                <div className="flex flex-wrap gap-2">
+                  {["Dark (active)", "Light", "System"].map(theme => (
+                    <button key={theme} className="px-4 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white hover:bg-white/[0.06] hover:border-white/20 transition-colors">{theme}</button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>
