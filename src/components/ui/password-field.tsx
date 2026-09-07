@@ -69,7 +69,10 @@ export function PasswordField({
         <button
           type="button"
           tabIndex={-1}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50 transition-colors"
+          className={cn(
+            "absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50 transition-colors",
+            !value && "opacity-0 pointer-events-none"
+          )}
           onClick={() => setShow((s) => !s)}
           aria-label={show ? "Hide password" : "Show password"}
         >
@@ -77,23 +80,34 @@ export function PasswordField({
         </button>
       </div>
 
-      {strength.level !== "too-short" && (
+      {value.length > 0 ? (
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs">
-            {strength.level === "weak" ? (
-              <ShieldAlert className={cn("w-3.5 h-3.5", strength.color)} />
-            ) : strength.level === "fair" ? (
-              <Shield className={cn("w-3.5 h-3.5", strength.color)} />
+            {strength.level === "weak" || strength.level === "fair" || strength.level === "strong" || strength.level === "very-strong" ? (
+              <>
+                {strength.level === "weak" ? (
+                  <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                ) : strength.level === "fair" ? (
+                  <Shield className="w-3.5 h-3.5 text-amber-400" />
+                ) : (
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                )}
+                <span className="font-medium">{strength.text}</span>
+                <span className="text-[10px] text-white/20 tabular-nums">
+                  {strength.score}/100
+                </span>
+              </>
             ) : (
-              <ShieldCheck className={cn("w-3.5 h-3.5", strength.color)} />
+              <>
+                <ShieldAlert className="w-3.5 h-3.5 text-white/20" />
+                <span className="font-medium text-white/20">Start typing to check strength</span>
+              </>
             )}
-            <span className={cn("font-medium", strength.color)}>{strength.text}</span>
           </div>
-          <span className="text-[10px] text-white/20 tabular-nums"> {strength.score}/100</span>
         </div>
       )}
 
-      {requirements.length > 0 && (
+      {value.length > 0 && (
         <ul className="space-y-1">
           {requirements.map((req, i) => (
             <li
@@ -102,7 +116,7 @@ export function PasswordField({
                 "flex items-center gap-2 text-xs",
                 req.met
                   ? "text-white/30"
-                  : "text-white/20 italic [font-style:italic]",
+                  : "text-white/40",
               )}
             >
               <span
@@ -110,7 +124,7 @@ export function PasswordField({
                   "shrink-0 w-3.5 h-3.5 rounded border flex items-center justify-center",
                   req.met
                     ? "border-nx-violet/40 bg-nx-violet/10 text-nx-violet"
-                    : "border-white/10 bg-transparent text-white/20",
+                    : "border-white/10 bg-transparent text-white/40",
                 )}
               >
                 {req.met ? (
@@ -121,7 +135,7 @@ export function PasswordField({
               </span>
               {req.label}
             </li>
-          ))}
+          )          ))}
         </ul>
       )}
 
