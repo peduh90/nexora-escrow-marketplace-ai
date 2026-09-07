@@ -95,11 +95,11 @@ export default function AdminUsers() {
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-nx-violet/15 flex items-center justify-center shrink-0">
-                          <span className="text-[10px] font-bold text-nx-violet">{(user.name || "U").split(" ").map((n: string) => n[0]).join("").slice(0, 2)}</span>
+                          <span className="text-[10px] font-bold text-nx-violet">{(user.name || user.email?.split("@")[0] || "U").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}</span>
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <p className="text-sm text-white/70 font-medium">{user.name || "Unknown"}</p>
+                            <p className="text-sm text-white/70 font-medium">{user.name || user.email?.split("@")[0] || "Unknown"}</p>
                             {user.kycStatus === "verified" && <CheckCircle2 className="w-3 h-3 text-nx-emerald" />}
                           </div>
                           <p className="text-[10px] text-white/25">{user.email || ""}</p>

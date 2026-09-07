@@ -77,6 +77,13 @@ const schema = defineSchema(
       kycSubmittedAt: v.optional(v.number()),
       kycVerifiedAt: v.optional(v.number()),
       kycDocuments: v.optional(v.array(v.string())),
+      // Seller store approval — new sellers must be approved by an admin
+      // before they can publish products or appear in the marketplace.
+      sellerStatus: v.optional(v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("rejected"),
+      )),
       sellerTier: v.optional(v.string()),
       commissionRate: v.optional(v.number()),
       subscriptionTier: v.optional(v.string()),

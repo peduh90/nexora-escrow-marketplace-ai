@@ -40,6 +40,15 @@ export const createListing = mutation({
     const user = await getSessionUser(ctx);
     if (!user) throw new Error("Not authenticated");
 
+    // Sellers must be approved by an admin before they can publish products.
+    const sellerStatus = (user as any).sellerStatus;
+    if (sellerStatus === "pending") {
+      throw new Error("Your store is awaiting admin approval. You cannot publish products yet.");
+    }
+    if (sellerStatus === "rejected") {
+      throw new Error("Your store application was rejected. Please contact support.");
+    }
+
     const listingId = await ctx.db.insert("listings", {
       sellerId: user._id,
       title: args.title,
@@ -136,9 +145,13 @@ export const getActiveListings = query({
       .order("desc")
       .take(args.limit ?? 50);
 
+    // Hide listings from sellers whose store is not approved yet. The reserved
+    // "system" seller (demo content) is always visible.
+    const visible = await filterApprovedListings(ctx, allActive);
+
     // Resolve image URLs from storage or keep external URLs as-is
     const listings = await Promise.all(
-      allActive.map(async (listing) => {
+      visible.map(async (listing) => {
         const imageUrls: string[] = [];
         if (listing.images) {
           for (const img of listing.images) {
@@ -246,7 +259,10 @@ export const searchListings = query({
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
 
-    let results = allActive;
+    // Hide listings from sellers whose store is not approved yet.
+    const visibleListings = await filterApprovedListings(ctx, allActive);
+
+    let results = visibleListings;
 
     // Text search
     if (args.query) {
@@ -302,6 +318,32 @@ export const searchListings = query({
     );
   },
 });
+
+/**
+ * Filter listings down to those whose seller store is approved (or is the
+ * reserved demo "system" seller, or a legacy seller with no approval record).
+ */
+async function filterApprovedListings<T extends { sellerId: string }>(
+  ctx: any,
+  listings: T[]
+): Promise<T[]> {
+  const sellerIds = Array.from(new Set(listings.map((l) => l.sellerId))).filter(
+    (id): id is string => id !== SYSTEM_SELLER_ID
+  );
+  const sellers = await Promise.all(
+    sellerIds.map((id) => ctx.db.get(id as any))
+  );
+  const statusBySeller = new Map<string, string | undefined>();
+  for (const s of sellers) {
+    if (s) statusBySeller.set((s as any)._id, (s as any).sellerStatus);
+  }
+
+  return listings.filter((l) => {
+    if (l.sellerId === SYSTEM_SELLER_ID) return true; // demo content
+    const status = statusBySeller.get(l.sellerId);
+    return status !== "pending" && status !== "rejected";
+  });
+}
 
 /** Generate a Convex file storage upload URL for product images */
 export const generateUploadUrl = mutation({

@@ -1,18 +1,30 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { api } from "./_generated/api";
+import { getSessionUser } from "./users";
 
 const ADMIN_EMAIL = "murimiedwin227@gmail.com";
+
+/**
+ * A "real" platform user: has a real email and is not a guest/anonymous
+ * account. Used consistently across the admin dashboard and user lists so the
+ * two never disagree on totals.
+ */
+function isRealUser(u: any): boolean {
+  return (
+    typeof u.email === "string" &&
+    u.email.includes("@") &&
+    u.name !== "Guest User" &&
+    !u.email.toLowerCase().includes("anonymous")
+  );
+}
 
 /** Helper: verify the current user is an admin */
 async function requireAdmin(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Not authenticated");
 
-  const user = await ctx.db
-    .query("users")
-    .withIndex("email", (q: any) => q.eq("email", identity.email))
-    .first();
+  const user = await getSessionUser(ctx);
 
   if (!user) throw new Error("User not found");
 
@@ -83,16 +95,15 @@ export const getDashboardStats = query({
     const weekAgo = now - 604800000;
     const monthAgo = now - 2592000000;
 
-    // Count users by role. The authoritative role lives on users.role now that
-    // the backend persists the selected role at registration. Users with no role
-    // and no businessName are treated as buyers; users with a businessName but no
-    // explicit seller role are also classified as sellers (legacy accounts).
-    const buyers = users.filter((u) =>
-      u.role === "buyer" ||
-      (u.role === "admin" && false) ||
-      (!u.role && !u.businessName)
+    // Count users by role, restricted to REAL users (real email, not guest/
+    // anonymous) so the dashboard matches the User Management page. Users with
+    // no role and no businessName are buyers; users with a businessName but no
+    // explicit seller role are sellers (legacy accounts).
+    const realUsers = users.filter(isRealUser);
+    const buyers = realUsers.filter((u) =>
+      u.role === "buyer" || (!u.role && !u.businessName)
     );
-    const sellers = users.filter((u) =>
+    const sellers = realUsers.filter((u) =>
       u.role === "seller" || u.businessName
     );
     // Freelancers are tracked in freelanceProfiles, not in users.role.
@@ -116,7 +127,7 @@ export const getDashboardStats = query({
     );
     const heldInEscrow = pendingEscrows.reduce((sum, e) => sum + e.amount, 0);
 
-    const newUsersToday = users.filter((u) => (u._creationTime || 0) > dayAgo).length;
+    const newUsersToday = realUsers.filter((u) => (u._creationTime || 0) > dayAgo).length;
     const newListingsToday = listings.filter((l) => l.createdAt > dayAgo).length;
     const newOrdersToday = escrows.filter((e) => e.createdAt > dayAgo).length;
 
@@ -129,15 +140,16 @@ export const getDashboardStats = query({
 
     return {
       users: {
-        total: users.length,
+        total: realUsers.length,
         buyers: buyers.length,
         sellers: sellers.length,
-        admins: users.filter((u) => u.role === "admin").length,
+        admins: realUsers.filter((u) => u.role === "admin").length,
         freelancers: freelanceProfiles.length,
         employers: new Set(freelanceTasks.map((t) => t.employerId)).size,
         newToday: newUsersToday,
-        verified: users.filter((u) => u.kycStatus === "verified").length,
-        pendingKyc: users.filter((u) => u.kycStatus === "pending").length,
+        verified: realUsers.filter((u) => u.kycStatus === "verified").length,
+        pendingKyc: realUsers.filter((u) => u.kycStatus === "pending").length,
+        pendingSellers: realUsers.filter((u) => u.role === "seller" && u.sellerStatus === "pending").length,
       },
       freelance: {
         profiles: freelanceProfiles.length,
@@ -226,6 +238,70 @@ export const getAllUsers = query({
           .reduce((sum, e) => sum + e.amount, 0),
       };
     });
+  },
+});
+
+/** Admin: get seller accounts awaiting approval */
+export const getPendingSellers = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    return users
+      .filter((u: any) => u.role === "seller" && u.sellerStatus === "pending")
+      .map((u: any) => ({
+        _id: u._id,
+        name: u.name || u.email?.split("@")[0] || "Unknown",
+        email: u.email || "",
+        businessName: u.businessName || "",
+        phone: u.phone || "",
+        county: u.county || "",
+        town: u.town || "",
+        kycStatus: u.kycStatus || "not_started",
+        joinedAt: u.joinedAt || u._creationTime,
+      }));
+  },
+});
+
+/** Admin: approve or reject a seller store */
+export const reviewSellerApproval = mutation({
+  args: {
+    userId: v.string(),
+    status: v.union(v.literal("approved"), v.literal("rejected")),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await requireAdmin(ctx);
+    const target = await ctx.db.get(args.userId as any);
+    if (!target) throw new Error("User not found");
+
+    await ctx.db.patch(args.userId as any, {
+      sellerStatus: args.status,
+    });
+
+    // Notify the seller that their store was reviewed.
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      type: "seller_approval",
+      title: args.status === "approved" ? "Store approved 🎉" : "Store application rejected",
+      message:
+        args.status === "approved"
+          ? "Your seller store has been approved. You can now publish products."
+          : `Your seller store application was rejected${args.notes ? `: ${args.notes}` : ". Please contact support."}`, 
+      read: false,
+      link: "/seller",
+      createdAt: Date.now(),
+    });
+
+    await auditLog(
+      ctx as any,
+      user._id,
+      user.name || user.email || "Admin",
+      `SELLER_${args.status.toUpperCase()}`,
+      "user",
+      args.userId,
+      args.notes || "No notes"
+    );
+    return { success: true };
   },
 });
 

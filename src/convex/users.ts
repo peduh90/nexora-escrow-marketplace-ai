@@ -356,6 +356,8 @@ export const ensureUserProfile = mutation({
         role: targetRole,
         passwordHash: incomingPasswordHash,
         businessName: typeof args.businessName === "string" ? args.businessName : undefined,
+        // New seller accounts require admin approval before they can operate.
+        sellerStatus: targetRole === "seller" ? "pending" : undefined,
       }) as any;
     } else {
       // If no password is ever submitted, preserve the existing accessible credential
@@ -381,7 +383,18 @@ export const ensureUserProfile = mutation({
       }
 
       if (typeof u.role !== "string" || u.role !== targetRole) {
-        await ctx.db.patch(u._id, { role: targetRole });
+        const rolePatch: Record<string, any> = { role: targetRole };
+        // Becoming a seller for the first time puts the store in "pending"
+        // review. Existing approval state (approved/rejected) is preserved.
+        if (
+          targetRole === "seller" &&
+          u.role !== "seller" &&
+          u.sellerStatus !== "approved" &&
+          u.sellerStatus !== "rejected"
+        ) {
+          rolePatch.sellerStatus = "pending";
+        }
+        await ctx.db.patch(u._id, rolePatch);
       }
 
       await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
@@ -489,7 +502,9 @@ export const getUserCounts = query({
     // Freelancers are tracked in freelanceProfiles, NOT in users.role — the role validator
     // doesn't include "freelancer" so this will always be 0. Count them in the admin dashboard
     // from the freelanceProfiles table instead.
-    const buyers = realUsers.filter((u: any) => u.role === "buyer" || (!u.role && u.email && u.email.includes("@") && u.name && !u.businessName));
+    // Real users without a stored role and without a business name are buyers —
+    // no `name` requirement, since OTP-created accounts often have no name yet.
+    const buyers = realUsers.filter((u: any) => u.role === "buyer" || (!u.role && u.email && u.email.includes("@") && !u.businessName));
     const sellers = realUsers.filter((u: any) => u.role === "seller" || !!u.businessName);
     const admins = realUsers.filter((u: any) => u.role === "admin");
     const verified = realUsers.filter((u: any) => u.kycStatus === "verified");
@@ -542,12 +557,15 @@ export const checkAndPromoteAdmin = mutation({
       const name = identity.name || identity.email?.split("@")[0] || "User";
       const phoneFromForm = typeof args.phone === "string" ? args.phone : undefined;
 
+      const targetRoleForInsert = resolveRoleForAdminFlow(identity.email, typeof args.role === "string" ? args.role : undefined, null);
       user = await ctx.db.insert("users", {
         name,
         email: identity.email,
-        role: resolveRoleForAdminFlow(identity.email, typeof args.role === "string" ? args.role : undefined, null),
+        role: targetRoleForInsert,
         phone: phoneFromForm,
         kycStatus: "not_started",
+        // New seller accounts require admin approval before they can operate.
+        sellerStatus: targetRoleForInsert === "seller" ? "pending" : undefined,
         lastLoginAt: Date.now(),
         lastActivityAt: Date.now(),
         joinedAt: Date.now(),
@@ -567,7 +585,18 @@ export const checkAndPromoteAdmin = mutation({
       // whose role was already set to something else or undefined from legacy signups.
       const targetRole = resolveRoleForAdminFlow(identity.email, typeof args.role === "string" ? args.role : undefined, user as any);
       if (targetRole && u.role !== targetRole) {
-        await ctx.db.patch(u._id, { role: targetRole });
+        const rolePatch: Record<string, any> = { role: targetRole };
+        // Becoming a seller for the first time puts the store in "pending"
+        // review. Existing approval state is preserved.
+        if (
+          targetRole === "seller" &&
+          u.role !== "seller" &&
+          u.sellerStatus !== "approved" &&
+          u.sellerStatus !== "rejected"
+        ) {
+          rolePatch.sellerStatus = "pending";
+        }
+        await ctx.db.patch(u._id, rolePatch);
         // Refresh user record after patch (type assertion needed since db.get is generic)
         user = (await ctx.db.get(u._id)) as typeof user;
       }
@@ -699,6 +728,35 @@ export const updateProfile = mutation({
  * internal mutation, app users cannot invoke it, so it cannot be used for
  * privilege escalation.
  */
+/**
+ * Internal repair (CLI/server only): mark every existing seller account as
+ * "approved" so introducing the seller-approval gate never locks out accounts
+ * that were already operating before the gate existed. New seller
+ * registrations are still set to "pending" and require admin approval.
+ */
+export const backfillSellerApproval = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    let updated = 0;
+    for (const u of users) {
+      const rec = u as any;
+      const isSeller =
+        rec.role === "seller" ||
+        (typeof rec.businessName === "string" && rec.businessName.trim().length > 0);
+      if (
+        isSeller &&
+        rec.sellerStatus !== "approved" &&
+        rec.sellerStatus !== "rejected"
+      ) {
+        await ctx.db.patch(u._id, { sellerStatus: "approved" });
+        updated++;
+      }
+    }
+    return { updated };
+  },
+});
+
 export const repairUserRole = internalMutation({
   args: {
     email: v.string(),
