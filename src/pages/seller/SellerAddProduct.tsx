@@ -201,7 +201,8 @@ export default function SellerAddProduct() {
         sellerVerified: user?.kycStatus === "verified",
       });
 
-      navigate("/marketplace");
+      // Return the seller to their dashboard after publishing
+      navigate("/seller");
     } catch (err: any) {
       setError(err.message || "Failed to publish. Please try again.");
     } finally {
