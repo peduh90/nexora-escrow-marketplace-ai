@@ -814,6 +814,110 @@ export const repairSellerLogin = internalMutation({
 });
 
 /**
+ * Internal wipe (CLI/server only): remove EVERY account except the platform
+ * admin, and remove every published product/listing — resetting the
+ * marketplace to a clean admin-only state. Auth records (accounts, sessions,
+ * pending verification codes) and all user-scoped data (notifications, wallet
+ * transactions, messages, reviews, escrows, etc.) belonging to removed users
+ * are deleted too.
+ */
+export const wipeToAdminOnly = internalMutation({
+  args: {},
+  handler: async (ctx: any) => {
+    const allUsers = await ctx.db.query("users").collect();
+    const removedUserIds = new Set<string>();
+    let keptUsers = 0;
+    for (const u of allUsers) {
+      const rec = u as any;
+      if (rec.email && String(rec.email).toLowerCase() === ADMIN_EMAIL) {
+        keptUsers++;
+        continue;
+      }
+      removedUserIds.add(u._id);
+      await ctx.db.delete(u._id);
+    }
+
+    // Auth-linked records for removed users.
+    const authAccounts = await ctx.db.query("authAccounts").collect();
+    let authAccountsDeleted = 0;
+    for (const a of authAccounts) {
+      if (removedUserIds.has((a as any).userId)) {
+        await ctx.db.delete(a._id);
+        authAccountsDeleted++;
+      }
+    }
+    const authSessions = await ctx.db.query("authSessions").collect();
+    let authSessionsDeleted = 0;
+    for (const s of authSessions) {
+      if (removedUserIds.has((s as any).userId)) {
+        await ctx.db.delete(s._id);
+        authSessionsDeleted++;
+      }
+    }
+    // Transient OTP codes are useless after a wipe.
+    const verificationRequests = await ctx.db.query("authVerificationRequests").collect();
+    for (const vr of verificationRequests) await ctx.db.delete(vr._id);
+
+    // All published products/listings.
+    const listings = await ctx.db.query("listings").collect();
+    for (const l of listings) await ctx.db.delete(l._id);
+
+    async function deleteWhereUser(tableName: string, fields: string[]): Promise<number> {
+      const docs = await ctx.db.query(tableName).collect();
+      let deleted = 0;
+      for (const doc of docs) {
+        const rec = doc as any;
+        if (fields.some((f) => typeof rec[f] === "string" && removedUserIds.has(rec[f]))) {
+          await ctx.db.delete(doc._id);
+          deleted++;
+        }
+      }
+      return deleted;
+    }
+
+    const cleared: Record<string, number> = {};
+    const scopedTables: Array<[string, string[]]> = [
+      ["notifications", ["userId"]],
+      ["walletTransactions", ["userId"]],
+      ["kycApplications", ["userId"]],
+      ["messages", ["senderId", "receiverId"]],
+      ["conversations", ["buyerId", "sellerId"]],
+      ["reviews", ["buyerId", "sellerId"]],
+      ["escrows", ["buyerId", "sellerId"]],
+      ["disputes", ["filedBy"]],
+      ["deliveries", ["driverId"]],
+      ["freelanceProfiles", ["userId"]],
+      ["freelanceTasks", ["employerId"]],
+      ["freelanceApplications", ["freelancerId"]],
+      ["freelanceProjects", ["employerId", "freelancerId"]],
+      ["freelanceEarnings", ["freelancerId"]],
+      ["freelanceServices", ["freelancerId"]],
+      ["freelanceReviews", ["reviewerId", "revieweeId"]],
+      ["freelanceMessages", ["senderId"]],
+      ["jobPosts", ["posterId"]],
+      ["jobApplications", ["applicantId"]],
+      ["supportTickets", ["userId"]],
+      ["ticketMessages", ["senderId"]],
+      ["aiAuditLog", ["userId"]],
+      ["fraudAlerts", ["userId"]],
+    ];
+    for (const [table, fields] of scopedTables) {
+      cleared[table] = await deleteWhereUser(table, fields);
+    }
+
+    return {
+      success: true,
+      keptUsers,
+      usersRemoved: removedUserIds.size,
+      listingsRemoved: listings.length,
+      authAccountsDeleted,
+      authSessionsDeleted,
+      cleared,
+    };
+  },
+});
+
+/**
  * Internal repair (CLI/server only): mark every existing seller account as
  * "approved" so introducing the seller-approval gate never locks out accounts
  * that were already operating before the gate existed. New seller

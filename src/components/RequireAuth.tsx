@@ -29,13 +29,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    // Auth identity present but no Nexora user record — let the auth flow repair it.
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="size-6 animate-spin text-amber-400" />
-        <span className="sr-only">Loading account profile...</span>
-      </main>
-    );
+    // Auth identity present but no Nexora user record — the account was either
+    // wiped/deleted or the profile never materialised. Don't hang on a spinner:
+    // send the user to the auth page so they can sign in with a valid account.
+    const returnTo = location.pathname + location.search;
+    return <Navigate to={`/auth?returnTo=${encodeURIComponent(returnTo)}`} replace />;
   }
 
   if (!user.role) {
