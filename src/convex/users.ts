@@ -302,19 +302,30 @@ export const ensureUserProfile = mutation({
       typeof args.businessName === "string" ? args.businessName : existingBusinessName,
     );
 
+    const incomingPassword = typeof (args as any).password === "string" ? (args as any).password.trim() : "";
+    const incomingPasswordHash =
+      incomingPassword.length > 0 ? await hashStoredPassword(incomingPassword) : undefined;
+
     if (!user) {
-      const passwordHash = (typeof (args as any).password === "string" && (args as any).password.trim().length > 0)
-        ? await hashStoredPassword((args as any).password)
-        : undefined;
       user = await ctx.db.insert("users", {
         name: args.name || identity.name || identity.email?.split("@")[0] || "User",
         email: identity.email,
         phone: typeof args.phone === "string" ? args.phone : undefined,
         role: targetRole,
-        passwordHash,
+        passwordHash: incomingPasswordHash,
         businessName: typeof args.businessName === "string" ? args.businessName : undefined,
       }) as any;
     } else {
+      // If no password is ever submitted, preserve the existing accessible credential
+      // so a user cannot be silently locked out by a profile sync that omits password.
+      const existingPasswordHash = (user as any).passwordHash;
+      if (
+        incomingPassword.length > 0 &&
+        (!existingPasswordHash ||
+          !(await verifyStoredPasswordHash(existingPasswordHash, incomingPassword)))
+      ) {
+        await ctx.db.patch((user as any)._id, { passwordHash: incomingPasswordHash });
+      }
       const u = user as any;
 
       if (args.name !== undefined && u.name !== args.name) {
