@@ -3,7 +3,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { getDeliveryFee } from "@/lib/delivery-config";
 import { useAuth } from "@/hooks/use-auth"
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Shield, Heart, Share2, MessageSquare, ShoppingCart, ArrowLeft, Star, MapPin, Clock,
   CheckCircle2, Truck, ChevronRight, Package, Eye, X, Minus, Plus, Loader2, Send, MessageCircle, Phone,
@@ -79,12 +79,22 @@ export default function ProductDetails() {
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [mpesaError, setMpesaError] = useState("");
 
+  // Freelance (digital service) listings live on the Freelance Marketplace
+  // detail page — never render the physical-goods flow for them here.
+  const isFreelanceListing = !!listing && (listing as any).marketplace === "freelance";
+  useEffect(() => {
+    if (isFreelanceListing && id) {
+      navigate(`/freelance/service/${id}`, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFreelanceListing, id]);
+
   // Increment views on first load
   if (id && listing) {
     incrementViews({ listingId: id as any }).catch(() => {});
   }
 
-  if (listing === undefined) {
+  if (listing === undefined || isFreelanceListing) {
     return (
       <div className="min-h-screen bg-[#05050A] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-nx-violet animate-spin" />

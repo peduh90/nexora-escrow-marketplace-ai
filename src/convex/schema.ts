@@ -197,6 +197,13 @@ const schema = defineSchema(
     // Marketplace listings
     listings: defineTable({
       sellerId: v.string(),
+      // Which marketplace this listing lives in. Legacy rows without the field
+      // are treated as normal product listings. Freelance/digital-tool listings
+      // only ever surface inside the Freelance Marketplace.
+      marketplace: v.optional(v.union(
+        v.literal("product"),
+        v.literal("freelance"),
+      )),
       title: v.string(),
       description: v.string(),
       price: v.number(),
@@ -239,7 +246,8 @@ const schema = defineSchema(
       .index("by_category", ["category"])
       .index("by_status", ["status"])
       .index("by_created", ["createdAt"])
-      .index("by_county", ["originCounty"]),
+      .index("by_county", ["originCounty"])
+      .index("by_marketplace", ["marketplace"]),
 
     // Wallet transactions
     walletTransactions: defineTable({

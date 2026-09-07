@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
 import { CATEGORIES as FALLBACK_CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
 import { CATEGORY_BANNERS } from "@/lib/category-images";
+import { FREELANCE_CATEGORIES, getFreelanceCategory } from "@/lib/freelance-marketplace";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 
 const KENYA_COUNTIES: Record<string, string[]> = {
@@ -114,6 +115,12 @@ export default function SellerAddProduct() {
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
+    // Which marketplace the listing is published to. Decided automatically by
+    // the chosen category — Freelance Marketplace categories (AI tools,
+    // writing, design, development, marketing, bots, other services) place the
+    // listing in the Freelance Marketplace; every other category publishes to
+    // the Normal Marketplace.
+    marketplace: "" as "" | "product" | "freelance",
     category: "",
     subcategory: "",
     title: "",
@@ -129,7 +136,7 @@ export default function SellerAddProduct() {
   });
 
   const dbCategories = useQuery(api.adminCategories.getActiveCategories);
-  const categories = dbCategories && dbCategories.length > 0
+  const productCategories = dbCategories && dbCategories.length > 0
     ? dbCategories.map(c => ({
         name: c.name,
         slug: c.slug,
@@ -140,23 +147,51 @@ export default function SellerAddProduct() {
       }))
     : FALLBACK_CATEGORIES;
 
+  const isFreelanceMode = form.marketplace === "freelance";
+  // Freelance Marketplace categories (digital services & tools) or the Normal
+  // Marketplace product categories.
+  const categories = isFreelanceMode ? FREELANCE_CATEGORIES : productCategories;
+  const FREELANCE_SLUGS = new Set(FREELANCE_CATEGORIES.map(c => c.slug));
+
   const update = (key: string, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
     if (error) setError("");
   };
 
+  // Choosing a category decides the marketplace automatically — the two
+  // marketplaces can never mix.
+  const pickCategory = (catSlug: string) => {
+    const nextMarketplace = FREELANCE_SLUGS.has(catSlug) ? "freelance" : "product";
+    update("marketplace", nextMarketplace);
+    update("category", catSlug);
+    update("subcategory", "");
+    update("attributes", {});
+    setStep(1);
+  };
+
+  const selectMarketplace = (mp: "product" | "freelance") => {
+    if (form.marketplace === mp) return;
+    update("marketplace", mp);
+    update("category", "");
+    update("subcategory", "");
+    update("attributes", {});
+    setStep(0);
+  };
+
   const selectedCategory = categories.find(c => c.slug === form.category);
   const selectedSubcategory = selectedCategory?.subcategories.find(s => s.slug === form.subcategory);
-  const specTemplate = SPECS_TEMPLATES[form.subcategory] || [];
+  const specTemplate = isFreelanceMode ? [] : (SPECS_TEMPLATES[form.subcategory] || []);
   const countyTowns = form.county ? KENYA_COUNTIES[form.county] : [];
 
   const handlePublish = async () => {
     setError("");
-    if (!form.title.trim()) { setError("Please enter a product title"); return; }
+    if (!form.title.trim()) { setError("Please enter a listing title"); return; }
     if (!form.price || Number(form.price) <= 0) { setError("Please enter a valid price"); return; }
     if (!form.category) { setError("Please select a category"); return; }
-    if (!form.county.trim()) { setError("Please select a county"); return; }
-    if (!form.town.trim()) { setError("Please select a town"); return; }
+    if (!isFreelanceMode) {
+      if (!form.county.trim()) { setError("Please select a county"); return; }
+      if (!form.town.trim()) { setError("Please select a town"); return; }
+    }
 
     setPublishing(true);
     try {
@@ -180,20 +215,28 @@ export default function SellerAddProduct() {
         imageKeys.push(key);
       }
 
+      // Physical products ship from a county/town; digital freelance services
+      // are delivered online, so their location is normalized.
+      const attributes = { ...form.attributes };
+      if (isFreelanceMode) {
+        attributes["Marketplace"] = "Freelance";
+      }
+
       await createListing({
+        marketplace: isFreelanceMode ? "freelance" : "product",
         title: form.title,
-        description: form.description || `${form.title} — ${form.condition}`,
+        description: form.description || `${form.title} — ${isFreelanceMode ? "Freelance service" : form.condition}`,
         price: Number(form.price),
         currency: "KES",
         category: form.category,
         subcategory: form.subcategory || undefined,
         images: imageKeys,
-        transportAvailable: true,
-        originCounty: form.county,
-        originTown: form.town,
+        transportAvailable: !isFreelanceMode,
+        originCounty: isFreelanceMode ? "Online" : form.county,
+        originTown: isFreelanceMode ? "Digital" : form.town,
         escrowProtection: true,
-        condition: form.condition,
-        attributes: Object.keys(form.attributes).length > 0 ? form.attributes : undefined,
+        condition: isFreelanceMode ? "Service" : form.condition,
+        attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
         negotiable: form.negotiable,
         verified: user?.kycStatus === "verified",
         sellerName: user?.businessName || user?.name || "Seller",
@@ -237,14 +280,38 @@ export default function SellerAddProduct() {
 
         {step === 0 && (
           <div className="space-y-4">
+            {/* Marketplace selector — decides where the listing will appear */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+              <button onClick={() => selectMarketplace("product")}
+                className={`relative rounded-xl border p-4 text-left transition-all ${!isFreelanceMode ? "border-nx-cyan/40 bg-nx-cyan/5 shadow-[0_0_20px_rgba(6,182,212,0.08)]" : "border-white/[0.06] bg-white/[0.02] hover:border-white/10"}`}>
+                <p className="text-base font-bold text-white">🛍️ Normal Marketplace</p>
+                <p className="text-[11px] text-white/40 leading-relaxed mt-1">Physical products — phones, fashion, home goods, vehicles, farm produce & everything tangible.</p>
+                {!isFreelanceMode && (
+                  <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wider text-nx-cyan px-2 py-0.5 rounded-full bg-nx-cyan/10">Selected</span>
+                )}
+              </button>
+              <button onClick={() => selectMarketplace("freelance")}
+                className={`relative rounded-xl border p-4 text-left transition-all ${isFreelanceMode ? "border-nx-violet/40 bg-nx-violet/5 shadow-[0_0_20px_rgba(139,92,246,0.1)]" : "border-white/[0.06] bg-white/[0.02] hover:border-white/10"}`}>
+                <p className="text-base font-bold text-white">💼 Freelance Marketplace</p>
+                <p className="text-[11px] text-white/40 leading-relaxed mt-1">Digital services & tools — AI accounts, writing, design, development, marketing, bots & more. Shown only on /freelance.</p>
+                {isFreelanceMode && (
+                  <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wider text-nx-violet px-2 py-0.5 rounded-full bg-nx-violet/10">Selected</span>
+                )}
+              </button>
+            </div>
+
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold text-white mb-1">What are you selling?</h2>
-              <p className="text-sm text-white/30">Choose the category that best fits your product</p>
+              <h2 className="text-xl font-bold text-white mb-1">{isFreelanceMode ? "What service are you offering?" : "What are you selling?"}</h2>
+              <p className="text-sm text-white/30">
+                {isFreelanceMode
+                  ? "Choose the freelance category that fits your service — it publishes straight to the Freelance Marketplace"
+                  : "Choose the category that best fits your product — it publishes to the Normal Marketplace"}
+              </p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {categories.map(cat => (
                 <button key={cat.slug}
-                  onClick={() => { update("category", cat.slug); update("subcategory", ""); update("attributes", {}); setStep(1); }}
+                  onClick={() => pickCategory(cat.slug)}
                   className={`relative overflow-hidden rounded-xl border text-left transition-all hover:scale-[1.02] ${form.category === cat.slug ? "border-nx-cyan/40 shadow-[0_0_20px_rgba(6,182,212,0.1)]" : "border-white/[0.06] hover:border-white/10"}`}
                 >
                   {CATEGORY_BANNERS[cat.slug] ? (
@@ -287,7 +354,7 @@ export default function SellerAddProduct() {
             </div>
             <button onClick={() => { update("subcategory", "general"); setStep(2); }}
               className="w-full text-center text-xs text-white/30 hover:text-white/50 py-2 transition-colors">
-              Skip — treat as general {selectedCategory.name} product
+              Skip — treat as general {selectedCategory.name} {isFreelanceMode ? "service" : "product"}
             </button>
           </div>
         )}
@@ -295,34 +362,40 @@ export default function SellerAddProduct() {
         {step === 2 && (
           <div className="space-y-5">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold text-white mb-1">Product Details</h2>
+              <h2 className="text-xl font-bold text-white mb-1">{isFreelanceMode ? "Service Details" : "Product Details"}</h2>
               <p className="text-sm text-white/30">
-                {selectedSubcategory ? `${selectedCategory?.name} → ${selectedSubcategory.name}` : "Add details about your product"}
+                {selectedSubcategory ? `${selectedCategory?.name} → ${selectedSubcategory.name}` : "Add details about your listing"}
               </p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block font-medium">Product Title *</label>
+                <label className="text-xs text-white/40 mb-1.5 block font-medium">{isFreelanceMode ? "Service Title *" : "Product Title *"}</label>
                 <input value={form.title} onChange={(e) => update("title", e.target.value)}
-                  placeholder="e.g. Toyota Harrier 2021 Automatic, Samsung Galaxy S24 Ultra"
+                  placeholder={isFreelanceMode
+                    ? "e.g. I will write 5 SEO blog articles, Telegram bot setup, Logo design package"
+                    : "e.g. Toyota Harrier 2021 Automatic, Samsung Galaxy S24 Ultra"}
                   className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-1.5 block font-medium">Description *</label>
                 <textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={4}
-                  placeholder="Describe your product in detail — condition, features, what's included..."
+                  placeholder={isFreelanceMode
+                    ? "Describe the service — what the buyer gets, deliverables, your experience..."
+                    : "Describe your product in detail — condition, features, what's included..."}
                   className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none resize-none" />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-white/40 mb-1.5 block font-medium">Condition *</label>
-                  <select value={form.condition} onChange={(e) => update("condition", e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-cyan/50 focus:outline-none">
-                    {["Brand New", "Used - Like New", "Used - Good", "Used - Fair", "Refurbished"].map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1.5">
+                {!isFreelanceMode && (
+                  <div>
+                    <label className="text-xs text-white/40 mb-1.5 block font-medium">Condition *</label>
+                    <select value={form.condition} onChange={(e) => update("condition", e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-cyan/50 focus:outline-none">
+                      {["Brand New", "Used - Like New", "Used - Good", "Used - Fair", "Refurbished"].map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div className={isFreelanceMode ? "col-span-2" : ""}>
                   <label className="text-xs text-white/40 mb-1.5 block font-medium">Negotiable</label>
                   <button onClick={() => update("negotiable", !form.negotiable)}
                     className={`w-full px-3 py-2.5 rounded-lg border text-sm text-left transition-colors ${form.negotiable ? "border-nx-cyan/30 bg-nx-cyan/5 text-nx-cyan" : "border-white/10 bg-white/[0.03] text-white/40"}`}>
@@ -367,7 +440,7 @@ export default function SellerAddProduct() {
 
         {step === 3 && <ImageUploadStep form={form} update={update} />}
 
-        {step === 4 && (
+        {step === 4 && !isFreelanceMode && (
           <div className="space-y-6">
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold text-white mb-1">Location & Pricing</h2>
@@ -430,6 +503,53 @@ export default function SellerAddProduct() {
           </div>
         )}
 
+        {step === 4 && isFreelanceMode && (
+          <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-bold text-white mb-1">Pricing & Delivery</h2>
+              <p className="text-sm text-white/30">How much, how fast, and what you deliver.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-white/40 mb-1.5 block font-medium">Price (KES) *</label>
+                  <input type="number" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="0"
+                    className="w-full px-3 py-3 rounded-lg bg-white/[0.03] border border-white/10 text-xl text-white font-bold placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 mb-1.5 block font-medium">Delivery time *</label>
+                  <input value={form.attributes["Delivery Time"] || ""}
+                    onChange={(e) => update("attributes", { ...form.attributes, "Delivery Time": e.target.value })}
+                    placeholder="e.g. 3 days, 1 week, 24 hours"
+                    className="w-full px-3 py-3 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-white/40 mb-1.5 block font-medium">Revisions included</label>
+                <select value={form.attributes["Revisions"] || "2"}
+                  onChange={(e) => update("attributes", { ...form.attributes, Revisions: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-cyan/50 focus:outline-none">
+                  {["0", "1", "2", "3", "Unlimited"].map(r => <option key={r} value={r}>{r === "Unlimited" ? "Unlimited revisions" : `${r} ${Number(r) === 1 ? "revision" : "revisions"}`}</option>)}
+                </select>
+              </div>
+              <div className="p-3 rounded-lg bg-nx-violet/5 border border-nx-violet/10">
+                <p className="text-xs text-white/50">💼 <span className="text-nx-violet font-medium">Digital delivery.</span> Work is delivered online and the fee stays in escrow until the buyer confirms delivery.</p>
+              </div>
+              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/40">Platform Fee (5%)</span>
+                  <span className="text-white/60">KES {Math.round(Number(form.price || 0) * 0.05).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/40">Your Earnings</span>
+                  <span className="text-emerald-400 font-bold">KES {Math.round(Number(form.price || 0) * 0.95).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/5">
           <button onClick={() => step > 0 ? setStep(step - 1) : navigate(-1)}
             className="px-4 py-2.5 rounded-xl text-sm text-white/40 hover:text-white/60 transition-colors flex items-center gap-1">
@@ -446,7 +566,7 @@ export default function SellerAddProduct() {
               {publishing ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Publishing...</>
               ) : (
-                <><Check className="w-4 h-4" /> Publish Product</>
+                <><Check className="w-4 h-4" /> Publish {isFreelanceMode ? "Service" : "Product"}</>
               )}
             </button>
           )}

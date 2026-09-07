@@ -29,9 +29,12 @@ export default function FreelanceServices() {
             </button>
             <h1 className="text-sm font-semibold text-white">Browse Services</h1>
           </div>
-          <button onClick={() => navigate("/freelance/services/new")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-nx-violet text-white text-xs font-semibold hover:bg-nx-violet/80 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Offer Service
+          <button
+            onClick={() => navigate("/freelance")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-nx-violet text-white text-xs font-semibold hover:bg-nx-violet/80 transition-colors"
+            title="Freelance services are published from a seller store — this takes you to the Freelance Marketplace"
+          >
+            <Plus className="w-3.5 h-3.5" /> Freelance Marketplace
           </button>
         </div>
 
@@ -49,7 +52,7 @@ export default function FreelanceServices() {
             <div className="text-center py-16 rounded-xl bg-white/[0.02] border border-white/5">
               <Package className="w-12 h-12 text-white/10 mx-auto mb-3" />
               <p className="text-sm text-white/40 font-medium">No services available yet</p>
-              <p className="text-[11px] text-white/20 mt-1">Be the first to offer your services</p>
+              <p className="text-[11px] text-white/20 mt-1">Open a seller store to publish services on the Freelance Marketplace</p>
             </div>
           ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../convex/_generated/api";
 
 import { Search, ArrowLeft, X, MapPin, Shield, Truck, Heart, ChevronRight } from "lucide-react";
@@ -16,13 +16,18 @@ const KENYA_COUNTIES = [
 ];
 
 export default function Marketplace() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(
+    searchParams.get("category"),
+  );
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedCounty, setSelectedCounty] = useState("All Counties");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
-  const [showHero, setShowHero] = useState(true);
+  const [showHero, setShowHero] = useState(
+    !searchParams.get("q") && !searchParams.get("category"),
+  );
   const navigate = useNavigate();
 
   const queryArgs = useMemo(() => {

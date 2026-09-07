@@ -121,7 +121,7 @@ export default function FreelanceFindWork() {
             ) : (
               filteredTasks.map((task: any, i: number) => (
                 <div key={task._id} className="p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-violet/15 transition-all cursor-pointer"
-                  onClick={() => navigate(`/freelance/task/${task._id}`)}>
+                  onClick={() => navigate(`/freelance/jobs/${task._id}`)}>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-2">

@@ -8,9 +8,59 @@ import { getSessionUser } from "./users";
  */
 export const SYSTEM_SELLER_ID = "system";
 
-/** Create a new listing (seller adds product) */
+/**
+ * Marketplace separation: every listing belongs to exactly one marketplace and
+ * only ever surfaces there. Legacy rows without the field are treated as
+ * "product" listings.
+ *
+ *  - product   → the Normal Marketplace  (/marketplace) — physical goods.
+ *  - freelance → the Freelance Marketplace (/freelance) — services & digital tools.
+ */
+export const MARKETPLACE = {
+  PRODUCT: "product",
+  FREELANCE: "freelance",
+} as const;
+export type MarketplaceValue = (typeof MARKETPLACE)[keyof typeof MARKETPLACE];
+
+/** Server-side list of allowed freelance categories (mirrors src/lib/freelance-marketplace.ts). */
+const FREELANCE_MARKETPLACE_CATEGORY_SLUGS = [
+  "ai-accounts-tools",
+  "writing",
+  "design",
+  "development",
+  "marketing",
+  "bots",
+  "other-services",
+];
+
+const marketplaceValidator = v.optional(
+  v.union(v.literal("product"), v.literal("freelance"))
+);
+
+/** Normalise a marketplace value — missing/legacy rows are product listings. */
+function normalizeMarketplace(m?: string): MarketplaceValue {
+  return m === MARKETPLACE.FREELANCE ? MARKETPLACE.FREELANCE : MARKETPLACE.PRODUCT;
+}
+
+/** Resolve Convex storage keys / external image URLs to displayable URLs. */
+async function resolveListingImages(ctx: any, images: string[] | undefined): Promise<string[]> {
+  const out: string[] = [];
+  for (const img of images || []) {
+    try {
+      const url = await ctx.storage.getUrl(img);
+      if (url) { out.push(url); continue; }
+    } catch { /* not a storage key, try as external URL */ }
+    if (typeof img === "string" && img.startsWith("http")) {
+      out.push(img);
+    }
+  }
+  return out;
+}
+
+/** Create a new listing (seller adds product or freelance service) */
 export const createListing = mutation({
   args: {
+    marketplace: marketplaceValidator,
     title: v.string(),
     description: v.string(),
     price: v.number(),
@@ -46,7 +96,16 @@ export const createListing = mutation({
       throw new Error("Your store application was rejected. Please contact support.");
     }
 
+    const marketplace = normalizeMarketplace(args.marketplace);
+
+    // A freelance listing must use a freelance category so it is guaranteed to
+    // show up only inside the Freelance Marketplace.
+    if (marketplace === MARKETPLACE.FREELANCE && !FREELANCE_MARKETPLACE_CATEGORY_SLUGS.includes(args.category)) {
+      throw new Error("Freelance listings must use a Freelance Marketplace category (AI tools, writing, design, development, marketing, bots or other services).");
+    }
+
     const listingId = await ctx.db.insert("listings", {
+      marketplace,
       sellerId: user._id,
       title: args.title,
       description: args.description,
@@ -132,46 +191,53 @@ export const deleteListing = mutation({
   },
 });
 
-/** Get active listings (homepage feed) */
+/**
+ * Core feed logic shared by the Normal and Freelance marketplaces. Only active
+ * listings from the requested marketplace are returned.
+ */
+async function getActiveListingsForMarketplace(ctx: any, marketplace: MarketplaceValue, limit: number) {
+  const allActive = await ctx.db
+    .query("listings")
+    .withIndex("by_status", (q: any) => q.eq("status", "active"))
+    .order("desc")
+    .take(limit);
+
+  const scoped = allActive.filter((l: any) => normalizeMarketplace(l.marketplace) === marketplace);
+
+  // Hide listings from sellers whose store is not approved yet. The reserved
+  // "system" seller (demo content) is always visible.
+  const visible = await filterApprovedListings(ctx, scoped);
+
+  // Resolve image URLs from storage or keep external URLs as-is
+  return Promise.all(
+    visible.map(async (listing: any) => ({
+      ...listing,
+      images: await resolveListingImages(ctx, listing.images),
+    }))
+  );
+}
+
+/** Get active listings (feed) — defaults to the Normal product marketplace. */
 export const getActiveListings = query({
-  args: { limit: v.optional(v.number()) },
+  args: {
+    marketplace: marketplaceValidator,
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
-    const allActive = await ctx.db
-      .query("listings")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .order("desc")
-      .take(args.limit ?? 50);
-
-    // Hide listings from sellers whose store is not approved yet. The reserved
-    // "system" seller (demo content) is always visible.
-    const visible = await filterApprovedListings(ctx, allActive);
-
-    // Resolve image URLs from storage or keep external URLs as-is
-    const listings = await Promise.all(
-      visible.map(async (listing) => {
-        const imageUrls: string[] = [];
-        if (listing.images) {
-          for (const img of listing.images) {
-            // Try Convex storage first
-            try {
-              const url = await ctx.storage.getUrl(img);
-              if (url) { imageUrls.push(url); continue; }
-            } catch { /* not a storage key, try as external URL */ }
-            // Fallback: treat as external URL (e.g. Unsplash)
-            if (typeof img === "string" && img.startsWith("http")) {
-              imageUrls.push(img);
-            }
-          }
-        }
-        return { ...listing, images: imageUrls };
-      })
-    );
-
-    return listings;
+    const marketplace = normalizeMarketplace(args.marketplace);
+    return getActiveListingsForMarketplace(ctx, marketplace, args.limit ?? 50);
   },
 });
 
-/** Get seller's own listings */
+/** Get active FREELANCE listings — only ever shown in the Freelance Marketplace. */
+export const getFreelanceListings = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    return getActiveListingsForMarketplace(ctx, MARKETPLACE.FREELANCE, args.limit ?? 50);
+  },
+});
+
+/** Get seller's own listings (all marketplaces — "My Products" area). */
 export const getSellerListings = query({
   args: {},
   handler: async (ctx) => {
@@ -188,21 +254,10 @@ export const getSellerListings = query({
 
     // Resolve image URLs from storage or keep external URLs as-is
     return Promise.all(
-      listings.map(async (listing) => {
-        const imageUrls: string[] = [];
-        if (listing.images) {
-          for (const img of listing.images) {
-            try {
-              const url = await ctx.storage.getUrl(img);
-              if (url) { imageUrls.push(url); continue; }
-            } catch { /* not a storage key, try as external URL */ }
-            if (typeof img === "string" && img.startsWith("http")) {
-              imageUrls.push(img);
-            }
-          }
-        }
-        return { ...listing, images: imageUrls };
-      })
+      listings.map(async (listing: any) => ({
+        ...listing,
+        images: await resolveListingImages(ctx, listing.images),
+      }))
     );
   },
 });
@@ -214,21 +269,10 @@ export const getListing = query({
     const listing = await ctx.db.get(args.listingId);
     if (!listing) return null;
 
-    // Resolve image URLs from storage or keep external URLs as-is
-    const imageUrls: string[] = [];
-    if (listing.images) {
-      for (const img of listing.images) {
-        try {
-          const url = await ctx.storage.getUrl(img);
-          if (url) { imageUrls.push(url); continue; }
-        } catch { /* not a storage key, try as external URL */ }
-        if (typeof img === "string" && img.startsWith("http")) {
-          imageUrls.push(img);
-        }
-      }
-    }
-
-    return { ...listing, images: imageUrls };
+    return {
+      ...listing,
+      images: await resolveListingImages(ctx, listing.images),
+    };
   },
 });
 
@@ -240,10 +284,13 @@ export const incrementViews = mutation({
     if (!listing) return;
     await ctx.db.patch(args.listingId, { views: listing.views + 1 });
   },
-});/** Search listings by text (basic title/description match) */
+});
+
+/** Search listings (defaults to the Normal product marketplace). */
 export const searchListings = query({
   args: {
     query: v.string(),
+    marketplace: marketplaceValidator,
     category: v.optional(v.string()),
     county: v.optional(v.string()),
     minPrice: v.optional(v.number()),
@@ -251,21 +298,27 @@ export const searchListings = query({
     condition: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const marketplace = normalizeMarketplace(args.marketplace);
+
     const allActive = await ctx.db
       .query("listings")
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
 
-    // Hide listings from sellers whose store is not approved yet.
-    const visibleListings = await filterApprovedListings(ctx, allActive);
+    // Scope to the requested marketplace FIRST so products and freelance
+    // services can never bleed into each other across search/filters.
+    let results = allActive.filter(
+      (l: any) => normalizeMarketplace(l.marketplace) === marketplace
+    );
 
-    let results = visibleListings;
+    // Hide listings from sellers whose store is not approved yet.
+    results = await filterApprovedListings(ctx, results);
 
     // Text search
     if (args.query) {
       const q = args.query.toLowerCase();
       results = results.filter(
-        (l) =>
+        (l: any) =>
           l.title.toLowerCase().includes(q) ||
           l.description.toLowerCase().includes(q) ||
           l.category.toLowerCase().includes(q)
@@ -274,44 +327,89 @@ export const searchListings = query({
 
     // Category filter
     if (args.category) {
-      results = results.filter((l) => l.category === args.category);
+      results = results.filter((l: any) => l.category === args.category);
     }
 
     // County filter
     if (args.county) {
-      results = results.filter((l) => l.originCounty === args.county);
+      results = results.filter((l: any) => l.originCounty === args.county);
     }
 
     // Price filters
     if (args.minPrice !== undefined) {
-      results = results.filter((l) => l.price >= args.minPrice!);
+      results = results.filter((l: any) => l.price >= args.minPrice!);
     }
     if (args.maxPrice !== undefined) {
-      results = results.filter((l) => l.price <= args.maxPrice!);
+      results = results.filter((l: any) => l.price <= args.maxPrice!);
     }
 
     // Condition filter
     if (args.condition) {
-      results = results.filter((l) => l.condition === args.condition);
+      results = results.filter((l: any) => l.condition === args.condition);
     }
 
     // Resolve image URLs from storage or keep external URLs as-is
     return Promise.all(
-      results.map(async (listing) => {
-        const imageUrls: string[] = [];
-        if (listing.images) {
-          for (const img of listing.images) {
-            try {
-              const url = await ctx.storage.getUrl(img);
-              if (url) { imageUrls.push(url); continue; }
-            } catch { /* not a storage key, try as external URL */ }
-            if (typeof img === "string" && img.startsWith("http")) {
-              imageUrls.push(img);
-            }
-          }
-        }
-        return { ...listing, images: imageUrls };
-      })
+      results.map(async (listing: any) => ({
+        ...listing,
+        images: await resolveListingImages(ctx, listing.images),
+      }))
+    );
+  },
+});
+
+/** Search freelance listings only — powering the Freelance Marketplace filters. */
+export const searchFreelanceListings = query({
+  args: {
+    query: v.string(),
+    category: v.optional(v.string()),
+    subcategory: v.optional(v.string()),
+    minPrice: v.optional(v.number()),
+    maxPrice: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const allActive = await ctx.db
+      .query("listings")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+
+    let results = allActive.filter(
+      (l: any) => normalizeMarketplace(l.marketplace) === MARKETPLACE.FREELANCE
+    );
+
+    results = await filterApprovedListings(ctx, results);
+
+    if (args.query) {
+      const q = args.query.toLowerCase();
+      results = results.filter(
+        (l: any) =>
+          l.title.toLowerCase().includes(q) ||
+          l.description.toLowerCase().includes(q) ||
+          l.category.toLowerCase().includes(q) ||
+          (l.subcategory || "").toLowerCase().includes(q)
+      );
+    }
+    if (args.category) {
+      results = results.filter((l: any) => l.category === args.category);
+    }
+    if (args.subcategory) {
+      results = results.filter((l: any) => l.subcategory === args.subcategory);
+    }
+    if (args.minPrice !== undefined) {
+      results = results.filter((l: any) => l.price >= args.minPrice!);
+    }
+    if (args.maxPrice !== undefined) {
+      results = results.filter((l: any) => l.price <= args.maxPrice!);
+    }
+
+    const sliced = results.slice(0, args.limit ?? 60);
+
+    return Promise.all(
+      sliced.map(async (listing: any) => ({
+        ...listing,
+        images: await resolveListingImages(ctx, listing.images),
+      }))
     );
   },
 });
@@ -351,5 +449,3 @@ export const generateUploadUrl = mutation({
     return await ctx.storage.generateUploadUrl();
   },
 });
-
-

@@ -545,6 +545,21 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
           {step === "roleSelect" && (
             <div className="w-full max-w-[640px]">
+              {/* Back button — return to where the user came from, falling back to home */}
+              <div className="flex justify-center mb-5">
+                <button
+                  onClick={() => {
+                    if (window.history.length > 1) {
+                      navigate(-1);
+                    } else {
+                      navigate("/");
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" /> Back
+                </button>
+              </div>
               <div className="text-center mb-8">
                 <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{isFreelanceRoute ? "Join Nexora Freelance" : "Choose Your Path"}</h1>
                 <p className="text-white/40 text-sm">{isFreelanceRoute ? "How will you use Nexora Freelance?" : "How will you use Nexora Market?"}</p>

@@ -48,6 +48,10 @@ const SellerAddProduct = lazy(() => import("./pages/seller/SellerAddProduct.tsx"
 const SellerEditProduct = lazy(() => import("./pages/seller/SellerEditProduct.tsx"));
 // Freelance marketplace
 const FreelanceLanding = lazy(() => import("./pages/freelance/FreelanceLanding.tsx"));
+const FreelanceServiceDetail = lazy(() => import("./pages/freelance/FreelanceServiceDetail.tsx"));
+const FreelanceJobs = lazy(() => import("./pages/freelance/FreelanceJobs.tsx"));
+const FreelanceJobDetail = lazy(() => import("./pages/freelance/FreelanceJobDetail.tsx"));
+const FreelancerTools = lazy(() => import("./pages/freelance/FreelancerTools.tsx"));
 
 const FreelanceDashboard = lazy(() => import("./pages/freelance/FreelanceDashboard.tsx"));
 // Employer panel
@@ -61,7 +65,6 @@ const FreelanceServices = lazy(() => import("./pages/freelance/FreelanceServices
 const FreelanceEarnings = lazy(() => import("./pages/freelance/FreelanceEarnings.tsx"));
 const FreelanceSettings = lazy(() => import("./pages/freelance/FreelanceSettings.tsx"));
 const FreelanceMessages = lazy(() => import("./pages/freelance/FreelanceMessages.tsx"));
-const JobBoard = lazy(() => import("./pages/JobBoard.tsx"));
 const Chat = lazy(() => import("./pages/Chat.tsx"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails.tsx"));
 const PrivacyPage = lazy(() => import("./pages/Privacy.tsx"));
@@ -229,10 +232,17 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/" element={<Landing />} />
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/auth" element={<AuthPage redirectAfterAuth="/buyer" />} />
-              <Route path="/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
+              {/* Public freelance jobs board (legacy /jobs URL) */}
+              <Route path="/jobs" element={<FreelanceJobs />} />
 
-              {/* Freelance Marketplace */}
+              {/* Freelance Marketplace — services & digital tools, jobs, tools */}
               <Route path="/freelance" element={<FreelanceLanding />} />
+              <Route path="/freelance/service/:id" element={<FreelanceServiceDetail />} />
+              <Route path="/freelance/jobs" element={<FreelanceJobs />} />
+              <Route path="/freelance/jobs/:id" element={<FreelanceJobDetail />} />
+              {/* legacy deep-link kept for the freelancer panel's Find Work cards */}
+              <Route path="/freelance/task/:id" element={<FreelanceJobDetail />} />
+              <Route path="/freelance/tools" element={<FreelancerTools />} />
               <Route path="/freelance/dashboard" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceDashboard /></RoleRouter>} />
               {/* Employer routes */}
               <Route path="/employer" element={<RoleRouter allowedRoles={["employer"]}><EmployerDashboard /></RoleRouter>} />
@@ -267,7 +277,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/buyer/disputes" element={<RoleRouter allowedRoles={["buyer"]}><BuyerDisputes /></RoleRouter>} />
               <Route path="/buyer/profile" element={<RoleRouter allowedRoles={["buyer"]}><BuyerProfile /></RoleRouter>} />
               <Route path="/buyer/marketplace" element={<RoleRouter allowedRoles={["buyer"]}><Marketplace /></RoleRouter>} />
-              <Route path="/buyer/jobs" element={<RoleRouter allowedRoles={["buyer"]}><JobBoard /></RoleRouter>} />
+              <Route path="/buyer/jobs" element={<RoleRouter allowedRoles={["buyer"]}><FreelanceJobs /></RoleRouter>} />
               <Route path="/buyer/deliveries" element={<RoleRouter allowedRoles={["buyer"]}><BuyerDeliveries /></RoleRouter>} />
               <Route path="/buyer/settings" element={<RoleRouter allowedRoles={["buyer"]}><BuyerSettings /></RoleRouter>} />
 
