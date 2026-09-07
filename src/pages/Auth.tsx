@@ -534,6 +534,20 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.03)_0%,transparent_70%)]" />
       </div>
 
+      {/* Page-level back navigation (top-left, always visible) */}
+      <button
+        onClick={() => {
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else {
+            navigate("/");
+          }
+        }}
+        className="absolute left-3 sm:left-5 top-3 sm:top-5 z-30 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-xs font-medium text-white/60 hover:text-white hover:bg-white/[0.08] hover:border-white/20 backdrop-blur-sm transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" /> Back
+      </button>
+
       <div className="flex-1 flex items-center justify-center w-full px-4 relative z-10">
         <div className="flex items-center justify-center h-full flex-col w-full max-w-[900px]">
           <button onClick={() => navigate("/")} className="flex items-center gap-2 mb-6 group">
@@ -545,21 +559,6 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
           {step === "roleSelect" && (
             <div className="w-full max-w-[640px]">
-              {/* Back button — return to where the user came from, falling back to home */}
-              <div className="flex justify-center mb-5">
-                <button
-                  onClick={() => {
-                    if (window.history.length > 1) {
-                      navigate(-1);
-                    } else {
-                      navigate("/");
-                    }
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back
-                </button>
-              </div>
               <div className="text-center mb-8">
                 <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{isFreelanceRoute ? "Join Nexora Freelance" : "Choose Your Path"}</h1>
                 <p className="text-white/40 text-sm">{isFreelanceRoute ? "How will you use Nexora Freelance?" : "How will you use Nexora Market?"}</p>
