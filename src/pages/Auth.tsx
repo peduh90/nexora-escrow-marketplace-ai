@@ -354,49 +354,48 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setIsLoading(true);
     setError(null);
 
-    // ---- Client-side pre-check so we reject obviously weak input before hitting
-    // the network. Real enforcement still happens in verifyLogin (server-side). ----
+    // ---- Client-side pre-check (login only validates, never enforces the
+    // signup strength policy — the server decides via the stored hash). ----
     if (loginPassword.trim().length === 0) {
       setError("Password is required.");
-      setIsLoading(false);
-      return;
-    }
-    if (!isPasswordValid(loginPassword)) {
-      setError("Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a symbol.");
       setIsLoading(false);
       return;
     }
 
     try {
       const result = await verifyLogin({ email: loginEmail, password: loginPassword });
-      if (result?.success) {
+      if (result?.success && (result as any).tokens?.token) {
+        const tokens = (result as any).tokens as { token: string; refreshToken: string };
+        // Persist the auth session exactly like the Convex auth client does
+        // (tokens are namespaced by the Convex client address), then hard
+        // reload so ConvexAuthProvider picks the token up from storage and
+        // this becomes a REAL session — protected routes work because a
+        // session now exists, not just a verified credential.
+        const ns = (import.meta.env.VITE_CONVEX_URL as string).replace(/[^a-zA-Z0-9]/g, "");
+        localStorage.setItem(`__convexAuthJWT_${ns}`, tokens.token);
+        localStorage.setItem(`__convexAuthRefreshToken_${ns}`, tokens.refreshToken);
+
         // Navigate using the role returned from the backend, which is read from
         // the persistent DB record. Do NOT fallback to /buyer when the role is
         // missing — instead route to the auth page so the profile can be repaired.
         const r = result.role;
-        if (!r) {
-          setError("Your account role could not be loaded. Please set up your account.");
-          setLoginPassword("");
-          return;
-        }
-        if (r === "admin") {
-          navigate("/admin");
-        } else if (r === "seller" || r === "driver") {
-          navigate("/seller");
-        } else if (r === "freelancer") {
-          navigate("/freelance");
-        } else if (r === "buyer") {
-          navigate("/buyer");
-        } else if (r === "employer") {
-          navigate("/employer");
-        } else {
+        let target: string | null = null;
+        if (r === "admin") target = "/admin";
+        else if (r === "seller" || r === "driver") target = "/seller";
+        else if (r === "freelancer") target = "/freelance";
+        else if (r === "buyer") target = "/buyer";
+        else if (r === "employer") target = "/employer";
+        else {
           setError("Your account role is not recognised. Please contact support.");
           setLoginPassword("");
+          setIsLoading(false);
+          return;
         }
-      } else {
-        setError("Invalid email or password. Please check your details.");
-        setLoginPassword("");
+        window.location.href = target;
+        return;
       }
+      setError("Invalid email or password. Please check your details.");
+      setLoginPassword("");
     } catch (err: any) {
       setError(err.message || "Login failed. Please try again.");
     } finally {

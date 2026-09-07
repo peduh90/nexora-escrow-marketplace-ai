@@ -287,12 +287,28 @@ export const verifyLogin = mutation({
       }
     }
 
+    // Create a REAL auth session for this user and return its tokens.
+    // Password login previously only verified credentials and navigated — it
+    // never created a session, so protected routes had no auth and hung on the
+    // loading spinner. The auth library's own signInImpl does exactly this via
+    // the internal auth:store mutation (type "signIn"), creating an
+    // authSessions row and issuing access + refresh tokens. The string path
+    // mirrors the library's callSignIn and avoids an import cycle.
+    const session = await ctx.runMutation("auth:store" as any, {
+      args: {
+        type: "signIn",
+        userId: (resolved ?? u)._id,
+        generateTokens: true,
+      },
+    });
+
     return {
       success: true,
       userId: (resolved ?? u)._id,
       email: (resolved ?? u).email,
       name: (resolved ?? u).name,
       role: finalRole,
+      tokens: (session as any)?.tokens ?? null,
     };
   },
 });
@@ -728,6 +744,75 @@ export const updateProfile = mutation({
  * internal mutation, app users cannot invoke it, so it cannot be used for
  * privilege escalation.
  */
+/**
+ * Internal repair (CLI/server only): unify a seller's accounts after the
+ * broken early-auth flows split one person across two user records.
+ *
+ * Copies the password hash (and any missing contact fields) from the source
+ * record — typically the pre-OTP anonymous account where the password was
+ * actually stored — onto the email record, and moves the source record's
+ * listings to the email record so the seller's products follow their
+ * email + password login.
+ */
+export const repairSellerLogin = internalMutation({
+  args: {
+    fromUserId: v.id("users"),
+    toEmail: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const from = await ctx.db.get(args.fromUserId);
+    if (!from) return { success: false, error: "Source user not found" };
+    const to = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.toEmail))
+      .first();
+    if (!to) return { success: false, error: `User with email ${args.toEmail} not found` };
+
+    const f = from as any;
+    const t = to as any;
+    const patch: Record<string, any> = {};
+
+    if (typeof f.passwordHash === "string" && f.passwordHash.length > 0) {
+      patch.passwordHash = f.passwordHash;
+    }
+    if (typeof f.phone === "string" && f.phone && !t.phone) {
+      patch.phone = f.phone;
+    }
+    if (typeof f.county === "string" && f.county && !t.county) patch.county = f.county;
+    if (typeof f.town === "string" && f.town && !t.town) patch.town = f.town;
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(to._id, patch);
+    }
+
+    // Move the source account's listings to the email account.
+    const listings = await ctx.db
+      .query("listings")
+      .withIndex("by_seller", (q) => q.eq("sellerId", args.fromUserId))
+      .collect();
+    for (const listing of listings) {
+      await ctx.db.patch(listing._id, { sellerId: to._id });
+    }
+
+    const recalcActive = async (userId: string) => {
+      const active = await ctx.db
+        .query("listings")
+        .withIndex("by_seller", (q) => q.eq("sellerId", userId))
+        .filter((qq) => qq.eq(qq.field("status"), "active"))
+        .collect();
+      await ctx.db.patch(userId as any, { activeListings: active.length });
+    };
+    await recalcActive(args.fromUserId as any);
+    await recalcActive(to._id as any);
+
+    return {
+      success: true,
+      movedListings: listings.length,
+      passwordHashCopied: typeof f.passwordHash === "string" && f.passwordHash.length > 0,
+      targetUserId: to._id,
+    };
+  },
+});
+
 /**
  * Internal repair (CLI/server only): mark every existing seller account as
  * "approved" so introducing the seller-approval gate never locks out accounts
