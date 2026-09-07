@@ -1,5 +1,6 @@
 import AdminLayout from "./AdminLayout";
 import { useQuery } from "convex/react";
+import { useNavigate } from "react-router";
 import { api } from "../../convex/_generated/api";
 import {
   Users, Package, ShoppingCart, DollarSign, Shield,
@@ -10,6 +11,7 @@ import {
 export default function AdminDashboard() {
   const stats = useQuery(api.admin.getDashboardStats);
   const escrows = useQuery(api.admin.getAllEscrows);
+  const navigate = useNavigate();
 
   if (!stats) return (
     <AdminLayout>
@@ -43,6 +45,7 @@ export default function AdminDashboard() {
   const newTodayUsers = stats.users?.newToday ?? 0;
   const verified = stats.users?.verified ?? 0;
   const pendingKyc = stats.users?.pendingKyc ?? 0;
+  const pendingSellers = stats.users?.pendingSellers ?? 0;
   const newTodayListings = stats.products?.newToday ?? 0;
   const productViews = stats.engagement?.totalViews ?? 0;
   const sold = stats.products?.sold ?? 0;
@@ -81,6 +84,25 @@ export default function AdminDashboard() {
             </a>
           </div>
         </div>
+
+        {/* Seller approval queue alert */}
+        {pendingSellers > 0 && (
+          <div className="p-4 rounded-xl bg-nx-gold/10 border border-nx-gold/25 flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-nx-gold shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-nx-gold">
+                {pendingSellers} seller{pendingSellers === 1 ? "" : "s"} awaiting approval
+              </p>
+              <p className="text-xs text-white/40">Approved sellers can publish products to the marketplace.</p>
+            </div>
+            <button
+              onClick={() => navigate("/admin/kyc")}
+              className="px-4 py-2 rounded-lg bg-nx-gold text-black text-xs font-semibold hover:bg-nx-gold/80 transition-colors shrink-0"
+            >
+              Review Now
+            </button>
+          </div>
+        )}
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
