@@ -49,6 +49,12 @@ const schema = defineSchema(
       name: v.optional(v.string()),
       image: v.optional(v.string()),
       email: v.optional(v.string()),
+      // Written by the Convex Auth library during OTP/verification flows — the
+      // auth library shares this `users` table, so these fields must exist in
+      // the schema or code verification throws a validation error.
+      emailVerified: v.optional(v.boolean()),
+      phoneVerified: v.optional(v.boolean()),
+      phoneVerificationTime: v.optional(v.number()),
       emailVerificationTime: v.optional(v.number()),
       isAnonymous: v.optional(v.boolean()),
       role: v.optional(roleValidator),
