@@ -3,25 +3,19 @@ import { Toaster } from "@/components/ui/sonner";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin } from "@/components/RequireAdmin";
 import { RoleRouter } from "@/components/RoleRouter";
+import { useAuth } from "@/hooks/use-auth";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import "./index.css";
 
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
-// Legacy dashboard (redirects)
-const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
-const Transactions = lazy(() => import("./pages/Transactions.tsx"));
-const WalletPage = lazy(() => import("./pages/WalletPage.tsx"));
-const Disputes = lazy(() => import("./pages/Disputes.tsx"));
-const AIInsights = lazy(() => import("./pages/AIInsights.tsx"));
-const Settings = lazy(() => import("./pages/Settings.tsx"));
 // Buyer panel
 const BuyerDashboard = lazy(() => import("./pages/buyer/BuyerDashboard.tsx"));
 const BuyerWallet = lazy(() => import("./pages/buyer/BuyerWallet.tsx"));
@@ -173,6 +167,27 @@ class RootErrorBoundary extends React.Component<
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
+/**
+ * Old single-dashboard URLs (pre role-panels) now redirect to the panel that
+ * matches the signed-in user's role instead of showing a dead page.
+ */
+function LegacyDashboardRedirect() {
+  const { isLoading, isAuthenticated, role } = useAuth();
+  if (isLoading) return <RouteLoading />;
+  if (!isAuthenticated) return <Navigate to="/auth?returnTo=/dashboard" replace />;
+  const target =
+    role === "admin"
+      ? "/admin"
+      : role === "seller" || role === "driver"
+      ? "/seller"
+      : role === "freelancer"
+      ? "/freelance/dashboard"
+      : role === "employer"
+      ? "/employer"
+      : "/buyer";
+  return <Navigate to={target} replace />;
+}
+
 
 
 function RouteSyncer() {
@@ -242,13 +257,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
 
-              {/* Legacy dashboard routes (backward compat) */}
-              <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
-              <Route path="/dashboard/transactions" element={<RequireAuth><Transactions /></RequireAuth>} />
-              <Route path="/dashboard/wallet" element={<RequireAuth><WalletPage /></RequireAuth>} />
-              <Route path="/dashboard/disputes" element={<RequireAuth><Disputes /></RequireAuth>} />
-              <Route path="/dashboard/ai-insights" element={<RequireAuth><AIInsights /></RequireAuth>} />
-              <Route path="/dashboard/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+              {/* Legacy /dashboard/* URLs redirect to the current role-based panel */}
+              <Route path="/dashboard/*" element={<LegacyDashboardRedirect />} />
 
               {/* Buyer routes (buyer role only — sellers/admins get bounced to their own panel) */}
               <Route path="/buyer" element={<RoleRouter allowedRoles={["buyer"]}><BuyerDashboard /></RoleRouter>} />

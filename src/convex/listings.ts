@@ -1,15 +1,12 @@
 import { v } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { getSessionUser } from "./users";
 
 /**
- * Reserved owner for seeded demo listings. Demo content is never attached to a
+ * Reserved owner for demo/system listings. Demo content is never attached to a
  * real seller account, so it can never appear in a seller's "My Products".
  */
 export const SYSTEM_SELLER_ID = "system";
-
-/** Seller names used by the demo seed data (see seedListings.ts). */
-const DEMO_SELLER_NAMES = ["Smart Fill Gas Point", "Stanish Gas Suppliers"];
 
 /** Create a new listing (seller adds product) */
 export const createListing = mutation({
@@ -355,42 +352,4 @@ export const generateUploadUrl = mutation({
   },
 });
 
-/**
- * Internal repair (CLI/server only — NOT callable from the client).
- *
- * Detaches seeded demo listings (Smart Fill Gas Point / Stanish Gas Suppliers)
- * from whatever real/anonymous seller they were misattributed to and moves them
- * to the reserved "system" seller. They stay visible in the marketplace feed
- * but can never appear in a real seller's "My Products". Also recomputes
- * activeListings for every affected seller.
- */
-export const relocateDemoListings = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const all = await ctx.db.query("listings").collect();
-    const affectedSellers = new Set<string>();
-    let moved = 0;
 
-    for (const listing of all) {
-      const name = (listing as any).sellerName ?? "";
-      if (DEMO_SELLER_NAMES.includes(name) && listing.sellerId !== SYSTEM_SELLER_ID) {
-        affectedSellers.add(listing.sellerId);
-        await ctx.db.patch(listing._id, { sellerId: SYSTEM_SELLER_ID } as any);
-        moved++;
-      }
-    }
-
-    for (const sellerId of affectedSellers) {
-      const seller = await ctx.db.get(sellerId as any);
-      if (!seller) continue;
-      const active = await ctx.db
-        .query("listings")
-        .withIndex("by_seller", (q) => q.eq("sellerId", sellerId))
-        .filter((f) => f.eq(f.field("status"), "active"))
-        .collect();
-      await ctx.db.patch(sellerId as any, { activeListings: active.length } as any);
-    }
-
-    return { moved, affectedSellers: Array.from(affectedSellers) };
-  },
-});
