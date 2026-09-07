@@ -45,8 +45,6 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   // After authentication settles, route to the dashboard that matches the
   // persistent user role. Do NOT default authenticated users to /buyer.
   const redirect = resolveRedirectAfterAuth(searchParams.get("returnTo"), "/auth");
-  // Keep the original caller-friendly fallback available for the OTP path only.
-  const otpFallback = redirectAfterAuth ?? "/buyer";
   const isAdminLogin = redirect === "/admin";
 
   const [step, setStep] = useState<AuthStep>(isAdminLogin ? "adminEmail" : "roleSelect");
@@ -72,81 +70,79 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const ensureUserProfile = useMutation(api.users.ensureUserProfile);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      // For admin, the OTP handler manages promotion + navigation.
-      if (redirect === "/admin") {
-        if (user?.role === "admin") {
-          const role = user?.role ?? null;
-      const target =
-        role === "admin"
-          ? "/admin"
-          : role === "seller"
-          ? "/seller"
-          : role === "freelancer"
-          ? "/freelance/dashboard"
-          : role === "employer"
-          ? "/employer"
-          : role === "buyer"
-          ? "/buyer"
-          : null;
+    if (authLoading || !isAuthenticated) return;
 
-      if (target) {
-        navigate(target);
-      } else if (typeof redirect === "string" && redirect.startsWith("/")) {
-        if (role) {
-          navigate(redirect);
-        }
+    // For admin, the OTP handler manages promotion + navigation.
+    if (redirect === "/admin") {
+      if (user?.role === "admin") {
+        navigate("/admin");
       }
-        }
-        return;
-      }
+      return;
+    }
 
-      // Use the persistent role to decide where an authenticated user belongs.
-      // Do not let the UI assume /buyer while the profile is still loading.
-      const role = user?.role ?? null;
-      const target =
-        role === "admin"
-          ? "/admin"
-          : role === "seller"
-          ? "/seller"
-          : role === "freelancer"
-          ? "/freelance/dashboard"
-          : role === "employer"
-          ? "/employer"
-          : role === "buyer"
-          ? "/buyer"
-          : null;
+    // Use the persistent role to decide where an authenticated user belongs.
+    // Do NOT assume /buyer while the profile is still loading: if the role is
+    // not known yet we stay here until the Convex profile query resolves.
+    const role = user?.role ?? null;
+    const roleTarget =
+      role === "admin"
+        ? "/admin"
+        : role === "seller"
+        ? "/seller"
+        : role === "freelancer"
+        ? "/freelance/dashboard"
+        : role === "employer"
+        ? "/employer"
+        : role === "buyer"
+        ? "/buyer"
+        : null;
 
-      if (target) {
-        navigate(target);
-      } else if (typeof redirect === "string" && redirect.startsWith("/")) {
-        // Only use a caller-supplied fallback if the user's role is known.
-        if (role) {
-          const role = user?.role ?? null;
-      const target =
-        role === "admin"
-          ? "/admin"
-          : role === "seller"
-          ? "/seller"
-          : role === "freelancer"
-          ? "/freelance/dashboard"
-          : role === "employer"
-          ? "/employer"
-          : role === "buyer"
-          ? "/buyer"
-          : null;
+    if (roleTarget) {
+      navigate(roleTarget);
+      return;
+    }
 
-      if (target) {
-        navigate(target);
-      } else if (typeof redirect === "string" && redirect.startsWith("/")) {
-        if (role) {
-          navigate(redirect);
-        }
-      }
-        }
-      }
+    // Only use a caller-supplied redirect when the role is known and the
+    // target looks like an internal path. Never fall back to /buyer blindly.
+    if (role && typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")) {
+      navigate(redirect);
     }
   }, [authLoading, isAuthenticated, user, navigate, redirect]);
+
+  // Guarded check: reject only when the password actually contains the email
+  // (full address or local part) or a meaningful name. An empty field must
+  // never trigger "includes('')" which is always true and falsely errors a
+  // perfectly valid password.
+  const passwordContainsPersonalInfo = (
+    passwordRaw: string,
+    emailRaw: string | null,
+    nameRaw: string,
+  ): boolean => {
+    const p = passwordRaw.trim().toLowerCase();
+    const email = (emailRaw || "").trim().toLowerCase();
+    const localPart = email.split("@")[0]?.trim();
+    const name = (nameRaw || "").trim().toLowerCase();
+    if (email.length >= 3 && p.includes(email)) return true;
+    if (localPart && localPart.length >= 3 && p.includes(localPart)) return true;
+    if (name.length >= 3 && p.includes(name)) return true;
+    return false;
+  };
+
+  const isPasswordAuthBlocked = (
+    passwordRaw: string,
+    emailRaw: string | null,
+  ): string | null => {
+    const passwordTrimmed = passwordRaw.trim();
+    if (passwordTrimmed.length === 0) return "Password is required.";
+    if (!isPasswordValid(passwordTrimmed)) {
+      return "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a symbol.";
+    }
+    if (confirmPassword !== passwordRaw) return "Passwords do not match.";
+    if (passwordContainsPersonalInfo(passwordRaw, emailRaw, fullName)) {
+      return "Password should not contain your email or name.";
+    }
+    return null;
+  };
 
   const isFreelanceRoute = redirect.startsWith("/freelance");
 
@@ -164,27 +160,16 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
     // ---- Strong password validation (same policy for every panel) ----
     if (usePasswordAuth) {
-      const passwordTrimmed = password.trim();
-      if (passwordTrimmed.length === 0) {
-        setPasswordError("Password is required.");
-        setIsLoading(false);
-        return;
-      }
-      if (!isPasswordValid(passwordTrimmed)) {
-        setPasswordError("Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a symbol.");
-        setIsLoading(false);
-        return;
-      }
-      if (confirmPassword !== password) {
-        setConfirmPasswordError("Passwords do not match.");
-        setIsLoading(false);
-        return;
-      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const currentForm = (event as any)?.currentTarget as HTMLFormElement | null;
       const emailFromForm = currentForm ? new FormData(currentForm).get("email") as string : "";
-      if (passwordTrimmed.toLowerCase().includes(emailFromForm.toLowerCase()) || passwordTrimmed.toLowerCase().includes(fullName.toLowerCase())) {
-        setPasswordError("Password should not contain your email or name.");
+      const blockReason = isPasswordAuthBlocked(password, emailFromForm);
+      if (blockReason) {
+        if (blockReason === "Passwords do not match.") {
+          setConfirmPasswordError(blockReason);
+        } else {
+          setPasswordError(blockReason);
+        }
         setIsLoading(false);
         return;
       }
@@ -211,25 +196,14 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
 
     if (usePasswordAuth) {
-      const passwordTrimmed = password.trim();
-      if (passwordTrimmed.length === 0) {
-        setPasswordError("Password is required.");
-        setIsLoading(false);
-        return;
-      }
-      if (!isPasswordValid(passwordTrimmed)) {
-        setPasswordError("Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a symbol.");
-        setIsLoading(false);
-        return;
-      }
-      if (confirmPassword !== password) {
-        setConfirmPasswordError("Passwords do not match.");
-        setIsLoading(false);
-        return;
-      }
       const emailFromForm = new FormData(event.currentTarget).get("email") as string | null;
-      if (passwordTrimmed.toLowerCase().includes((emailFromForm || "").toLowerCase()) || passwordTrimmed.toLowerCase().includes(fullName.toLowerCase())) {
-        setPasswordError("Password should not contain your email or name.");
+      const blockReason = isPasswordAuthBlocked(password, emailFromForm);
+      if (blockReason) {
+        if (blockReason === "Passwords do not match.") {
+          setConfirmPasswordError(blockReason);
+        } else {
+          setPasswordError(blockReason);
+        }
         setIsLoading(false);
         return;
       }
@@ -644,7 +618,11 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     <PasswordField
                       label="Create a secure password"
                       value={password}
-                      onChange={setPassword}
+                      onChange={(v) => {
+                        setPassword(v);
+                        setPasswordError(null);
+                        setConfirmPasswordError(null);
+                      }}
                       placeholder="Choose a strong password"
                       error={passwordError}
                       disabled={isLoading}
@@ -653,7 +631,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     <PasswordField
                       label="Confirm password"
                       value={confirmPassword}
-                      onChange={setConfirmPassword}
+                      onChange={(v) => {
+                        setConfirmPassword(v);
+                        setConfirmPasswordError(null);
+                      }}
                       placeholder="Re-enter your password"
                       error={confirmPasswordError}
                       disabled={isLoading}

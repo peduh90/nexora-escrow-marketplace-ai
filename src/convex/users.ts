@@ -213,9 +213,23 @@ export const verifyLogin = mutation({
       return { success: false, error: "Invalid email or password." };
     }
 
-    if (!u.role) {
+    // ---- Role repair on login ------------------------------------------
+    // Nexora convention (see getUserCounts): a user with a business name is a
+    // seller. Accounts created by earlier broken auth flows can carry a stale
+    // "buyer" (or missing) role even though businessName is set — that is what
+    // routed sellers to /buyer after login. Repair the stored role here so the
+    // correction is persistent, then route by the repaired role.
+    const hasBusinessName =
+      typeof u.businessName === "string" && u.businessName.trim().length > 0;
+    let role = typeof u.role === "string" && u.role ? u.role : null;
+
+    if (hasBusinessName && role !== "seller" && role !== "admin") {
+      role = "seller";
+      await ctx.db.patch(u._id, { role: "seller" as any });
+    } else if (!role) {
       const inferred = inferRole(u);
       if (typeof inferred === "string" && inferred) {
+        role = inferred;
         await ctx.db.patch(u._id, { role: inferred as any });
       }
     }
@@ -224,36 +238,27 @@ export const verifyLogin = mutation({
     const fresh = await ctx.db.get(u._id);
     const resolved = fresh as any;
 
-    // Re-derive role from the freshly-read DB record. If the role was just
-    // inferred above but the DB still has no role, do one more infer + persist
-    // attempt from the current record before deciding what to return.
-    const role = resolved?.role;
-    if (typeof role !== "string" || !role) {
+    let finalRole =
+      typeof resolved?.role === "string" && resolved.role
+        ? resolved.role
+        : role;
+
+    // One more infer + persist attempt from the freshly-read record before
+    // deciding what to return.
+    if (!finalRole) {
       const inferred = inferRole(resolved ?? u);
       if (typeof inferred === "string" && inferred) {
         await ctx.db.patch((resolved ?? u)._id, { role: inferred as any });
-        return {
-          success: true,
-          userId: (resolved ?? u)._id,
-          email: (resolved ?? u).email,
-          name: (resolved ?? u).name,
-          role: inferred,
-        };
+        finalRole = inferred;
       }
-      return {
-        success: true,
-        userId: (resolved ?? u)._id,
-        email: (resolved ?? u).email,
-        name: (resolved ?? u).name,
-        role: null,
-      };
     }
+
     return {
       success: true,
-      userId: resolved._id,
-      email: resolved.email,
-      name: resolved.name,
-      role,
+      userId: (resolved ?? u)._id,
+      email: (resolved ?? u).email,
+      name: (resolved ?? u).name,
+      role: finalRole,
     };
   },
 });
@@ -263,6 +268,15 @@ function inferRole(user: any): string | null {
   if (typeof user.email === "string" && user.email === ADMIN_EMAIL) return "admin";
   if (typeof user.email === "string" && user.email === process.env.ADMIN_EMAIL) return "admin";
   if (typeof user.businessName === "string" && user.businessName) return "seller";
+  // Legacy real accounts (real email, not anonymous) without a stored role
+  // are buyers — never guess anything else.
+  if (
+    typeof user.email === "string" &&
+    user.email.includes("@") &&
+    !user.email.toLowerCase().includes("anonymous")
+  ) {
+    return "buyer";
+  }
   return null;
 }
 

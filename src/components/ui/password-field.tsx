@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from "react";
-import { Eye, EyeOff, ShieldAlert, ShieldCheck, Shield } from "lucide-react";
+import { Eye, EyeOff, ShieldAlert, ShieldCheck, Shield, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   passwordRequirements,
@@ -80,7 +80,7 @@ export function PasswordField({
         </button>
       </div>
 
-      {value.length > 0 ? (
+      {value.length > 0 && (
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs">
             {strength.level === "weak" || strength.level === "fair" || strength.level === "strong" || strength.level === "very-strong" ? (
@@ -104,8 +104,30 @@ export function PasswordField({
               </>
             )}
           </div>
+          {valid && (
+            <span className="flex items-center gap-1 text-[11px] text-emerald-400">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              All requirements met
+            </span>
+          )}
         </div>
-      ) : null}
+      )}
+
+      {/* Only the requirements the password still misses appear here. Once a
+          requirement is met it disappears; when everything is met nothing is
+          shown (the green strength row above is the confirmation). */}
+      {value.length > 0 && !valid && (
+        <ul className="space-y-1">
+          {requirements
+            .filter((r) => !r.met)
+            .map((r) => (
+              <li key={r.label} className="flex items-center gap-1.5 text-[11px] text-red-400/90">
+                <X className="w-3 h-3 shrink-0" />
+                {r.label}
+              </li>
+            ))}
+        </ul>
+      )}
 
       {error && (
         <p className="flex items-center gap-1.5 text-sm text-red-400">

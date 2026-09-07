@@ -2,6 +2,7 @@ import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin } from "@/components/RequireAdmin";
+import { RoleRouter } from "@/components/RoleRouter";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
@@ -217,24 +218,24 @@ createRoot(document.getElementById("root")!).render(
 
               {/* Freelance Marketplace */}
               <Route path="/freelance" element={<FreelanceLanding />} />
-              <Route path="/freelance/dashboard" element={<RequireAuth><FreelanceDashboard /></RequireAuth>} />
+              <Route path="/freelance/dashboard" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceDashboard /></RoleRouter>} />
               {/* Employer routes */}
-              <Route path="/employer" element={<RequireAuth><EmployerDashboard /></RequireAuth>} />
-              <Route path="/employer/post-job" element={<RequireAuth><FreelancePostTask /></RequireAuth>} />
-              <Route path="/employer/jobs" element={<RequireAuth><FreelanceApplications /></RequireAuth>} />
-              <Route path="/employer/projects" element={<RequireAuth><FreelanceProjects /></RequireAuth>} />
-              <Route path="/employer/messages" element={<RequireAuth><FreelanceMessages /></RequireAuth>} />
-              <Route path="/employer/earnings" element={<RequireAuth><FreelanceEarnings /></RequireAuth>} />
-              <Route path="/employer/settings" element={<RequireAuth><FreelanceSettings /></RequireAuth>} />
-              <Route path="/freelance/find-work" element={<RequireAuth><FreelanceFindWork /></RequireAuth>} />
-              <Route path="/freelance/find-freelancers" element={<RequireAuth><FreelanceFindFreelancers /></RequireAuth>} />
-              <Route path="/freelance/post-task" element={<RequireAuth><FreelancePostTask /></RequireAuth>} />
-              <Route path="/freelance/projects" element={<RequireAuth><FreelanceProjects /></RequireAuth>} />
-              <Route path="/freelance/applications" element={<RequireAuth><FreelanceApplications /></RequireAuth>} />
-              <Route path="/freelance/services" element={<RequireAuth><FreelanceServices /></RequireAuth>} />
-              <Route path="/freelance/earnings" element={<RequireAuth><FreelanceEarnings /></RequireAuth>} />
-              <Route path="/freelance/settings" element={<RequireAuth><FreelanceSettings /></RequireAuth>} />
-              <Route path="/freelance/messages" element={<RequireAuth><FreelanceMessages /></RequireAuth>} />
+              <Route path="/employer" element={<RoleRouter allowedRoles={["employer"]}><EmployerDashboard /></RoleRouter>} />
+              <Route path="/employer/post-job" element={<RoleRouter allowedRoles={["employer"]}><FreelancePostTask /></RoleRouter>} />
+              <Route path="/employer/jobs" element={<RoleRouter allowedRoles={["employer"]}><FreelanceApplications /></RoleRouter>} />
+              <Route path="/employer/projects" element={<RoleRouter allowedRoles={["employer"]}><FreelanceProjects /></RoleRouter>} />
+              <Route path="/employer/messages" element={<RoleRouter allowedRoles={["employer"]}><FreelanceMessages /></RoleRouter>} />
+              <Route path="/employer/earnings" element={<RoleRouter allowedRoles={["employer"]}><FreelanceEarnings /></RoleRouter>} />
+              <Route path="/employer/settings" element={<RoleRouter allowedRoles={["employer"]}><FreelanceSettings /></RoleRouter>} />
+              <Route path="/freelance/find-work" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceFindWork /></RoleRouter>} />
+              <Route path="/freelance/find-freelancers" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceFindFreelancers /></RoleRouter>} />
+              <Route path="/freelance/post-task" element={<RoleRouter allowedRoles={["freelancer"]}><FreelancePostTask /></RoleRouter>} />
+              <Route path="/freelance/projects" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceProjects /></RoleRouter>} />
+              <Route path="/freelance/applications" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceApplications /></RoleRouter>} />
+              <Route path="/freelance/services" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceServices /></RoleRouter>} />
+              <Route path="/freelance/earnings" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceEarnings /></RoleRouter>} />
+              <Route path="/freelance/settings" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceSettings /></RoleRouter>} />
+              <Route path="/freelance/messages" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceMessages /></RoleRouter>} />
               <Route path="/product/:id" element={<ProductDetails />} />
               <Route path="/chat" element={<RequireAuth><Chat /></RequireAuth>} />
               <Route path="/chat/:conversationId" element={<RequireAuth><Chat /></RequireAuth>} />
@@ -249,39 +250,39 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/dashboard/ai-insights" element={<RequireAuth><AIInsights /></RequireAuth>} />
               <Route path="/dashboard/settings" element={<RequireAuth><Settings /></RequireAuth>} />
 
-              {/* Buyer routes */}
-              <Route path="/buyer" element={<RequireAuth><BuyerDashboard /></RequireAuth>} />
-              <Route path="/buyer/orders" element={<RequireAuth><BuyerOrders /></RequireAuth>} />
-              <Route path="/buyer/wallet" element={<RequireAuth><BuyerWallet /></RequireAuth>} />
-              <Route path="/buyer/disputes" element={<RequireAuth><BuyerDisputes /></RequireAuth>} />
-              <Route path="/buyer/profile" element={<RequireAuth><BuyerProfile /></RequireAuth>} />
-              <Route path="/buyer/marketplace" element={<RequireAuth><Marketplace /></RequireAuth>} />
-              <Route path="/buyer/jobs" element={<RequireAuth><JobBoard /></RequireAuth>} />
-              <Route path="/buyer/deliveries" element={<RequireAuth><BuyerDeliveries /></RequireAuth>} />
-              <Route path="/buyer/settings" element={<RequireAuth><BuyerSettings /></RequireAuth>} />
+              {/* Buyer routes (buyer role only — sellers/admins get bounced to their own panel) */}
+              <Route path="/buyer" element={<RoleRouter allowedRoles={["buyer"]}><BuyerDashboard /></RoleRouter>} />
+              <Route path="/buyer/orders" element={<RoleRouter allowedRoles={["buyer"]}><BuyerOrders /></RoleRouter>} />
+              <Route path="/buyer/wallet" element={<RoleRouter allowedRoles={["buyer"]}><BuyerWallet /></RoleRouter>} />
+              <Route path="/buyer/disputes" element={<RoleRouter allowedRoles={["buyer"]}><BuyerDisputes /></RoleRouter>} />
+              <Route path="/buyer/profile" element={<RoleRouter allowedRoles={["buyer"]}><BuyerProfile /></RoleRouter>} />
+              <Route path="/buyer/marketplace" element={<RoleRouter allowedRoles={["buyer"]}><Marketplace /></RoleRouter>} />
+              <Route path="/buyer/jobs" element={<RoleRouter allowedRoles={["buyer"]}><JobBoard /></RoleRouter>} />
+              <Route path="/buyer/deliveries" element={<RoleRouter allowedRoles={["buyer"]}><BuyerDeliveries /></RoleRouter>} />
+              <Route path="/buyer/settings" element={<RoleRouter allowedRoles={["buyer"]}><BuyerSettings /></RoleRouter>} />
 
-              {/* Seller routes */}
-              <Route path="/seller" element={<RequireAuth><SellerDashboard /></RequireAuth>} />
+              {/* Seller routes (seller role only — public /seller/:userId profile stays open) */}
+              <Route path="/seller" element={<RoleRouter allowedRoles={["seller"]}><SellerDashboard /></RoleRouter>} />
               <Route path="/seller/:userId" element={<SellerProfilePage />} />
-              <Route path="/seller/products" element={<RequireAuth><SellerProducts /></RequireAuth>} />
-              <Route path="/seller/add-product" element={<RequireAuth><SellerAddProduct /></RequireAuth>} />
-              <Route path="/seller/edit-product/:id" element={<RequireAuth><SellerEditProduct /></RequireAuth>} />
-              <Route path="/seller/orders" element={<RequireAuth><SellerOrders /></RequireAuth>} />
-              <Route path="/seller/escrow" element={<RequireAuth><SellerEscrow /></RequireAuth>} />
-              <Route path="/seller/messages" element={<RequireAuth><SellerMessages /></RequireAuth>} />
-              <Route path="/seller/offers" element={<RequireAuth><SellerOffers /></RequireAuth>} />
-              <Route path="/seller/customers" element={<RequireAuth><SellerCustomers /></RequireAuth>} />
-              <Route path="/seller/earnings" element={<RequireAuth><SellerEarnings /></RequireAuth>} />
-              <Route path="/seller/withdrawals" element={<RequireAuth><SellerWithdrawals /></RequireAuth>} />
-              <Route path="/seller/delivery" element={<RequireAuth><SellerDelivery /></RequireAuth>} />
-              <Route path="/seller/analytics" element={<RequireAuth><SellerAnalytics /></RequireAuth>} />
-              <Route path="/seller/reviews" element={<RequireAuth><SellerReviews /></RequireAuth>} />
-              <Route path="/seller/promotions" element={<RequireAuth><SellerPromotions /></RequireAuth>} />
-              <Route path="/seller/kyc" element={<RequireAuth><SellerKYC /></RequireAuth>} />
-              <Route path="/seller/store" element={<RequireAuth><SellerStore /></RequireAuth>} />
-              <Route path="/seller/notifications" element={<RequireAuth><SellerNotifications /></RequireAuth>} />
-              <Route path="/seller/settings" element={<RequireAuth><SellerSettings /></RequireAuth>} />
-              <Route path="/seller/help" element={<RequireAuth><SellerHelp /></RequireAuth>} />
+              <Route path="/seller/products" element={<RoleRouter allowedRoles={["seller"]}><SellerProducts /></RoleRouter>} />
+              <Route path="/seller/add-product" element={<RoleRouter allowedRoles={["seller"]}><SellerAddProduct /></RoleRouter>} />
+              <Route path="/seller/edit-product/:id" element={<RoleRouter allowedRoles={["seller"]}><SellerEditProduct /></RoleRouter>} />
+              <Route path="/seller/orders" element={<RoleRouter allowedRoles={["seller"]}><SellerOrders /></RoleRouter>} />
+              <Route path="/seller/escrow" element={<RoleRouter allowedRoles={["seller"]}><SellerEscrow /></RoleRouter>} />
+              <Route path="/seller/messages" element={<RoleRouter allowedRoles={["seller"]}><SellerMessages /></RoleRouter>} />
+              <Route path="/seller/offers" element={<RoleRouter allowedRoles={["seller"]}><SellerOffers /></RoleRouter>} />
+              <Route path="/seller/customers" element={<RoleRouter allowedRoles={["seller"]}><SellerCustomers /></RoleRouter>} />
+              <Route path="/seller/earnings" element={<RoleRouter allowedRoles={["seller"]}><SellerEarnings /></RoleRouter>} />
+              <Route path="/seller/withdrawals" element={<RoleRouter allowedRoles={["seller"]}><SellerWithdrawals /></RoleRouter>} />
+              <Route path="/seller/delivery" element={<RoleRouter allowedRoles={["seller"]}><SellerDelivery /></RoleRouter>} />
+              <Route path="/seller/analytics" element={<RoleRouter allowedRoles={["seller"]}><SellerAnalytics /></RoleRouter>} />
+              <Route path="/seller/reviews" element={<RoleRouter allowedRoles={["seller"]}><SellerReviews /></RoleRouter>} />
+              <Route path="/seller/promotions" element={<RoleRouter allowedRoles={["seller"]}><SellerPromotions /></RoleRouter>} />
+              <Route path="/seller/kyc" element={<RoleRouter allowedRoles={["seller"]}><SellerKYC /></RoleRouter>} />
+              <Route path="/seller/store" element={<RoleRouter allowedRoles={["seller"]}><SellerStore /></RoleRouter>} />
+              <Route path="/seller/notifications" element={<RoleRouter allowedRoles={["seller"]}><SellerNotifications /></RoleRouter>} />
+              <Route path="/seller/settings" element={<RoleRouter allowedRoles={["seller"]}><SellerSettings /></RoleRouter>} />
+              <Route path="/seller/help" element={<RoleRouter allowedRoles={["seller"]}><SellerHelp /></RoleRouter>} />
 
               {/* Admin routes */}
               <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
