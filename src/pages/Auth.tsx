@@ -95,12 +95,14 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       return;
     }
 
-    // Session exists but the Nexora profile has not been created yet (the OTP
-    // profile sync can race the auth token attach, leaving the user stuck on
-    // /auth with a valid session). Repair it from the signup form state. Only
-    // sync when real signup data is present — never fabricate a role after a
-    // refresh wiped the form.
-    if (!user && !profileSyncRef.current && (selectedRole || fullName || password)) {
+    // Session exists but the Nexora profile is missing or has no role yet (the
+    // OTP profile sync can race the auth token attach or fail on a backend
+    // error, leaving the user stuck on /auth or a role-missing spinner with a
+    // valid session). Repair it from the signup form state. Only sync when real
+    // signup data is present — never fabricate a role after a refresh wiped the
+    // form.
+    const needsProfileRepair = !user || (!!user && !user.role);
+    if (needsProfileRepair && !profileSyncRef.current && (selectedRole || fullName || password)) {
       profileSyncRef.current = true;
       void ensureUserProfile({
         name: fullName || undefined,

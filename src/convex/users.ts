@@ -52,15 +52,20 @@ export async function hashStoredPassword(password: string): Promise<string> {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-  const deriveBitsPBKDF2 = (crypto.subtle.deriveBits as unknown as (
-    algo: { name: "PBKDF2"; salt: BufferSource; iterations: number; hash: "SHA-256" },
-    baseKey: BufferSource,
-    derivedKeyType: { name: "SHA-256"; length: number },
-  ) => Promise<ArrayBuffer>);
-  const derivedKey = await deriveBitsPBKDF2(
-    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+  // Web Crypto requires the password to be imported as a PBKDF2 CryptoKey
+  // before deriveBits. Passing raw bytes as the baseKey throws
+  // "TypeError: not of type CryptoKey" at runtime.
+  const baseKey = await crypto.subtle.importKey(
+    "raw",
     new TextEncoder().encode(password),
-    { name: "SHA-256", length: 256 },
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const derivedKey = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    baseKey,
+    256,
   );
   const derivedBytes = new Uint8Array(derivedKey);
   const derivedHex = Array.from(derivedBytes)
@@ -105,15 +110,17 @@ export async function verifyStoredPasswordHash(storedHash: string, password: str
   if (saltBytes.length === 0) return false;
 
   try {
-  const deriveBitsPBKDF2 = (crypto.subtle.deriveBits as unknown as (
-    algo: { name: "PBKDF2"; salt: BufferSource; iterations: number; hash: "SHA-256" },
-    baseKey: BufferSource,
-    derivedKeyType: { name: "SHA-256"; length: number },
-  ) => Promise<ArrayBuffer>);
-    const derivedKey = await deriveBitsPBKDF2(
-      { name: "PBKDF2", salt: saltBytes as BufferSource, iterations, hash: "SHA-256" },
+    const baseKey = await crypto.subtle.importKey(
+      "raw",
       new TextEncoder().encode(password),
-      { name: "SHA-256", length: keyLength },
+      "PBKDF2",
+      false,
+      ["deriveBits"],
+    );
+    const derivedKey = await crypto.subtle.deriveBits(
+      { name: "PBKDF2", salt: saltBytes as BufferSource, iterations, hash: "SHA-256" },
+      baseKey,
+      keyLength * 8,
     );
     const derivedBytes = new Uint8Array(derivedKey);
     const computedHex = Array.from(derivedBytes)

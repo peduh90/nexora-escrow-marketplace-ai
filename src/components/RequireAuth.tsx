@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { Navigate, useLocation } from "react-router";
+import { Link, Navigate, useLocation } from "react-router";
 
 // NOTE: RequireAuth reads the user record via useAuth() *inside* the component
 // render, where ConvexAuthProvider is present. Do NOT call useAuth() at module
@@ -40,11 +40,24 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (!user.role) {
     // Profile exists but role has not been set — do not assume buyer.
+    // Offer a real exit instead of leaving the user on an infinite spinner:
+    // finishing the sign-up flow on /auth repairs the role (server-side) and
+    // routes back here.
+    const returnTo = location.pathname + location.search;
     return (
       <main className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center p-6 max-w-sm">
           <Loader2 className="size-8 animate-spin text-amber-400 mx-auto mb-3" />
           <p className="text-sm text-white/70">Your account is still being set up.</p>
+          <p className="text-xs text-white/30 mt-1">
+            Finish your sign-up to activate this account.
+          </p>
+          <Link
+            to={`/auth?returnTo=${encodeURIComponent(returnTo)}`}
+            className="mt-4 inline-flex items-center rounded-lg bg-nx-violet px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-nx-violet/80"
+          >
+            Finish Account Setup
+          </Link>
         </div>
       </main>
     );
