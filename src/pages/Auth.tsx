@@ -18,7 +18,7 @@ import {
   ArrowRight, Loader2, Shield, ShoppingBag, Store, ChevronRight, Check,
   Lock, Globe, Zap, Phone, User, ArrowLeft, KeyRound, Mail,
 } from "lucide-react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -69,25 +69,63 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const checkAndPromoteAdmin = useMutation(api.users.checkAndPromoteAdmin);
   const ensureUserProfile = useMutation(api.users.ensureUserProfile);
 
+  // Mirrors the auth state so async handlers can wait for the Convex client to
+  // attach the token after sign-in (client.setAuth runs in a React effect).
+  const isAuthenticatedRef = useRef(isAuthenticated);
   useEffect(() => {
-    if (authLoading || !isAuthenticated) return;
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
+
+  // Guards the auto profile-sync so it runs at most once per sign-in.
+  const profileSyncRef = useRef(false);
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) {
+      profileSyncRef.current = false;
+      return;
+    }
+
+    const role = user?.role ?? null;
 
     // For admin, the OTP handler manages promotion + navigation.
     if (redirect === "/admin") {
-      if (user?.role === "admin") {
+      if (role === "admin") {
         navigate("/admin");
       }
+      return;
+    }
+
+    // Session exists but the Nexora profile has not been created yet (the OTP
+    // profile sync can race the auth token attach, leaving the user stuck on
+    // /auth with a valid session). Repair it from the signup form state. Only
+    // sync when real signup data is present — never fabricate a role after a
+    // refresh wiped the form.
+    if (!user && !profileSyncRef.current && (selectedRole || fullName || password)) {
+      profileSyncRef.current = true;
+      void ensureUserProfile({
+        name: fullName || undefined,
+        phone: phoneNumber || undefined,
+        role: selectedRole || undefined,
+        businessName: selectedRole === "seller" ? fullName || undefined : undefined,
+        password: password.trim() || undefined,
+      })
+        .then(() => {
+          profileSyncRef.current = false;
+        })
+        .catch((err) => {
+          console.error("Profile sync failed:", err);
+          profileSyncRef.current = false;
+        });
       return;
     }
 
     // Use the persistent role to decide where an authenticated user belongs.
     // Do NOT assume /buyer while the profile is still loading: if the role is
     // not known yet we stay here until the Convex profile query resolves.
-    const role = user?.role ?? null;
     const roleTarget =
       role === "admin"
         ? "/admin"
-        : role === "seller"
+        : role === "seller" || role === "driver"
         ? "/seller"
         : role === "freelancer"
         ? "/freelance/dashboard"
@@ -107,7 +145,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     if (role && typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")) {
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, user, navigate, redirect]);
+  }, [authLoading, isAuthenticated, user, navigate, redirect, fullName, phoneNumber, selectedRole, password, ensureUserProfile]);
 
   // Guarded check: reject only when the password actually contains the email
   // (full address or local part) or a meaningful name. An empty field must
@@ -216,34 +254,61 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       const email = formDataGet(formData, "email") || "";
       setStep({ email });
 
-      try {
-        await ensureUserProfile({
-          name: fullName || undefined,
-          phone: phoneNumber || undefined,
-          role: selectedRole || undefined,
-          businessName: selectedRole === "seller" ? fullName || undefined : undefined,
-          password: password.trim(),
-        });
+      // Wait for the Convex client to attach the auth token before syncing the
+      // profile. client.setAuth() runs in a React effect AFTER the auth state
+      // flips, so an immediate ensureUserProfile goes out unauthenticated and
+      // fails with "Not authenticated" (observed in the Convex logs).
+      let waited = 0;
+      while (!isAuthenticatedRef.current && waited < 50) {
+        await new Promise((r) => setTimeout(r, 100));
+        waited += 1;
+      }
 
-        // After creating/syncing the persistent profile, navigate to the panel
-        // that matches the role the user chose during signup. This is the direct
-        // fix for the seller -> buyer regression on the OTP path.
-        if (selectedRole) {
-          const target =
-            selectedRole === "seller"
-              ? "/seller"
-              : selectedRole === "freelancer"
-              ? "/freelance/dashboard"
-              : "/buyer";
-          try { navigate(target); } catch {}
+      // Create/sync the persistent profile, retrying briefly in case the token
+      // attach is still settling. Any non-auth error is not retried.
+      let syncError: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await ensureUserProfile({
+            name: fullName || undefined,
+            phone: phoneNumber || undefined,
+            role: selectedRole || undefined,
+            businessName: selectedRole === "seller" ? fullName || undefined : undefined,
+            password: password.trim(),
+          });
+          syncError = null;
+          break;
+        } catch (err: any) {
+          syncError = err;
+          if (!(err?.message ?? "").includes("Not authenticated")) break;
+          await new Promise((r) => setTimeout(r, 500));
         }
-      } catch (syncErr) {
-        console.error("Account profile sync failed:", syncErr);
+      }
+      if (syncError) {
+        console.error("Account profile sync failed:", syncError);
+      }
+
+      // After creating/syncing the persistent profile, navigate to the panel
+      // that matches the role the user chose during signup. This is the direct
+      // fix for the seller -> buyer regression on the OTP path.
+      if (selectedRole) {
+        const target =
+          selectedRole === "seller"
+            ? "/seller"
+            : selectedRole === "freelancer"
+            ? "/freelance/dashboard"
+            : "/buyer";
+        try { navigate(target); } catch {}
       }
 
       setIsLoading(false);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to send verification code.");
+    } catch (error: any) {
+      const msg = error?.message ?? "";
+      if (msg.includes("Could not verify code") || msg.includes("Invalid verification code")) {
+        setError("That code is invalid or has expired. Please request a new one.");
+      } else {
+        setError(error instanceof Error ? error.message : "Failed to send verification code.");
+      }
       setIsLoading(false);
     }
   };
