@@ -105,39 +105,7 @@ export function PasswordField({
             )}
           </div>
         </div>
-      )}
-
-      {value.length > 0 && (
-        <ul className="space-y-1">
-          {requirements.map((req, i) => (
-            <li
-              key={i}
-              className={cn(
-                "flex items-center gap-2 text-xs",
-                req.met
-                  ? "text-white/30"
-                  : "text-white/40",
-              )}
-            >
-              <span
-                className={cn(
-                  "shrink-0 w-3.5 h-3.5 rounded border flex items-center justify-center",
-                  req.met
-                    ? "border-nx-violet/40 bg-nx-violet/10 text-nx-violet"
-                    : "border-white/10 bg-transparent text-white/40",
-                )}
-              >
-                {req.met ? (
-                  <ShieldCheck className="w-3 h-3" />
-                ) : (
-                  <Shield className="w-3 h-3" />
-                )}
-              </span>
-              {req.label}
-            </li>
-          )          ))}
-        </ul>
-      )}
+      ) : null}
 
       {error && (
         <p className="flex items-center gap-1.5 text-sm text-red-400">
