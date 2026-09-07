@@ -36,6 +36,33 @@ export const getCurrentUser = async (ctx: QueryCtx) => {
 };
 
 /**
+ * Resolve the current session's user record.
+ *
+ * Binds to the auth session's OWN users doc first (getAuthUserId) and only
+ * falls back to an email lookup when the identity actually carries an email.
+ * NEVER falls back to "any user": a session whose identity has no email must
+ * not silently bind to an arbitrary record (e.g. the oldest anonymous user),
+ * which is exactly what made "My Products" show another account's listings
+ * and made new products attach to the wrong account.
+ */
+export const getSessionUser = async (ctx: QueryCtx) => {
+  const userId = await getAuthUserId(ctx);
+  if (userId !== null) {
+    const user = await ctx.db.get(userId);
+    if (user) return user as any;
+  }
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity && typeof identity.email === "string" && identity.email.length > 0) {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+    if (user) return user as any;
+  }
+  return null;
+};
+
+/**
  * Secure password hashing for persistent Nexora user accounts.
  * Uses PBKDF2-HMAC-SHA256 with a per-password random salt and a derived key.
  * IMPORTANT: never logs or returns the hash to the client, and never stores
@@ -303,10 +330,7 @@ export const ensureUserProfile = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    let user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
+    let user = await getSessionUser(ctx);
 
     const existingBusinessName =
       user && typeof (user as any).businessName === "string" ? (user as any).businessName : undefined;
@@ -392,10 +416,7 @@ export const updatePassword = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
+    const user = await getSessionUser(ctx);
 
     if (!user) throw new Error("User not found");
 
@@ -514,10 +535,7 @@ export const checkAndPromoteAdmin = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    let user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
+    let user = await getSessionUser(ctx);
 
     // If user not found in DB (e.g. just created via auth), create the user record
     if (!user) {
@@ -591,10 +609,7 @@ export const promoteToAdmin = mutation({
     if (!identity) throw new Error("Not authenticated");
 
     // Resolve the caller's user record
-    const caller = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
+    const caller = await getSessionUser(ctx);
 
     if (!caller) throw new Error("User not found");
 
@@ -642,10 +657,7 @@ export const getAdminUser = query({
     const ADMIN_EMAIL = "murimiedwin227@gmail.com";
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
+    const user = await getSessionUser(ctx);
     if (!user) return null;
     return { _id: user._id, email: user.email, name: user.name, role: user.role };
   },
@@ -663,10 +675,7 @@ export const updateProfile = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
+    const user = await getSessionUser(ctx);
     if (!user) throw new Error("User not found");
 
     const updates: Record<string, any> = {};

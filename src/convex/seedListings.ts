@@ -11,24 +11,10 @@ export const seedListings = mutation({
     const existing = await ctx.db.query("listings").collect();
     const existingTitles = new Set((existing as any[]).map((l: any) => l.title));
 
-    // Seller accounts used for seeding (emails that should exist after signup)
-    const sellers = [
-      {
-        id: "s24",
-        email: "smartfill@example.com",
-        name: "Smart Fill Gas Point",
-        reputation: 4.9,
-        verified: true,
-      },
-      {
-        id: "s25",
-        email: "stanish@example.com",
-        name: "Stanish Gas Suppliers",
-        reputation: 4.8,
-        verified: true,
-      },
-    ];
-
+    // NOTE: seeded listings are owned by the reserved "system" seller (see
+    // listings.ts SYSTEM_SELLER_ID). They are marketplace demo content and must
+    // NEVER be attached to a real user — doing so makes demo items show up in a
+    // real seller's "My Products" and pollutes their storefront.
     const listings = [
       // ===== COOKING GAS - REFILL (KES 1,200) - Real prices from CylinTech =====
       {
@@ -113,22 +99,9 @@ export const seedListings = mutation({
     for (const listing of listings) {
       // Skip if a listing with this title already exists
       if (existingTitles.has(listing.title)) continue;
-      // Find a real user to associate with this listing, or use a system placeholder
-      const user = await ctx.db
-        .query("users")
-        .withIndex("email", (q) => q.eq("email", listing.sellerName.toLowerCase().replace(/\s+/g, "@") + ".com"))
-        .first();
-
-      // If no matching user, create a synthetic seller identity or use any active seller
-      const sellerUser = user || (await ctx.db.query("users").first()) || null;
-
-      const sellerId = sellerUser?._id || "system";
-      const finalSellerName = sellerUser?.name || listing.sellerName;
-      const finalSellerReputation = (sellerUser as any)?.sellerReputation || listing.sellerReputation;
-      const finalSellerVerified = (sellerUser as any)?.sellerVerified ?? listing.sellerVerified;
 
       await ctx.db.insert("listings", {
-        sellerId: sellerId as any,
+        sellerId: "system",
         title: listing.title,
         description: listing.description,
         price: listing.price,
@@ -143,9 +116,9 @@ export const seedListings = mutation({
         insuranceProtection: false,
         condition: listing.condition,
         verified: listing.verified,
-        sellerName: finalSellerName,
-        sellerReputation: finalSellerReputation,
-        sellerVerified: finalSellerVerified,
+        sellerName: listing.sellerName,
+        sellerReputation: listing.sellerReputation,
+        sellerVerified: listing.sellerVerified,
         attributes: Object.fromEntries(Object.entries(listing.attributes).map(([k, v]) => [k, String(v)])) as any,
         negotiable: listing.negotiable,
         views: listing.views,
@@ -154,6 +127,7 @@ export const seedListings = mutation({
         createdAt: Date.now() - Math.floor(Math.random() * 86400000 * 3), // spread across last 3 days
         updatedAt: Date.now(),
       });
+      seeded++;
     }
 
     return { message: `Seeded ${seeded} new cooking gas listings`, count: seeded };
