@@ -1,6 +1,6 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { query, mutation, QueryCtx } from "./_generated/server";
+import { query, mutation, internalMutation, QueryCtx } from "./_generated/server";
 import { ALLOWED_ROLES, resolveRole, resolveRoleForAdminFlow, ADMIN_EMAIL } from "./roles";
 import type { AllowedRole } from "./roles";
 
@@ -680,5 +680,53 @@ export const updateProfile = mutation({
     }
 
     return { success: true };
+  },
+});
+
+/**
+ * Internal repair utility (server/CLI only — NOT callable from the client).
+ * Unsticks accounts whose sign-up profile sync failed mid-flow by setting the
+ * persistent role (and optionally a business name). Because this is an
+ * internal mutation, app users cannot invoke it, so it cannot be used for
+ * privilege escalation.
+ */
+export const repairUserRole = internalMutation({
+  args: {
+    email: v.string(),
+    role: v.optional(v.string()),
+    businessName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.email))
+      .first();
+    if (!user) return { success: false, error: "User not found" };
+
+    const u = user as any;
+    const patch: Record<string, any> = {};
+    if (
+      typeof args.role === "string" &&
+      ALLOWED_ROLES.includes(args.role as AllowedRole)
+    ) {
+      patch.role = args.role;
+    }
+    if (
+      typeof args.businessName === "string" &&
+      args.businessName.trim().length > 0
+    ) {
+      patch.businessName = args.businessName.trim();
+    }
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(u._id, patch);
+    }
+
+    const fresh = (await ctx.db.get(u._id)) as any;
+    return {
+      success: true,
+      email: fresh?.email ?? null,
+      role: fresh?.role ?? null,
+      businessName: fresh?.businessName ?? null,
+    };
   },
 });
