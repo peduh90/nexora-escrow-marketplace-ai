@@ -42,7 +42,11 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const { isLoading: authLoading, isAuthenticated, signIn, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirect = resolveRedirectAfterAuth(searchParams.get("returnTo"), redirectAfterAuth);
+  // After authentication settles, route to the dashboard that matches the
+  // persistent user role. Do NOT default authenticated users to /buyer.
+  const redirect = resolveRedirectAfterAuth(searchParams.get("returnTo"), "/auth");
+  // Keep the original caller-friendly fallback available for the OTP path only.
+  const otpFallback = redirectAfterAuth ?? "/buyer";
   const isAdminLogin = redirect === "/admin";
 
   const [step, setStep] = useState<AuthStep>(isAdminLogin ? "adminEmail" : "roleSelect");
@@ -69,16 +73,78 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      // For admin login, the OTP handler manages navigation after promotion.
-      // Only auto-navigate if the user already has admin role (e.g. returning visit).
+      // For admin, the OTP handler manages promotion + navigation.
       if (redirect === "/admin") {
         if (user?.role === "admin") {
+          const role = user?.role ?? null;
+      const target =
+        role === "admin"
+          ? "/admin"
+          : role === "seller"
+          ? "/seller"
+          : role === "freelancer"
+          ? "/freelance/dashboard"
+          : role === "employer"
+          ? "/employer"
+          : role === "buyer"
+          ? "/buyer"
+          : null;
+
+      if (target) {
+        navigate(target);
+      } else if (typeof redirect === "string" && redirect.startsWith("/")) {
+        if (role) {
           navigate(redirect);
         }
-        // If not admin yet, the handleAdminOtpSubmit or checkAndPromoteAdmin will navigate.
+      }
+        }
         return;
       }
-      navigate(redirect);
+
+      // Use the persistent role to decide where an authenticated user belongs.
+      // Do not let the UI assume /buyer while the profile is still loading.
+      const role = user?.role ?? null;
+      const target =
+        role === "admin"
+          ? "/admin"
+          : role === "seller"
+          ? "/seller"
+          : role === "freelancer"
+          ? "/freelance/dashboard"
+          : role === "employer"
+          ? "/employer"
+          : role === "buyer"
+          ? "/buyer"
+          : null;
+
+      if (target) {
+        navigate(target);
+      } else if (typeof redirect === "string" && redirect.startsWith("/")) {
+        // Only use a caller-supplied fallback if the user's role is known.
+        if (role) {
+          const role = user?.role ?? null;
+      const target =
+        role === "admin"
+          ? "/admin"
+          : role === "seller"
+          ? "/seller"
+          : role === "freelancer"
+          ? "/freelance/dashboard"
+          : role === "employer"
+          ? "/employer"
+          : role === "buyer"
+          ? "/buyer"
+          : null;
+
+      if (target) {
+        navigate(target);
+      } else if (typeof redirect === "string" && redirect.startsWith("/")) {
+        if (role) {
+          navigate(redirect);
+        }
+      }
+        }
+      }
     }
   }, [authLoading, isAuthenticated, user, navigate, redirect]);
 
@@ -185,11 +251,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           password: password.trim(),
         });
 
-        // Keep the authenticated session pointing at the correct panel for this
-        // role. Without this, the OTP path could leave the user on the auth page
-        // even when registration succeeded (a regression path for the seller->buyer
-        // bug where role was never persisted / never used to navigate).
-        if (selectedRole && user) {
+        // After creating/syncing the persistent profile, navigate to the panel
+        // that matches the role the user chose during signup. This is the direct
+        // fix for the seller -> buyer regression on the OTP path.
+        if (selectedRole) {
           const target =
             selectedRole === "seller"
               ? "/seller"

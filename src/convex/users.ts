@@ -224,30 +224,27 @@ export const verifyLogin = mutation({
     const fresh = await ctx.db.get(u._id);
     const resolved = fresh as any;
 
-    // IMPORTANT: Read the role from the persistent DB record. Do NOT default
-    // to "buyer" here — doing so is the root cause of the seller -> buyer bug.
-    const role = resolved.role;
+    // Re-derive role from the freshly-read DB record. If the role was just
+    // inferred above but the DB still has no role, do one more infer + persist
+    // attempt from the current record before deciding what to return.
+    const role = resolved?.role;
     if (typeof role !== "string" || !role) {
-      // If the DB record somehow lacks a role (legacy/half-migrated account),
-      // infer it once and persist it, but never expose "buyer" as a fallback
-      // to the client. If we truly cannot determine the role, return null so
-      // the frontend can show an account-setup state.
-      const inferred = inferRole(resolved);
+      const inferred = inferRole(resolved ?? u);
       if (typeof inferred === "string" && inferred) {
-        await ctx.db.patch(resolved._id, { role: inferred as any });
+        await ctx.db.patch((resolved ?? u)._id, { role: inferred as any });
         return {
           success: true,
-          userId: resolved._id,
-          email: resolved.email,
-          name: resolved.name,
+          userId: (resolved ?? u)._id,
+          email: (resolved ?? u).email,
+          name: (resolved ?? u).name,
           role: inferred,
         };
       }
       return {
         success: true,
-        userId: resolved._id,
-        email: resolved.email,
-        name: resolved.name,
+        userId: (resolved ?? u)._id,
+        email: (resolved ?? u).email,
+        name: (resolved ?? u).name,
         role: null,
       };
     }
@@ -263,9 +260,9 @@ export const verifyLogin = mutation({
 
 function inferRole(user: any): string | null {
   if (typeof user.role === "string" && user.role) return user.role;
-  if (user.email === ADMIN_EMAIL) return "admin";
+  if (typeof user.email === "string" && user.email === ADMIN_EMAIL) return "admin";
+  if (typeof user.email === "string" && user.email === process.env.ADMIN_EMAIL) return "admin";
   if (typeof user.businessName === "string" && user.businessName) return "seller";
-  if (user.email === process.env.ADMIN_EMAIL) return "admin";
   return null;
 }
 
