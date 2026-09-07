@@ -13,14 +13,14 @@ export default function MobileBottomNav() {
   );
 
   // Hide on landing, auth, admin pages
-  const hideOn = ["/", "/auth", "/privacy", "/terms"];
+  const hideOn = ["/", "/auth", "/auth/seller", "/privacy", "/terms"];
   const isAdminRoute = location.pathname.startsWith("/admin");
   if (hideOn.includes(location.pathname) || isAdminRoute) return null;
 
   const tabs = [
     { icon: Home, label: "Home", path: "/marketplace" },
     { icon: Search, label: "Search", path: "/marketplace" },
-    { icon: PlusCircle, label: "Sell", path: user?.role === "seller" ? "/seller/add-product" : "/auth?returnTo=/seller" },
+    { icon: PlusCircle, label: "Sell", path: user?.role === "seller" ? "/seller/add-product" : "/auth/seller" },
     { icon: MessageSquare, label: "Messages", path: "/chat" },
     { icon: User, label: "Profile", path: user?.role === "seller" ? "/seller" : user?.role === "admin" ? "/admin" : "/buyer" },
   ];

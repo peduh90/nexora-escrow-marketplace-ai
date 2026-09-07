@@ -232,6 +232,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/" element={<Landing />} />
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/auth" element={<AuthPage redirectAfterAuth="/buyer" />} />
+              {/* Dedicated seller registration/sign-in panel — skips the "Choose Your Path" role cards */}
+              <Route path="/auth/seller" element={<AuthPage sellerFirst redirectAfterAuth="/seller" />} />
               {/* Public freelance jobs board (legacy /jobs URL) */}
               <Route path="/jobs" element={<FreelanceJobs />} />
 

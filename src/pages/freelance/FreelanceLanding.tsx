@@ -58,7 +58,15 @@ export default function FreelanceLanding() {
     setSearch("");
   };
 
-  const publishCta = () => navigate("/auth?returnTo=/seller/add-product");
+  // Existing sellers go straight to publishing; everyone else lands on the
+  // dedicated seller panel (register/sign in) and continues from /seller.
+  const publishCta = () => {
+    if (isSeller) {
+      navigate("/seller/add-product");
+    } else {
+      navigate("/auth/seller?returnTo=%2Fseller%2Fadd-product");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">

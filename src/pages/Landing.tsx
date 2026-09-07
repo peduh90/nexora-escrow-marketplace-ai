@@ -371,7 +371,7 @@ export default function Landing() {
                   List it in minutes. KYC verification builds trust. Escrow protects every sale. Withdraw earnings via M-Pesa.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <button onClick={() => navigate("/auth?returnTo=/seller")}
+                  <button onClick={() => navigate("/auth/seller")}
                     className="group px-8 py-3.5 rounded-xl text-white font-medium text-sm relative overflow-hidden transition-all hover:scale-[1.02]"
                     style={{ background: "linear-gradient(135deg, #8B5CF6, #6D28D9)" }}>
                     <span className="relative z-10 flex items-center gap-2">
@@ -453,7 +453,7 @@ export default function Landing() {
                       <CheckCircle2 className="w-3.5 h-3.5 text-nx-violet/50 shrink-0" />{f}
                     </div>
                   ))}
-                </div>                  <button onClick={() => navigate('/auth?returnTo=/seller')}
+                </div>                  <button onClick={() => navigate('/auth/seller')}
                   className="w-full py-2.5 rounded-xl bg-nx-violet/10 text-nx-violet font-medium text-xs hover:bg-nx-violet/20 transition-colors border border-nx-violet/20">
                   Start Selling
                 </button>

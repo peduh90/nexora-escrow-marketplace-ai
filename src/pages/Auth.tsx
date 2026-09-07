@@ -27,6 +27,8 @@ import { PasswordField } from "@/components/ui/password-field";
 
 interface AuthProps {
   redirectAfterAuth?: string;
+  /** Dedicated seller registration panel — skips "Choose Your Path" entirely. */
+  sellerFirst?: boolean;
 }
 
 function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/buyer") {
@@ -38,7 +40,7 @@ function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/buyer") 
 
 type AuthStep = "roleSelect" | "signIn" | { email: string } | "adminEmail" | "adminOtp";
 
-function Auth({ redirectAfterAuth }: AuthProps = {}) {
+function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
   const { isLoading: authLoading, isAuthenticated, signIn, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -46,9 +48,22 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   // persistent user role. Do NOT default authenticated users to /buyer.
   const redirect = resolveRedirectAfterAuth(searchParams.get("returnTo"), "/auth");
   const isAdminLogin = redirect === "/admin";
+  const isSellerRegister = sellerFirst === true;
 
-  const [step, setStep] = useState<AuthStep>(isAdminLogin ? "adminEmail" : "roleSelect");
-  const [selectedRole, setSelectedRole] = useState<"buyer" | "seller" | "freelancer" | null>(null);
+  // Dedicated seller panel: the role is fixed to seller, so we start straight
+  // at the seller sign-up form instead of the "Choose Your Path" role cards.
+  const [step, setStep] = useState<AuthStep>(
+    isAdminLogin ? "adminEmail" : isSellerRegister ? "signIn" : "roleSelect",
+  );
+  const [selectedRole, setSelectedRole] = useState<"buyer" | "seller" | "freelancer" | null>(
+    isSellerRegister ? "seller" : null,
+  );
+  // On the dedicated seller panel, toggle between creating an account and
+  // signing in to an existing one.
+  const [sellerMode, setSellerMode] = useState<"register" | "login">("register");
+  // The dedicated seller panel renders the sign-in form (instead of account
+  // creation) whenever it is switched to login mode.
+  const sellerPanelLogin = sellerFirst === true && !isAdminLogin && sellerMode === "login";
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -548,6 +563,46 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
 
+      {/* Dedicated seller-panel intro (no role cards) */}
+      {isSellerRegister && !isAdminLogin && (
+        <div className="relative z-10 w-full max-w-[440px] text-center mb-5">
+          <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-lg bg-nx-violet/10 border border-nx-violet/20 text-nx-violet text-[10px] font-bold tracking-widest uppercase">
+            <Store className="w-3.5 h-3.5" /> Seller Panel
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+            {sellerMode === "register" ? "Open Your Seller Store" : "Seller Sign In"}
+          </h1>
+          <p className="text-sm text-white/40 leading-relaxed">
+            {sellerMode === "register"
+              ? "Register your store directly — an admin reviews and approves it before you can publish products."
+              : "Sign in to manage products, orders and earnings."}
+          </p>
+          {sellerMode === "register" && (
+            <p className="text-[11px] text-white/25 mt-2 leading-relaxed">
+              <Shield className="inline w-3 h-3 mr-1 text-nx-gold" />
+              New stores appear under <span className="text-white/50">Admin → Verification → Seller Store Approvals</span> until approved.
+            </p>
+          )}
+          {/* Register / Sign-in switch */}
+          <div className="inline-flex items-center gap-1 mt-5 p-1 rounded-xl border border-white/10 bg-white/[0.03]">
+            <button
+              type="button"
+              onClick={() => { setSellerMode("register"); setError(null); setPasswordError(null); setLoginPassword(""); }}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${sellerMode === "register" ? "bg-nx-violet text-white" : "text-white/40 hover:text-white"}`}
+            >
+              Register Store
+            </button>
+            <button
+              type="button"
+              onClick={() => { setSellerMode("login"); setError(null); setPasswordError(null); }}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${sellerMode === "login" ? "bg-nx-violet text-white" : "text-white/40 hover:text-white"}`}
+            >
+              I have a store
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex items-center justify-center w-full px-4 relative z-10">
         <div className="flex items-center justify-center h-full flex-col w-full max-w-[900px]">
           <button onClick={() => navigate("/")} className="flex items-center gap-2 mb-6 group">
@@ -679,11 +734,13 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             </div>
           )}
 
-          {step === "signIn" && (
+          {step === "signIn" && !sellerPanelLogin && (
             <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Change</button>
+                  {!isSellerRegister && (
+                    <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Change</button>
+                  )}
                   <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "🏪 Seller" : selectedRole === "freelancer" ? "✍️ Freelancer" : "🛒 Buyer"}</span>
                 </div>
                 <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : "Create Buyer Account"}</CardTitle>
@@ -746,6 +803,36 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                   </Button>
                 </form>
                 <p className="text-[11px] text-white/20 text-center">{selectedRole === "seller" ? "Sellers must complete KYC verification before listing products" : selectedRole === "freelancer" ? "Freelancers can set up their profile after account creation" : "By creating an account, you agree to Nexora's Terms & Privacy Policy"}</p>
+              </CardContent>
+              <div className="py-3 px-6 text-xs text-center text-white/20 bg-white/[0.02] border-t border-white/5 rounded-b-lg flex items-center justify-center gap-1.5">
+                <Shield className="w-3 h-3" /> Protected by Nexora Escrow Security
+              </div>
+            </Card>
+          )}
+
+          {/* Dedicated seller panel — login mode */}
+          {sellerPanelLogin && (
+            <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
+              <CardHeader className="text-center pt-6">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-nx-violet/10 text-nx-violet">🏪 Seller Sign In</span>
+                </div>
+                <CardTitle className="text-xl text-white">Welcome back, Seller</CardTitle>
+                <CardDescription className="text-white/40">Enter your email and password to access your store</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form onSubmit={handlePasswordLogin} className="space-y-3">
+                  <div className="relative"><Mail className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="email" placeholder="Email address" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" required autoFocus /></div>
+                  <div className="relative"><Lock className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="password" placeholder="Password" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" required /></div>
+                  {error && <p className="text-sm text-red-400">{error}</p>}
+                  <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign In to Seller Panel <ArrowRight className="ml-2 h-4 w-4" /></>}
+                  </Button>
+                </form>
+                <p className="text-[11px] text-white/20 text-center">
+                  Don't have a store yet?{" "}
+                  <button type="button" onClick={() => setSellerMode("register")} className="text-nx-violet hover:text-nx-violet/80 font-medium">Register your store</button>
+                </p>
               </CardContent>
               <div className="py-3 px-6 text-xs text-center text-white/20 bg-white/[0.02] border-t border-white/5 rounded-b-lg flex items-center justify-center gap-1.5">
                 <Shield className="w-3 h-3" /> Protected by Nexora Escrow Security
