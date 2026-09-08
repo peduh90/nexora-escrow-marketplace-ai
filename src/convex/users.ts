@@ -914,18 +914,17 @@ export const checkAndPromoteAdmin = mutation({
 /**
  * Promote any user to admin.
  * SECURITY: Only callable by the hardcoded admin email OR an existing admin.
- * The caller's own role is checked — a non-admin user with any other email
- * cannot call this, even if they pass the admin email as the target.
+ * The target is resolved from the authenticated session (never a raw
+ * client-supplied email), so a stale/mistyped email can never make the
+ * promotion throw "User not found".
  */
 export const promoteToAdmin = mutation({
-  args: {
-    email: v.string(),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    // Resolve the caller's user record
+    // Resolve the caller's user record from the session itself
     const caller = await getSessionUser(ctx);
 
     if (!caller) throw new Error("User not found");
@@ -937,24 +936,34 @@ export const promoteToAdmin = mutation({
       throw new Error("Unauthorized: only admins can promote users");
     }
 
-    // Prevent promoting someone else to admin if caller is not actually admin
-    // (the ADMIN_EMAIL path only allows self-promotion)
-    if (identity.email !== ADMIN_EMAIL && args.email !== identity.email) {
-      // Only an existing admin can promote other people
-      if (caller.role !== "admin") {
-        throw new Error("Unauthorized: only admins can promote other users");
-      }
+    const callerRole = (caller as any).role as string | undefined;
+    if (callerRole !== "admin") {
+      await ctx.db.patch(caller._id, { role: "admin" as const });
+    }
+    return { success: true, userId: caller._id };
+  },
+});
+
+/**
+ * One-shot admin bootstrap used by the admin route guard.
+ * Self-promotes the platform owner (ADMIN_EMAIL) if needed and reports the
+ * authoritative admin state for the session. Safe to call repeatedly.
+ */
+export const ensureAdminAccess = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { isAdmin: false, authenticated: false };
+
+    const caller = await getSessionUser(ctx);
+    if (!caller) return { isAdmin: false, authenticated: true };
+
+    if (identity.email === ADMIN_EMAIL && caller.role !== "admin") {
+      await ctx.db.patch(caller._id, { role: "admin" as const });
     }
 
-    const target = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", args.email))
-      .first();
-
-    if (!target) throw new Error(`User with email ${args.email} not found`);
-
-    await ctx.db.patch(target._id, { role: "admin" as const });
-    return { success: true, userId: target._id };
+    const fresh = (await ctx.db.get(caller._id)) as any;
+    return { isAdmin: fresh?.role === "admin", authenticated: true };
   },
 });
 

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import AIChat from "@/components/AIChat";
 import {
@@ -8,7 +10,7 @@ import {
   Brain, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
   User, Truck, Briefcase, Activity, Wallet, Bell,
   Search, Package, CreditCard, MessageSquare, AlertTriangle,
-  MapPin, Receipt, TrendingUp, X, Menu, Eye,
+  MapPin, Receipt, TrendingUp, X, Menu, Eye, Crown,
 } from "lucide-react";
 
 const navSections = [
@@ -18,7 +20,7 @@ const navSections = [
   { label: "USERS", items: [
     { icon: Users, label: "All Users", path: "/admin/users" },
     { icon: User, label: "Buyers", path: "/admin/buyers" },
-    { icon: Briefcase, label: "Sellers", path: "/admin/sellers" },
+    { icon: Briefcase, label: "Sellers", path: "/admin/sellers", badgeKey: "pendingSellers" as const },
     { icon: Eye, label: "Verification", path: "/admin/kyc" },
   ]},
   { label: "MARKETPLACE", items: [
@@ -50,6 +52,7 @@ const navSections = [
     { icon: Bell, label: "Notifications", path: "/admin/notifications" },
     { icon: Settings, label: "Settings", path: "/admin/settings" },
     { icon: Eye, label: "Audit Logs", path: "/admin/audit-logs" },
+    { icon: Crown, label: "Owner Control", path: "/admin/owner" },
   ]},
 ];
 
@@ -59,6 +62,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Live stats so the sidebar can surface actionable queues (e.g. sellers
+  // waiting for approval) the moment they appear — no caching, reactive.
+  const stats = useQuery(api.admin.getDashboardStats);
+  const pendingSellers = stats?.users?.pendingSellers ?? 0;
 
   return (
     <div className="flex min-h-screen bg-[#050508]">
@@ -82,7 +90,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all group ${isActive ? "bg-nx-gold/10 text-nx-gold" : "text-white/35 hover:text-white/70 hover:bg-white/[0.03]"} ${collapsed ? "justify-center" : ""}`}
                     title={collapsed ? item.label : undefined}>
                     <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-nx-gold" : "group-hover:text-white/50"}`} />
-                    {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+                    {!collapsed && (
+                      <span className="whitespace-nowrap flex items-center gap-2">
+                        {item.label}
+                        {"badgeKey" in item && item.badgeKey === "pendingSellers" && pendingSellers > 0 && (
+                          <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-nx-gold text-black text-[10px] font-bold flex items-center justify-center">
+                            {pendingSellers}
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </button>
                 );
               })}
