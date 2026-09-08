@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 
 type UserInfo = {
   _id: string;
@@ -64,6 +64,90 @@ export const initiateDeposit = mutation({
     });
 
     return { reference, amount: args.amount, phoneNumber: args.phoneNumber };
+  },
+});
+
+/**
+ * Link the Safaricom CheckoutRequestID to a pending deposit so the M-Pesa
+ * callback (which only receives CheckoutRequestID, not our reference) can
+ * resolve the correct wallet transaction.
+ */
+export const attachCheckoutRequest = mutation({
+  args: {
+    reference: v.string(),
+    checkoutRequestId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const tx = await ctx.db
+      .query("walletTransactions")
+      .filter((q: any) => q.eq(q.field("reference"), args.reference))
+      .first();
+    if (!tx) throw new Error("Transaction not found");
+
+    const owner = await getUserByEmail(ctx, identity.email);
+    if (!owner || owner._id !== tx.userId) {
+      throw new Error("Unauthorized: you can only attach to your own deposits");
+    }
+
+    await ctx.db.patch(tx._id as any, { checkoutRequestId: args.checkoutRequestId });
+    return { success: true };
+  },
+});
+
+/**
+ * Complete a deposit from the M-Pesa callback. Internal (server-to-server)
+ * only: there is no client session here, so this must NOT require identity.
+ * Resolves the transaction by CheckoutRequestID and credits the owner.
+ */
+export const completeDepositFromCallback = internalMutation({
+  args: {
+    checkoutRequestId: v.string(),
+    mpesaReceipt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const tx = await ctx.db
+      .query("walletTransactions")
+      .withIndex("by_checkout", (q: any) => q.eq("checkoutRequestId", args.checkoutRequestId))
+      .first();
+
+    if (!tx) {
+      // Not linked yet — fall back to the reference if the callback carries one.
+      const byRef = await ctx.db
+        .query("walletTransactions")
+        .filter((q: any) => q.eq(q.field("reference"), args.checkoutRequestId))
+        .first();
+      if (!byRef) throw new Error("Transaction not found");
+      await ctx.db.patch(byRef._id as any, {
+        status: "completed",
+        reference: `${byRef.reference}|${args.mpesaReceipt}`,
+      });
+      const user = await getUserById(ctx, byRef.userId);
+      if (user && "walletBalance" in user) {
+        await ctx.db.patch(user._id as any, {
+          walletBalance: (user.walletBalance || 0) + byRef.amount,
+        });
+      }
+      return { success: true, amount: byRef.amount };
+    }
+
+    if (tx.status === "completed") return { alreadyCompleted: true };
+
+    await ctx.db.patch(tx._id as any, {
+      status: "completed",
+      reference: `${tx.reference}|${args.mpesaReceipt}`,
+    });
+
+    const user = await getUserById(ctx, tx.userId);
+    if (user && "walletBalance" in user) {
+      await ctx.db.patch(user._id as any, {
+        walletBalance: (user.walletBalance || 0) + tx.amount,
+      });
+    }
+
+    return { success: true, amount: tx.amount };
   },
 });
 

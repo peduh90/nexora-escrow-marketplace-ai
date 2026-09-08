@@ -33,9 +33,9 @@ http.route({
         const metadata = stkCallback.CallbackMetadata?.Item || [];
         const mpesaReceipt = metadata.find((i: any) => i.Name === "MpesaReceiptNumber")?.Value || "";
 
-        // Credit wallet via mutation
-        await ctx.runMutation(api.wallet.confirmDeposit, {
-          reference: checkoutRequestId,
+        // Credit wallet via internal mutation (server-to-server, no session).
+        await ctx.runMutation(api.wallet.completeDepositFromCallback, {
+          checkoutRequestId,
           mpesaReceipt,
         });
       }

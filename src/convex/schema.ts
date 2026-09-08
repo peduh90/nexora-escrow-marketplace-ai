@@ -273,11 +273,16 @@ const schema = defineSchema(
       ),
       reference: v.string(),
       description: v.string(),
+      // Linked from the M-Pesa STK Push response so the callback can resolve a
+      // deposit by CheckoutRequestID (the reference stored at initiate time is
+      // NOT what Safaricom echoes back).
+      checkoutRequestId: v.optional(v.string()),
       createdAt: v.number(),
     })
       .index("by_user", ["userId"])
       .index("by_type", ["type"])
-      .index("by_created", ["createdAt"]),
+      .index("by_created", ["createdAt"])
+      .index("by_checkout", ["checkoutRequestId"]),
 
     // Disputes
     disputes: defineTable({
