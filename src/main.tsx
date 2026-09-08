@@ -57,6 +57,8 @@ const FreelancerTools = lazy(() => import("./pages/freelance/FreelancerTools.tsx
 const FreelanceDashboard = lazy(() => import("./pages/freelance/FreelanceDashboard.tsx"));
 // Employer panel
 const EmployerDashboard = lazy(() => import("./pages/employer/EmployerDashboard.tsx"));
+const EmployerJobs = lazy(() => import("./pages/employer/EmployerJobs.tsx"));
+const EmployerProjects = lazy(() => import("./pages/employer/EmployerProjects.tsx"));
 const FreelanceFindWork = lazy(() => import("./pages/freelance/FreelanceFindWork.tsx"));
 const FreelanceFindFreelancers = lazy(() => import("./pages/freelance/FreelanceFindFreelancers.tsx"));
 const FreelancePostTask = lazy(() => import("./pages/freelance/FreelancePostTask.tsx"));
@@ -247,17 +249,22 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/freelance/task/:id" element={<FreelanceJobDetail />} />
               <Route path="/freelance/tools" element={<FreelancerTools />} />
               <Route path="/freelance/dashboard" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceDashboard /></RoleRouter>} />
-              {/* Employer routes */}
+              {/* Employer routes — the employer panel is entirely separate from
+                  the writer/freelancer panel. /employer/jobs is the applicant
+                  management screen for the employer's own job posts. */}
               <Route path="/employer" element={<RoleRouter allowedRoles={["employer"]}><EmployerDashboard /></RoleRouter>} />
               <Route path="/employer/post-job" element={<RoleRouter allowedRoles={["employer"]}><FreelancePostTask /></RoleRouter>} />
-              <Route path="/employer/jobs" element={<RoleRouter allowedRoles={["employer"]}><FreelanceApplications /></RoleRouter>} />
-              <Route path="/employer/projects" element={<RoleRouter allowedRoles={["employer"]}><FreelanceProjects /></RoleRouter>} />
+              <Route path="/employer/jobs" element={<RoleRouter allowedRoles={["employer"]}><EmployerJobs /></RoleRouter>} />
+              <Route path="/employer/projects" element={<RoleRouter allowedRoles={["employer"]}><EmployerProjects /></RoleRouter>} />
               <Route path="/employer/messages" element={<RoleRouter allowedRoles={["employer"]}><FreelanceMessages /></RoleRouter>} />
               <Route path="/employer/earnings" element={<RoleRouter allowedRoles={["employer"]}><FreelanceEarnings /></RoleRouter>} />
               <Route path="/employer/settings" element={<RoleRouter allowedRoles={["employer"]}><FreelanceSettings /></RoleRouter>} />
               <Route path="/freelance/find-work" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceFindWork /></RoleRouter>} />
-              <Route path="/freelance/find-freelancers" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceFindFreelancers /></RoleRouter>} />
-              <Route path="/freelance/post-task" element={<RoleRouter allowedRoles={["freelancer"]}><FreelancePostTask /></RoleRouter>} />
+              {/* Finding talent is an employer action, not a freelancer one. */}
+              <Route path="/freelance/find-freelancers" element={<RoleRouter allowedRoles={["employer"]}><FreelanceFindFreelancers /></RoleRouter>} />
+              {/* Writers/freelancers must NOT see the post-task screen; the
+                  backend role-gates createTask to employers as well. */}
+              <Route path="/freelance/post-task" element={<RoleRouter allowedRoles={["employer"]}><FreelancePostTask /></RoleRouter>} />
               <Route path="/freelance/projects" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceProjects /></RoleRouter>} />
               <Route path="/freelance/applications" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceApplications /></RoleRouter>} />
               <Route path="/freelance/services" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceServices /></RoleRouter>} />

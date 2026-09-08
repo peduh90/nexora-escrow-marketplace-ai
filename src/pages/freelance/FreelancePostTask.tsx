@@ -54,10 +54,12 @@ export default function FreelancePostTask() {
         experienceLevel: "intermediate",
       });
       setSuccess(true);
-      setTimeout(() => navigate("/freelance/dashboard"), 1500);
-    } catch (err) {
+      // Employers manage applicants from their own panel — always return there,
+      // never to the writer dashboard.
+      setTimeout(() => navigate("/employer/jobs"), 1500);
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to create task. Please try again.");
+      alert(err?.message || "Failed to create task. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -79,7 +81,7 @@ export default function FreelancePostTask() {
     <div className="flex min-h-screen bg-[#05050A]">
       <div className="flex-1 min-w-0">
         <div className="sticky top-0 z-30 h-14 bg-[#08080F]/80 backdrop-blur-xl border-b border-white/5 flex items-center px-4 md:px-6">
-          <button onClick={() => navigate("/freelance/dashboard")} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 transition-colors mr-3">
+          <button onClick={() => navigate("/employer")} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 transition-colors mr-3">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <h1 className="text-sm font-semibold text-white">Post a Task</h1>

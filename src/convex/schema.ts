@@ -850,6 +850,8 @@ const schema = defineSchema(
       status: v.union(
         v.literal("active"),
         v.literal("on_hold"),
+        v.literal("submitted"),
+        v.literal("revision_requested"),
         v.literal("completed"),
         v.literal("cancelled"),
         v.literal("disputed"),
@@ -857,11 +859,27 @@ const schema = defineSchema(
       progress: v.number(), // 0-100
       totalPaid: v.number(),
       escrowId: v.optional(v.string()),
+      // Escrow lifecycle for the project payment. employerFunded marks the
+      // employer's wallet debit + escrow funding at hire time; escrowReleased
+      // marks the payout to the freelancer on approval.
+      employerFunded: v.optional(v.boolean()),
+      escrowReleased: v.optional(v.boolean()),
+      // Latest employer review decision on a submission.
+      lastReview: v.optional(v.object({
+        action: v.union(v.literal("submitted"), v.literal("revision_requested"), v.literal("approved")),
+        note: v.optional(v.string()),
+        by: v.string(),
+        at: v.number(),
+      })),
+      // Number of revision rounds used (employer requests)
+      revisionCount: v.optional(v.number()),
       files: v.optional(v.array(v.object({
         name: v.string(),
         url: v.string(),
         uploadedBy: v.string(),
         uploadedAt: v.number(),
+        version: v.optional(v.number()),
+        note: v.optional(v.string()),
       }))),
       messages: v.number(), // unread message count
       startedAt: v.number(),

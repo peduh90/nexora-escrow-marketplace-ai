@@ -63,7 +63,9 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
   const [step, setStep] = useState<AuthStep>(
     isAdminLogin ? "adminEmail" : isSellerRegister ? "signIn" : "roleSelect",
   );
-  const [selectedRole, setSelectedRole] = useState<"buyer" | "seller" | "freelancer" | null>(
+  const [selectedRole, setSelectedRole] = useState<
+    "buyer" | "seller" | "freelancer" | "employer" | null
+  >(
     isSellerRegister ? "seller" : null,
   );
   // On the dedicated seller panel, toggle between creating an account and
@@ -159,7 +161,6 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
         : role === "buyer"
         ? "/buyer"
         : null;
-
     if (roleTarget) {
       navigate(roleTarget);
       return;
@@ -209,7 +210,7 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
 
   const isFreelanceRoute = redirect.startsWith("/freelance");
 
-  const handleRoleSelect = (role: "buyer" | "seller" | "freelancer") => {
+  const handleRoleSelect = (role: "buyer" | "seller" | "freelancer" | "employer") => {
     setSelectedRole(role);
     setStep("signIn");
   };
@@ -322,6 +323,8 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
             ? "/seller"
             : selectedRole === "freelancer"
             ? "/freelance/dashboard"
+            : selectedRole === "employer"
+            ? "/employer"
             : "/buyer";
         try { navigate(target); } catch {}
       }
@@ -470,7 +473,7 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
         let target: string | null = null;
         if (r === "admin") target = "/admin";
         else if (r === "seller" || r === "driver") target = "/seller";
-        else if (r === "freelancer") target = "/freelance";
+        else if (r === "freelancer") target = "/freelance/dashboard";
         else if (r === "buyer") target = "/buyer";
         else if (r === "employer") target = "/employer";
         else {
@@ -745,7 +748,10 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
                       </div>
                     </button>
 
-                    <button onClick={() => handleRoleSelect("freelancer")} className="group relative p-6 rounded-2xl border border-amber-500/10 bg-amber-500/[0.02] backdrop-blur-sm hover:border-amber-500/30 hover:bg-amber-500/5 transition-all duration-300 text-left">
+                    {/* Employer selects the DISTINCT employer role — never the
+                        freelancer role. Fix for employer accounts being created
+                        as freelancers and landing in the writer dashboard. */}
+                    <button onClick={() => handleRoleSelect("employer")} className="group relative p-6 rounded-2xl border border-amber-500/10 bg-amber-500/[0.02] backdrop-blur-sm hover:border-amber-500/30 hover:bg-amber-500/5 transition-all duration-300 text-left">
                       <div className="w-14 h-14 rounded-xl bg-amber-500/10 flex items-center justify-center mb-4 group-hover:bg-amber-500/20 transition-colors">
                         <span className="text-2xl">💼</span>
                       </div>
@@ -817,10 +823,10 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
                   {!isSellerRegister && (
                     <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Change</button>
                   )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "🏪 Seller" : selectedRole === "freelancer" ? "✍️ Freelancer" : "🛒 Buyer"}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : selectedRole === "employer" ? "bg-amber-500/10 text-amber-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "🏪 Seller" : selectedRole === "freelancer" ? "✍️ Freelancer" : selectedRole === "employer" ? "💼 Employer" : "🛒 Buyer"}</span>
                 </div>
-                <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : "Create Buyer Account"}</CardTitle>
-                <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : "Create your account to start shopping securely"}</CardDescription>
+                <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : selectedRole === "employer" ? "Create Employer Account" : "Create Buyer Account"}</CardTitle>
+                <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : selectedRole === "employer" ? "Set up your employer account to post jobs and hire freelancers" : "Create your account to start shopping securely"}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="relative"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/5" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-nx-surface px-2 text-white/20 tracking-wider">or sign in with email</span></div></div>
@@ -878,7 +884,7 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Send Verification Code <ArrowRight className="ml-2 h-4 w-4" /></>}
                   </Button>
                 </form>
-                <p className="text-[11px] text-white/20 text-center">{selectedRole === "seller" ? "Sellers must complete KYC verification before listing products" : selectedRole === "freelancer" ? "Freelancers can set up their profile after account creation" : "By creating an account, you agree to Nexora's Terms & Privacy Policy"}</p>
+                <p className="text-[11px] text-white/20 text-center">{selectedRole === "seller" ? "Sellers must complete KYC verification before listing products" : selectedRole === "freelancer" ? "Freelancers can set up their profile after account creation" : selectedRole === "employer" ? "Employers post jobs, review proposals, and manage escrow-protected payments" : "By creating an account, you agree to Nexora's Terms & Privacy Policy"}</p>
               </CardContent>
               <div className="py-3 px-6 text-xs text-center text-white/20 bg-white/[0.02] border-t border-white/5 rounded-b-lg flex items-center justify-center gap-1.5">
                 <Shield className="w-3 h-3" /> Protected by Nexora Escrow Security

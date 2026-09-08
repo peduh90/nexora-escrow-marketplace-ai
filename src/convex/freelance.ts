@@ -1,5 +1,40 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { sellerCommission, buyerProtectionFee } from "./fees";
+
+// ─── SHARED HELPERS ───
+
+/** Resolve the session's user record (auth-session-bound, email fallback). */
+async function requireUser(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Not authenticated");
+  const user = await ctx.db
+    .query("users")
+    .withIndex("email", (q: any) => q.eq("email", identity.email))
+    .first();
+  if (!user) throw new Error("User not found");
+  return user;
+}
+
+/** Insert an in-app notification for a user. */
+async function notify(
+  ctx: any,
+  userId: string,
+  type: string,
+  title: string,
+  message: string,
+  link?: string,
+) {
+  await ctx.db.insert("notifications", {
+    userId,
+    type,
+    title,
+    message,
+    read: false,
+    link: link || "/freelance/dashboard",
+    createdAt: Date.now(),
+  });
+}
 
 // ─── FREELANCER PROFILE ───
 
@@ -86,7 +121,43 @@ export const getMyProfile = query({
       .query("freelanceProfiles")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .first();
+
     return profile || null;
+  },
+});
+
+/**
+ * Legacy role repair (authenticated, self-scoped): align the signed-in user's
+ * account role with the roleMode stored on their verified freelance profile.
+ *
+ * Earlier signup flows saved Employers with the account role "freelancer"
+ * (the Employer card on /auth selected the freelancer role), so some existing
+ * accounts are mislabelled. The profile's roleMode is the user's explicit
+ * choice, so it wins — in both directions. This only ever moves a role between
+ * "freelancer" and "employer"; buyer, seller, driver, and admin accounts are
+ * never touched, and marketplace roles never leak into Freelance.
+ */
+export const syncProfileRole = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    if (user.role !== "freelancer" && user.role !== "employer") {
+      return { success: false, reason: "not a freelance account", role: user.role ?? null };
+    }
+
+    const profile = await ctx.db
+      .query("freelanceProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+    if (!profile || profile.roleMode === "both") {
+      return { success: false, reason: "no freelance profile or dual mode", role: user.role };
+    }
+
+    const desired = profile.roleMode === "employer" ? "employer" : "freelancer";
+    if (user.role !== desired) {
+      await ctx.db.patch(user._id, { role: desired });
+    }
+    return { success: true, role: desired };
   },
 });
 
@@ -188,14 +259,17 @@ export const createTask = mutation({
     freelancerCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const user = await requireUser(ctx);
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-    if (!user) throw new Error("User not found");
+    // ── ROLE GATE: only verified Employers may post jobs ──
+    // Writers/Freelancers must not be able to create or post jobs. Buyers and
+    // sellers are also blocked — Freelance is a separate system with its own
+    // verified roles.
+    if (user.role !== "employer") {
+      throw new Error(
+        "Only Employer accounts can post jobs. Register as an Employer at Nexora Freelance to hire."
+      );
+    }
 
     const now = Date.now();
     const taskId = await ctx.db.insert("freelanceTasks", {
@@ -300,14 +374,17 @@ export const applyToTask = mutation({
     estimatedDuration: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const user = await requireUser(ctx);
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-    if (!user) throw new Error("User not found");
+    // ── ROLE GATE: only Writers/Freelancers may apply ──
+    // Employers hire; they don't apply. Buyers/sellers are also blocked —
+    // a marketplace Buyer or Seller never automatically gains a freelance
+    // role.
+    if (user.role !== "freelancer") {
+      throw new Error(
+        "Only Writer/Freelancer accounts can apply to jobs. Employers post and manage jobs instead."
+      );
+    }
 
     const task = await ctx.db.get(args.taskId);
     if (!task) throw new Error("Task not found");
@@ -426,6 +503,14 @@ export const acceptApplication = mutation({
     for (const app of allApps) {
       if (app._id !== args.applicationId && app.status === "pending") {
         await ctx.db.patch(app._id, { status: "rejected" });
+        await notify(
+          ctx,
+          app.freelancerId,
+          "freelance",
+          "Application not selected",
+          `Your proposal for "${(task as any).title}" was not selected this time. Keep applying — new jobs drop daily.`,
+          "/freelance/find-work",
+        );
       }
     }
 
@@ -456,6 +541,24 @@ export const acceptApplication = mutation({
       assignedFreelancerId: application.freelancerId,
       updatedAt: now,
     });
+
+    // Notify both sides of the hire.
+    await notify(
+      ctx,
+      application.freelancerId,
+      "freelance",
+      "🎉 You've been hired!",
+      `You were hired for "${(task as any).title}" (KES ${application.proposedBudget.toLocaleString()}). The employer will fund escrow — start working once it shows funded.`,
+      "/freelance/projects",
+    );
+    await notify(
+      ctx,
+      (task as any).employerId,
+      "freelance",
+      "Freelancer hired",
+      `You hired ${application.freelancerName} for "${(task as any).title}". Fund the escrow (KES ${application.proposedBudget.toLocaleString()} + protection fee) to activate the project.`,
+      "/employer/projects",
+    );
 
     return { projectId };
   },
@@ -725,7 +828,78 @@ export const generateFileUploadUrl = mutation({
 
 // ─── SUBMISSIONS ───
 
-/** Submit work for a project */
+/**
+ * Employer funds the project escrow from their Nexora wallet.
+ *
+ * Debits the employer's wallet for the project amount + the employer
+ * protection fee (fee engine, freelance tiers) and marks the project
+ * employerFunded. Funds are released to the freelancer (minus their
+ * commission) only when the employer approves the work (approveWork).
+ */
+export const fundProjectEscrow = mutation({
+  args: { projectId: v.id("freelanceProjects") },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error("Project not found");
+    if (project.employerId !== user._id) {
+      throw new Error("Not authorized: only the employer on this project can fund it");
+    }
+    if (project.employerFunded) throw new Error("Escrow is already funded for this project");
+    if (project.status !== "active") throw new Error("Project is not active");
+
+    const amount = project.budget;
+    const protection = buyerProtectionFee("freelance", amount);
+    const total = amount + protection.fee;
+
+    const walletBalance = user.walletBalance || 0;
+    if (walletBalance < total) {
+      throw new Error(
+        `Insufficient wallet balance. You need KES ${total.toLocaleString()} (project KES ${amount.toLocaleString()} + protection fee KES ${protection.fee.toLocaleString()}). Deposit via M-Pesa on the Earnings page first.`
+      );
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(user._id, {
+      walletBalance: walletBalance - total,
+      escrowBalance: (user.escrowBalance || 0) + total,
+    });
+
+    await ctx.db.insert("walletTransactions", {
+      userId: user._id,
+      type: "escrow_fund",
+      amount: total,
+      currency: "KES",
+      status: "completed",
+      reference: `NX-FL-ESC-${now}`,
+      description: `Freelance escrow funding for "${project.title}" (incl. KES ${protection.fee.toLocaleString()} protection fee)`,
+      createdAt: now,
+    });
+
+    await ctx.db.patch(args.projectId, {
+      employerFunded: true,
+      updatedAt: now,
+    });
+
+    await notify(
+      ctx,
+      project.freelancerId,
+      "freelance",
+      "Escrow funded — safe to start",
+      `The employer funded KES ${amount.toLocaleString()} for "${project.title}". Funds are held by Nexora and released when your work is approved.`,
+      "/freelance/projects",
+    );
+
+    return { success: true, funded: total, protectionFee: protection.fee };
+  },
+});
+
+/**
+ * Freelancer submits completed work. Moves the project to "submitted" and
+ * notifies the employer to review. Each delivery is versioned so the employer
+ * can track rounds.
+ */
 export const submitWork = mutation({
   args: {
     projectId: v.id("freelanceProjects"),
@@ -733,18 +907,15 @@ export const submitWork = mutation({
     fileIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-    if (!user) throw new Error("User not found");
+    const user = await requireUser(ctx);
 
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error("Project not found");
-    if (project.freelancerId !== user._id) throw new Error("Not authorized");
+    if (project.freelancerId !== user._id) throw new Error("Not authorized: only the hired freelancer can submit work");
+    if (project.status !== "active" && project.status !== "revision_requested") {
+      throw new Error(`Work cannot be submitted while the project is ${project.status.replace("_", " ")}`);
+    }
+    if (!args.message.trim()) throw new Error("Describe what you delivered");
 
     const now = Date.now();
     const existingSubmissions = project.files || [];
@@ -752,27 +923,273 @@ export const submitWork = mutation({
 
     const submissionFiles = (args.fileIds || []).map((fileId, idx) => ({
       name: `submission-v${version}-file${idx + 1}`,
-      url: fileId, // will be resolved by storage on read
+      url: fileId,
       uploadedBy: user._id,
       uploadedAt: now,
+      version,
+      note: idx === 0 ? args.message.trim() : undefined,
     }));
 
     await ctx.db.patch(args.projectId, {
       files: [...existingSubmissions, ...submissionFiles],
-      status: "active",
+      status: "submitted",
+      lastReview: {
+        action: "submitted",
+        note: args.message.trim(),
+        by: user._id,
+        at: now,
+      },
       updatedAt: now,
     });
 
-    // Create a notification-like message in freelanceMessages
+    // Deliverable note is also posted to the project thread.
     await ctx.db.insert("freelanceMessages", {
       projectId: args.projectId,
       senderId: user._id,
-      content: `[Submission v${version}] ${args.message}`,
+      content: `📦 [Work submitted — delivery v${version}] ${args.message.trim()}`,
       read: false,
       createdAt: now,
     });
 
+    await notify(
+      ctx,
+      project.employerId,
+      "freelance",
+      "Work submitted for review",
+      `${user.name || "Your freelancer"} submitted delivery v${version} on "${project.title}". Review it, request revisions, or approve to release payment.`,
+      "/employer/projects",
+    );
+
     return { version, submissionCount: version };
+  },
+});
+
+/**
+ * Employer requests a revision on a submission. The project moves to
+ * "revision_requested" and the freelancer is notified with the employer's
+ * notes. Escrow stays locked through revision rounds.
+ */
+export const requestRevision = mutation({
+  args: {
+    projectId: v.id("freelanceProjects"),
+    note: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error("Project not found");
+    if (project.employerId !== user._id) throw new Error("Not authorized: only the employer can request revisions");
+    if (project.status !== "submitted") throw new Error("There is no new submission to review");
+    if (!args.note.trim()) throw new Error("Describe what needs to change");
+
+    const now = Date.now();
+    const nextRound = (project.revisionCount || 0) + 1;
+
+    await ctx.db.patch(args.projectId, {
+      status: "revision_requested",
+      revisionCount: nextRound,
+      lastReview: {
+        action: "revision_requested",
+        note: args.note.trim(),
+        by: user._id,
+        at: now,
+      },
+      updatedAt: now,
+    });
+
+    await ctx.db.insert("freelanceMessages", {
+      projectId: args.projectId,
+      senderId: user._id,
+      content: `🔁 [Revision requested — round ${nextRound}] ${args.note.trim()}`,
+      read: false,
+      createdAt: now,
+    });
+
+    await notify(
+      ctx,
+      project.freelancerId,
+      "freelance",
+      `Revision requested (round ${nextRound})`,
+      `The employer requested changes on "${project.title}": ${args.note.trim()}`, 
+      "/freelance/projects",
+    );
+
+    return { success: true, revisionRound: nextRound };
+  },
+});
+
+/**
+ * Employer approves the work. This is the payment moment:
+ *  - the escrow (project + employer protection fee, already debited at
+ *    fundProjectEscrow) is released from the employer's escrow balance,
+ *  - the freelancer receives the project amount minus their commission
+ *    (freelance tier engine) into their wallet,
+ *  - both users get a completed transaction record, and
+ *  - the project + task move to completed.
+ */
+export const approveWork = mutation({
+  args: {
+    projectId: v.id("freelanceProjects"),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error("Project not found");
+    if (project.employerId !== user._id) throw new Error("Not authorized: only the employer can approve work");
+    if (project.status === "completed") throw new Error("Project is already completed");
+    if (project.status !== "submitted") {
+      throw new Error("Wait for the freelancer's submission before approving");
+    }
+    if (!project.employerFunded) {
+      throw new Error("Escrow was never funded for this project — approve only funded projects");
+    }
+
+    const now = Date.now();
+    const amount = project.budget;
+    const commission = sellerCommission("freelance", amount);
+    const netToFreelancer = amount - commission.fee;
+    const protection = buyerProtectionFee("freelance", amount);
+
+    const employer: any = await ctx.db.get(user._id);
+    if (!employer) throw new Error("Employer account not found");
+    const freelancer: any = project.freelancerId ? await ctx.db.get(project.freelancerId as any) : null;
+
+    // Release from employer escrow balance.
+    await ctx.db.patch(employer._id, {
+      escrowBalance: Math.max(0, (employer.escrowBalance || 0) - (amount + protection.fee)),
+    });
+
+    // Pay the freelancer their net earnings into their wallet.
+    if (freelancer) {
+      await ctx.db.patch(freelancer._id, {
+        walletBalance: (freelancer.walletBalance || 0) + netToFreelancer,
+      });
+      await ctx.db.insert("walletTransactions", {
+        userId: freelancer._id,
+        type: "escrow_release",
+        amount: netToFreelancer,
+        currency: "KES",
+        status: "completed",
+        reference: `NX-FL-REL-${now}`,
+        description: `Escrow release for "${project.title}" (gross KES ${amount.toLocaleString()} − ${commission.rate * 100}% commission KES ${commission.fee.toLocaleString()})`,
+        createdAt: now,
+      });
+
+      // Update the freelancer's freelance profile stats.
+      const fProfile = await ctx.db
+        .query("freelanceProfiles")
+        .withIndex("by_user", (q: any) => q.eq("userId", freelancer._id))
+        .first();
+      if (fProfile) {
+        await ctx.db.patch(fProfile._id, {
+          completedProjects: (fProfile.completedProjects || 0) + 1,
+          totalEarnings: (fProfile.totalEarnings || 0) + netToFreelancer,
+          updatedAt: now,
+        });
+      }
+    }
+
+    // Employer-side ledger entry for the release.
+    await ctx.db.insert("walletTransactions", {
+      userId: user._id,
+      type: "escrow_release",
+      amount,
+      currency: "KES",
+      status: "completed",
+      reference: `NX-FL-EMP-${now}`,
+      description: `Escrow released to freelancer for "${project.title}"`,
+      createdAt: now,
+    });
+
+    await ctx.db.patch(args.projectId, {
+      status: "completed",
+      progress: 100,
+      totalPaid: netToFreelancer,
+      escrowReleased: true,
+      completedAt: now,
+      lastReview: {
+        action: "approved",
+        note: args.note?.trim() || undefined,
+        by: user._id,
+        at: now,
+      },
+      updatedAt: now,
+    });
+
+    // Close out the originating task.
+    if (project.taskId) {
+      const task = await ctx.db.get(project.taskId as any);
+      if (task && "status" in task) {
+        await ctx.db.patch(project.taskId as any, { status: "completed", updatedAt: now });
+      }
+    }
+
+    if (args.note?.trim()) {
+      await ctx.db.insert("freelanceMessages", {
+        projectId: args.projectId,
+        senderId: user._id,
+        content: `✅ [Work approved] ${args.note.trim()}`,
+        read: false,
+        createdAt: now,
+      });
+    }
+
+    await notify(
+      ctx,
+      project.freelancerId,
+      "freelance",
+      "💰 Payment released!",
+      `The employer approved "${project.title}". KES ${netToFreelancer.toLocaleString()} (net of commission) has been added to your wallet.`,
+      "/freelance/earnings",
+    );
+    await notify(
+      ctx,
+      user._id,
+      "freelance",
+      "Project completed",
+      `You approved "${project.title}". The escrow has been released to the freelancer and the project is closed.`,
+      "/employer/projects",
+    );
+
+    return { success: true, paidToFreelancer: netToFreelancer, commission: commission.fee };
+  },
+});
+
+/**
+ * Projects where the current user is the EMPLOYER (scoped read for the
+ * employer panel). getMyProjects mixes both sides, which is correct for the
+ * writer dashboard but wrong for employer management screens.
+ */
+export const getEmployerProjects = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
+      .first();
+    if (!user) return [];
+
+    const projects = await ctx.db
+      .query("freelanceProjects")
+      .withIndex("by_employer", (q: any) => q.eq("employerId", user._id))
+      .order("desc")
+      .collect();
+
+    return Promise.all(
+      projects.map(async (proj) => {
+        const freelancer = await ctx.db.get(proj.freelancerId as any);
+        return {
+          ...proj,
+          freelancerName:
+            freelancer && "name" in freelancer ? (freelancer as any).name : "Unknown",
+        };
+      })
+    );
   },
 });
 

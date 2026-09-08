@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import AIChat from "@/components/AIChat";
@@ -12,10 +12,11 @@ import {
   ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, Loader2, Phone,
 } from "lucide-react";
 
+// Writer/Freelancer navigation — deliberately NO "Post a Task" item. Posting
+// jobs is an Employer privilege and lives only in the Employer panel.
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/freelance/dashboard" },
   { icon: Search, label: "Find Work", path: "/freelance/find-work" },
-  { icon: Briefcase, label: "Post a Task", path: "/freelance/post-task" },
   { icon: FolderOpen, label: "My Projects", path: "/freelance/projects" },
   { icon: FileText, label: "My Applications", path: "/freelance/applications" },
   { icon: PenTool, label: "My Services", path: "/freelance/services" },
@@ -30,14 +31,28 @@ export default function FreelanceDashboard() {
   const { user, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
+  // Legacy repair: some accounts created by the old signup flow carry the
+  // wrong account role (e.g. employers saved as freelancers). The verified
+  // freelance profile roleMode is authoritative — align once per mount.
+  const syncProfileRole = useMutation(api.freelance.syncProfileRole);
+  const repairFired = useRef(false);
+  useEffect(() => {
+    if (!repairFired.current) {
+      repairFired.current = true;
+      void syncProfileRole().catch(() => {});
+    }
+  }, [syncProfileRole]);
+
   const profile = useQuery(api.freelance.getMyProfile);
   const stats = useQuery(api.freelance.getFreelanceStats);
-  const myTasks = useQuery(api.freelance.getMyTasks);
   const projects = useQuery(api.freelance.getMyProjects);
   const walletBalance = useQuery(api.wallet.getWalletBalance);
 
   const allProjects = projects ?? [];
-  const activeProjects = allProjects.filter((p: any) => p.status === "active");
+  const activeProjects = allProjects.filter((p: any) =>
+    ["active", "revision_requested"].includes(p.status)
+  );
+  const awaitingReview = allProjects.filter((p: any) => p.status === "submitted").length;
 
   return (
     <div className="flex min-h-screen bg-[#05050A]">
@@ -75,7 +90,7 @@ export default function FreelanceDashboard() {
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-white truncate">{user?.name || "User"}</p>
-                <p className="text-[10px] text-white/30 truncate">{profile?.roleMode === "employer" ? "Employer" : profile?.roleMode === "both" ? "Writer & Employer" : "Writer / Freelancer"}</p>
+                <p className="text-[10px] text-white/30 truncate">Writer / Freelancer</p>
               </div>
             )}
           </div>
@@ -113,15 +128,29 @@ export default function FreelanceDashboard() {
 
         {/* Dashboard Content */}
         <div className="p-4 md:p-6 space-y-6">
-          {/* Welcome */}
+          {/* Welcome — this is the WRITER dashboard. Employers have their own
+              dashboard at /employer and never land here. */}
           <div>
-            <h1 className="text-2xl font-bold text-white">
-              {profile?.roleMode === "employer" ? "💼 Employer Dashboard" : profile?.roleMode === "both" ? "✍️⚔️ Writer & Employer" : "✍️ Writer Dashboard"}
-            </h1>
+            <h1 className="text-2xl font-bold text-white">✍️ Writer Dashboard</h1>
             <p className="text-sm text-white/40 mt-1">
-              {profile?.roleMode === "employer" ? "Manage your jobs, hire freelancers, track projects." : profile?.roleMode === "both" ? "You're both a writer and an employer. Switch modes anytime." : "Welcome back, " + (user?.name || "there") + ". Here's your freelance overview."}
+              Welcome back, {user?.name || "there"}. Here's your freelance overview.
             </p>
           </div>
+
+          {/* Role mismatch notice: an employer account opening the writer
+              dashboard gets pointed to their own panel. */}
+          {user?.role === "employer" && (
+            <div className="p-4 rounded-xl bg-amber-400/5 border border-amber-400/10 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-white">You're signed in as an Employer</p>
+                <p className="text-xs text-white/40 mt-0.5">Job posting, hiring, and reviews live in your Employer Dashboard.</p>
+              </div>
+              <button onClick={() => navigate("/employer")}
+                className="shrink-0 px-4 py-2 rounded-lg bg-amber-400/10 text-amber-400 text-xs font-semibold hover:bg-amber-400/20 transition-colors">
+                Go to Employer Dashboard →
+              </button>
+            </div>
+          )}
 
           {/* Profile completion */}
           {(!profile || !profile.title) && (
@@ -143,9 +172,9 @@ export default function FreelanceDashboard() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: "Active Projects", value: activeProjects.length, icon: FolderOpen, color: "#8B5CF6" },
-              { label: "Total Projects", value: allProjects.length, icon: Briefcase, color: "#06B6D4" },
-              { label: "Applications", value: stats?.totalApplications || 0, icon: FileText, color: "#F59E0B" },
-              { label: "Tasks Posted", value: (myTasks ?? []).length, icon: PenTool, color: "#10B981" },
+              { label: "Awaiting Review", value: awaitingReview, icon: Clock, color: "#F59E0B" },
+              { label: "Applications", value: stats?.totalApplications || 0, icon: FileText, color: "#06B6D4" },
+              { label: "Total Earned", value: `KES ${(profile?.totalEarnings || 0).toLocaleString()}`, icon: Wallet, color: "#10B981" },
             ].map((card) => (
               <div key={card.label} className="p-4 rounded-xl border border-white/5 bg-white/[0.02]">
                 <div className="flex items-center justify-between mb-3">
@@ -206,8 +235,8 @@ export default function FreelanceDashboard() {
                 {allProjects.slice(0, 5).map((proj: any) => (
                   <div key={proj._id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/[0.02] transition-colors cursor-pointer"
                     onClick={() => navigate("/freelance/projects")}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${proj.status === "active" ? "bg-nx-violet/10" : proj.status === "completed" ? "bg-nx-emerald/10" : "bg-white/5"}`}>
-                      {proj.status === "active" ? <Clock className="w-4 h-4 text-nx-violet" /> : <CheckCircle2 className="w-4 h-4 text-nx-emerald" />}
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${proj.status === "submitted" ? "bg-nx-gold/10" : ["active", "revision_requested"].includes(proj.status) ? "bg-nx-violet/10" : proj.status === "completed" ? "bg-nx-emerald/10" : "bg-white/5"}`}>
+                      {proj.status === "submitted" ? <Clock className="w-4 h-4 text-nx-gold" /> : ["active", "revision_requested"].includes(proj.status) ? <Clock className="w-4 h-4 text-nx-violet" /> : <CheckCircle2 className="w-4 h-4 text-nx-emerald" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white truncate">{proj.title}</p>
@@ -217,7 +246,7 @@ export default function FreelanceDashboard() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-medium text-white">KES {proj.budget.toLocaleString()}</p>
-                      <p className="text-[10px] text-white/20 capitalize">{proj.status.replace(/_/g, " ")}</p>
+                      <p className="text-[10px] text-white/20 capitalize">{String(proj.status).replace(/_/g, " ")}</p>
                     </div>
                   </div>
                 ))}
