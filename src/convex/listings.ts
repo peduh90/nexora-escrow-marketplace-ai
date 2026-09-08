@@ -276,6 +276,41 @@ export const getListing = query({
   },
 });
 
+/**
+ * Get the seller's registered WhatsApp/phone number for a listing so buyers
+ * can contact the seller directly on WhatsApp. Returns the phone exactly as
+ * registered (normalized client-side); never returns any other user data.
+ */
+export const getSellerWhatsApp = query({
+  args: { listingId: v.id("listings") },
+  handler: async (ctx, args) => {
+    const listing = await ctx.db.get(args.listingId);
+    if (!listing) return { phone: null, businessName: null };
+
+    // Prefer the phone stored on the listing (set at publish time)
+    const attrs = (listing as any).attributes as Record<string, any> | undefined;
+    if (attrs?.SellerPhone && typeof attrs.SellerPhone === "string") {
+      return {
+        phone: attrs.SellerPhone,
+        businessName: typeof attrs.BusinessName === "string" ? attrs.BusinessName : null,
+      };
+    }
+
+    // Fall back to the seller account's registered phone
+    const seller = await ctx.db.get(listing.sellerId as any);
+    const phone =
+      seller && "phone" in seller && typeof (seller as any).phone === "string"
+        ? (seller as any).phone
+        : null;
+    const businessName =
+      seller && "businessName" in seller && typeof (seller as any).businessName === "string"
+        ? (seller as any).businessName
+        : null;
+
+    return { phone, businessName };
+  },
+});
+
 /** Increment view count */
 export const incrementViews = mutation({
   args: { listingId: v.id("listings") },

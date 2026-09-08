@@ -67,12 +67,20 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
 
           <div className="flex items-center gap-2">
             {/* Wallet balance */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-400/5 border border-emerald-400/10">
+            <button
+              onClick={() => navigate("/seller/earnings")}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-400/5 border border-emerald-400/10 hover:bg-emerald-400/10 transition-colors"
+              title="Open Wallet"
+            >
               <Wallet className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-xs font-medium text-emerald-400">KSh {balance.toLocaleString()}</span>
-            </div>
+            </button>
             {/* Notifications */}
-            <button className="relative p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/70 transition-colors">
+            <button
+              onClick={() => navigate("/seller/notifications")}
+              className="relative p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/70 transition-colors"
+              title="Notifications"
+            >
               <Bell className="w-4 h-4" />
             </button>
             {/* WhatsApp Support */}
@@ -85,7 +93,11 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
               <span className="hidden sm:inline">Admin</span>
             </button>
             {/* Profile */}
-            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
+            <button
+              onClick={() => navigate("/seller/store")}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+              title="Store Profile"
+            >
               {user?.image ? (
                 <img src={user.image} alt="" className="w-7 h-7 rounded-full object-cover" />
               ) : (
@@ -98,7 +110,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
                 <p className="text-[9px] text-white/30">{user?.kycStatus === "verified" ? "✓ Verified Seller" : "Seller"}</p>
               </div>
               <ChevronDown className="w-3 h-3 text-white/20 hidden md:block" />
-            </div>
+            </button>
           </div>
         </header>
 

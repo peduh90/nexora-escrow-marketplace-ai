@@ -1,6 +1,6 @@
 import SellerLayout from "./SellerLayout";
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -143,10 +143,20 @@ function WithdrawModal({ onClose, balance }: { onClose: () => void; balance: num
   const [amount, setAmount] = useState("");
   const [phone, setPhone] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState("");
+  const requestWithdrawal = useMutation(api.wallet.requestWithdrawal);
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     setProcessing(true);
-    setTimeout(() => { setProcessing(false); onClose(); }, 1500);
+    setError("");
+    try {
+      await requestWithdrawal({ amount: Number(amount), phoneNumber: phone });
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || "Withdrawal failed. Please try again.");
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -176,6 +186,7 @@ function WithdrawModal({ onClose, balance }: { onClose: () => void; balance: num
               <span className="text-emerald-400 font-medium">KES {Number(amount || 0).toLocaleString()}</span>
             </div>
           </div>
+          {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm text-white/40 hover:text-white/60 hover:bg-white/[0.03] transition-colors">Cancel</button>

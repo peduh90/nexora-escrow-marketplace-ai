@@ -1,5 +1,11 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, QueryCtx } from "./_generated/server";
+import { getSessionUser } from "./users";
+
+/** Resolve the signed-in user for messaging. Session-first, strict fallback. */
+async function getMessagingUser(ctx: QueryCtx) {
+  return await getSessionUser(ctx);
+}
 
 /** Start or get a conversation about a listing */
 export const startConversation = mutation({
@@ -9,15 +15,16 @@ export const startConversation = mutation({
     firstMessage: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const buyer = await getMessagingUser(ctx);
+    if (!buyer) throw new Error("Not authenticated");
 
-    const buyer = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-
-    if (!buyer) throw new Error("User not found");
+    // Verify the listing actually exists so the chat always has a real product.
+    const listing = await ctx.db.get(args.listingId as any);
+    if (!listing) throw new Error("Listing not found");
+    const listingTitle =
+      "title" in listing && typeof listing.title === "string"
+        ? listing.title
+        : "your product";
 
     // Check if conversation already exists
     const existing = await ctx.db
@@ -68,6 +75,17 @@ export const startConversation = mutation({
       createdAt: Date.now(),
     });
 
+    // Notify the seller about the new inquiry
+    await ctx.db.insert("notifications", {
+      userId: args.sellerId,
+      type: "message",
+      title: "New buyer message",
+      message: `Someone is interested in "${listingTitle}". Open Messages to reply.`,
+      read: false,
+      link: "/seller/messages",
+      createdAt: Date.now(),
+    });
+
     return { conversationId: convoId };
   },
 });
@@ -79,15 +97,8 @@ export const sendMessage = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-
-    if (!user) throw new Error("User not found");
+    const user = await getMessagingUser(ctx);
+    if (!user) throw new Error("Not authenticated");
 
     const convo = await ctx.db.get(args.conversationId);
     if (!convo) throw new Error("Conversation not found");
@@ -114,6 +125,17 @@ export const sendMessage = mutation({
       unreadSeller: isBuyer ? convo.unreadSeller + 1 : convo.unreadSeller,
     });
 
+    // Notify the recipient about the new message
+    await ctx.db.insert("notifications", {
+      userId: receiverId,
+      type: "message",
+      title: "New message",
+      message: args.content.slice(0, 120),
+      read: false,
+      link: isBuyer ? "/seller/messages" : "/chat",
+      createdAt: Date.now(),
+    });
+
     return { success: true };
   },
 });
@@ -122,14 +144,7 @@ export const sendMessage = mutation({
 export const getConversations = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-
+    const user = await getMessagingUser(ctx);
     if (!user) return [];
 
     const asBuyer = await ctx.db
@@ -146,11 +161,19 @@ export const getConversations = query({
 
     const enriched = await Promise.all(
       allConvos.map(async (convo) => {
-        const otherUserId = convo.buyerId === user._id ? convo.sellerId : convo.buyerId;
+        const otherUserId =
+          convo.buyerId === user._id ? convo.sellerId : convo.buyerId;
         const otherUserDoc = await ctx.db.get(otherUserId as any);
         const isUserDoc = otherUserDoc && "email" in otherUserDoc;
-        const otherUserName = isUserDoc ? (otherUserDoc as any).name : "Unknown";
-        const otherUserImage = isUserDoc ? (otherUserDoc as any).image : undefined;
+        const otherUserName = isUserDoc
+          ? (otherUserDoc as any).businessName ||
+            (otherUserDoc as any).name ||
+            (otherUserDoc as any).email?.split("@")[0] ||
+            "User"
+          : "User";
+        const otherUserImage = isUserDoc
+          ? (otherUserDoc as any).image
+          : undefined;
 
         let listingTitle = "Unknown product";
         let listingPrice = 0;
@@ -181,14 +204,7 @@ export const getConversations = query({
 export const getMessages = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-
+    const user = await getMessagingUser(ctx);
     if (!user) return [];
 
     const convo = await ctx.db.get(args.conversationId);
@@ -213,15 +229,8 @@ export const getMessages = query({
 export const markRead = mutation({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-
-    if (!user) throw new Error("User not found");
+    const user = await getMessagingUser(ctx);
+    if (!user) throw new Error("Not authenticated");
 
     const convo = await ctx.db.get(args.conversationId);
     if (!convo) return;
@@ -250,14 +259,7 @@ export const markRead = mutation({
 export const getSupportMessages = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-
+    const user = await getMessagingUser(ctx);
     if (!user) return [];
 
     const messages = await ctx.db
@@ -285,15 +287,8 @@ export const getSupportMessages = query({
 export const sendSupportMessage = mutation({
   args: { content: v.string() },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-
-    if (!user) throw new Error("User not found");
+    const user = await getMessagingUser(ctx);
+    if (!user) throw new Error("Not authenticated");
 
     // Find or create admin user
     const adminUser = await ctx.db
@@ -320,14 +315,7 @@ export const sendSupportMessage = mutation({
 export const getUnreadCount = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return 0;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-
+    const user = await getMessagingUser(ctx);
     if (!user) return 0;
 
     const asBuyer = await ctx.db

@@ -118,6 +118,61 @@ export const confirmDeposit = mutation({
   },
 });
 
+/**
+ * Request a withdrawal of wallet funds to M-Pesa.
+ * Validates balance and phone, deducts immediately, and records a pending
+ * withdrawal transaction that admins/processors complete via M-Pesa B2C.
+ */
+export const requestWithdrawal = mutation({
+  args: {
+    amount: v.number(),
+    phoneNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await getUserByEmail(ctx, identity.email);
+    if (!user) throw new Error("User not found");
+
+    if (args.amount < 50) throw new Error("Minimum withdrawal is KES 50");
+    const balance = userHasWallet(user) ? user.walletBalance || 0 : 0;
+    if (args.amount > balance) {
+      throw new Error("Insufficient wallet balance");
+    }
+
+    // Validate the M-Pesa number (Kenyan format)
+    const digits = args.phoneNumber.replace(/[^0-9]/g, "");
+    const normalized = digits.startsWith("0")
+      ? "254" + digits.slice(1)
+      : digits.startsWith("254")
+        ? digits
+        : "254" + digits;
+    if (!/^254[0-9]{9}$/.test(normalized)) {
+      throw new Error("Enter a valid M-Pesa phone number (e.g. 0712 345 678)");
+    }
+
+    const reference = `NX-WD-${Date.now()}`;
+
+    await ctx.db.patch(user._id as any, {
+      walletBalance: balance - args.amount,
+    });
+
+    await ctx.db.insert("walletTransactions", {
+      userId: user._id,
+      type: "withdrawal",
+      amount: args.amount,
+      currency: "KES",
+      status: "pending",
+      reference,
+      description: `M-Pesa withdrawal to ${args.phoneNumber.replace(/[^0-9]/g, "").replace(/^(0|254)(\\d{3})\\d{3}(\\d{3})$/, "$1$2***$3")}`,
+      createdAt: Date.now(),
+    });
+
+    return { reference, amount: args.amount, phoneNumber: normalized };
+  },
+});
+
 /** Get wallet transactions for the current user */
 export const getWalletTransactions = query({
   args: {},
@@ -242,6 +297,63 @@ export const createOrder = mutation({
     });
 
     await ctx.db.patch(args.listingId as any, { status: "sold" });
+
+    // Auto-open a buyer↔seller conversation tied to this listing so the chat
+    // always shows the published product the order was placed on.
+    const existingConvos = await ctx.db
+      .query("conversations")
+      .withIndex("by_buyer", (q: any) => q.eq("buyerId", buyer._id))
+      .collect();
+    const existingConvo = existingConvos.find(
+      (c: any) => c.sellerId === args.sellerId && c.listingId === args.listingId
+    );
+    const firstMessage = `🛒 New order placed: "${listing.title}" for KES ${args.amount.toLocaleString()}. Payment is secured in escrow.`;
+    if (existingConvo) {
+      await ctx.db.insert("messages", {
+        senderId: buyer._id,
+        receiverId: args.sellerId,
+        listingId: args.listingId,
+        content: firstMessage,
+        read: false,
+        createdAt: Date.now(),
+      });
+      await ctx.db.patch(existingConvo._id, {
+        lastMessage: firstMessage,
+        lastMessageAt: Date.now(),
+        unreadSeller: (existingConvo.unreadSeller || 0) + 1,
+      });
+    } else {
+      const convoId = await ctx.db.insert("conversations", {
+        buyerId: buyer._id,
+        sellerId: args.sellerId,
+        listingId: args.listingId,
+        lastMessage: firstMessage,
+        lastMessageAt: Date.now(),
+        unreadBuyer: 0,
+        unreadSeller: 1,
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("messages", {
+        senderId: buyer._id,
+        receiverId: args.sellerId,
+        listingId: args.listingId,
+        content: firstMessage,
+        read: false,
+        createdAt: Date.now(),
+      });
+      void convoId;
+    }
+
+    // Notify the seller of the new order
+    await ctx.db.insert("notifications", {
+      userId: args.sellerId,
+      type: "order",
+      title: "New order received",
+      message: `"${listing.title}" — KES ${args.amount.toLocaleString()} secured in escrow. Open Orders to confirm delivery details.`,
+      read: false,
+      link: "/seller/orders",
+      createdAt: Date.now(),
+    });
 
     return {
       escrowId,

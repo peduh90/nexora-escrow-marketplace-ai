@@ -55,11 +55,19 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-400/5 border border-emerald-400/10">
+            <button
+              onClick={() => navigate("/buyer/wallet")}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-400/5 border border-emerald-400/10 hover:bg-emerald-400/10 transition-colors"
+              title="Open Wallet"
+            >
               <Wallet className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-xs font-medium text-emerald-400">KSh {balance.toLocaleString()}</span>
-            </div>
-            <button className="relative p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/70 transition-colors">
+            </button>
+            <button
+              onClick={() => navigate("/buyer/notifications")}
+              className="relative p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/70 transition-colors"
+              title="Notifications"
+            >
               <Bell className="w-4 h-4" />
               {unreadCount && unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
@@ -75,7 +83,11 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
               <MessageCircle className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Support</span>
             </button>
-            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
+            <button
+              onClick={() => navigate("/buyer/profile")}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+              title="My Profile"
+            >
               {user?.image ? (
                 <img src={user.image} alt="" className="w-7 h-7 rounded-full object-cover" />
               ) : (
@@ -88,7 +100,7 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
                 <p className="text-[9px] text-white/30">{user?.email}</p>
               </div>
               <ChevronDown className="w-3 h-3 text-white/20 hidden md:block" />
-            </div>
+            </button>
           </div>
         </header>
 

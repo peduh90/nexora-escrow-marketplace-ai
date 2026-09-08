@@ -22,6 +22,7 @@ const BuyerWallet = lazy(() => import("./pages/buyer/BuyerWallet.tsx"));
 const BuyerDeliveries = lazy(() => import("./pages/buyer/BuyerDeliveries.tsx"));
 const BuyerOrders = lazy(() => import("./pages/buyer/BuyerOrders.tsx"));
 const BuyerProfile = lazy(() => import("./pages/buyer/BuyerProfile.tsx"));
+const BuyerNotifications = lazy(() => import("./pages/buyer/BuyerNotifications.tsx"));
 // Seller panel
 const SellerDashboard = lazy(() => import("./pages/seller/SellerDashboard.tsx"));
 const Marketplace = lazy(() => import("./pages/Marketplace.tsx"));
@@ -278,6 +279,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/buyer/wallet" element={<RoleRouter allowedRoles={["buyer"]}><BuyerWallet /></RoleRouter>} />
               <Route path="/buyer/disputes" element={<RoleRouter allowedRoles={["buyer"]}><BuyerDisputes /></RoleRouter>} />
               <Route path="/buyer/profile" element={<RoleRouter allowedRoles={["buyer"]}><BuyerProfile /></RoleRouter>} />
+              <Route path="/buyer/notifications" element={<RoleRouter allowedRoles={["buyer"]}><BuyerNotifications /></RoleRouter>} />
               <Route path="/buyer/marketplace" element={<RoleRouter allowedRoles={["buyer"]}><Marketplace /></RoleRouter>} />
               <Route path="/buyer/jobs" element={<RoleRouter allowedRoles={["buyer"]}><FreelanceJobs /></RoleRouter>} />
               <Route path="/buyer/deliveries" element={<RoleRouter allowedRoles={["buyer"]}><BuyerDeliveries /></RoleRouter>} />

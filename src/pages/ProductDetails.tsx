@@ -8,7 +8,7 @@ import {
   Shield, Heart, Share2, MessageSquare, ShoppingCart, ArrowLeft, Star, MapPin, Clock,
   CheckCircle2, Truck, ChevronRight, Package, Eye, X, Minus, Plus, Loader2, Send, MessageCircle, Phone,
 } from "lucide-react";
-import { getWhatsAppSellerUrl, getWhatsAppSupportUrl, openWhatsApp } from "@/lib/whatsapp";
+import { getWhatsAppSellerUrl, getWhatsAppSupportUrl, openWhatsApp, normalizeKenyanPhone } from "@/lib/whatsapp";
 
 /** Show the most relevant attributes per category */
 function CategoryAttributes({ category, attributes }: { category: string; attributes?: Record<string, string> }) {
@@ -54,6 +54,13 @@ export default function ProductDetails() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const listing = useQuery(api.listings.getListing, id ? { listingId: id as any } : "skip");
+  // The seller's registered WhatsApp number for this listing (falls back to
+  // platform support when the seller has no phone on file).
+  const sellerContact = useQuery(
+    api.listings.getSellerWhatsApp,
+    id ? { listingId: id as any } : "skip"
+  );
+  const sellerPhone = (listing?.attributes as any)?.SellerPhone || sellerContact?.phone || null;
   const incrementViews = useMutation(api.listings.incrementViews);
   const createOrder = useMutation(api.wallet.createOrder);
   const initiateStkPush = useAction(api.mpesa.initiateStkPush as any);
@@ -425,15 +432,15 @@ export default function ProductDetails() {
                 </div>
               </div>
               {/* Direct seller phone for gas sellers */}
-              {listing.attributes?.SellerPhone && (
+              {sellerPhone && (
                 <div className="flex gap-2 mb-3">
                   <a
-                    href={`https://wa.me/254${listing.attributes.SellerPhone.replace(/^0/, "")}$`}
+                    href={`https://wa.me/${normalizeKenyanPhone(sellerPhone)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"
                   >
-                    <MessageCircle className="w-3.5 h-3.5" /> WhatsApp: {listing.attributes.SellerPhone}
+                    <MessageCircle className="w-3.5 h-3.5" /> WhatsApp: {sellerPhone}
                   </a>
                 </div>
               )}
@@ -444,9 +451,8 @@ export default function ProductDetails() {
                 </button>
                 <button
                   onClick={() => {
-                    if (listing.attributes?.SellerPhone) {
-                      const phone = "254" + listing.attributes.SellerPhone.replace(/^0/, "");
-                      openWhatsApp(`https://wa.me/${phone}?text=${encodeURIComponent(`Hi! I'm interested in "${listing.title}" listed on Nexora Market for KES ${listing.price.toLocaleString()}. Is this still available?`)}`);
+                    if (sellerPhone) {
+                      openWhatsApp(getWhatsAppSellerUrl(sellerPhone, listing.title, listing.price));
                     } else {
                       openWhatsApp(getWhatsAppSupportUrl(`I'm interested in "${listing.title}" (KES ${listing.price.toLocaleString()}). Is it still available?`));
                     }
@@ -487,9 +493,8 @@ export default function ProductDetails() {
                 </button>
                 <button
                   onClick={() => {
-                    if (listing.attributes?.SellerPhone) {
-                      const phone = "254" + listing.attributes.SellerPhone.replace(/^0/, "");
-                      openWhatsApp(`https://wa.me/${phone}?text=${encodeURIComponent(`Hi! I'm interested in "${listing.title}" listed on Nexora Market for KES ${listing.price.toLocaleString()}. Is this still available?`)}`);
+                    if (sellerPhone) {
+                      openWhatsApp(getWhatsAppSellerUrl(sellerPhone, listing.title, listing.price));
                     } else {
                       openWhatsApp(getWhatsAppSupportUrl(`I'm interested in "${listing.title}" (KES ${listing.price.toLocaleString()}). Is it still available?`));
                     }
@@ -501,16 +506,15 @@ export default function ProductDetails() {
               </div>
               <button
                 onClick={() => {
-                  if (listing.attributes?.SellerPhone) {
-                    const phone = "254" + listing.attributes.SellerPhone.replace(/^0/, "");
-                    openWhatsApp(`https://wa.me/${phone}?text=${encodeURIComponent(`Hello ${listing.attributes.BusinessName || "Seller"}, I found your listing "${listing.title}" on Nexora Market. I'd like to order. Price: KES ${listing.price.toLocaleString()}.`)}`);
+                  if (sellerPhone) {
+                    openWhatsApp(getWhatsAppSellerUrl(sellerPhone, listing.title, listing.price));
                   } else {
                     openWhatsApp(getWhatsAppSupportUrl(`I need help with: ${listing.title} (KES ${listing.price.toLocaleString()})`));
                   }
                 }}
                 className="w-full py-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-emerald-400 text-sm font-medium hover:bg-emerald-500/10 transition-colors flex items-center justify-center gap-2"
               >
-                <Phone className="w-4 h-4" /> {listing.attributes?.BusinessName?.includes("Gas") ? `Contact ${listing.attributes.BusinessName} on WhatsApp` : "Contact Nexora Support"}
+                <Phone className="w-4 h-4" /> {sellerPhone && listing.attributes?.BusinessName ? `Contact ${listing.attributes.BusinessName} on WhatsApp` : "Contact Nexora Support"}
               </button>
             </div>
 
