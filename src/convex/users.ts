@@ -423,6 +423,155 @@ export const ensureUserProfile = mutation({
 });
 
 /**
+ * ─── FORGOT / RESET PASSWORD ───────────────────────────────────────────────
+ *
+ * Two-step, code-based reset that reuses the platform's email OTP sender:
+ *
+ * 1. requestPasswordReset(email) — generates a 6-digit code, stores ONLY its
+ *    PBKDF2 hash (never the plaintext), and emails it. Always returns success
+ *    so callers cannot probe which emails have accounts.
+ * 2. resetPassword({ email, code, newPassword }) — verifies the code against
+ *    the stored hash with a 5-attempt limit and 15-minute expiry, enforces the
+ *    same strong-password policy as signup, then replaces the account's
+ *    password hash and deletes the code.
+ *
+ * The reset code is sent with the same freebuff email service the auth OTP
+ * flow uses, so no extra API key is required.
+ */
+export const requestPasswordReset = mutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const email = args.email.trim().toLowerCase();
+    if (!email.includes("@")) {
+      return { success: true }; // uniform response — do not leak validity
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", email))
+      .first();
+
+    // Uniform success even when the account doesn't exist (anti-enumeration).
+    if (!user) return { success: true };
+
+    // Generate a 6-digit code and store only its hash.
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const codeHash = await hashStoredPassword(code);
+
+    // One active code per email: replace any previous one.
+    const previous = await ctx.db
+      .query("passwordResetCodes")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .collect();
+    for (const p of previous) {
+      await ctx.db.delete(p._id);
+    }
+
+    await ctx.db.insert("passwordResetCodes", {
+      email,
+      codeHash,
+      expiresAt: Date.now() + 15 * 60 * 1000,
+      attempts: 0,
+      createdAt: Date.now(),
+    });
+
+    // Send the code via the same email service used by auth OTP.
+    try {
+      await fetch("https://auth.freebuff.app/send_otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": "fb_email_2crN1hqIArZP2bEfvjp5Qik4",
+        },
+        body: JSON.stringify({
+          to: email,
+          otp: code,
+          appName: process.env.VLY_APP_NAME || "Nexora Market",
+        }),
+      });
+    } catch {
+      // Do not reveal send failures to the caller (anti-enumeration).
+    }
+
+    return { success: true };
+  },
+});
+
+/**
+ * Complete a password reset: verify the emailed code and set a new password.
+ * Enforces the same strong-password policy as signup, limits attempts to 5,
+ * and expires codes after 15 minutes.
+ */
+export const resetPassword = mutation({
+  args: {
+    email: v.string(),
+    code: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const email = args.email.trim().toLowerCase();
+
+    if (!isStrongPassword(args.newPassword)) {
+      throw new Error(
+        "Password must be at least 8 characters and include an uppercase letter, lowercase letter, number, and symbol."
+      );
+    }
+
+    const record = await ctx.db
+      .query("passwordResetCodes")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+
+    if (!record) {
+      throw new Error("Invalid or expired code. Please request a new one.");
+    }
+    if (record.expiresAt < Date.now()) {
+      await ctx.db.delete(record._id);
+      throw new Error("This code has expired. Please request a new one.");
+    }
+    if (record.attempts >= 5) {
+      await ctx.db.delete(record._id);
+      throw new Error("Too many attempts. Please request a new code.");
+    }
+
+    const valid = await verifyStoredPasswordHash(record.codeHash, args.code.trim());
+    if (!valid) {
+      await ctx.db.patch(record._id, { attempts: record.attempts + 1 });
+      throw new Error("Invalid code. Please check and try again.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", email))
+      .first();
+    if (!user) {
+      await ctx.db.delete(record._id);
+      throw new Error("Account not found.");
+    }
+
+    await ctx.db.patch(user._id, {
+      passwordHash: await hashStoredPassword(args.newPassword),
+    });
+    await ctx.db.delete(record._id);
+
+    // Invalidate every existing session for this account so any device that
+    // holds an old token is signed out after a password reset.
+    try {
+      const sessions = await ctx.db.query("authSessions").collect();
+      for (const s of sessions) {
+        if ((s as any).userId === user._id) {
+          await ctx.db.delete(s._id);
+        }
+      }
+    } catch {
+      // authSessions table may not be directly queryable in all deployments.
+    }
+
+    return { success: true };
+  },
+});
+
+/**
  * Change password with strong policy enforcement.
  */
 export const updatePassword = mutation({

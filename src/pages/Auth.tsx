@@ -38,7 +38,15 @@ function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/buyer") 
   return fallback;
 }
 
-type AuthStep = "roleSelect" | "signIn" | { email: string } | "adminEmail" | "adminOtp";
+type AuthStep =
+  | "roleSelect"
+  | "signIn"
+  | { email: string }
+  | "adminEmail"
+  | "adminOtp"
+  | "forgotEmail"
+  | "forgotCode"
+  | "forgotNewPassword";
 
 function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
   const { isLoading: authLoading, isAuthenticated, signIn, user } = useAuth();
@@ -362,6 +370,71 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
   const [loginPassword, setLoginPassword] = useState("");
   const [showLogin, setShowLogin] = useState(false);
   const verifyLogin = useMutation(api.users.verifyLogin);
+
+  // ---- FORGOT / RESET PASSWORD ----
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const requestPasswordReset = useMutation(api.users.requestPasswordReset);
+  const resetPassword = useMutation(api.users.resetPassword);
+
+  const startForgotPassword = () => {
+    setResetEmail(loginEmail);
+    setResetCode("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setResetMessage(null);
+    setError(null);
+    setStep("forgotEmail");
+  };
+
+  const handleForgotEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      await requestPasswordReset({ email: resetEmail });
+      setResetMessage(`If an account exists for ${resetEmail}, a 6-digit reset code is on its way.`);
+      setStep("forgotCode");
+    } catch (err: any) {
+      setError(err.message || "Failed to send reset code. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (resetCode.trim().length !== 6) {
+      setError("Enter the 6-digit code from your email.");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await resetPassword({
+        email: resetEmail,
+        code: resetCode.trim(),
+        newPassword,
+      });
+      setResetMessage("Password updated! You can now sign in with your new password.");
+      setLoginEmail(resetEmail);
+      setLoginPassword("");
+      setShowLogin(true);
+      setStep(isSellerRegister ? "signIn" : "roleSelect");
+    } catch (err: any) {
+      setError(err.message || "Failed to reset password. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
@@ -722,6 +795,9 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
                         <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>
                           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign In <ArrowRight className="ml-2 h-4 w-4" /></>}
                         </Button>
+                        <button type="button" onClick={startForgotPassword} className="w-full text-center text-xs text-white/40 hover:text-nx-violet transition-colors">
+                          Forgot password?
+                        </button>
                       </form>
                       <p className="text-[11px] text-white/20 text-center">Don't have an account? Use the options above to sign up.</p>
                     </CardContent>
@@ -810,6 +886,96 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
             </Card>
           )}
 
+          {/* ─── FORGOT PASSWORD: step 1 — request code ─── */}
+          {step === "forgotEmail" && (
+            <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
+              <CardHeader className="text-center pt-6">
+                <div className="w-12 h-12 rounded-full bg-nx-violet/10 flex items-center justify-center mx-auto mb-3"><Lock className="w-6 h-6 text-nx-violet" /></div>
+                <CardTitle className="text-xl text-white">Reset your password</CardTitle>
+                <CardDescription className="text-white/40">Enter your account email and we'll send you a 6-digit reset code.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form onSubmit={handleForgotEmailSubmit} className="space-y-3">
+                  <div className="relative"><Mail className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input placeholder="Email address" type="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" required autoFocus /></div>
+                  {error && <p className="text-sm text-red-400">{error}</p>}
+                  <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Send reset code <ArrowRight className="ml-2 h-4 w-4" /></>}
+                  </Button>
+                </form>
+                <button onClick={() => { setStep(isSellerRegister ? "signIn" : "roleSelect"); setError(null); }} className="w-full text-center text-xs text-white/40 hover:text-white/60 transition-colors">
+                  ← Back to sign in
+                </button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ─── FORGOT PASSWORD: step 2 — enter code + new password ─── */}
+          {step === "forgotCode" && (
+            <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
+              <CardHeader className="text-center pt-6">
+                <div className="w-12 h-12 rounded-full bg-nx-violet/10 flex items-center justify-center mx-auto mb-3"><Mail className="w-6 h-6 text-nx-violet" /></div>
+                <CardTitle className="text-xl text-white">Check your email</CardTitle>
+                <CardDescription className="text-white/40">We sent a 6-digit reset code to<br /><span className="text-white/60 font-medium">{resetEmail}</span></CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {resetMessage && <p className="text-xs text-emerald-400 text-center">{resetMessage}</p>}
+                <form onSubmit={handleResetPasswordSubmit} className="space-y-3">
+                  <Input
+                    placeholder="6-digit code"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={resetCode}
+                    onChange={(e) => setResetCode(e.target.value.replace(/[^0-9]/g, ""))}
+                    className="bg-white/[0.03] border-white/10 text-white text-center text-lg tracking-[0.4em] placeholder:text-white/20 focus:border-nx-violet/50"
+                    required
+                    autoFocus
+                  />
+                  <PasswordField
+                    label="New password"
+                    value={newPassword}
+                    onChange={(v) => { setNewPassword(v); setError(null); }}
+                  />
+                  <Input
+                    placeholder="Confirm new password"
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    className="bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50"
+                    required
+                  />
+                  {error && <p className="text-sm text-red-400">{error}</p>}
+                  <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Reset password <ArrowRight className="ml-2 h-4 w-4" /></>}
+                  </Button>
+                </form>
+                <div className="flex items-center justify-between text-xs">
+                  <button
+                    onClick={async () => {
+                      setIsLoading(true);
+                      try {
+                        await requestPasswordReset({ email: resetEmail });
+                        setResetMessage("A new code has been sent.");
+                      } catch {
+                        setError("Failed to resend. Please try again.");
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                    className="text-nx-cyan hover:text-nx-cyan/80 transition-colors"
+                  >
+                    Resend code
+                  </button>
+                  <button onClick={() => { setStep("forgotEmail"); setError(null); }} className="text-white/40 hover:text-white/60 transition-colors">
+                    Use a different email
+                  </button>
+                </div>
+                <button onClick={() => { setStep(isSellerRegister ? "signIn" : "roleSelect"); setError(null); }} className="w-full text-center text-xs text-white/40 hover:text-white/60 transition-colors">
+                  ← Back to sign in
+                </button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Dedicated seller panel — login mode */}
           {sellerPanelLogin && (
             <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
@@ -828,6 +994,9 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
                   <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign In to Seller Panel <ArrowRight className="ml-2 h-4 w-4" /></>}
                   </Button>
+                  <button type="button" onClick={startForgotPassword} className="w-full text-center text-xs text-white/40 hover:text-nx-violet transition-colors">
+                    Forgot password?
+                  </button>
                 </form>
                 <p className="text-[11px] text-white/20 text-center">
                   Don't have a store yet?{" "}

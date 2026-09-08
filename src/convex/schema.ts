@@ -510,6 +510,17 @@ const schema = defineSchema(
       .index("by_listing_viewer", ["listingId", "viewerKey"])
       .index("by_listing", ["listingId"]),
 
+    // Password reset codes: a 6-digit code emailed to the account holder.
+    // One active code per email — requesting a new one replaces the old.
+    passwordResetCodes: defineTable({
+      email: v.string(),
+      codeHash: v.string(), // PBKDF2 hash — the plaintext code is never stored
+      expiresAt: v.number(),
+      attempts: v.number(),
+      createdAt: v.number(),
+    })
+      .index("by_email", ["email"]),
+
     // Audit logs
     auditLogs: defineTable({
       adminId: v.string(),
