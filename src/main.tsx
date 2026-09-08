@@ -89,7 +89,6 @@ const AdminWallets = lazy(() => import("./pages/admin/AdminWallets.tsx"));
 const AdminWithdrawals = lazy(() => import("./pages/admin/AdminWithdrawals.tsx"));
 const AdminDeliveries = lazy(() => import("./pages/admin/AdminDeliveries.tsx"));
 const AdminDisputes = lazy(() => import("./pages/admin/AdminDisputes.tsx"));
-const AdminFraud = lazy(() => import("./pages/admin/AdminFraud.tsx"));
 const AdminAI = lazy(() => import("./pages/admin/AdminAI.tsx"));
 const AdminKYC = lazy(() => import("./pages/admin/AdminKYC.tsx"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages.tsx"));
@@ -329,7 +328,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/deliveries" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
               <Route path="/admin/zones" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
               <Route path="/admin/disputes" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />
-              <Route path="/admin/fraud" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />              <Route path="/admin/ai" element={<RequireAdmin><AdminAI /></RequireAdmin>} />
+              <Route path="/admin/fraud" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />
+              <Route path="/admin/ai" element={<RequireAdmin><AdminAI /></RequireAdmin>} />
               <Route path="/admin/owner" element={<RequireAdmin><AdminOwner /></RequireAdmin>} />
               <Route path="/admin/kyc" element={<RequireAdmin><AdminKYC /></RequireAdmin>} />
               <Route path="/admin/messages" element={<RequireAdmin><AdminMessages /></RequireAdmin>} />
