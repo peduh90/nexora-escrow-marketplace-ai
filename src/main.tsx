@@ -337,6 +337,12 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/reports" element={<RequireAdmin><AdminReports /></RequireAdmin>} />
               <Route path="/admin/jobs" element={<RequireAdmin><AdminJobs /></RequireAdmin>} />
               <Route path="/admin/categories" element={<RequireAdmin><AdminCategories /></RequireAdmin>} />
+              <Route path="/admin/analytics" element={<RequireAdmin><AdminAnalytics /></RequireAdmin>} />
+              <Route path="/admin/revenue" element={<RequireAdmin><AdminRevenue /></RequireAdmin>} />
+              <Route path="/admin/system" element={<RequireAdmin><AdminSystem /></RequireAdmin>} />
+              <Route path="/admin/settings" element={<RequireAdmin><AdminSettings /></RequireAdmin>} />
+              <Route path="/admin/notifications" element={<RequireAdmin><AdminNotifications /></RequireAdmin>} />
+              <Route path="/admin/audit-logs" element={<RequireAdmin><AdminAuditLogs /></RequireAdmin>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
