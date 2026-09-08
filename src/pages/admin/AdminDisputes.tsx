@@ -6,7 +6,7 @@ import { Scale, Search, Eye, MessageSquare, AlertTriangle, FileText } from "luci
 
 export default function AdminDisputes() {
   const allDisputes = useQuery(api.admin.getAllDisputes);
-  const allUsers = useQuery(api.users.getAllUsers);
+  const allUsers = useQuery(api.admin.getAllUsers);
   const [tab, setTab] = useState("All");
 
   const disputes = allDisputes ?? [];

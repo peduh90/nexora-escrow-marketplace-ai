@@ -5,7 +5,7 @@ import AdminLayout from "./AdminLayout";
 import { Users, Search, Eye, Mail, CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
 
 export default function AdminSellers() {
-  const allUsers = useQuery(api.users.getAllUsers);
+  const allUsers = useQuery(api.admin.getAllUsers);
   const reviewSeller = useMutation(api.admin.reviewSellerApproval);
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState<string | null>(null);

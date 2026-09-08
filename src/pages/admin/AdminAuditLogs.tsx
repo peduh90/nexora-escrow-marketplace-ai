@@ -16,9 +16,9 @@ const actionIcons: Record<string, typeof Shield> = {
 };
 
 export default function AdminAuditLogs() {
-  const allUsers = useQuery(api.users.getAllUsers);
-  const allEscrows = useQuery(api.users.getAllEscrows);
-  const allListings = useQuery(api.users.getAllListings);
+  const allUsers = useQuery(api.admin.getAllUsers);
+  const allEscrows = useQuery(api.admin.getAllEscrows);
+  const allListings = useQuery(api.admin.getAllListings);
 
   const users = allUsers ?? [];
   const escrows = allEscrows ?? [];

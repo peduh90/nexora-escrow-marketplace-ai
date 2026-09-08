@@ -18,7 +18,7 @@ const deliveryZones = [
 
 export default function AdminDeliveries() {
   const allDeliveries = useQuery(api.admin.getAllDeliveries);
-  const allUsers = useQuery(api.users.getAllUsers);
+  const allUsers = useQuery(api.admin.getAllUsers);
   const [tab, setTab] = useState("Active");
 
   const deliveries = allDeliveries ?? [];

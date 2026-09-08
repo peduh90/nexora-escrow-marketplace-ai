@@ -5,7 +5,7 @@ import { Wallet, Search, Eye, CheckCircle2, Clock, XCircle } from "lucide-react"
 
 export default function AdminWithdrawals() {
   const allTransactions = useQuery(api.wallet.getWalletTransactions);
-  const allUsers = useQuery(api.users.getAllUsers);
+  const allUsers = useQuery(api.admin.getAllUsers);
 
   const transactions = allTransactions ?? [];
   const users = allUsers ?? [];

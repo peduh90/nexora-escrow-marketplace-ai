@@ -4,7 +4,7 @@ import AdminLayout from "./AdminLayout";
 import { TrendingUp, BarChart3 } from "lucide-react";
 
 export default function AdminRevenue() {
-  const escrows = useQuery(api.users.getAllEscrows);
+  const escrows = useQuery(api.admin.getAllEscrows);
   const transactions = useQuery(api.wallet.getWalletTransactions);
 
   const allEscrows = escrows ?? [];

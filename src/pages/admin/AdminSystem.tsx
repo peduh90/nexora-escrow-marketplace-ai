@@ -4,9 +4,9 @@ import AdminLayout from "./AdminLayout";
 import { Activity, Server, Database, Globe, Cpu, HardDrive, Wifi, Shield } from "lucide-react";
 
 export default function AdminSystem() {
-  const users = useQuery(api.users.getAllUsers);
-  const listings = useQuery(api.users.getAllListings);
-  const escrows = useQuery(api.users.getAllEscrows);
+  const users = useQuery(api.admin.getAllUsers);
+  const listings = useQuery(api.admin.getAllListings);
+  const escrows = useQuery(api.admin.getAllEscrows);
 
   const totalUsers = users?.length ?? 0;
   const totalListings = listings?.length ?? 0;

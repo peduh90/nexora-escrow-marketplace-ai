@@ -5,8 +5,8 @@ import AdminLayout from "./AdminLayout";
 import { Shield, Search, Eye, CheckCircle2, XCircle, Clock } from "lucide-react";
 
 export default function AdminEscrow() {
-  const allEscrows = useQuery(api.users.getAllEscrows);
-  const allUsers = useQuery(api.users.getAllUsers);
+  const allEscrows = useQuery(api.admin.getAllEscrows);
+  const allUsers = useQuery(api.admin.getAllUsers);
   const [tab, setTab] = useState("All");
 
   const escrows = allEscrows ?? [];

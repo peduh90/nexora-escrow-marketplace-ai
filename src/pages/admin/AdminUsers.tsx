@@ -5,8 +5,8 @@ import AdminLayout from "./AdminLayout";
 import { Users, Search, Shield, CheckCircle2, Eye, Ban, Mail } from "lucide-react";
 
 export default function AdminUsers() {
-  const allUsers = useQuery(api.users.getAllUsers);
-  const counts = useQuery(api.users.getUserCounts);
+  const allUsers = useQuery(api.admin.getAllUsers);
+  const counts = useQuery(api.admin.getUserCounts);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
 

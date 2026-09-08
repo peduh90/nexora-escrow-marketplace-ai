@@ -4,9 +4,9 @@ import AdminLayout from "./AdminLayout";
 import { BarChart3, TrendingUp, Users, Eye, ShoppingCart } from "lucide-react";
 
 export default function AdminAnalytics() {
-  const allListings = useQuery(api.users.getAllListings);
-  const allUsers = useQuery(api.users.getAllUsers);
-  const allEscrows = useQuery(api.users.getAllEscrows);
+  const allListings = useQuery(api.admin.getAllListings);
+  const allUsers = useQuery(api.admin.getAllUsers);
+  const allEscrows = useQuery(api.admin.getAllEscrows);
 
   const listings = allListings ?? [];
   const users = allUsers ?? [];

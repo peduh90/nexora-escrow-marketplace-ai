@@ -5,8 +5,8 @@ import AdminLayout from "./AdminLayout";
 import { Wallet, Search, Eye } from "lucide-react";
 
 export default function AdminWallets() {
-  const allUsers = useQuery(api.users.getAllUsers);
-  const allEscrows = useQuery(api.users.getAllEscrows);
+  const allUsers = useQuery(api.admin.getAllUsers);
+  const allEscrows = useQuery(api.admin.getAllEscrows);
   const allTransactions = useQuery(api.wallet.getWalletTransactions);
   const [search, setSearch] = useState("");
 

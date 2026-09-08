@@ -25,7 +25,7 @@ const statusMeta: Record<string, { label: string; color: string; bg: string }> =
 
 export default function AdminPayments() {
   const transactions = useQuery(api.admin.getAllWalletTransactions);
-  const users = useQuery(api.users.getAllUsers);
+  const users = useQuery(api.admin.getAllUsers);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
 

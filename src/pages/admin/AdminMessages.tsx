@@ -5,7 +5,7 @@ import { MessageSquare, Eye, Flag } from "lucide-react";
 
 export default function AdminMessages() {
   const allConversations = useQuery(api.messages.getConversations);
-  const allUsers = useQuery(api.users.getAllUsers);
+  const allUsers = useQuery(api.admin.getAllUsers);
 
   const conversations = allConversations ?? [];
   const users = allUsers ?? [];

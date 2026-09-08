@@ -4,8 +4,8 @@ import AdminLayout from "./AdminLayout";
 import { Bell, CheckCircle2, Clock } from "lucide-react";
 
 export default function AdminNotifications() {
-  const allUsers = useQuery(api.users.getAllUsers);
-  const allEscrows = useQuery(api.users.getAllEscrows);
+  const allUsers = useQuery(api.admin.getAllUsers);
+  const allEscrows = useQuery(api.admin.getAllEscrows);
   const allKYC = useQuery(api.admin.getAllKYC);
 
   const users = allUsers ?? [];

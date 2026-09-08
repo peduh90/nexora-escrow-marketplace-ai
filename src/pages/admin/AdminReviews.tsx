@@ -4,8 +4,8 @@ import AdminLayout from "./AdminLayout";
 import { Star, Eye, Flag, Trash2 } from "lucide-react";
 
 export default function AdminReviews() {
-  const allUsers = useQuery(api.users.getAllUsers);
-  const allEscrows = useQuery(api.users.getAllEscrows);
+  const allUsers = useQuery(api.admin.getAllUsers);
+  const allEscrows = useQuery(api.admin.getAllEscrows);
 
   const users = allUsers ?? [];
   const escrows = allEscrows ?? [];

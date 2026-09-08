@@ -5,7 +5,7 @@ import AdminLayout from "./AdminLayout";
 import { Users, Search, Eye, Mail, CheckCircle2 } from "lucide-react";
 
 export default function AdminBuyers() {
-  const allUsers = useQuery(api.users.getAllUsers);
+  const allUsers = useQuery(api.admin.getAllUsers);
   const [search, setSearch] = useState("");
 
   const users = allUsers ?? [];

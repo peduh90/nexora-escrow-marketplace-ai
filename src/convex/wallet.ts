@@ -731,3 +731,51 @@ export const getEscrowByBuyer = query({
     );
   },
 });
+
+/** Get the current seller's unique customers derived from their own escrow
+ * orders. Scoped strictly to the session's account — a seller only ever sees
+ * buyers they have actually transacted with, with contact details limited to
+ * what a seller needs (name, email, verification badge, location). */
+export const getSellerCustomers = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const user = await getUserByEmail(ctx, identity.email);
+    if (!user) return [];
+
+    const escrows = await ctx.db
+      .query("escrows")
+      .withIndex("by_seller", (q: any) => q.eq("sellerId", user._id))
+      .order("desc")
+      .collect();
+
+    // Aggregate order stats per buyer from the seller's own orders.
+    const stats = new Map<string, { orders: number; totalSpent: number; lastOrderAt: number }>();
+    for (const e of escrows) {
+      const existing = stats.get(e.buyerId) || { orders: 0, totalSpent: 0, lastOrderAt: 0 };
+      existing.orders += 1;
+      existing.totalSpent += e.amount || 0;
+      existing.lastOrderAt = Math.max(existing.lastOrderAt, (e as any).createdAt || 0);
+      stats.set(e.buyerId, existing);
+    }
+
+    // Fetch buyer profile details for those buyers only.
+    return Promise.all(
+      Array.from(stats.entries()).map(async ([buyerId, s]) => {
+        const buyer: any = await ctx.db.get(buyerId as any);
+        return {
+          id: buyerId,
+          name: buyer?.name || "Unknown",
+          email: buyer?.email || "",
+          verified: buyer?.kycStatus === "verified",
+          location: buyer?.county || buyer?.town || "",
+          orders: s.orders,
+          totalSpent: s.totalSpent,
+          lastOrderAt: s.lastOrderAt,
+        };
+      })
+    );
+  },
+});

@@ -6,7 +6,7 @@ import { Package, Search, CheckCircle2, XCircle, Trash2, Shield, Loader2, Eye } 
 
 export default function AdminProducts() {
   const allListings = useQuery(api.admin.getAllListings);
-  const allUsers = useQuery(api.users.getAllUsers);
+  const allUsers = useQuery(api.admin.getAllUsers);
   const updateListingStatus = useMutation(api.admin.updateListingStatus);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");

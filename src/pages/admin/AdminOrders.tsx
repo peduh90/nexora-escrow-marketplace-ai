@@ -7,7 +7,7 @@ import { ShoppingCart, Search, Eye } from "lucide-react";
 export default function AdminOrders() {
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
-  const escrows = useQuery(api.users.getAllEscrows);
+  const escrows = useQuery(api.admin.getAllEscrows);
 
   const orders = escrows ?? [];
   const filtered = orders.filter(e => {
