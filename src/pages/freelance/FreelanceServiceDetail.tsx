@@ -4,6 +4,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { getWhatsAppSupportUrl, getWhatsAppSellerUrl, openWhatsApp } from "@/lib/whatsapp";
+import { getViewerKey } from "@/lib/viewer";
 import {
   FREELANCE_CATEGORY_GRADIENTS,
   freelanceCategoryName,
@@ -55,7 +56,10 @@ export default function FreelanceServiceDetail() {
 
   useEffect(() => {
     if (listing) {
-      incrementViews({ listingId: listing._id as any }).catch(() => {});
+      incrementViews({
+        listingId: listing._id as any,
+        viewerKey: getViewerKey(),
+      }).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listing?._id]);

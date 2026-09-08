@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { getSessionUser } from "./users";
 
 /**
@@ -311,13 +311,89 @@ export const getSellerWhatsApp = query({
   },
 });
 
-/** Increment view count */
+/**
+ * Record a real view. Deduplicated per viewer (signed-in user id or an
+ * anonymous browser id) — one view per viewer per listing, ever. This keeps
+ * the counter truthful: no refresh-spam, no render-loop inflation.
+ */
 export const incrementViews = mutation({
-  args: { listingId: v.id("listings") },
+  args: {
+    listingId: v.id("listings"),
+    viewerKey: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const listing = await ctx.db.get(args.listingId);
     if (!listing) return;
-    await ctx.db.patch(args.listingId, { views: listing.views + 1 });
+
+    // Resolve the viewer: prefer the signed-in account, else the anonymous
+    // browser key sent by the client.
+    const sessionUser = await getSessionUser(ctx);
+    const viewerKey =
+      (sessionUser ? `user:${sessionUser._id}` : undefined) ??
+      (args.viewerKey ? `anon:${args.viewerKey}` : undefined);
+    if (!viewerKey) return; // no identifiable viewer — do not count
+
+    const existing = await ctx.db
+      .query("listingViews")
+      .withIndex("by_listing_viewer", (q) =>
+        q.eq("listingId", args.listingId).eq("viewerKey", viewerKey)
+      )
+      .first();
+
+    if (existing) {
+      // Already counted this viewer — refresh their timestamp only.
+      await ctx.db.patch(existing._id, { viewedAt: Date.now() });
+      return;
+    }
+
+    await ctx.db.insert("listingViews", {
+      listingId: args.listingId,
+      viewerKey,
+      viewedAt: Date.now(),
+    });
+    await ctx.db.patch(args.listingId, { views: (listing.views || 0) + 1 });
+  },
+});
+
+/**
+ * Internal (CLI/server only): reset every listing's view counter to its real
+ * unique-viewer count derived from the listingViews table. Used once to purge
+ * the inflated numbers produced by the old render-loop counter.
+ */
+export const resetAllViewCounts = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const listings = await ctx.db.query("listings").collect();
+    const results: Array<{ id: string; views: number }> = [];
+    for (const listing of listings) {
+      const unique = await ctx.db
+        .query("listingViews")
+        .withIndex("by_listing", (q) => q.eq("listingId", listing._id))
+        .collect();
+      await ctx.db.patch(listing._id, { views: unique.length });
+      results.push({ id: listing._id, views: unique.length });
+    }
+    return results;
+  },
+});
+
+/**
+ * Internal (CLI/server only): wipe every view record and zero all counters.
+ * Used to remove test/verification artifacts so the marketplace starts from an
+ * honest 0 until real visitors arrive.
+ */
+export const clearAllViewRecords = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("listingViews").collect();
+    for (const v of all) {
+      await ctx.db.delete(v._id);
+    }
+    const listings = await ctx.db.query("listings").collect();
+    for (const listing of listings) {
+      await ctx.db.patch(listing._id, { views: 0 });
+    }
+    return { clearedViews: all.length, listings: listings.length };
   },
 });
 

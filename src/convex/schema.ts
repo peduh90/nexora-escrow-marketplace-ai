@@ -494,6 +494,17 @@ const schema = defineSchema(
     })
       .index("by_key", ["key"]),
 
+    // Real view tracking: one row per unique viewer per listing. Views only
+    // increment when a viewer (signed-in user id or anonymous device id) is
+    // seen for the first time — refreshes and re-renders never inflate counts.
+    listingViews: defineTable({
+      listingId: v.string(),
+      viewerKey: v.string(),
+      viewedAt: v.number(),
+    })
+      .index("by_listing_viewer", ["listingId", "viewerKey"])
+      .index("by_listing", ["listingId"]),
+
     // Audit logs
     auditLogs: defineTable({
       adminId: v.string(),

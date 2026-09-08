@@ -9,6 +9,7 @@ import {
   CheckCircle2, Truck, ChevronRight, Package, Eye, X, Minus, Plus, Loader2, Send, MessageCircle, Phone,
 } from "lucide-react";
 import { getWhatsAppSellerUrl, getWhatsAppSupportUrl, openWhatsApp, normalizeKenyanPhone } from "@/lib/whatsapp";
+import { getViewerKey } from "@/lib/viewer";
 
 /** Show the most relevant attributes per category */
 function CategoryAttributes({ category, attributes }: { category: string; attributes?: Record<string, string> }) {
@@ -96,10 +97,17 @@ export default function ProductDetails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFreelanceListing, id]);
 
-  // Increment views on first load
-  if (id && listing) {
-    incrementViews({ listingId: id as any }).catch(() => {});
-  }
+  // Record one real view per viewer per listing (deduped server-side).
+  // Runs in an effect — never during render — so reactive updates can't loop.
+  useEffect(() => {
+    if (id && listing && !isFreelanceListing) {
+      incrementViews({
+        listingId: id as any,
+        viewerKey: getViewerKey(),
+      }).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, (listing as any)?._id]);
 
   if (listing === undefined || isFreelanceListing) {
     return (
