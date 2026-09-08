@@ -120,26 +120,6 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
           </div>
         </header>
 
-        {/* Store approval status */}
-        {user?.sellerStatus === "pending" && (
-          <div className="mx-4 md:mx-6 mt-4 flex items-start gap-3 px-4 py-3 rounded-xl bg-nx-gold/10 border border-nx-gold/20">
-            <Clock className="w-4 h-4 text-nx-gold shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-semibold text-nx-gold">Your store is awaiting admin approval</p>
-              <p className="text-[11px] text-white/40 mt-0.5">You can browse the dashboard, but you cannot publish products until an admin approves your store. You'll be notified here once it's reviewed.</p>
-            </div>
-          </div>
-        )}
-        {user?.sellerStatus === "rejected" && (
-          <div className="mx-4 md:mx-6 mt-4 flex items-start gap-3 px-4 py-3 rounded-xl bg-red-400/10 border border-red-400/20">
-            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-semibold text-red-400">Your store application was rejected</p>
-              <p className="text-[11px] text-white/40 mt-0.5">Contact support to appeal or re-apply as a buyer.</p>
-            </div>
-          </div>
-        )}
-
         {/* Page content */}
         <main className="p-4 md:p-6 pb-20 lg:pb-6">{children}        </main>
       </div>

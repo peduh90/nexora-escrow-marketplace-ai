@@ -150,7 +150,6 @@ export const getDashboardStats = query({
         newToday: newUsersToday,
         verified: realUsers.filter((u) => u.kycStatus === "verified").length,
         pendingKyc: realUsers.filter((u) => u.kycStatus === "pending").length,
-        pendingSellers: realUsers.filter((u) => u.role === "seller" && u.sellerStatus === "pending").length,
       },
       freelance: {
         profiles: freelanceProfiles.length,
@@ -276,29 +275,7 @@ export const getUserCounts = query({
   },
 });
 
-/** Admin: get seller accounts awaiting approval */
-export const getPendingSellers = query({
-  args: {},
-  handler: async (ctx) => {
-    await requireAdmin(ctx);
-    const users = await ctx.db.query("users").collect();
-    return users
-      .filter((u: any) => u.role === "seller" && u.sellerStatus === "pending")
-      .map((u: any) => ({
-        _id: u._id,
-        name: u.name || u.email?.split("@")[0] || "Unknown",
-        email: u.email || "",
-        businessName: u.businessName || "",
-        phone: u.phone || "",
-        county: u.county || "",
-        town: u.town || "",
-        kycStatus: u.kycStatus || "not_started",
-        joinedAt: u.joinedAt || u._creationTime,
-      }));
-  },
-});
-
-/** Admin: approve or reject a seller store */
+/** Admin: approve or reject a seller store (legacy hook — approval gate removed) */
 export const reviewSellerApproval = mutation({
   args: {
     userId: v.string(),
@@ -312,20 +289,6 @@ export const reviewSellerApproval = mutation({
 
     await ctx.db.patch(args.userId as any, {
       sellerStatus: args.status,
-    });
-
-    // Notify the seller that their store was reviewed.
-    await ctx.db.insert("notifications", {
-      userId: args.userId,
-      type: "seller_approval",
-      title: args.status === "approved" ? "Store approved 🎉" : "Store application rejected",
-      message:
-        args.status === "approved"
-          ? "Your seller store has been approved. You can now publish products."
-          : `Your seller store application was rejected${args.notes ? `: ${args.notes}` : ". Please contact support."}`, 
-      read: false,
-      link: "/seller",
-      createdAt: Date.now(),
     });
 
     await auditLog(

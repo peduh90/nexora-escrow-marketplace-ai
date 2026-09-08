@@ -364,8 +364,6 @@ export const ensureUserProfile = mutation({
         accountStatus: "pending" as any,
         passwordHash: incomingPasswordHash,
         businessName: typeof args.businessName === "string" ? args.businessName : undefined,
-        // New seller accounts require admin approval before they can operate.
-        sellerStatus: targetRole === "seller" ? "pending" : undefined,
       }) as any;
     } else {
       // If no password is ever submitted, preserve the existing accessible credential
@@ -396,29 +394,10 @@ export const ensureUserProfile = mutation({
       if ((u as any).accountStatus !== "active") {
         // Still pending — record the requested role and stay unverified.
         if (targetRole !== u.pendingRole) {
-          const pendingPatch: Record<string, any> = { pendingRole: targetRole };
-          if (
-            targetRole === "seller" &&
-            u.sellerStatus !== "approved" &&
-            u.sellerStatus !== "rejected"
-          ) {
-            pendingPatch.sellerStatus = "pending";
-          }
-          await ctx.db.patch(u._id, pendingPatch);
+          await ctx.db.patch(u._id, { pendingRole: targetRole });
         }
       } else if (typeof u.role !== "string" || u.role !== targetRole) {
-        const rolePatch: Record<string, any> = { role: targetRole };
-        // Becoming a seller for the first time puts the store in "pending"
-        // review. Existing approval state (approved/rejected) is preserved.
-        if (
-          targetRole === "seller" &&
-          u.role !== "seller" &&
-          u.sellerStatus !== "approved" &&
-          u.sellerStatus !== "rejected"
-        ) {
-          rolePatch.sellerStatus = "pending";
-        }
-        await ctx.db.patch(u._id, rolePatch);
+        await ctx.db.patch(u._id, { role: targetRole });
       }
 
       await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
@@ -465,8 +444,7 @@ export const backfillAccountStatus = internalMutation({
  * A user gets NO role (and no panel access) until registration and
  * verification are fully complete and approved. completeVerification checks
  * every requirement for the requested role and only then assigns it:
- *  - buyer/freelancer/employer: real email + name + phone on file
- *  - seller: the above + admin store approval (sellerStatus === "approved")
+ *  - buyer/seller/freelancer/employer: real email + name + phone on file
  *  - admin: platform admin email only (never user-requested)
  *
  * When all checks pass the pendingRole is copied into role and accountStatus
@@ -495,14 +473,6 @@ export const getOnboardingStatus = query({
       { key: "name", label: "Full name on profile", met: hasName },
       { key: "phone", label: "Phone number (M-Pesa & delivery)", met: hasPhone },
     ];
-    if (requestedRole === "seller") {
-      requirements.push({
-        key: "approval",
-        label: "Admin store approval",
-        met: u.sellerStatus === "approved",
-      });
-    }
-
     const isComplete = requirements.every((r) => r.met);
 
     return {
@@ -519,7 +489,7 @@ export const getOnboardingStatus = query({
 /**
  * Finish verification: assign the pending role and activate the account once
  * every requirement for that role is met. Called by the onboarding page after
- * the user completes their profile (and, for sellers, after admin approval).
+ * the user completes their profile.
  */
 export const completeVerification = mutation({
   args: {
@@ -565,12 +535,6 @@ export const completeVerification = mutation({
     }
     if (!hasPhone) {
       throw new Error("Add your phone number to complete registration.");
-    }
-
-    if (requestedRole === "seller" && fresh.sellerStatus !== "approved") {
-      throw new Error(
-        "Your store is awaiting admin approval. You will be notified once it is reviewed."
-      );
     }
 
     // Admin role is never self-assigned here; the admin email path handles it.
@@ -852,8 +816,6 @@ export const checkAndPromoteAdmin = mutation({
         role: targetRoleForInsert,
         phone: phoneFromForm,
         kycStatus: "not_started",
-        // New seller accounts require admin approval before they can operate.
-        sellerStatus: targetRoleForInsert === "seller" ? "pending" : undefined,
         lastLoginAt: Date.now(),
         lastActivityAt: Date.now(),
         joinedAt: Date.now(),
@@ -873,18 +835,7 @@ export const checkAndPromoteAdmin = mutation({
       // whose role was already set to something else or undefined from legacy signups.
       const targetRole = resolveRoleForAdminFlow(identity.email, typeof args.role === "string" ? args.role : undefined, user as any);
       if (targetRole && u.role !== targetRole) {
-        const rolePatch: Record<string, any> = { role: targetRole };
-        // Becoming a seller for the first time puts the store in "pending"
-        // review. Existing approval state is preserved.
-        if (
-          targetRole === "seller" &&
-          u.role !== "seller" &&
-          u.sellerStatus !== "approved" &&
-          u.sellerStatus !== "rejected"
-        ) {
-          rolePatch.sellerStatus = "pending";
-        }
-        await ctx.db.patch(u._id, rolePatch);
+        await ctx.db.patch(u._id, { role: targetRole });
         // Refresh user record after patch (type assertion needed since db.get is generic)
         user = (await ctx.db.get(u._id)) as typeof user;
       }
@@ -1214,11 +1165,7 @@ export const backfillSellerApproval = internalMutation({
       const isSeller =
         rec.role === "seller" ||
         (typeof rec.businessName === "string" && rec.businessName.trim().length > 0);
-      if (
-        isSeller &&
-        rec.sellerStatus !== "approved" &&
-        rec.sellerStatus !== "rejected"
-      ) {
+      if (rec.sellerStatus !== "approved" && rec.sellerStatus !== "rejected") {
         await ctx.db.patch(u._id, { sellerStatus: "approved" });
         updated++;
       }

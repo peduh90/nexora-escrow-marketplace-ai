@@ -87,14 +87,7 @@ export const createListing = mutation({
     const user = await getSessionUser(ctx);
     if (!user) throw new Error("Not authenticated");
 
-    // Sellers must be approved by an admin before they can publish products.
-    const sellerStatus = (user as any).sellerStatus;
-    if (sellerStatus === "pending") {
-      throw new Error("Your store is awaiting admin approval. You cannot publish products yet.");
-    }
-    if (sellerStatus === "rejected") {
-      throw new Error("Your store application was rejected. Please contact support.");
-    }
+    // Sellers can publish products immediately — no admin store approval gate.
 
     const marketplace = normalizeMarketplace(args.marketplace);
 
@@ -204,13 +197,9 @@ async function getActiveListingsForMarketplace(ctx: any, marketplace: Marketplac
 
   const scoped = allActive.filter((l: any) => normalizeMarketplace(l.marketplace) === marketplace);
 
-  // Hide listings from sellers whose store is not approved yet. The reserved
-  // "system" seller (demo content) is always visible.
-  const visible = await filterApprovedListings(ctx, scoped);
-
   // Resolve image URLs from storage or keep external URLs as-is
   return Promise.all(
-    visible.map(async (listing: any) => ({
+    scoped.map(async (listing: any) => ({
       ...listing,
       images: await resolveListingImages(ctx, listing.images),
     }))
@@ -422,9 +411,6 @@ export const searchListings = query({
       (l: any) => normalizeMarketplace(l.marketplace) === marketplace
     );
 
-    // Hide listings from sellers whose store is not approved yet.
-    results = await filterApprovedListings(ctx, results);
-
     // Text search
     if (args.query) {
       const q = args.query.toLowerCase();
@@ -489,8 +475,6 @@ export const searchFreelanceListings = query({
       (l: any) => normalizeMarketplace(l.marketplace) === MARKETPLACE.FREELANCE
     );
 
-    results = await filterApprovedListings(ctx, results);
-
     if (args.query) {
       const q = args.query.toLowerCase();
       results = results.filter(
@@ -525,31 +509,6 @@ export const searchFreelanceListings = query({
   },
 });
 
-/**
- * Filter listings down to those whose seller store is approved (or is the
- * reserved demo "system" seller, or a legacy seller with no approval record).
- */
-async function filterApprovedListings<T extends { sellerId: string }>(
-  ctx: any,
-  listings: T[]
-): Promise<T[]> {
-  const sellerIds = Array.from(new Set(listings.map((l) => l.sellerId))).filter(
-    (id): id is string => id !== SYSTEM_SELLER_ID
-  );
-  const sellers = await Promise.all(
-    sellerIds.map((id) => ctx.db.get(id as any))
-  );
-  const statusBySeller = new Map<string, string | undefined>();
-  for (const s of sellers) {
-    if (s) statusBySeller.set((s as any)._id, (s as any).sellerStatus);
-  }
-
-  return listings.filter((l) => {
-    if (l.sellerId === SYSTEM_SELLER_ID) return true; // demo content
-    const status = statusBySeller.get(l.sellerId);
-    return status !== "pending" && status !== "rejected";
-  });
-}
 
 /** Generate a Convex file storage upload URL for product images */
 export const generateUploadUrl = mutation({

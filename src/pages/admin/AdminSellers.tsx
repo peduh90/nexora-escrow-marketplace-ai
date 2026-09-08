@@ -1,14 +1,12 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Users, Search, Eye, Mail, CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
+import { Users, Search, Eye, Mail, CheckCircle2 } from "lucide-react";
 
 export default function AdminSellers() {
   const allUsers = useQuery(api.admin.getAllUsers);
-  const reviewSeller = useMutation(api.admin.reviewSellerApproval);
   const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
 
   const users = allUsers ?? [];
   const sellers = users.filter((u: any) => u.role === "seller");
@@ -16,24 +14,6 @@ export default function AdminSellers() {
   const filtered = sellers.filter((s: any) =>
     !search || (s.name || "").toLowerCase().includes(search.toLowerCase()) || (s.businessName || "").toLowerCase().includes(search.toLowerCase()) || (s.email || "").toLowerCase().includes(search.toLowerCase())
   );
-
-  const statusBadge = (s: any) => {
-    const st = s.sellerStatus || "approved";
-    if (st === "pending") return <span className="text-[10px] px-2 py-0.5 rounded bg-nx-gold/10 text-nx-gold font-medium flex items-center gap-1"><Clock className="w-3 h-3" />Pending</span>;
-    if (st === "rejected") return <span className="text-[10px] px-2 py-0.5 rounded bg-red-400/10 text-red-400 font-medium">Rejected</span>;
-    return <span className="text-[10px] px-2 py-0.5 rounded bg-nx-emerald/10 text-nx-emerald font-medium flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Approved</span>;
-  };
-
-  const handleDecision = async (userId: string, status: "approved" | "rejected") => {
-    setBusy(`seller-${userId}`);
-    try {
-      await reviewSeller({ userId, status });
-    } catch (err) {
-      console.error("Seller review failed:", err);
-    } finally {
-      setBusy(null);
-    }
-  };
 
   return (
     <AdminLayout>
@@ -84,29 +64,11 @@ export default function AdminSellers() {
                       </span>
                     </td>
                     <td className="px-4 py-3.5 hidden lg:table-cell text-xs text-white/40">{s.sellerTier || "Standard"}</td>
-                    <td className="px-4 py-3.5">{statusBadge(s)}</td>
+                    <td className="px-4 py-3.5">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-nx-emerald/10 text-nx-emerald font-medium flex items-center gap-1 w-fit"><CheckCircle2 className="w-3 h-3" />Active</span>
+                    </td>
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {(s.sellerStatus === "pending" || s.sellerStatus === "rejected") && (
-                          <button
-                            onClick={() => handleDecision(s._id, "approved")}
-                            disabled={busy === `seller-${s._id}`}
-                            className="p-1.5 rounded text-nx-emerald/60 hover:text-nx-emerald hover:bg-nx-emerald/10 transition-colors disabled:opacity-50"
-                            title="Approve store"
-                          >
-                            {busy === `seller-${s._id}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                          </button>
-                        )}
-                        {s.sellerStatus === "pending" && (
-                          <button
-                            onClick={() => handleDecision(s._id, "rejected")}
-                            disabled={busy === `seller-${s._id}`}
-                            className="p-1.5 rounded text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50"
-                            title="Reject store"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                          </button>
-                        )}
                         <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03]"><Eye className="w-3.5 h-3.5" /></button>
                         <button className="p-1.5 rounded text-white/20 hover:text-nx-cyan hover:bg-nx-cyan/5"><Mail className="w-3.5 h-3.5" /></button>
                       </div>
