@@ -68,25 +68,24 @@ export default function SellerEarnings() {
         </div>
       </div>
 
-      {/* Commission info */}
+      {/* Commission info — exact Nexora tiered schedule */}
       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 mb-6">
-        <h3 className="text-sm font-semibold text-white mb-3">Commission Structure</h3>
+        <h3 className="text-sm font-semibold text-white mb-1">Seller Commission</h3>
+        <p className="text-[11px] text-white/30 mb-3">Tiered by transaction value. Escrow protection is included — no separate escrow fee.</p>
         <div className="space-y-2">
           {[
-          { tier: "Starter", rate: "5%", desc: "Applied to all transactions by default", current: true },
-          { tier: "Professional", rate: "3%", desc: "KES 1,499/month subscription" },
-          { tier: "Enterprise", rate: "1%", desc: "KES 3,999/month subscription" },
+          { tier: "KSh 1 – 4,999", rate: "3%" },
+          { tier: "KSh 5,000 – 49,999", rate: "2.5%" },
+          { tier: "KSh 50,000 – 199,999", rate: "2%" },
+          { tier: "KSh 200,000+", rate: "1.5%" },
           ].map((t) => (
-            <div key={t.tier} className={`flex items-center gap-4 p-3 rounded-lg ${t.current ? "bg-nx-violet/5 border border-nx-violet/10" : "bg-white/[0.01]"}`}>
-              <span className={`text-sm font-bold ${t.current ? "text-nx-violet" : "text-white/30"}`}>{t.rate}</span>
-              <div className="flex-1">
-                <p className={`text-sm ${t.current ? "text-white" : "text-white/40"}`}>{t.tier}</p>
-                <p className="text-[11px] text-white/30">{t.desc}</p>
-              </div>
-              {t.current && <span className="text-[10px] px-2 py-0.5 rounded-full bg-nx-violet/10 text-nx-violet">Current</span>}
+            <div key={t.tier} className="flex items-center gap-4 p-3 rounded-lg bg-white/[0.01]">
+              <span className="text-sm font-bold text-nx-violet">{t.rate}</span>
+              <p className="flex-1 text-sm text-white/60">{t.tier}</p>
             </div>
           ))}
         </div>
+        <p className="text-[11px] text-white/30 mt-3">Withdrawals carry no Nexora percentage fee — only an actual external provider cost (shown before you confirm).</p>
       </div>
 
       {/* Transaction history */}

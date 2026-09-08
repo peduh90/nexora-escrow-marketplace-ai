@@ -185,9 +185,16 @@ const schema = defineSchema(
       deliveredAt: v.optional(v.number()),
       releasedAt: v.optional(v.number()),
       completedAt: v.optional(v.number()),
-      // Financials
+      // Financials — Nexora fee engine (src/convex/fees.ts). commissionRate
+      // holds the seller/freelancer commission percent actually charged;
+      // platformFee is the seller commission amount (kept for compatibility).
+      // buyerFeeRate/buyerFee store the buyer/employer protection fee actually
+      // charged. Escrow is included within these fees — never charged twice.
       commissionRate: v.number(),
       platformFee: v.optional(v.number()),
+      buyerFeeRate: v.optional(v.number()),
+      buyerFee: v.optional(v.number()),
+      marketplace: v.optional(v.string()),
     })
       .index("by_buyer", ["buyerId"])
       .index("by_seller", ["sellerId"])

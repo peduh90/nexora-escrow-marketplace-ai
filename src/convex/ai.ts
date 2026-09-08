@@ -118,7 +118,7 @@ function tryWhitelist(input: string, role?: string): string | null {
       "**Writing a Great Product Description:**\n\n**Structure:**\n1. **Headline:** Clear, specific product name\n2. **Key specs:** Size, color, capacity, model\n3. **Condition:** Be honest (New, Used, Grade A/B/C)\n4. **What's included:** Accessories, box, warranty\n5. **Why buy from you:** Your reputation, fast delivery\n\n**Example:**\n\"Samsung Galaxy A15 128GB — Blue, 6.5\\\" Super AMOLED Display, 50MP Camera, 5000mAh Battery. Brand new, sealed in box. Comes with charger, cable, and 1-year manufacturer warranty. Ships within 24 hours from Nairobi.\"\n\n**Tips:**\n• Use specific numbers, not vague claims\n• Mention brand and model clearly\n• Be transparent about condition\n• Include dimensions if relevant"],
 
     [/pricing|how.*price|price.*product/i,
-      "**Pricing Your Product:**\n\n**Research first:**\n1. Search for similar products on Nexora\n2. Check prices from verified sellers\n3. Consider: condition, age, market demand\n\n**Pricing tips:**\n• **New products:** Price at or slightly below market rate\n• **Used products:** 60-80% of new price (depending on condition)\n• **Competitive edge:** Offer free delivery or bundle deals\n• **Premium sellers:** Verified sellers can charge 5-10% more\n\n**Nexora commission:** 2.5-5% is deducted from your sale price\n\n**Example:** If you sell for KSh 10,000, you receive KSh 9,500-9,750 after commission."],
+      "**Pricing Your Product:**\n\n**Research first:**\n1. Search for similar products on Nexora\n2. Check prices from verified sellers\n3. Consider: condition, age, market demand\n\n**Pricing tips:**\n• **New products:** Price at or slightly below market rate\n• **Used products:** 60-80% of new price (depending on condition)\n• **Competitive edge:** Offer free delivery or bundle deals\n• **Premium sellers:** Verified sellers can charge 5-10% more\n\n**Nexora commission (tiered):** 3% on KSh 1–4,999 · 2.5% on KSh 5,000–49,999 · 2% on KSh 50,000–199,999 · 1.5% on KSh 200,000+. Escrow protection is included — no separate escrow fee.\n\n**Example:** If you sell for KSh 10,000, the commission is 2.5% (KSh 250) and you receive KSh 9,750."],
 
     [/product.*moderat|listing.*review|listing.*pending|pending.*review/i,
       "**Product Moderation:**\n\nEvery product listing goes through our **AI-powered moderation** system:\n\n1. **AI Pre-screening:** Checks title, description, images, and price\n2. **Policy Check:** Verifies compliance with Nexora rules\n3. **Approval:** If everything looks good → goes live within minutes\n4. **Flagged:** If issues detected → human review required\n\n**Common reasons for moderation flags:**\n• Prohibited items (weapons, drugs, etc.)\n• Misleading descriptions or prices\n• Poor quality images\n• Duplicate listings\n\n**Check status:** Seller Dashboard → Products → Review Status"],
@@ -130,13 +130,13 @@ function tryWhitelist(input: string, role?: string): string | null {
       "**Managing Orders (Seller):**\n\n**When you receive an order:**\n1. You'll be notified immediately\n2. Go to **Seller Dashboard** → **Orders**\n3. Review the order details\n4. Prepare the product\n5. Mark as **Ready for Collection**\n6. Nexora collects and delivers\n\n**Timeline:** Prepare orders within **48 hours** of receiving them\n\n**Late preparation penalties:**\n• First offense: Warning\n• Repeated delays: Reduced visibility in search\n• Serious delays: Temporary restriction"],
 
     [/earnings|seller.*balance|how.*much.*earn/i,
-      "**Seller Earnings:**\n\n**Where to check:** Seller Dashboard → Wallet\n\n**How earnings work:**\n1. Buyer places order → Funds locked in escrow\n2. Product delivered → Buyer confirms\n3. Funds released to your wallet\n4. Commission deducted (2.5-5%)\n5. **Available balance** → Ready to withdraw\n\n**Balance types:**\n• **In Escrow:** Funds locked for active orders\n• **Available:** Ready to withdraw to M-Pesa or bank\n• **Pending:** Recently released, processing\n\n**Withdraw:** Click **Withdraw** → Choose M-Pesa or bank → Enter amount (min KES 100)"],
+      "**Seller Earnings:**\n\n**Where to check:** Seller Dashboard → Wallet\n\n**How earnings work:**\n1. Buyer places order → Funds locked in escrow\n2. Product delivered → Buyer confirms\n3. Funds released to your wallet\n4. Tiered commission deducted (1.5%–3% by transaction value)\n5. **Available balance** → Ready to withdraw\n\n**Balance types:**\n• **In Escrow:** Funds locked for active orders\n• **Available:** Ready to withdraw to M-Pesa or bank\n• **Pending:** Recently released, processing\n\n**Withdraw:** Click **Withdraw** → Choose M-Pesa or bank → Enter amount (min KES 100)"],
 
     [/payout|withdraw.*seller|cash.*out.*seller/i,
-      "**Withdrawing Seller Earnings:**\n\n1. Go to **Seller Dashboard** → **Wallet**\n2. Click **Withdraw**\n3. Choose: **M-Pesa** or **Bank Transfer**\n4. Enter the amount (minimum KES 100)\n5. Confirm the withdrawal\n\n**Processing times:**\n• M-Pesa: Instant to 1 hour\n• Bank transfer: 1-3 business days\n\n**Important:**\n• Funds must be in **Available** balance (not in escrow)\n• Withdrawal fee: KES 10-50 depending on amount\n• Daily withdrawal limit: KES 500,000"],
+      "**Withdrawing Seller Earnings:**\n\n1. Go to **Seller Dashboard** → **Wallet**\n2. Click **Withdraw**\n3. Choose: **M-Pesa** or **Bank Transfer**\n4. Enter the amount (minimum KES 100)\n5. Confirm the withdrawal\n\n**Processing times:**\n• M-Pesa: Instant to 1 hour\n• Bank transfer: 1-3 business days\n\n**Important:**\n• Funds must be in **Available** balance (not in escrow)\n• Nexora charges NO percentage fee on withdrawals — only an actual external provider cost (e.g. M-Pesa), always shown before you confirm\n• Daily withdrawal limit: KES 500,000"],
 
     [/seller.*fees|commission|transaction.*fee.*seller/i,
-      "**Seller Fees:**\n\n• **Transaction Commission:** 2.5% (Professional) to 5% (Free tier)\n• **Escrow Fee:** 0.5-2% (included in commission)\n• **Withdrawal Fee:** KES 10-50 per withdrawal\n\n**Premium Seller Plans:**\n• **Free:** 5% commission, basic features\n• **Professional (KES 999/month):** 3% commission, analytics, priority listing\n• **Business (KES 2,999/month):** 2.5% commission, advanced analytics, featured listing\n• **Enterprise (KES 4,999/month):** 2% commission, dedicated support, custom branding\n\n**All fees are transparent** — shown before every transaction."],
+      "**Seller Fees (Normal Marketplace):**\n\nTiered commission, deducted from the sale price:\n• **3%** on KSh 1 – 4,999\n• **2.5%** on KSh 5,000 – 49,999\n• **2%** on KSh 50,000 – 199,999\n• **1.5%** on KSh 200,000 and above\n\n**Buyers pay** a tiered protection fee: 1% (KSh 1–10,000), 0.75% (KSh 10,001–50,000), 0.5% (KSh 50,001–200,000), 0.25% (above KSh 200,000).\n\n**Escrow is included** within these fees — there is no separate escrow charge.\n\n**Withdrawals carry no Nexora percentage fee** — only an actual external provider cost, always shown before you confirm.\n\n**All fees are displayed transparently before payment."],
 
     [/seller.*performance|seller.*rating|seller.*score/i,
       "**Seller Performance:**\n\nYour performance score is based on:\n• **Order fulfillment rate** (how many orders you complete)\n• **Delivery speed** (how quickly you prepare orders)\n• **Customer ratings** (buyer reviews)\n• **Dispute rate** (fewer disputes = better score)\n• **Response time** (how fast you reply to messages)\n\n**Good performance gets you:**\n✅ Higher search ranking\n✅ Verified seller badge\n✅ Lower commission rates\n✅ Featured listing opportunities\n\n**Check your score:** Seller Dashboard → Performance tab"],
@@ -230,7 +230,7 @@ function tryWhitelist(input: string, role?: string): string | null {
     // ═══ SECTION 10: FEES ═══
 
     [/what.*fee|how.*much.*fee|fees.*nexora|cost.*sell/i,
-      "**Nexora Fees:**\n\n**Transaction Fees:**\n• Buyer: Free (no buyer fees)\n• Seller: 2.5% (Professional) to 5% (Free tier) commission\n\n**Escrow Fee:** 0.5-2% (included in seller commission)\n\n**Delivery:**\n• Free in Nairobi CBD & Westlands\n• KES 100-1,500 for other locations\n\n**Withdrawal:**\n• M-Pesa: KES 10-50\n• Bank: KES 50-100\n\n**Premium Plans:**\n• Free: 5% commission\n• Professional (KES 999/month): 3% commission\n• Business (KES 2,999/month): 2.5% commission\n• Enterprise (KES 4,999/month): 2% commission\n\n**All fees are transparent** — shown before every transaction."],
+      "**Nexora Fees:**\n\n**Free forever:** registration, account creation, product listings, job posting, applications, portfolio creation, messaging, and browsing.\n\n**Normal Marketplace — sellers pay commission:**\n• 3% on KSh 1–4,999 · 2.5% on KSh 5,000–49,999 · 2% on KSh 50,000–199,999 · 1.5% on KSh 200,000+\n\n**Normal Marketplace — buyers pay protection fee:**\n• 1% on KSh 1–10,000 · 0.75% on KSh 10,001–50,000 · 0.5% on KSh 50,001–200,000 · 0.25% above KSh 200,000\n\n**Freelance Marketplace — freelancers pay commission:**\n• 3% on KSh 1–5,000 · 2% on KSh 5,001–50,000 · 1.5% on KSh 50,001–250,000 · 1% above KSh 250,000\n\n**Freelance Marketplace — employers pay protection fee:**\n• Same tiered protection fee as buyers above\n\n**Freelancers pay no** deposit, registration, application fee, or mandatory subscription.\n\n**Withdrawals:** no default Nexora percentage fee — only an actual configured external provider cost or fixed service fee, shown before confirmation.\n\n**Escrow is included** within the applicable transaction fees. All fees are displayed transparently before payment."],
 
     // ═══ SECTION 11: ACCOUNT & SECURITY ═══
 
@@ -595,12 +595,14 @@ Never request unnecessary sensitive information through normal chat.
 ## 10. FEES — WHAT YOU MUST KNOW
 
 Explain:
-• Buyer fees: Free (no buyer-side charges)
-• Seller commission: 2.5% (Professional) to 5% (Free tier)
-• Escrow fee: 0.5-2% (included in commission)
-• Delivery fees: Free in CBD/Westlands, KES 100-1,500 elsewhere
-• Withdrawal fees: KES 10-100 depending on method
-• Premium plans: KES 999-4,999/month for lower fees and features
+• Free forever: registration, account creation, product listings, job posting, applications, portfolio creation, messaging, and browsing
+• Seller commission (Normal Marketplace): 3% on KSh 1–4,999 · 2.5% on KSh 5,000–49,999 · 2% on KSh 50,000–199,999 · 1.5% on KSh 200,000 and above
+• Buyer protection fee: 1% on KSh 1–10,000 · 0.75% on KSh 10,001–50,000 · 0.5% on KSh 50,001–200,000 · 0.25% above KSh 200,000
+• Freelancer commission (Freelance Marketplace): 3% on KSh 1–5,000 · 2% on KSh 5,001–50,000 · 1.5% on KSh 50,001–250,000 · 1% above KSh 250,000
+• Employer protection fee: same tiers as buyer protection
+• Freelancers pay NO deposit, registration fee, application fee, or mandatory subscription
+• Withdrawals: NO default Nexora percentage fee — only an actual configured external provider cost or fixed service fee, shown before confirmation
+• Escrow is included within the applicable transaction fees — never charged separately
 
 Always retrieve the current configured fee information. Never invent prices.
 

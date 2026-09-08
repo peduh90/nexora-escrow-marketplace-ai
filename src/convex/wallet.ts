@@ -1,5 +1,9 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
+import {
+  sellerCommission as sellerCommissionFee,
+  buyerProtectionFee,
+} from "./fees";
 
 type UserInfo = {
   _id: string;
@@ -334,8 +338,18 @@ export const createOrder = mutation({
     const listing = await getRecord<ListingRecord>(ctx, args.listingId as string, "listings");
     if (!listing) throw new Error("Product not found");
 
-    const platformFee = Math.round(args.amount * 0.03);
-    const totalAmount = args.amount + platformFee;
+    // ── Nexora fee engine (src/convex/fees.ts) ──
+    // The buyer pays: listing price + buyer protection fee (tiered).
+    // The seller nets: listing price − seller commission (tiered).
+    // Escrow is included within these fees — never charged separately.
+    const marketplace: "product" | "freelance" =
+      (listing as any).marketplace === "freelance" ? "freelance" : "product";
+    const sellerCommission = sellerCommissionFee(marketplace, args.amount);
+    const buyerProtection = buyerProtectionFee(marketplace, args.amount);
+
+    const platformFee = sellerCommission.fee; // seller-side commission
+    const buyerFeeAmount = buyerProtection.fee; // buyer-side protection fee
+    const totalAmount = args.amount + buyerFeeAmount;
 
     if (args.paymentMethod === "wallet") {
       if ((userHasWallet(buyer) ? buyer.walletBalance || 0 : 0) < totalAmount) {
@@ -376,8 +390,11 @@ export const createOrder = mutation({
       originTown: listing.originTown,
       createdAt: Date.now(),
       fundedAt: Date.now(),
-      commissionRate: 3,
+      commissionRate: sellerCommission.rate * 100,
       platformFee,
+      buyerFeeRate: buyerProtection.rate * 100,
+      buyerFee: buyerFeeAmount,
+      marketplace,
     });
 
     await ctx.db.patch(args.listingId as any, { status: "sold" });
@@ -442,7 +459,10 @@ export const createOrder = mutation({
     return {
       escrowId,
       amount: args.amount,
-      platformFee,
+      sellerCommission: platformFee,
+      sellerCommissionRate: sellerCommission.rate * 100,
+      buyerProtectionFee: buyerFeeAmount,
+      buyerProtectionRate: buyerProtection.rate * 100,
       totalPaid: totalAmount,
     };
   },

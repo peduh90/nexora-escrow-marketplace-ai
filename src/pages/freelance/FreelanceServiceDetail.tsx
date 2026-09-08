@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { getWhatsAppSupportUrl, getWhatsAppSellerUrl, openWhatsApp } from "@/lib/whatsapp";
 import { getViewerKey } from "@/lib/viewer";
+import { buyerProtectionFee, rateLabel } from "@/lib/fees";
 import {
   FREELANCE_CATEGORY_GRADIENTS,
   freelanceCategoryName,
@@ -105,7 +106,9 @@ export default function FreelanceServiceDetail() {
   const category = getFreelanceCategory(fl.category);
   const gradient =
     FREELANCE_CATEGORY_GRADIENTS[fl.category] || FREELANCE_CATEGORY_GRADIENTS["other-services"];
-  const platformFee = Math.round(fl.price * 0.03);
+  // Employer protection fee — tiered per Nexora fee schedule (src/lib/fees.ts).
+  const buyerFee = buyerProtectionFee("freelance", fl.price);
+  const platformFee = buyerFee.fee;
   const grandTotal = fl.price + platformFee;
   const deliveryTime =
     (fl.attributes && (fl.attributes["Delivery Time"] || fl.attributes["Delivery"])) || "Flexible";
@@ -611,7 +614,7 @@ export default function FreelanceServiceDetail() {
 
             <div className="space-y-2 mb-4 text-sm p-3 rounded-xl bg-white/[0.02] border border-white/5">
               <div className="flex justify-between text-white/40"><span>Service price</span><span>KES {fl.price.toLocaleString()}</span></div>
-              <div className="flex justify-between text-white/40"><span>Protection fee (3%)</span><span>KES {platformFee.toLocaleString()}</span></div>
+              <div className="flex justify-between text-white/40"><span>Employer Protection ({rateLabel(buyerFee.rate)}) — escrow included</span><span>KES {platformFee.toLocaleString()}</span></div>
               <div className="flex justify-between text-white font-bold pt-2 border-t border-white/5"><span>Total</span><span>KES {grandTotal.toLocaleString()}</span></div>
             </div>
 

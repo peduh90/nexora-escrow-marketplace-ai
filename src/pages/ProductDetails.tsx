@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { getWhatsAppSellerUrl, getWhatsAppSupportUrl, openWhatsApp, normalizeKenyanPhone } from "@/lib/whatsapp";
 import { getViewerKey } from "@/lib/viewer";
+import { buyerProtectionFee, rateLabel } from "@/lib/fees";
 
 /** Show the most relevant attributes per category */
 function CategoryAttributes({ category, attributes }: { category: string; attributes?: Record<string, string> }) {
@@ -134,7 +135,9 @@ export default function ProductDetails() {
 
   const delivery = getDeliveryFee(listing.originCounty);
   const totalAmount = listing.price;
-  const platformFee = Math.round(totalAmount * 0.03);
+  // Buyer protection fee — tiered per Nexora fee schedule (src/lib/fees.ts).
+  const buyerFee = buyerProtectionFee("product", totalAmount);
+  const platformFee = buyerFee.fee;
   const deliveryFee = delivery.free ? 0 : delivery.fee;
   const grandTotal = totalAmount + platformFee + deliveryFee;
 
@@ -701,7 +704,7 @@ export default function ProductDetails() {
             {/* Price breakdown */}
             <div className="space-y-2 mb-4 text-sm p-3 rounded-xl bg-white/[0.02] border border-white/5">
               <div className="flex justify-between text-white/40"><span>Product Price</span><span>KES {totalAmount.toLocaleString()}</span></div>
-              <div className="flex justify-between text-white/40"><span>Platform Fee (3%)</span><span>KES {platformFee.toLocaleString()}</span></div>
+              <div className="flex justify-between text-white/40"><span>Buyer Protection ({rateLabel(buyerFee.rate)}) — escrow included</span><span>KES {platformFee.toLocaleString()}</span></div>
               <div className="flex justify-between text-white/40"><span>Delivery Fee</span><span className="text-nx-cyan">{deliveryFee === 0 ? "FREE" : `KES ${deliveryFee.toLocaleString()}`}</span></div>
               <div className="flex justify-between text-white font-bold pt-2 border-t border-white/5"><span>Total</span><span>KES {grandTotal.toLocaleString()}</span></div>
             </div>
