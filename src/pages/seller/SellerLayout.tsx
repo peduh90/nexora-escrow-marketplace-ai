@@ -34,6 +34,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   const { user } = useAuth();
   const walletData = useQuery(api.wallet.getWalletBalance);
   const balance = walletData?.walletBalance ?? 0;
+  const unreadNotifications = useQuery(api.reviews.getUnreadCount);
 
   const getPageLabel = () => {
     for (const [path, label] of Object.entries(navLabels)) {
@@ -82,6 +83,11 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
+              {unreadNotifications && unreadNotifications > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
+                  <span className="text-[8px] font-bold text-white">{unreadNotifications > 9 ? "9+" : unreadNotifications}</span>
+                </span>
+              )}
             </button>
             {/* WhatsApp Support */}
             <button

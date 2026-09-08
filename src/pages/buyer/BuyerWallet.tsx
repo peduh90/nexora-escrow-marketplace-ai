@@ -26,7 +26,9 @@ export default function BuyerWallet() {
   const [depositStep, setDepositStep] = useState<"idle" | "sending" | "waiting" | "done" | "error">("idle");
   const [depositError, setDepositError] = useState("");
   const initiateStkPush = useAction(api.mpesa.initiateStkPush as any);
+  const checkTransactionStatus = useAction(api.mpesa.checkTransactionStatus as any);
   const initiateDeposit = useMutation(api.wallet.initiateDeposit);
+  const attachCheckoutRequest = useMutation(api.wallet.attachCheckoutRequest);
 
   const balance = walletBalance?.walletBalance ?? 0;
   const escrowBalance = walletBalance?.escrowBalance ?? 0;
@@ -204,26 +206,54 @@ export default function BuyerWallet() {
                   setDepositError("");
                   try {
                     // 1. Record pending deposit in Convex
-                    await initiateDeposit({ amount: Number(depositAmount), phoneNumber: depositPhone });
-                    // 2. Send STK Push via Safaricom (or sandbox simulation)
-                    await initiateStkPush({
+                    const dep = await initiateDeposit({ amount: Number(depositAmount), phoneNumber: depositPhone });
+                    // 2. Send STK Push via Safaricom
+                    const stk = await initiateStkPush({
                       phoneNumber: depositPhone,
                       amount: Number(depositAmount),
-                      accountReference: `NX-DEP-${Date.now()}`,
+                      accountReference: dep.reference,
                       description: `Wallet deposit of KES ${Number(depositAmount).toLocaleString()}`,
                     });
-                    // 3. Show waiting — user confirms on phone via STK Push
+                    // 3. Link the Safaricom CheckoutRequestID so the M-Pesa
+                    //    callback can resolve this exact deposit.
+                    await attachCheckoutRequest({
+                      reference: dep.reference,
+                      checkoutRequestId: stk.checkoutRequestId,
+                    });
+                    // 4. Poll the REAL Safaricom status — never fake success.
                     setDepositStep("waiting");
-                    // 4. Poll for confirmation (simulated — real flow uses Safaricom callback)
-                    setTimeout(() => {
-                      setDepositStep("done");
-                      setTimeout(() => {
-                        setShowDeposit(false);
-                        setDepositStep("idle");
-                        setDepositAmount("");
-                        setDepositPhone("");
-                      }, 2000);
-                    }, 5000);
+                    let attempts = 0;
+                    const poll = async () => {
+                      attempts++;
+                      if (attempts > 24) {
+                        setDepositStep("error");
+                        setDepositError("Payment timed out. If you entered your PIN, check your wallet balance in a minute.");
+                        return;
+                      }
+                      try {
+                        const status = await checkTransactionStatus({ checkoutRequestId: stk.checkoutRequestId });
+                        if (status.resultCode === "0") {
+                          setDepositStep("done");
+                          setTimeout(() => {
+                            setShowDeposit(false);
+                            setDepositStep("idle");
+                            setDepositAmount("");
+                            setDepositPhone("");
+                          }, 2000);
+                          return;
+                        }
+                        if (status.resultCode && status.resultCode !== "1032" && status.resultCode !== "1037") {
+                          setDepositStep("error");
+                          setDepositError(status.resultDesc || "M-Pesa payment failed. Please try again.");
+                          return;
+                        }
+                        // 1032 = user cancelled, 1037 = still processing — keep polling
+                        setTimeout(poll, 5000);
+                      } catch {
+                        setTimeout(poll, 5000);
+                      }
+                    };
+                    setTimeout(poll, 5000);
                   } catch (err: any) {
                     setDepositStep("error");
                     setDepositError(err?.message || "M-Pesa payment failed. Please try again.");

@@ -1,7 +1,7 @@
 import { httpRouter } from "convex/server";
 import { auth } from "./auth";
 import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 const http = httpRouter();
 
@@ -34,7 +34,7 @@ http.route({
         const mpesaReceipt = metadata.find((i: any) => i.Name === "MpesaReceiptNumber")?.Value || "";
 
         // Credit wallet via internal mutation (server-to-server, no session).
-        await ctx.runMutation(api.wallet.completeDepositFromCallback, {
+        await ctx.runMutation(internal.wallet.completeDepositFromCallback, {
           checkoutRequestId,
           mpesaReceipt,
         });
