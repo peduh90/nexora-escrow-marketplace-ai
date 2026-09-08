@@ -81,6 +81,7 @@ async function auditLog(
 export const getDashboardStats = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const users = await ctx.db.query("users").collect();
     const listings = await ctx.db.query("listings").collect();
     const escrows = await ctx.db.query("escrows").collect();
@@ -217,6 +218,7 @@ export const getDashboardStats = query({
 export const getAllUsers = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const users = await ctx.db.query("users").collect();
     const listings = await ctx.db.query("listings").collect();
     const escrows = await ctx.db.query("escrows").collect();
@@ -245,6 +247,7 @@ export const getAllUsers = query({
 export const getPendingSellers = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const users = await ctx.db.query("users").collect();
     return users
       .filter((u: any) => u.role === "seller" && u.sellerStatus === "pending")
@@ -325,6 +328,7 @@ export const suspendUser = mutation({
 export const getAllListings = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("listings").collect();
   },
 });
@@ -363,6 +367,7 @@ export const updateListingStatus = mutation({
 export const getAllEscrows = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("escrows").collect();
   },
 });
@@ -373,6 +378,7 @@ export const getAllEscrows = query({
 export const getAllDisputes = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("disputes").collect();
   },
 });
@@ -442,6 +448,7 @@ export const resolveDispute = mutation({
 export const getAllKYC = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("kycApplications").collect();
   },
 });
@@ -492,6 +499,7 @@ export const reviewKYC = mutation({
 export const getAllDeliveries = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("deliveries").collect();
   },
 });
@@ -502,6 +510,7 @@ export const getAllDeliveries = query({
 export const getAllConversations = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("conversations").collect();
   },
 });
@@ -510,6 +519,7 @@ export const getAllConversations = query({
 export const getAllMessages = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("messages").collect();
   },
 });
@@ -520,6 +530,7 @@ export const getAllMessages = query({
 export const getAllJobPosts = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("jobPosts").collect();
   },
 });
@@ -530,6 +541,7 @@ export const getAllJobPosts = query({
 export const getAllReviews = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("reviews").collect();
   },
 });
@@ -540,6 +552,7 @@ export const getAllReviews = query({
 export const getAllWalletTransactions = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("walletTransactions").collect();
   },
 });
@@ -550,6 +563,7 @@ export const getAllWalletTransactions = query({
 export const getAllCategories = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("productCategories").collect();
   },
 });
@@ -562,6 +576,7 @@ export const getAllCategories = query({
 export const getAuditLogs = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const auditLogs = await ctx.db
       .query("auditLogs")
       .order("desc")
@@ -591,6 +606,7 @@ export const getAuditLogs = query({
 export const getAllFreelanceProfiles = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("freelanceProfiles").collect();
   },
 });
@@ -599,6 +615,7 @@ export const getAllFreelanceProfiles = query({
 export const getAllFreelanceTasks = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("freelanceTasks").collect();
   },
 });
@@ -607,6 +624,7 @@ export const getAllFreelanceTasks = query({
 export const getAllFreelanceProjects = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("freelanceProjects").collect();
   },
 });
@@ -615,6 +633,7 @@ export const getAllFreelanceProjects = query({
 export const getAllFreelanceApplications = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("freelanceApplications").collect();
   },
 });
@@ -636,6 +655,7 @@ export const suspendFreelancer = mutation({
 export const getPlatformSettings = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.db.query("platformSettings").collect();
   },
 });

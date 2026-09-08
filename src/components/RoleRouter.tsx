@@ -1,18 +1,32 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Loader2, ShieldAlert, CheckCircle2, Circle, ArrowRight } from "lucide-react";
 import { Navigate } from "react-router";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useState } from "react";
 
 interface RoleRouterProps {
   children: React.ReactNode;
   allowedRoles?: string[];
 }
 
+/**
+ * Panel access gate. A user must be fully verified (accountStatus "active"
+ * with an assigned role) before any panel renders. Pending users are held on
+ * an onboarding screen that shows exactly what is left to complete and lets
+ * them finish verification inline — the role is only assigned server-side
+ * (completeVerification) once every requirement is met.
+ */
 export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
   const { isLoading, isAuthenticated, user } = useAuth();
+  const onboarding = useQuery(api.users.getOnboardingStatus);
+  const completeVerification = useMutation(api.users.completeVerification);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (isLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background">
+      <main className="flex min-h-screen items-center justify-center bg-[#05050A]">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </main>
     );
@@ -23,10 +37,8 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
   }
 
   if (!user) {
-    // Auth identity present but no Nexora profile yet: sync flow must handle this.
-    // Do NOT guess role or redirect to /buyer.
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background">
+      <main className="flex min-h-screen items-center justify-center bg-[#05050A]">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
         <span className="sr-only">Loading account profile...</span>
       </main>
@@ -34,23 +46,105 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
   }
 
   const role = user?.role;
+  const accountStatus = (user as any)?.accountStatus;
 
-  if (!role) {
-    // Persistent profile exists but role field is missing — this is an account
-    // configuration problem, not a buyer account. Show a real error, do not
-    // silently downgrade to buyer.
+  // ── Verification gate ──
+  // A user with no role yet is unverified by definition, regardless of the
+  // stored accountStatus, so they never reach a panel. Show onboarding.
+  const isUnverified = !role || accountStatus === "pending";
+
+  if (isUnverified) {
+    if (!onboarding || onboarding.authenticated === false) {
+      return (
+        <main className="flex min-h-screen items-center justify-center bg-[#05050A]">
+          <Loader2 className="size-8 animate-spin text-nx-violet" />
+        </main>
+      );
+    }
+
+    const reqs = onboarding.requirements ?? [];
+    const allMet = onboarding.isComplete;
+
+    const handleComplete = async () => {
+      setSubmitting(true);
+      setError(null);
+      try {
+        const result = await completeVerification({
+          name: onboarding.profile?.name || undefined,
+          phone: onboarding.profile?.phone || undefined,
+        });
+        if (result?.role) {
+          // Reload so the auth hook picks up the newly assigned role.
+          window.location.reload();
+        }
+      } catch (err: any) {
+        setError(err?.message || "Could not complete verification.");
+        setSubmitting(false);
+      }
+    };
+
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center p-6 max-w-sm">
-          <Loader2 className="size-8 animate-spin text-amber-400 mx-auto mb-3" />
-          <p className="text-sm text-white/70">Your account profile is still being set up.</p>
-          <p className="text-xs text-white/30 mt-1">Please wait a moment and refresh.</p>
+      <main className="flex min-h-screen items-center justify-center bg-[#05050A] px-4">
+        <div className="w-full max-w-md rounded-2xl border border-white/5 bg-[#0A0A12]/90 p-8 shadow-2xl">
+          <div className="w-14 h-14 rounded-2xl bg-amber-400/10 flex items-center justify-center mx-auto mb-5">
+            <ShieldAlert className="w-7 h-7 text-amber-400" />
+          </div>
+          <h1 className="text-xl font-bold text-white text-center">Complete your verification</h1>
+          <p className="text-sm text-white/40 text-center mt-2">
+            Your account is not verified yet. Panel access unlocks once every step below is complete
+            {onboarding.requestedRole === "seller" ? " — including admin store approval." : "."}
+          </p>
+
+          <div className="mt-6 space-y-2.5">
+            {reqs.map((r: any) => (
+              <div key={r.key} className={`flex items-center gap-3 p-3 rounded-lg border ${r.met ? "border-nx-emerald/20 bg-nx-emerald/5" : "border-white/5 bg-white/[0.02]"}`}>
+                {r.met ? (
+                  <CheckCircle2 className="w-4 h-4 text-nx-emerald shrink-0" />
+                ) : (
+                  <Circle className="w-4 h-4 text-white/25 shrink-0" />
+                )}
+                <span className={`text-sm ${r.met ? "text-white/70" : "text-white"}`}>{r.label}</span>
+                <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full ${r.met ? "bg-nx-emerald/10 text-nx-emerald" : "bg-white/5 text-white/40"}`}>
+                  {r.met ? "Done" : "Pending"}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {onboarding.requestedRole === "seller" && !reqs.find((r: any) => r.key === "approval")?.met && (
+            <p className="text-[11px] text-white/30 mt-4">
+              Your store application is with the Nexora team. You'll be notified here the moment an admin reviews it — approval usually takes under 24 hours.
+            </p>
+          )}
+
+          {error && <p className="text-sm text-red-400 mt-4">{error}</p>}
+
+          <button
+            onClick={handleComplete}
+            disabled={!allMet || submitting}
+            className="mt-6 w-full py-3 rounded-xl bg-nx-violet hover:bg-nx-violet/80 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {submitting ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</>
+            ) : allMet ? (
+              <>Finish verification <ArrowRight className="w-4 h-4" /></>
+            ) : (
+              "Complete the steps above to continue"
+            )}
+          </button>
+
+          <button
+            onClick={() => { window.location.href = "/"; }}
+            className="mt-3 w-full text-center text-xs text-white/30 hover:text-white/50 transition-colors"
+          >
+            Back to home
+          </button>
         </div>
       </main>
     );
   }
 
-  if (allowedRoles && !allowedRoles.includes(role)) {
+  if (allowedRoles && !allowedRoles.includes(role as string)) {
     // Redirect to the correct panel for this role
     const roleRedirects: Record<string, string> = {
       admin: "/admin",
@@ -60,13 +154,13 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
       employer: "/employer",
       driver: "/driver",
     };
-    const target = roleRedirects[role];
+    const target = roleRedirects[role as string];
     if (target) {
       return <Navigate to={target} replace />;
     }
     // Unknown role — do not default to buyer
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background">
+      <main className="flex min-h-screen items-center justify-center bg-[#05050A]">
         <div className="text-center p-6 max-w-sm">
           <ShieldAlert className="size-8 text-red-400 mx-auto mb-3" />
           <p className="text-sm text-white/70">Your account role is not recognised.</p>

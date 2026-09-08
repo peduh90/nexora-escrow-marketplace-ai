@@ -107,7 +107,19 @@ export default function AdminUsers() {
                       </div>
                     </td>
                     <td className="px-4 py-3.5 hidden md:table-cell">
-                      {(() => { const r = effectiveRole(user); return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${r === "seller" ? "bg-nx-violet/10 text-nx-violet" : r === "admin" ? "bg-nx-gold/10 text-nx-gold" : r === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{r}</span>); })()}
+                      {(() => {
+                        const status = (user as any).accountStatus || ((user as any).role ? "active" : "pending");
+                        const requested = (user as any).pendingRole || effectiveRole(user);
+                        if (status === "pending") {
+                          return (
+                            <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-amber-400/10 text-amber-400" title={`Awaiting verification — requested role: ${requested}`}>
+                              ⏳ {requested} (pending)
+                            </span>
+                          );
+                        }
+                        const r = effectiveRole(user);
+                        return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${r === "seller" ? "bg-nx-violet/10 text-nx-violet" : r === "admin" ? "bg-nx-gold/10 text-nx-gold" : r === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{r}</span>);
+                      })()}
                     </td>
                     <td className="px-4 py-3.5 hidden lg:table-cell">
                       <p className="text-[10px] text-white/25">{[user.county, user.town].filter(Boolean).join(", ") || "—"}</p>

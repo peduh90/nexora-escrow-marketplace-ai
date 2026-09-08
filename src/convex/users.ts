@@ -365,11 +365,16 @@ export const ensureUserProfile = mutation({
       incomingPassword.length > 0 ? await hashStoredPassword(incomingPassword) : undefined;
 
     if (!user) {
+      // New accounts start PENDING with no role: no panel access until the
+      // registration/verification process completes (see completeVerification).
+      // The requested role is held in pendingRole until then.
       user = await ctx.db.insert("users", {
         name: args.name || identity.name || identity.email?.split("@")[0] || "User",
         email: identity.email,
         phone: typeof args.phone === "string" ? args.phone : undefined,
-        role: targetRole,
+        role: undefined,
+        pendingRole: targetRole,
+        accountStatus: "pending" as any,
         passwordHash: incomingPasswordHash,
         businessName: typeof args.businessName === "string" ? args.businessName : undefined,
         // New seller accounts require admin approval before they can operate.
@@ -398,7 +403,23 @@ export const ensureUserProfile = mutation({
         await ctx.db.patch(u._id, { businessName: args.businessName });
       }
 
-      if (typeof u.role !== "string" || u.role !== targetRole) {
+      // Role changes only apply through the verification gate. A pending
+      // account keeps its pendingRole (updated if the user re-submits); an
+      // active account keeps its assigned role unless admin action changes it.
+      if ((u as any).accountStatus !== "active") {
+        // Still pending — record the requested role and stay unverified.
+        if (targetRole !== u.pendingRole) {
+          const pendingPatch: Record<string, any> = { pendingRole: targetRole };
+          if (
+            targetRole === "seller" &&
+            u.sellerStatus !== "approved" &&
+            u.sellerStatus !== "rejected"
+          ) {
+            pendingPatch.sellerStatus = "pending";
+          }
+          await ctx.db.patch(u._id, pendingPatch);
+        }
+      } else if (typeof u.role !== "string" || u.role !== targetRole) {
         const rolePatch: Record<string, any> = { role: targetRole };
         // Becoming a seller for the first time puts the store in "pending"
         // review. Existing approval state (approved/rejected) is preserved.
@@ -419,6 +440,172 @@ export const ensureUserProfile = mutation({
 
     const freshUser = user as any;
     return { userId: freshUser._id, role: (freshUser?.role ?? null) as any };
+  },
+});
+
+/**
+ * Internal (CLI/server only): backfill the verification gate for accounts
+ * created before it existed. Any real account that already has a role is
+ * marked active (they were verified under the old flow); accounts with no
+ * role stay pending so they complete onboarding.
+ */
+export const backfillAccountStatus = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    let activated = 0;
+    let keptPending = 0;
+    for (const u of users) {
+      const anyU = u as any;
+      if (anyU.accountStatus === "active") continue;
+      if (typeof anyU.role === "string" && anyU.role) {
+        await ctx.db.patch(u._id, { accountStatus: "active" as any });
+        activated++;
+      } else {
+        if (!anyU.pendingRole && anyU.email?.includes("@")) {
+          await ctx.db.patch(u._id, { pendingRole: "buyer" as any });
+        }
+        keptPending++;
+      }
+    }
+    return { activated, keptPending };
+  },
+});
+
+/**
+ * ─── VERIFICATION GATE ───────────────────────────────────────────────────
+ *
+ * A user gets NO role (and no panel access) until registration and
+ * verification are fully complete and approved. completeVerification checks
+ * every requirement for the requested role and only then assigns it:
+ *  - buyer/freelancer/employer: real email + name + phone on file
+ *  - seller: the above + admin store approval (sellerStatus === "approved")
+ *  - admin: platform admin email only (never user-requested)
+ *
+ * When all checks pass the pendingRole is copied into role and accountStatus
+ * flips to "active" — the frontend then routes to the correct panel.
+ */
+export const getOnboardingStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getSessionUser(ctx);
+    if (!user) return { authenticated: false };
+
+    const u = user as any;
+    const hasEmail = typeof u.email === "string" && u.email.includes("@");
+    const hasName = typeof u.name === "string" && u.name.trim().length > 0;
+    const hasPhone = typeof u.phone === "string" && u.phone.replace(/[^0-9]/g, "").length >= 9;
+
+    const requestedRole =
+      typeof u.pendingRole === "string" && u.pendingRole
+        ? u.pendingRole
+        : typeof u.role === "string" && u.role
+          ? u.role
+          : "buyer";
+
+    const requirements: Array<{ key: string; label: string; met: boolean }> = [
+      { key: "email", label: "Verified email account", met: hasEmail },
+      { key: "name", label: "Full name on profile", met: hasName },
+      { key: "phone", label: "Phone number (M-Pesa & delivery)", met: hasPhone },
+    ];
+    if (requestedRole === "seller") {
+      requirements.push({
+        key: "approval",
+        label: "Admin store approval",
+        met: u.sellerStatus === "approved",
+      });
+    }
+
+    const isComplete = requirements.every((r) => r.met);
+
+    return {
+      authenticated: true,
+      accountStatus: (u.accountStatus as string) || (u.role ? "active" : "pending"),
+      requestedRole,
+      requirements,
+      isComplete,
+      profile: { name: u.name || "", email: u.email || "", phone: u.phone || "" },
+    };
+  },
+});
+
+/**
+ * Finish verification: assign the pending role and activate the account once
+ * every requirement for that role is met. Called by the onboarding page after
+ * the user completes their profile (and, for sellers, after admin approval).
+ */
+export const completeVerification = mutation({
+  args: {
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await getSessionUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    const u = user as any;
+
+    // Apply any profile updates submitted with the completion step.
+    if (typeof args.name === "string" && args.name.trim() && args.name !== u.name) {
+      await ctx.db.patch(u._id, { name: args.name.trim() });
+    }
+    if (typeof args.phone === "string" && args.phone.trim() && args.phone !== u.phone) {
+      await ctx.db.patch(u._id, { phone: args.phone.trim() });
+    }
+
+    const fresh = (await ctx.db.get(u._id)) as any;
+
+    const hasEmail = typeof fresh.email === "string" && fresh.email.includes("@");
+    const hasName = typeof fresh.name === "string" && fresh.name.trim().length > 0;
+    const hasPhone =
+      typeof fresh.phone === "string" && fresh.phone.replace(/[^0-9]/g, "").length >= 9;
+
+    const requestedRole =
+      typeof fresh.pendingRole === "string" && fresh.pendingRole
+        ? fresh.pendingRole
+        : typeof fresh.role === "string" && fresh.role
+          ? fresh.role
+          : "buyer";
+
+    if (!hasEmail) {
+      throw new Error("Verify your email before completing registration.");
+    }
+    if (!hasName) {
+      throw new Error("Add your full name to complete registration.");
+    }
+    if (!hasPhone) {
+      throw new Error("Add your phone number to complete registration.");
+    }
+
+    if (requestedRole === "seller" && fresh.sellerStatus !== "approved") {
+      throw new Error(
+        "Your store is awaiting admin approval. You will be notified once it is reviewed."
+      );
+    }
+
+    // Admin role is never self-assigned here; the admin email path handles it.
+    const finalRole = requestedRole === "admin" ? "admin" : requestedRole;
+
+    await ctx.db.patch(u._id, {
+      role: finalRole,
+      accountStatus: "active" as any,
+      pendingRole: undefined,
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: u._id,
+      type: "account",
+      title: "Account verified",
+      message: `Your ${finalRole} account is fully verified. Welcome to Nexora!`,
+      read: false,
+      link: "/",
+      createdAt: Date.now(),
+    });
+
+    return { success: true, role: finalRole };
   },
 });
 

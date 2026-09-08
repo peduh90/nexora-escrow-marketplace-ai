@@ -84,6 +84,18 @@ const schema = defineSchema(
         v.literal("approved"),
         v.literal("rejected"),
       )),
+      // Account verification gate — a user has NO role (and no panel access)
+      // until their registration/verification is complete and approved.
+      // "pending" = still in onboarding/verification; "active" = verified,
+      // role assigned, panel access granted.
+      accountStatus: v.optional(v.union(
+        v.literal("pending"),
+        v.literal("active"),
+        v.literal("suspended"),
+      )),
+      // The role the user requested during onboarding, held until verification
+      // completes. Copied into `role` by completeVerification.
+      pendingRole: v.optional(v.string()),
       sellerTier: v.optional(v.string()),
       commissionRate: v.optional(v.number()),
       subscriptionTier: v.optional(v.string()),
