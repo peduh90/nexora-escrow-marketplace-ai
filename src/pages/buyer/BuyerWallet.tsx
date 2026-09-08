@@ -20,6 +20,7 @@ export default function BuyerWallet() {
   const walletBalance = useQuery(api.wallet.getWalletBalance);
   const transactions = useQuery(api.wallet.getWalletTransactions);
   const [showDeposit, setShowDeposit] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [depositPhone, setDepositPhone] = useState("");
   const [depositStep, setDepositStep] = useState<"idle" | "sending" | "waiting" | "done" | "error">("idle");
@@ -81,7 +82,11 @@ export default function BuyerWallet() {
           </div>
           <span className="text-xs text-white/60">Receive</span>
         </button>
-        <button className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-cyan/20 transition-all opacity-40" disabled>
+        <button
+          onClick={() => setShowWithdraw(true)}
+          disabled={balance <= 0}
+          className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-cyan/20 transition-all disabled:opacity-40"
+        >
           <div className="w-10 h-10 rounded-lg bg-amber-400/10 flex items-center justify-center">
             <ArrowUpRight className="w-5 h-5 text-amber-400" />
           </div>
@@ -134,6 +139,15 @@ export default function BuyerWallet() {
           </div>
         )}
       </div>
+
+      {/* Withdraw Modal */}
+      {showWithdraw && (
+        <WithdrawModal
+          balance={balance}
+          defaultPhone={user?.phone || ""}
+          onClose={() => setShowWithdraw(false)}
+        />
+      )}
 
       {/* Deposit Modal */}
       {showDeposit && (
@@ -227,5 +241,94 @@ export default function BuyerWallet() {
         </div>
       )}
     </BuyerLayout>
+  );
+}
+
+function WithdrawModal({
+  balance,
+  defaultPhone,
+  onClose,
+}: {
+  balance: number;
+  defaultPhone: string;
+  onClose: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [phone, setPhone] = useState(defaultPhone);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+  const requestWithdrawal = useMutation(api.wallet.requestWithdrawal);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { onClose(); setSuccess(false); setError(""); }} />
+      <div className="relative w-full max-w-md rounded-2xl bg-[#0E0E18] border border-white/5 shadow-2xl p-6">
+        {success ? (
+          <div className="text-center py-6">
+            <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-white mb-1">Withdrawal requested</h3>
+            <p className="text-xs text-white/40">KES {Number(amount).toLocaleString()} is on its way to your M-Pesa. You'll receive an SMS once it lands.</p>
+            <button onClick={() => { onClose(); setSuccess(false); setAmount(""); }} className="mt-6 px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-500/80 text-white text-sm font-medium transition-colors">Done</button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-semibold text-white">Withdraw Funds</h3>
+              <button onClick={onClose} className="p-1 text-white/30 hover:text-white/60"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-xs text-white/30 mb-6">Available: KES {balance.toLocaleString()}</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-white/60 mb-1.5">Amount (KES)</label>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-4 py-3 rounded-lg bg-white/[0.03] border border-white/5 text-xl text-white placeholder:text-white/20 focus:outline-none focus:border-nx-cyan/30 font-bold"
+                />
+                <button onClick={() => setAmount(String(balance))} className="text-[11px] text-nx-violet hover:text-nx-violet/80 mt-2">Max: KES {balance.toLocaleString()}</button>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-white/60 mb-1.5">M-Pesa Number</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="0712 345 678"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-cyan/30"
+                  />
+                </div>
+              </div>
+              {error && <p className="text-xs text-red-400">{error}</p>}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { onClose(); setError(""); }} className="flex-1 px-4 py-2.5 rounded-lg text-sm text-white/40 hover:text-white/60 transition-colors">Cancel</button>
+              <button
+                disabled={!amount || Number(amount) < 50 || Number(amount) > balance || !phone || submitting}
+                onClick={async () => {
+                  setSubmitting(true);
+                  setError("");
+                  try {
+                    await requestWithdrawal({ amount: Number(amount), phoneNumber: phone });
+                    setSuccess(true);
+                  } catch (err: any) {
+                    setError(err?.message || "Withdrawal failed. Please try again.");
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-500/80 text-white text-sm font-medium transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : "Withdraw to M-Pesa"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

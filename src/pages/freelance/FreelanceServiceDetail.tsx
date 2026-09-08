@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
-import { getWhatsAppSupportUrl, openWhatsApp } from "@/lib/whatsapp";
+import { getWhatsAppSupportUrl, getWhatsAppSellerUrl, openWhatsApp } from "@/lib/whatsapp";
 import {
   FREELANCE_CATEGORY_GRADIENTS,
   freelanceCategoryName,
@@ -23,6 +23,10 @@ export default function FreelanceServiceDetail() {
 
   const listing = useQuery(
     api.listings.getListing,
+    id ? ({ listingId: id as any } as const) : "skip",
+  );
+  const sellerContact = useQuery(
+    api.listings.getSellerWhatsApp,
     id ? ({ listingId: id as any } as const) : "skip",
   );
   const similar = useQuery(api.listings.searchFreelanceListings, {
@@ -386,9 +390,19 @@ export default function FreelanceServiceDetail() {
                 </button>
                 <button
                   onClick={() =>
-                    openWhatsApp(
-                      getWhatsAppSupportUrl(`I'm interested in "${fl.title}" (KES ${fl.price.toLocaleString()}). Is it still available?`),
-                    )
+                    sellerContact?.phone
+                      ? openWhatsApp(
+                          getWhatsAppSellerUrl(
+                            sellerContact.phone,
+                            fl.title,
+                            fl.price,
+                          ),
+                        )
+                      : openWhatsApp(
+                          getWhatsAppSupportUrl(
+                            `I'm interested in "${fl.title}" (KES ${fl.price.toLocaleString()}). Is it still available?`,
+                          ),
+                        )
                   }
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors border border-emerald-500/15"
                 >

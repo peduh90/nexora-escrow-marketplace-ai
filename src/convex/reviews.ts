@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getSessionUser } from "./users";
 
 /** Create a review after a completed transaction */
 export const createReview = mutation({
@@ -85,13 +86,7 @@ export const getSellerRating = query({
 export const getNotifications = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
+    const user = await getSessionUser(ctx);
     if (!user) return [];
 
     return await ctx.db
@@ -107,13 +102,7 @@ export const getNotifications = query({
 export const getUnreadCount = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return 0;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
+    const user = await getSessionUser(ctx);
     if (!user) return 0;
 
     const unread = await ctx.db
@@ -128,13 +117,7 @@ export const getUnreadCount = query({
 export const markAsRead = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
+    const user = await getSessionUser(ctx);
     if (!user) return;
 
     const unread = await ctx.db
