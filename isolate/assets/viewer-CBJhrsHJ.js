@@ -1,0 +1,1 @@
+function n(){if(typeof window>"u")return"";const t="nx_viewer_id";try{let e=window.localStorage.getItem(t);return e||(e=typeof crypto<"u"&&"randomUUID"in crypto?crypto.randomUUID():`v${Date.now()}-${Math.random().toString(36).slice(2,10)}`,window.localStorage.setItem(t,e)),e}catch{return""}}export{n as g};
