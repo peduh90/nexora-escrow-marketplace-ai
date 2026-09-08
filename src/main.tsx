@@ -79,7 +79,6 @@ const TermsPage = lazy(() => import("./pages/Terms.tsx"));
 // Admin panel
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers.tsx"));
-const AdminBuyers = lazy(() => import("./pages/admin/AdminBuyers.tsx"));
 const AdminSellers = lazy(() => import("./pages/admin/AdminSellers.tsx"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders.tsx"));
@@ -183,7 +182,7 @@ function LegacyDashboardRedirect() {
   const target =
     role === "admin"
       ? "/admin"
-      : role === "seller" || role === "driver"
+      : role === "seller"
       ? "/seller"
       : role === "freelancer"
       ? "/freelance/dashboard"
@@ -317,7 +316,6 @@ createRoot(document.getElementById("root")!).render(
               {/* Admin routes */}
               <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
               <Route path="/admin/users" element={<RequireAdmin><AdminUsers /></RequireAdmin>} />
-              <Route path="/admin/buyers" element={<RequireAdmin><AdminBuyers /></RequireAdmin>} />
               <Route path="/admin/sellers" element={<RequireAdmin><AdminSellers /></RequireAdmin>} />
               <Route path="/admin/products" element={<RequireAdmin><AdminProducts /></RequireAdmin>} />
               <Route path="/admin/orders" element={<RequireAdmin><AdminOrders /></RequireAdmin>} />
@@ -326,9 +324,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/wallets" element={<RequireAdmin><AdminWallets /></RequireAdmin>} />
               <Route path="/admin/withdrawals" element={<RequireAdmin><AdminWithdrawals /></RequireAdmin>} />
               <Route path="/admin/deliveries" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
-              <Route path="/admin/zones" element={<RequireAdmin><AdminDeliveries /></RequireAdmin>} />
               <Route path="/admin/disputes" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />
-              <Route path="/admin/fraud" element={<RequireAdmin><AdminDisputes /></RequireAdmin>} />
               <Route path="/admin/ai" element={<RequireAdmin><AdminAI /></RequireAdmin>} />
               <Route path="/admin/owner" element={<RequireAdmin><AdminOwner /></RequireAdmin>} />
               <Route path="/admin/kyc" element={<RequireAdmin><AdminKYC /></RequireAdmin>} />

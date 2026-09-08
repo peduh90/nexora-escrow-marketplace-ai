@@ -17,7 +17,6 @@ const navSections = [
   ]},
   { label: "USERS", items: [
     { icon: Users, label: "All Users", path: "/admin/users" },
-    { icon: User, label: "Buyers", path: "/admin/buyers" },
     { icon: Briefcase, label: "Sellers", path: "/admin/sellers" },
     { icon: Eye, label: "Verification", path: "/admin/kyc" },
   ]},
@@ -39,7 +38,7 @@ const navSections = [
     { icon: MapPin, label: "Zones & Fees", path: "/admin/zones" },
   ]},
   { label: "SECURITY", items: [
-    { icon: Brain, label: "AI & Fraud", path: "/admin/fraud" },
+    { icon: Brain, label: "AI & Fraud", path: "/admin/ai" },
     { icon: Scale, label: "Disputes", path: "/admin/disputes" },
     { icon: AlertTriangle, label: "Reports", path: "/admin/reports" },
   ]},

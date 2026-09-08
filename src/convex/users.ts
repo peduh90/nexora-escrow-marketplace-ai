@@ -1149,31 +1149,6 @@ export const wipeToAdminOnly = internalMutation({
   },
 });
 
-/**
- * Internal repair (CLI/server only): mark every existing seller account as
- * "approved" so introducing the seller-approval gate never locks out accounts
- * that were already operating before the gate existed. New seller
- * registrations are still set to "pending" and require admin approval.
- */
-export const backfillSellerApproval = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const users = await ctx.db.query("users").collect();
-    let updated = 0;
-    for (const u of users) {
-      const rec = u as any;
-      const isSeller =
-        rec.role === "seller" ||
-        (typeof rec.businessName === "string" && rec.businessName.trim().length > 0);
-      if (rec.sellerStatus !== "approved" && rec.sellerStatus !== "rejected") {
-        await ctx.db.patch(u._id, { sellerStatus: "approved" });
-        updated++;
-      }
-    }
-    return { updated };
-  },
-});
-
 export const repairUserRole = internalMutation({
   args: {
     email: v.string(),

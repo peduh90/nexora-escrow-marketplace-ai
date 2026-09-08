@@ -12,13 +12,15 @@ export default function AdminUsers() {
 
   const users = (allUsers ?? []).filter((u: any) => u.email && u.email.includes("@") && u.name !== "Guest User");
 
-  // Determine effective role: prefer role field, fall back to businessName (seller) or buyer
+  // Determine effective role: prefer role field, fall back to businessName (seller),
+  // a pending seller registration, or buyer. Pending registrations are shown
+  // with their requested role so new sellers are never mistaken for buyers.
   const effectiveRole = (u: any) => {
     if (u.role === "admin") return "admin";
-    if (u.role === "seller") return "seller";
+    if (u.role === "seller" || u.businessName || u.pendingRole === "seller") return "seller";
     if (u.role === "freelancer") return "freelancer";
+    if (u.role === "employer") return "employer";
     if (u.role === "driver") return "driver";
-    if (u.businessName) return "seller";
     return "buyer";
   };
   const filtered = users.filter((u: any) => {

@@ -91,8 +91,7 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
           </div>
           <h1 className="text-xl font-bold text-white text-center">Complete your verification</h1>
           <p className="text-sm text-white/40 text-center mt-2">
-            Your account is not verified yet. Panel access unlocks once every step below is complete
-            {onboarding.requestedRole === "seller" ? " — including admin store approval." : "."}
+            Your account is not verified yet. Panel access unlocks once every step below is complete.
           </p>
 
           <div className="mt-6 space-y-2.5">
@@ -113,7 +112,7 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
 
           {onboarding.requestedRole === "seller" && !reqs.find((r: any) => r.key === "approval")?.met && (
             <p className="text-[11px] text-white/30 mt-4">
-              Your store application is with the Nexora team. You'll be notified here the moment an admin reviews it — approval usually takes under 24 hours.
+              Your store is registered and visible to the Nexora admin team while you finish verification.
             </p>
           )}
 
@@ -152,7 +151,6 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
       buyer: "/buyer",
       freelancer: "/freelance/dashboard",
       employer: "/employer",
-      driver: "/driver",
     };
     const target = roleRedirects[role as string];
     if (target) {
@@ -188,8 +186,6 @@ export function getDashboardPath(role?: string | null): string {
       return "/freelance/dashboard";
     case "employer":
       return "/employer";
-    case "driver":
-      return "/driver";
     default:
       return "/auth?returnTo=/";
   }

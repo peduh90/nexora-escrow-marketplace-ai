@@ -650,13 +650,13 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
           </h1>
           <p className="text-sm text-white/40 leading-relaxed">
             {sellerMode === "register"
-              ? "Register your store directly — an admin reviews and approves it before you can publish products."
+              ? "Register your store and start selling — your store is visible to the admin team the moment you sign up."
               : "Sign in to manage products, orders and earnings."}
           </p>
           {sellerMode === "register" && (
             <p className="text-[11px] text-white/25 mt-2 leading-relaxed">
               <Shield className="inline w-3 h-3 mr-1 text-nx-gold" />
-              New stores appear under <span className="text-white/50">Admin → Verification → Seller Store Approvals</span> until approved.
+              Your store appears under <span className="text-white/50">Admin → Sellers</span> as soon as you register.
             </p>
           )}
           {/* Register / Sign-in switch */}

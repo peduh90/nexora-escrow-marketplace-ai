@@ -70,7 +70,7 @@ async function auditLog(
     title: `Admin: ${action}`,
     message: `${resource} ${resourceId ? `(${resourceId})` : ""} — ${details || "No details"}`,
     read: false,
-    link: "/admin/audit",
+    link: "/admin/audit-logs",
     createdAt: now,
   });
 }
@@ -97,16 +97,16 @@ export const getDashboardStats = query({
     const monthAgo = now - 2592000000;
 
     // Count users by role, restricted to REAL users (real email, not guest/
-    // anonymous) so the dashboard matches the User Management page. Users with
-    // no role and no businessName are buyers; users with a businessName but no
-    // explicit seller role are sellers (legacy accounts).
+    // anonymous) so the dashboard matches the User Management page. Sellers
+    // include accounts still completing verification (pendingRole === "seller")
+    // so a brand-new seller registration is visible to the admin immediately.
     const realUsers = users.filter(isRealUser);
-    const buyers = realUsers.filter((u) =>
-      u.role === "buyer" || (!u.role && !u.businessName)
+    const isSellerAccount = (u: any) =>
+      u.role === "seller" || !!u.businessName || u.pendingRole === "seller";
+    const buyers = realUsers.filter(
+      (u) => u.role === "buyer" || (!u.role && !u.businessName && !isSellerAccount(u))
     );
-    const sellers = realUsers.filter((u) =>
-      u.role === "seller" || u.businessName
-    );
+    const sellers = realUsers.filter(isSellerAccount);
     // Freelancers are tracked in freelanceProfiles, not in users.role.
     // Count them here from the freelanceProfiles table separately.
     const freelancers = [] as any[];
@@ -214,13 +214,15 @@ export const getDashboardStats = query({
 // ─── USER MANAGEMENT ───
 
 /** Admin: get all users with computed stats.
- * Sensitive credential fields (password hashes, auth account ids) are stripped
- * before the records leave the server — the admin UI never needs them. */
+ * Guest/anonymous accounts are excluded so this list always matches the
+ * dashboard and User Management counts. Sensitive credential fields (password
+ * hashes, auth account ids, admin 2FA secrets) are stripped before the records
+ * leave the server — the admin UI never needs them. */
 export const getAllUsers = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const users = await ctx.db.query("users").collect();
+    const users = (await ctx.db.query("users").collect()).filter(isRealUser);
     const listings = await ctx.db.query("listings").collect();
     const escrows = await ctx.db.query("escrows").collect();
 
@@ -229,7 +231,14 @@ export const getAllUsers = query({
       const userEscrows = escrows.filter(
         (e) => e.buyerId === u._id || e.sellerId === u._id
       );
-      const { passwordHash: _ph, tokenIdentifier: _ti, ...safeUser } = u as any;
+      const {
+        passwordHash: _ph,
+        tokenIdentifier: _ti,
+        adminPasswordHash: _aph,
+        adminPasswordSalt: _aps,
+        adminTotpSecret: _ats,
+        ...safeUser
+      } = u as any;
       return {
         ...safeUser,
         listingCount: userListings.length,
@@ -256,10 +265,14 @@ export const getUserCounts = query({
     const realUsers = all.filter(isRealUser);
     const freelanceProfiles = await ctx.db.query("freelanceProfiles").collect();
 
+    // Sellers include still-verifying accounts (pendingRole === "seller") so
+    // new seller registrations are counted the moment they sign up.
+    const isSellerAccount = (u: any) =>
+      u.role === "seller" || !!u.businessName || u.pendingRole === "seller";
     const buyers = realUsers.filter(
-      (u: any) => u.role === "buyer" || (!u.role && !u.businessName)
+      (u: any) => u.role === "buyer" || (!u.role && !u.businessName && !isSellerAccount(u))
     );
-    const sellers = realUsers.filter((u: any) => u.role === "seller" || !!u.businessName);
+    const sellers = realUsers.filter(isSellerAccount);
     const admins = realUsers.filter((u: any) => u.role === "admin");
 
     return {
@@ -272,35 +285,6 @@ export const getUserCounts = query({
       pendingKyc: realUsers.filter((u: any) => u.kycStatus === "pending").length,
       recent: realUsers.filter((u: any) => (u._creationTime || 0) > Date.now() - 86400000).length,
     };
-  },
-});
-
-/** Admin: approve or reject a seller store (legacy hook — approval gate removed) */
-export const reviewSellerApproval = mutation({
-  args: {
-    userId: v.string(),
-    status: v.union(v.literal("approved"), v.literal("rejected")),
-    notes: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await requireAdmin(ctx);
-    const target = await ctx.db.get(args.userId as any);
-    if (!target) throw new Error("User not found");
-
-    await ctx.db.patch(args.userId as any, {
-      sellerStatus: args.status,
-    });
-
-    await auditLog(
-      ctx as any,
-      user._id,
-      user.name || user.email || "Admin",
-      `SELLER_${args.status.toUpperCase()}`,
-      "user",
-      args.userId,
-      args.notes || "No notes"
-    );
-    return { success: true };
   },
 });
 
