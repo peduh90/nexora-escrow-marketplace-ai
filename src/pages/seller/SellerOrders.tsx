@@ -79,7 +79,8 @@ const statusConfig: Record<
 
 export default function SellerOrders() {
   const { user } = useAuth();
-  const escrows = useQuery(api.users.getAllEscrows);
+  // Scoped query: returns only this seller's escrow orders (with buyer names).
+  const escrows = useQuery(api.wallet.getEscrowBySeller);
   const markDelivered = useMutation(api.wallet.markDelivered);
   const refundEscrow = useMutation(api.wallet.refundEscrow);
 
@@ -92,7 +93,20 @@ export default function SellerOrders() {
   const [refundDone, setRefundDone] = useState<string | null>(null);
 
   const sellerId = user?._id ?? "";
-  const myOrders = (escrows ?? []).filter((e) => e.sellerId === sellerId);
+  const myOrders = (escrows ?? []) as unknown as Array<{
+    _id: string;
+    sellerId: string;
+    amount: number;
+    status: string;
+    title: string;
+    commissionRate: number;
+    transportRequired?: boolean;
+    transportFee?: number;
+    deliveryCounty?: string;
+    deliveryTown?: string;
+    originCounty?: string;
+    originTown?: string;
+  }>;
 
   const filtered = myOrders.filter((o) => {
     const matchStatus = filterStatus === "All" || o.status === filterStatus;
@@ -184,7 +198,7 @@ export default function SellerOrders() {
           const status = statusConfig[order.status] || statusConfig.funded;
           const StatusIcon = status.icon;
           const isExpanded = expandedOrder === order._id;
-          const commission = Math.round(order.amount * (order.commissionRate / 100));
+          const commission = Math.round((order.amount || 0) * ((order.commissionRate || 0) / 100));
           const canMarkDelivered =
             order.status === "active" && order.sellerId === sellerId;
           const canRefund =
@@ -262,7 +276,7 @@ export default function SellerOrders() {
                       </div>
                       {order.transportFee && (
                         <p className="text-xs text-white/40">
-                          Transport: KES {order.transportFee.toLocaleString()}
+                          Transport: KES {(order.transportFee || 0).toLocaleString()}
                         </p>
                       )}
                     </div>

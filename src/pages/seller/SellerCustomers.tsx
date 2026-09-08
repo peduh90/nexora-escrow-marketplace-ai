@@ -1,58 +1,34 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
 import { Users, ShoppingBag, Search } from "lucide-react";
 
+interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  verified: boolean;
+  orders: number;
+  totalSpent: number;
+  location: string;
+}
+
 export default function SellerCustomers() {
-  const { user } = useAuth();
-  const escrows = useQuery(api.users.getAllEscrows);
-  const allUsers = useQuery(api.users.getAllUsers);
+  // Backend-verified scoped query: returns only buyers this seller has
+  // actually transacted with, with seller-safe contact details.
+  const customersResult = useQuery(api.wallet.getSellerCustomers);
+  const escrows = useQuery(api.wallet.getEscrowBySeller);
 
   const [search, setSearch] = useState("");
 
-  const sellerId = (user?._id as string) ?? "";
-  const sellerEscrows = (escrows ?? []).filter((e: any) => e.sellerId === sellerId);
+  const customers = (customersResult ?? []) as unknown as Customer[];
+  const totalOrders = (escrows ?? []).length;
 
-  // Build unique buyer list from escrows
-  const buyerMap = new Map<string, { orders: number; totalSpent: number }>();
-  sellerEscrows.forEach((e: any) => {
-    const existing = buyerMap.get(e.buyerId) || { orders: 0, totalSpent: 0 };
-    existing.orders++;
-    existing.totalSpent += e.amount;
-    buyerMap.set(e.buyerId, existing);
-  });
-
-  // Get buyer details from allUsers
-  const users = allUsers ?? [];
-  const customers = Array.from(buyerMap.entries())
-    .map(([id, stats]) => {
-      const u = users.find((usr: any) => usr._id === id);
-      if (!u) return null;
-      return {
-        id: u._id,
-        name: u.name || "Unknown",
-        email: u.email || "",
-        verified: u.kycStatus === "verified",
-        orders: stats.orders,
-        totalSpent: stats.totalSpent,
-        location: u.county || u.town || "",
-      };
-    })
-    .filter(Boolean) as Array<{
-      id: string;
-      name: string;
-      email: string;
-      verified: boolean;
-      orders: number;
-      totalSpent: number;
-      location: string;
-    }>;
-
-  const filtered = customers.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.email.toLowerCase().includes(search.toLowerCase())
+  const filtered = customers.filter(
+    (c) =>
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.email.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -60,7 +36,9 @@ export default function SellerCustomers() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Customers</h1>
-          <p className="text-sm text-white/40 mt-1">{customers.length} customers • {sellerEscrows.length} total orders</p>
+          <p className="text-sm text-white/40 mt-1">
+            {customers.length} customers • {totalOrders} total orders
+          </p>
         </div>
 
         <div className="relative">
@@ -82,7 +60,7 @@ export default function SellerCustomers() {
           </div>
         ) : (
           <div className="space-y-2">
-            {filtered.map(c => (
+            {filtered.map((c) => (
               <div key={c.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-nx-violet/10 flex items-center justify-center text-nx-violet text-sm font-bold">

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
 import {
   Shield, Clock, Truck, CheckCircle2, AlertTriangle, Package,
@@ -30,14 +29,23 @@ const escrowSteps = [
   "Funds released",
 ];
 
+interface EscrowRow {
+  _id: string;
+  amount: number;
+  status: string;
+  title: string;
+  transportRequired?: boolean;
+  deliveryCounty?: string;
+  createdAt: number;
+}
+
 export default function SellerEscrow() {
-  const { user } = useAuth();
-  const allEscrows = useQuery(api.users.getAllEscrows);
+  // Scoped to this seller's escrow orders only — no admin bulk query.
+  const escrows = useQuery(api.wallet.getEscrowBySeller);
   const [activeTab, setActiveTab] = useState("All");
   const [expandedTx, setExpandedTx] = useState<string | null>(null);
 
-  const sellerId = user?._id ?? "";
-  const myEscrows = (allEscrows ?? []).filter(e => e.sellerId === sellerId);
+  const myEscrows = (escrows ?? []) as unknown as EscrowRow[];
 
   const filtered = activeTab === "All" ? myEscrows :
     activeTab === "Active" ? myEscrows.filter(t => t.status !== "released" && t.status !== "completed" && t.status !== "refunded" && t.status !== "cancelled") :
@@ -45,9 +53,9 @@ export default function SellerEscrow() {
     activeTab === "Released" ? myEscrows.filter(t => t.status === "released" || t.status === "completed") :
     myEscrows.filter(t => t.status === "disputed");
 
-  const totalEscrow = myEscrows.filter(t => t.status !== "released" && t.status !== "completed" && t.status !== "refunded" && t.status !== "cancelled").reduce((s, t) => s + t.amount, 0);
+  const totalEscrow = myEscrows.filter(t => t.status !== "released" && t.status !== "completed" && t.status !== "refunded" && t.status !== "cancelled").reduce((s, t) => s + (t.amount || 0), 0);
   const awaitingConfirm = myEscrows.filter(t => t.status === "inspection").length;
-  const expectedRelease = myEscrows.filter(t => t.status === "inspection").reduce((s, t) => s + t.amount, 0);
+  const expectedRelease = myEscrows.filter(t => t.status === "inspection").reduce((s, t) => s + (t.amount || 0), 0);
 
   return (
     <SellerLayout>

@@ -4,27 +4,35 @@ import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
 import {
-  Package, ShoppingCart, DollarSign, Eye, TrendingUp, Plus,
+  Package, ShoppingCart, DollarSign, TrendingUp, Plus,
   ArrowRight, Wallet, Shield, Loader2,
 } from "lucide-react";
+
+interface EscrowRow {
+  _id: string;
+  sellerId: string;
+  amount: number;
+  status: string;
+  title: string;
+}
 
 export default function SellerDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const listings = useQuery(api.listings.getSellerListings);
   const walletBalance = useQuery(api.wallet.getWalletBalance);
-  const escrows = useQuery(api.users.getAllEscrows);
+  // Scoped to this seller's account — returns only their escrow orders.
+  const escrows = useQuery(api.wallet.getEscrowBySeller);
 
-  const sellerId = user?._id ?? "";
-  const myEscrows = (escrows ?? []).filter((e) => e.sellerId === sellerId);
+  const myEscrows = (escrows ?? []) as unknown as EscrowRow[];
   const activeProducts = (listings ?? []).filter((l) => l.status === "active");
-  const totalViews = (listings ?? []).reduce((sum, l) => sum + l.views, 0);
+  const totalViews = (listings ?? []).reduce((sum: number, l: any) => sum + (l.views || 0), 0);
   const inEscrow = myEscrows
     .filter((e) => ["funded", "active", "delivery", "inspection"].includes(e.status))
-    .reduce((sum, e) => sum + e.amount, 0);
+    .reduce((sum: number, e) => sum + (e.amount || 0), 0);
   const totalRevenue = myEscrows
     .filter((e) => ["released", "completed"].includes(e.status))
-    .reduce((sum, e) => sum + e.amount, 0);
+    .reduce((sum: number, e) => sum + (e.amount || 0), 0);
   const recentOrders = myEscrows.slice(0, 5);
 
   const isLoading = listings === undefined || walletBalance === undefined || escrows === undefined;

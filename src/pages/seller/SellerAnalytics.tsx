@@ -2,7 +2,6 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
 import { BarChart3, TrendingUp, Eye, ShoppingCart, Star } from "lucide-react";
 
@@ -12,17 +11,25 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
   return <motion.div ref={ref} initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.5, delay }} className={className}>{children}</motion.div>;
 }
 
-export default function SellerAnalytics() {
-  const { user } = useAuth();
-  const listings = useQuery(api.users.getAllListings);
-  const escrows = useQuery(api.users.getAllEscrows);
+interface EscrowRow {
+  _id: string;
+  amount: number;
+  status: string;
+}
 
-  const sellerId = user?._id ?? "";
-  const myListings = (listings ?? []).filter((l: any) => l.sellerId === sellerId);
-  const myEscrows = (escrows ?? []).filter((e: any) => e.sellerId === sellerId);
+export default function SellerAnalytics() {
+  // Scoped queries: the backend returns only this seller's own data.
+  const listings = useQuery(api.listings.getSellerListings);
+  const escrows = useQuery(api.wallet.getEscrowBySeller);
+
+  const myListings = listings ?? [];
+  const myEscrows = (escrows ?? []) as unknown as EscrowRow[];
+
   const totalViews = myListings.reduce((s: number, l: any) => s + (l.views || 0), 0);
-  const completedSales = myEscrows.filter((e: any) => e.status === "completed" || e.status === "released").length;
-  const totalRevenue = myEscrows.filter((e: any) => e.status === "completed" || e.status === "released").reduce((s: number, e: any) => s + e.amount, 0);
+  const completedSales = myEscrows.filter((e) => e.status === "completed" || e.status === "released").length;
+  const totalRevenue = myEscrows
+    .filter((e) => e.status === "completed" || e.status === "released")
+    .reduce((s: number, e) => s + (e.amount || 0), 0);
 
   return (
     <SellerLayout>
