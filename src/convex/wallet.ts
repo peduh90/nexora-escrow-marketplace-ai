@@ -314,6 +314,7 @@ type EscrowRecord = {
   status: string;
   title: string;
   platformFee?: number;
+  buyerFee?: number;
   sellerIdForPatch?: string;
 };
 
@@ -625,10 +626,13 @@ export const refundEscrow = mutation({
       releasedAt: refundedAt,
     });
 
-    // Return funds to the buyer, less platform fee.
+    // Refund the buyer exactly what they paid: the listing amount plus the
+    // buyer protection fee they were charged at checkout. No commission is
+    // deducted from a refund — the seller-side commission is never the
+    // buyer's money.
     const buyer = await getUserById(ctx, escrow.buyerId);
     if (buyer) {
-      const refundAmount = escrow.amount - (escrow.platformFee || 0);
+      const refundAmount = escrow.amount + (escrow.buyerFee || 0);
       await ctx.db.patch(escrow.buyerId as any, {
         walletBalance: (buyer.walletBalance || 0) + refundAmount,
       });
