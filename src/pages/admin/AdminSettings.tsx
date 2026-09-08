@@ -92,15 +92,23 @@ export default function AdminSettings() {
           </div>
 
           <div className="p-5 rounded-xl border border-white/5 bg-[#0A0A12]">
-            <h3 className="text-sm font-semibold text-white mb-4">Platform Fees</h3>
+            <h3 className="text-sm font-semibold text-white mb-1">Platform Fees</h3>
+            <p className="text-[11px] text-white/30 mb-4">Tiered schedule enforced by the fee engine (src/convex/fees.ts). Withdrawals carry no Nexora percentage fee — only actual external provider costs.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { label: "Escrow Fee", value: "1.5%" },
-                { label: "Delivery Commission", value: "8%" },
-                { label: "Withdrawal Fee (M-Pesa)", value: "KES 50" },
-                { label: "Withdrawal Fee (Bank)", value: "KES 100" },
-                { label: "Insurance Fee", value: "3% of item value" },
-                { label: "Promoted Listing Fee", value: "KES 200/day" },
+                { label: "Seller Commission (KSh 1–4,999)", value: "3%" },
+                { label: "Seller Commission (KSh 5,000–49,999)", value: "2.5%" },
+                { label: "Seller Commission (KSh 50,000–199,999)", value: "2%" },
+                { label: "Seller Commission (KSh 200,000+)", value: "1.5%" },
+                { label: "Buyer Protection (KSh 1–10,000)", value: "1%" },
+                { label: "Buyer Protection (KSh 10,001–50,000)", value: "0.75%" },
+                { label: "Buyer Protection (KSh 50,001–200,000)", value: "0.5%" },
+                { label: "Buyer Protection (KSh 200,000+)", value: "0.25%" },
+                { label: "Freelancer Commission (KSh 1–5,000)", value: "3%" },
+                { label: "Freelancer Commission (KSh 5,001–50,000)", value: "2%" },
+                { label: "Freelancer Commission (KSh 50,001–250,000)", value: "1.5%" },
+                { label: "Freelancer Commission (KSh 250,000+)", value: "1%" },
+                { label: "Withdrawal Fee (default)", value: "None — provider cost only" },
               ].map(f => (
                 <div key={f.label} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02]">
                   <span className="text-xs text-white/40">{f.label}</span>

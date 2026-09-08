@@ -190,6 +190,7 @@ export default function ProductDetails() {
                 deliveryTown,
                 deliveryAddress,
                 paymentMethod: "mpesa",
+                deliveryFee,
               });
               setMpesaStep("done");
               setOrderSuccess(true);
@@ -227,6 +228,7 @@ export default function ProductDetails() {
         deliveryTown,
         deliveryAddress,
         paymentMethod: "wallet",
+        deliveryFee,
       });
       setOrderSuccess(true);
       setShowCheckout(false);

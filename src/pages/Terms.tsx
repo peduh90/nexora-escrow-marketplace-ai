@@ -55,11 +55,15 @@ export default function TermsOfService() {
         <section className="space-y-4">
           <h2 className="text-lg font-semibold text-white">5. Fees & Commissions</h2>
           <ul className="space-y-2 text-sm text-white/50 leading-relaxed ml-4">
-            <li>• Transaction commission: 1% – 5% (Starter 5%, Professional 3%, Enterprise 1%)</li>
-            <li>• Escrow fee: 1.5% (tiered based on transaction value)</li>
-            <li>• Delivery fees are managed by Nexora Market and displayed before checkout</li>
-            <li>• Premium seller subscriptions: KES 1,499 – 3,999/month</li>
-            <li>• All fees are displayed transparently before any transaction</li>
+            <li>• Free forever: registration, account creation, product listings, job posting, applications, portfolio creation, messaging, and browsing</li>
+            <li>• Normal Marketplace — seller commission: 3% on KSh 1–4,999 · 2.5% on KSh 5,000–49,999 · 2% on KSh 50,000–199,999 · 1.5% on KSh 200,000 and above</li>
+            <li>• Normal Marketplace — buyer protection fee: 1% on KSh 1–10,000 · 0.75% on KSh 10,001–50,000 · 0.5% on KSh 50,001–200,000 · 0.25% above KSh 200,000</li>
+            <li>• Freelance Marketplace — freelancer commission: 3% on KSh 1–5,000 · 2% on KSh 5,001–50,000 · 1.5% on KSh 50,001–250,000 · 1% above KSh 250,000</li>
+            <li>• Freelance Marketplace — employer protection fee: 1% on KSh 1–10,000 · 0.75% on KSh 10,001–50,000 · 0.5% on KSh 50,001–200,000 · 0.25% above KSh 200,000</li>
+            <li>• Freelancers pay no deposit, registration fee, application fee, or mandatory subscription</li>
+            <li>• Withdrawals have no default Nexora percentage fee — only an actual configured external provider cost or fixed service fee may apply, shown before confirmation</li>
+            <li>• Escrow is included within the applicable transaction fees — no separate escrow charge</li>
+            <li>• All fees are displayed transparently before any payment</li>
           </ul>
         </section>
 

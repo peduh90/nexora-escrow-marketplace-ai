@@ -327,6 +327,9 @@ export const createOrder = mutation({
     deliveryTown: v.string(),
     deliveryAddress: v.string(),
     paymentMethod: v.union(v.literal("wallet"), v.literal("mpesa")),
+    // Delivery fee shown at checkout — charged in the wallet path so the
+    // buyer pays exactly the total displayed before confirmation.
+    deliveryFee: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -349,7 +352,11 @@ export const createOrder = mutation({
 
     const platformFee = sellerCommission.fee; // seller-side commission
     const buyerFeeAmount = buyerProtection.fee; // buyer-side protection fee
-    const totalAmount = args.amount + buyerFeeAmount;
+    const deliveryFeeAmount =
+      typeof args.deliveryFee === "number" && args.deliveryFee > 0
+        ? Math.round(args.deliveryFee)
+        : 0;
+    const totalAmount = args.amount + buyerFeeAmount + deliveryFeeAmount;
 
     if (args.paymentMethod === "wallet") {
       if ((userHasWallet(buyer) ? buyer.walletBalance || 0 : 0) < totalAmount) {
@@ -382,7 +389,7 @@ export const createOrder = mutation({
       conditions: "Buyer confirms delivery within 7 days",
       inspectionPeriodHours: 168,
       releaseCondition: "Buyer confirms receipt",
-      transportRequired: true,
+      transportRequired: deliveryFeeAmount > 0,
       deliveryAddress: args.deliveryAddress,
       deliveryCounty: args.deliveryCounty,
       deliveryTown: args.deliveryTown,
