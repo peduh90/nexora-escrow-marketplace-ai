@@ -214,7 +214,9 @@ export const getDashboardStats = query({
 
 // ─── USER MANAGEMENT ───
 
-/** Admin: get all users with computed stats */
+/** Admin: get all users with computed stats.
+ * Sensitive credential fields (password hashes, auth account ids) are stripped
+ * before the records leave the server — the admin UI never needs them. */
 export const getAllUsers = query({
   args: {},
   handler: async (ctx) => {
@@ -228,8 +230,9 @@ export const getAllUsers = query({
       const userEscrows = escrows.filter(
         (e) => e.buyerId === u._id || e.sellerId === u._id
       );
+      const { passwordHash: _ph, tokenIdentifier: _ti, ...safeUser } = u as any;
       return {
-        ...u,
+        ...safeUser,
         listingCount: userListings.length,
         orderCount: userEscrows.length,
         totalSpent: escrows
@@ -240,6 +243,36 @@ export const getAllUsers = query({
           .reduce((sum, e) => sum + e.amount, 0),
       };
     });
+  },
+});
+
+/** Admin: user count summary (mirrors the shape the User Management page and
+ * dashboard stat cards consume). Freelancers are counted from the
+ * freelanceProfiles table — they are not stored in users.role. */
+export const getUserCounts = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const all = await ctx.db.query("users").collect();
+    const realUsers = all.filter(isRealUser);
+    const freelanceProfiles = await ctx.db.query("freelanceProfiles").collect();
+
+    const buyers = realUsers.filter(
+      (u: any) => u.role === "buyer" || (!u.role && !u.businessName)
+    );
+    const sellers = realUsers.filter((u: any) => u.role === "seller" || !!u.businessName);
+    const admins = realUsers.filter((u: any) => u.role === "admin");
+
+    return {
+      total: realUsers.length,
+      buyers: buyers.length,
+      sellers: sellers.length,
+      freelancers: freelanceProfiles.length,
+      admins: admins.length,
+      verified: realUsers.filter((u: any) => u.kycStatus === "verified").length,
+      pendingKyc: realUsers.filter((u: any) => u.kycStatus === "pending").length,
+      recent: realUsers.filter((u: any) => (u._creationTime || 0) > Date.now() - 86400000).length,
+    };
   },
 });
 
@@ -317,7 +350,15 @@ export const suspendUser = mutation({
     if (!target) throw new Error("User not found");
 
     await ctx.db.patch(args.userId as any, { role: undefined });
-    await auditLog(ctx as any, user._id, "SUSPEND_USER", "user", args.userId, args.reason);
+    await auditLog(
+      ctx as any,
+      user._id,
+      user.name || user.email || "Admin",
+      "SUSPEND_USER",
+      "user",
+      args.userId,
+      args.reason
+    );
     return { success: true };
   },
 });
@@ -394,14 +435,13 @@ export const resolveDispute = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireAdmin(ctx);
 
-    // Fetch the dispute via a typed index query so TypeScript sees the correct
-    // shape. The disputes table has a by_escrow index; we look it up by escrowId.
-    const dispute = await ctx.db
-      .query("disputes")
-      .withIndex("by_escrow", (q: any) => q.eq("escrowId", args.disputeId))
-      .first();
-
+    // The mutation receives the dispute document id — resolve the linked
+    // escrow from the dispute record itself. Passing the dispute id into the
+    // wallet mutations (the old behaviour) targeted a non-existent escrow and
+    // silently did nothing.
+    const dispute: any = await ctx.db.get(args.disputeId as any);
     if (!dispute) throw new Error("Dispute not found");
+    const escrowId = dispute.escrowId as string | undefined;
 
     await ctx.db.patch(args.disputeId as any, {
       status: "resolved",
@@ -410,22 +450,24 @@ export const resolveDispute = mutation({
       resolvedAt: Date.now(),
     });
 
-    if (args.refundAmount && args.refundAmount > 0) {
-      try {
-        await ctx.runMutation(api.wallet.refundEscrow, {
-          escrowId: args.disputeId,
-          reason: `Admin dispute resolution: ${args.resolution}`,
-        }).catch(() => {});
-      } catch {
-        // mutation path may not exist yet; safe to ignore
-      }
-    } else {
-      try {
-        await ctx.runMutation(api.wallet.markDelivered, {
-          escrowId: args.disputeId,
-        }).catch(() => {});
-      } catch {
-        // mutation path may not exist yet; safe to ignore
+    if (escrowId) {
+      if (args.refundAmount && args.refundAmount > 0) {
+        try {
+          await ctx.runMutation(api.wallet.refundEscrow, {
+            escrowId,
+            reason: `Admin dispute resolution: ${args.resolution}`,
+          }).catch(() => {});
+        } catch {
+          // mutation path may not exist yet; safe to ignore
+        }
+      } else {
+        try {
+          await ctx.runMutation(api.wallet.markDelivered, {
+            escrowId,
+          }).catch(() => {});
+        } catch {
+          // mutation path may not exist yet; safe to ignore
+        }
       }
     }
 
@@ -484,6 +526,7 @@ export const reviewKYC = mutation({
     await auditLog(
       ctx as any,
       user._id,
+      user.name || user.email || "Admin",
       `KYC_${args.status.toUpperCase()}`,
       "kycApplication",
       args.applicationId,
@@ -644,7 +687,15 @@ export const suspendFreelancer = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireAdmin(ctx);
     await ctx.db.patch(args.profileId as any, { status: "suspended" });
-    await auditLog(ctx as any, user._id, "SUSPEND_FREELANCER", "freelanceProfile", args.profileId, args.reason);
+    await auditLog(
+      ctx as any,
+      user._id,
+      user.name || user.email || "Admin",
+      "SUSPEND_FREELANCER",
+      "freelanceProfile",
+      args.profileId,
+      args.reason
+    );
     return { success: true };
   },
 });
@@ -691,6 +742,7 @@ export const updatePlatformSetting = mutation({
     await auditLog(
       ctx as any,
       user._id,
+      user.name || user.email || "Admin",
       "UPDATE_SETTING",
       "platformSetting",
       args.key,

@@ -164,19 +164,6 @@ export async function verifyStoredPasswordHash(storedHash: string, password: str
  * Check if the current user is an admin
  */
 
-/** Admin: get all real users (excludes anonymous/guest accounts) */
-export const getAllUsers = query({
-  args: {},
-  handler: async (ctx) => {
-    const all = await ctx.db.query("users").collect();
-    return all.filter((u: any) =>
-      u.email && u.email.includes("@") &&
-      u.name !== "Guest User" &&
-      !u.email?.toLowerCase().includes("anonymous")
-    );
-  },
-});
-
 /**
  * Check if email/phone/business name already exists
  */
@@ -838,57 +825,6 @@ const COMMON_PASSWORDS = new Set([
 async function hashPasswordForStorage(password: string): Promise<string> {
   return hashStoredPassword(password);
 }
-
-/** Admin: get user count summary */
-export const getUserCounts = query({
-  args: {},
-  handler: async (ctx) => {
-    const all = await ctx.db.query("users").collect();
-    const realUsers = all.filter((u: any) =>
-      u.email && u.email.includes("@") &&
-      u.name !== "Guest User" &&
-      !u.email?.toLowerCase().includes("anonymous")
-    );
-    // Users with businessName are sellers regardless of role field.
-    // Users with a real email/name but no role default to buyer.
-    // Freelancers are tracked in freelanceProfiles, NOT in users.role — the role validator
-    // doesn't include "freelancer" so this will always be 0. Count them in the admin dashboard
-    // from the freelanceProfiles table instead.
-    // Real users without a stored role and without a business name are buyers —
-    // no `name` requirement, since OTP-created accounts often have no name yet.
-    const buyers = realUsers.filter((u: any) => u.role === "buyer" || (!u.role && u.email && u.email.includes("@") && !u.businessName));
-    const sellers = realUsers.filter((u: any) => u.role === "seller" || !!u.businessName);
-    const admins = realUsers.filter((u: any) => u.role === "admin");
-    const verified = realUsers.filter((u: any) => u.kycStatus === "verified");
-    const pendingKyc = realUsers.filter((u: any) => u.kycStatus === "pending");
-    return {
-      total: realUsers.length,
-      buyers: buyers.length,
-      sellers: sellers.length,
-      freelancers: 0, // freelancers are counted from freelanceProfiles table in admin.ts
-      admins: admins.length,
-      verified: verified.length,
-      pendingKyc: pendingKyc.length,
-      recent: realUsers.filter((u: any) => (u._creationTime || 0) > Date.now() - 86400000).length,
-    };
-  },
-});
-
-/** Admin: get all listings */
-export const getAllListings = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("listings").collect();
-  },
-});
-
-/** Admin: get all escrows */
-export const getAllEscrows = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("escrows").collect();
-  },
-});
 
 /** Auto-promote first admin — anyone signing up with this email gets admin role.
  * Also ensures new users get proper role assignment on signup. */
