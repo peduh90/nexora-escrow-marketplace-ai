@@ -244,7 +244,17 @@ export const verifyLogin = mutation({
       typeof u.businessName === "string" && u.businessName.trim().length > 0;
     let role = typeof u.role === "string" && u.role ? u.role : null;
 
-    if (hasBusinessName && role !== "seller" && role !== "admin") {
+    // Platform owner ALWAYS resolves to admin + active on login, even from a
+    // stale buyer/pending record created before the verification gate. Without
+    // this the owner is trapped in the buyer panel with no route to /admin.
+    if (u.email === ADMIN_EMAIL) {
+      role = "admin";
+      await ctx.db.patch(u._id, {
+        role: "admin" as any,
+        accountStatus: "active" as any,
+        pendingRole: undefined,
+      });
+    } else if (hasBusinessName && role !== "seller" && role !== "admin") {
       role = "seller";
       await ctx.db.patch(u._id, { role: "seller" as any });
     } else if (!role) {
@@ -355,13 +365,15 @@ export const ensureUserProfile = mutation({
       // New accounts start PENDING with no role: no panel access until the
       // registration/verification process completes (see completeVerification).
       // The requested role is held in pendingRole until then.
+      // EXCEPTION: the platform owner email is always created admin + active —
+      // it must never be trapped behind the verification gate.
       user = await ctx.db.insert("users", {
         name: args.name || identity.name || identity.email?.split("@")[0] || "User",
         email: identity.email,
         phone: typeof args.phone === "string" ? args.phone : undefined,
-        role: undefined,
-        pendingRole: targetRole,
-        accountStatus: "pending" as any,
+        role: (identity.email === ADMIN_EMAIL ? "admin" : undefined) as any,
+        pendingRole: identity.email === ADMIN_EMAIL ? undefined : targetRole,
+        accountStatus: (identity.email === ADMIN_EMAIL ? "active" : "pending") as any,
         passwordHash: incomingPasswordHash,
         businessName: typeof args.businessName === "string" ? args.businessName : undefined,
       }) as any;
@@ -377,6 +389,21 @@ export const ensureUserProfile = mutation({
         await ctx.db.patch((user as any)._id, { passwordHash: incomingPasswordHash });
       }
       const u = user as any;
+
+      // Platform owner: always force admin + active, bypassing the pending
+      // gate entirely (fixes stale buyer/pending records from older flows).
+      if (identity.email === ADMIN_EMAIL) {
+        if (u.role !== "admin" || u.accountStatus !== "active") {
+          await ctx.db.patch(u._id, {
+            role: "admin" as any,
+            accountStatus: "active" as any,
+            pendingRole: undefined,
+          });
+        }
+        await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
+        user = (await ctx.db.get(u._id)) as any;
+        return { userId: (user as any)._id, role: "admin" as any };
+      }
 
       if (args.name !== undefined && u.name !== args.name) {
         await ctx.db.patch(u._id, { name: args.name });
