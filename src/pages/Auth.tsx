@@ -804,6 +804,9 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
                         <button type="button" onClick={startForgotPassword} className="w-full text-center text-xs text-white/40 hover:text-nx-violet transition-colors">
                           Forgot password?
                         </button>
+                        <p className="text-[11px] text-white/25 text-center leading-relaxed">
+                          Never set a password on this account? Tap <span className="text-white/50">Forgot password</span> — we'll email you a code to create one.
+                        </p>
                       </form>
                       <p className="text-[11px] text-white/20 text-center">Don't have an account? Use the options above to sign up.</p>
                     </CardContent>
@@ -1003,6 +1006,9 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
                   <button type="button" onClick={startForgotPassword} className="w-full text-center text-xs text-white/40 hover:text-nx-violet transition-colors">
                     Forgot password?
                   </button>
+                  <p className="text-[11px] text-white/25 text-center leading-relaxed">
+                    Never set a password on this account? Tap <span className="text-white/50">Forgot password</span> — we'll email you a code to create one.
+                  </p>
                 </form>
                 <p className="text-[11px] text-white/20 text-center">
                   Don't have a store yet?{" "}

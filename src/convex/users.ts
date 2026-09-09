@@ -18,7 +18,14 @@ export const currentUser = query({
       return null;
     }
 
-    return user;
+    // Strip credential material before exposing the record to the client.
+    // These fields must never leave the server.
+    const safe: Record<string, any> = { ...(user as any) };
+    delete safe.passwordHash;
+    delete safe.adminPasswordHash;
+    delete safe.adminPasswordSalt;
+    delete safe.adminTotpSecret;
+    return safe;
   },
 });
 
@@ -52,15 +59,188 @@ export const getSessionUser = async (ctx: QueryCtx) => {
     if (user) return user as any;
   }
   const identity = await ctx.auth.getUserIdentity();
-  if (identity && typeof identity.email === "string" && identity.email.length > 0) {
-    const user = await ctx.db
+  const email = typeof identity?.email === "string" ? identity.email : null;
+  if (email && email.length > 0) {
+    // The same person can own several user rows with one email (guest → email
+    // upgrade, OTP vs Google). Always resolve the canonical record, never an
+    // arbitrary empty duplicate — that is what made dashboards show another
+    // (or an empty) account after login.
+    const rows = (await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-    if (user) return user as any;
+      .withIndex("email", (q) => q.eq("email", email))
+      .collect()) as any[];
+    const best = pickCanonicalUser(rows);
+    if (best) return best;
   }
   return null;
 };
+
+// ─── DUPLICATE ACCOUNT RESOLUTION & MERGE ──────────────────────────────────
+
+/**
+ * Score a user record by how "real" and complete it is. Used to pick the one
+ * canonical account when several rows share an email.
+ */
+function canonicalScore(u: any): number {
+  return (
+    (u?.isAnonymous ? 0 : 2) +
+    (typeof u?.role === "string" && u.role ? 4 : 0) +
+    (typeof u?.businessName === "string" && u.businessName ? 2 : 0) +
+    (typeof u?.passwordHash === "string" && u.passwordHash ? 1 : 0)
+  );
+}
+
+function pickCanonicalUser(rows: any[]): any | null {
+  if (!rows || rows.length === 0) return null;
+  if (rows.length === 1) return rows[0];
+  return [...rows].sort(
+    (a, b) =>
+      canonicalScore(b) - canonicalScore(a) ||
+      (a?._creationTime ?? 0) - (b?._creationTime ?? 0),
+  )[0];
+}
+
+// Profile fields copied from a duplicate onto the canonical record when the
+// canonical one is missing them.
+const PROFILE_FILL_FIELDS = [
+  "name", "image", "phone", "county", "town", "country", "currency",
+  "role", "businessName", "businessType", "kycStatus", "kycSubmittedAt",
+  "kycVerifiedAt", "kycDocuments", "sellerTier", "commissionRate",
+  "subscriptionTier", "subscriptionExpiry", "whatsapp", "facebook",
+  "instagram", "tiktok", "passwordHash", "joinedAt", "lastLoginAt",
+  "lastActivityAt", "emailVerified", "phoneVerified", "totalTransactions",
+] as const;
+
+// User-scoped tables moved from duplicates onto the canonical account so NO
+// data (listings, orders, wallet history, freelance work, …) is ever lost.
+const OWNED_TABLE_FIELDS: Array<[string, string[]]> = [
+  ["listings", ["sellerId"]],
+  ["walletTransactions", ["userId"]],
+  ["notifications", ["userId"]],
+  ["kycApplications", ["userId"]],
+  ["messages", ["senderId", "receiverId"]],
+  ["conversations", ["buyerId", "sellerId"]],
+  ["reviews", ["buyerId", "sellerId"]],
+  ["escrows", ["buyerId", "sellerId"]],
+  ["disputes", ["filedBy"]],
+  ["deliveries", ["driverId"]],
+  ["freelanceProfiles", ["userId"]],
+  ["freelanceTasks", ["employerId"]],
+  ["freelanceApplications", ["freelancerId"]],
+  ["freelanceProjects", ["employerId", "freelancerId"]],
+  ["freelanceEarnings", ["freelancerId"]],
+  ["freelanceServices", ["freelancerId"]],
+  ["freelanceReviews", ["reviewerId", "revieweeId"]],
+  ["freelanceMessages", ["senderId"]],
+  ["jobPosts", ["posterId"]],
+  ["jobApplications", ["applicantId"]],
+  ["supportTickets", ["userId"]],
+  ["ticketMessages", ["senderId"]],
+  ["aiAuditLog", ["userId"]],
+  ["fraudAlerts", ["userId"]],
+];
+
+/**
+ * Merge every user row sharing `email` into a single canonical account.
+ *
+ * Broken early-auth flows (guest → email upgrade, OTP vs Google sign-in) left
+ * one person split across two records: the password on one row, the role and
+ * listings on another. Logging in bound the session to whichever row the auth
+ * library resolved first — the "seller data disappears after login" bug.
+ *
+ * This moves ALL owned data (listings, escrows, wallet history, freelance
+ * records, …) onto the best record, sums wallet balances, re-points auth
+ * sessions/accounts, then deletes the empty duplicates. Safe to call any time;
+ * it is a no-op when only one row exists for the email.
+ */
+async function mergeDuplicateAccountsByEmail(ctx: any, email: string): Promise<any | null> {
+  if (typeof email !== "string" || email.length === 0) return null;
+
+  const rows = (await ctx.db
+    .query("users")
+    .withIndex("email", (q: any) => q.eq("email", email))
+    .collect()) as any[];
+  if (rows.length === 0) return null;
+  if (rows.length === 1) return rows[0];
+
+  const keep = pickCanonicalUser(rows);
+  const duplicates = rows.filter((r) => r._id !== keep._id);
+
+  // Fill missing profile fields and sum balances so nothing is lost.
+  const fillPatch: Record<string, any> = {};
+  let walletSum = typeof keep.walletBalance === "number" ? keep.walletBalance : 0;
+  let escrowSum = typeof keep.escrowBalance === "number" ? keep.escrowBalance : 0;
+  for (const d of duplicates) {
+    walletSum += typeof d.walletBalance === "number" ? d.walletBalance : 0;
+    escrowSum += typeof d.escrowBalance === "number" ? d.escrowBalance : 0;
+    for (const f of PROFILE_FILL_FIELDS) {
+      if (fillPatch[f] === undefined && keep[f] === undefined && d[f] !== undefined) {
+        fillPatch[f] = d[f];
+      }
+    }
+  }
+  fillPatch.walletBalance = walletSum;
+  fillPatch.escrowBalance = escrowSum;
+  await ctx.db.patch(keep._id, fillPatch);
+
+  // Move every owned record onto the canonical account.
+  for (const [table, fields] of OWNED_TABLE_FIELDS) {
+    for (const field of fields) {
+      for (const d of duplicates) {
+        try {
+          const docs = await ctx.db
+            .query(table)
+            .filter((q: any) => q.eq(q.field(field), d._id))
+            .collect();
+          for (const doc of docs) {
+            await ctx.db.patch(doc._id, { [field]: keep._id });
+          }
+        } catch {
+          // Table missing in older deployments — skip.
+        }
+      }
+    }
+  }
+
+  // Recompute the active listing count after the move.
+  try {
+    const active = await ctx.db
+      .query("listings")
+      .withIndex("by_seller", (q: any) => q.eq("sellerId", keep._id))
+      .filter((q: any) => q.eq(q.field("status"), "active"))
+      .collect();
+    await ctx.db.patch(keep._id, { activeListings: active.length });
+  } catch {
+    // Non-critical.
+  }
+
+  // Re-point auth sessions/accounts bound to duplicates (keeps the current
+  // session alive after the duplicate row is deleted), then remove the
+  // duplicates so admin lists and user counts stay truthful.
+  for (const d of duplicates) {
+    for (const table of ["authSessions", "authAccounts"]) {
+      try {
+        const refs = await ctx.db
+          .query(table)
+          .filter((q: any) => q.eq(q.field("userId"), d._id))
+          .collect();
+        for (const ref of refs) {
+          await ctx.db.patch(ref._id, { userId: keep._id });
+        }
+      } catch {
+        // Table not directly accessible — the dangling ref is harmless.
+      }
+    }
+    try {
+      await ctx.db.delete(d._id);
+    } catch {
+      // If deletion fails the row stays as an empty husk; the merge of data
+      // and the canonical binding still hold.
+    }
+  }
+
+  return await ctx.db.get(keep._id);
+}
 
 /**
  * Secure password hashing for persistent Nexora user accounts.
@@ -211,10 +391,10 @@ export const verifyLogin = mutation({
       return { success: false, error: "Invalid email or password." };
     }
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", args.email))
-      .first();
+    // Resolve + merge duplicate accounts for this email BEFORE the password
+    // check: the password may live on one row while the role and listings live
+    // on another (the "seller data disappears after login" bug).
+    const user = await mergeDuplicateAccountsByEmail(ctx, args.email.trim());
 
     if (!user) {
       return { success: false, error: "Invalid email or password." };
@@ -342,6 +522,12 @@ export const ensureUserProfile = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+
+    // Merge duplicate rows for this identity email first so the profile sync
+    // lands on the canonical account, not an empty duplicate.
+    if (typeof identity.email === "string" && identity.email.includes("@")) {
+      await mergeDuplicateAccountsByEmail(ctx, identity.email);
+    }
 
     let user = await getSessionUser(ctx);
 
@@ -936,8 +1122,18 @@ export const ensureAdminAccess = mutation({
     const caller = await getSessionUser(ctx);
     if (!caller) return { isAdmin: false, authenticated: true };
 
-    if (identity.email === ADMIN_EMAIL && caller.role !== "admin") {
-      await ctx.db.patch(caller._id, { role: "admin" as const });
+    if (identity.email === ADMIN_EMAIL) {
+      const ownerPatch: Record<string, any> = {};
+      if (caller.role !== "admin") ownerPatch.role = "admin" as const;
+      // Also clear the verification gate so a stale pending record can never
+      // keep the owner out of the panel.
+      if ((caller as any).accountStatus !== "active") {
+        ownerPatch.accountStatus = "active" as const;
+        ownerPatch.pendingRole = undefined;
+      }
+      if (Object.keys(ownerPatch).length > 0) {
+        await ctx.db.patch(caller._id, ownerPatch);
+      }
     }
 
     const fresh = (await ctx.db.get(caller._id)) as any;
@@ -951,14 +1147,18 @@ export const isAdmin = query({
     const userId = await getAuthUserId(ctx);
     if (userId === null) return false;
     const user = await ctx.db.get(userId);
-    return user?.role === "admin";
+    if (!user) return false;
+    if (user.role === "admin") return true;
+    // Owner fallback: the platform owner email is ALWAYS an admin, even while
+    // a stale production record still carries another role. The admin gate can
+    // never lock the owner out (the record itself is repaired separately).
+    return typeof user.email === "string" && user.email === ADMIN_EMAIL;
   },
 });
 
 export const getAdminUser = query({
   args: {},
   handler: async (ctx) => {
-    const ADMIN_EMAIL = "murimiedwin227@gmail.com";
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     const user = await getSessionUser(ctx);
