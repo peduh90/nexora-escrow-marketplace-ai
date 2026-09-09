@@ -1,7 +1,14 @@
 import { useState } from "react";
 import AdminLayout from "./AdminLayout";
-import { Settings, Shield, Bell, Globe, CreditCard, Users, Save } from "lucide-react";
+import { Settings, Shield, Bell, Globe, CreditCard, Info } from "lucide-react";
 
+/**
+ * Platform settings are read-only here by design: the live values come from
+ * the fee engine (src/convex/fees.ts), M-Pesa credentials from server env
+ * vars, and delivery zones from the transport pricing logic. Showing fake
+ * editable inputs with a dead Save button hid that — now the page states
+ * exactly where each value is controlled.
+ */
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState("general");
 
@@ -9,10 +16,10 @@ export default function AdminSettings() {
     <AdminLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Platform Settings</h1>
-        <p className="text-sm text-white/40 mt-1">Configure platform-wide settings, fees, and policies</p>
+        <p className="text-sm text-white/40 mt-1">Live platform configuration — controlled by the backend engine</p>
       </div>
 
-      <div className="flex gap-1 mb-6">
+      <div className="flex gap-1 mb-6 flex-wrap">
         {[
           { id: "general", label: "General", icon: Settings },
           { id: "fees", label: "Fees & Commission", icon: CreditCard },
@@ -36,38 +43,26 @@ export default function AdminSettings() {
                 { label: "Currency", value: "KES (Kenyan Shilling)" },
                 { label: "Primary Country", value: "Kenya" },
                 { label: "Default Language", value: "English" },
-                { label: "Support Email", value: "support@nexora.market" },
-                { label: "Platform URL", value: "https://nexora.market" },
+                { label: "Support", value: "WhatsApp +254 769 739 216" },
               ].map(f => (
-                <div key={f.label}>
-                  <label className="text-[10px] text-white/30 uppercase tracking-wider mb-1 block">{f.label}</label>
-                  <input defaultValue={f.value} className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white focus:border-nx-violet/30 focus:outline-none" />
+                <div key={f.label} className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                  <p className="text-[10px] text-white/30 uppercase tracking-wider">{f.label}</p>
+                  <p className="text-sm text-white/80 mt-1">{f.value}</p>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="p-5 rounded-xl border border-white/5 bg-[#0A0A12]">
-            <h3 className="text-sm font-semibold text-white mb-4">M-Pesa Configuration</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-[10px] text-white/30 uppercase tracking-wider mb-1 block">Consumer Key</label>
-                <input type="password" defaultValue="••••••••••••" className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white/50 focus:border-nx-violet/30 focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-[10px] text-white/30 uppercase tracking-wider mb-1 block">Consumer Secret</label>
-                <input type="password" defaultValue="••••••••••••" className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white/50 focus:border-nx-violet/30 focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-[10px] text-white/30 uppercase tracking-wider mb-1 block">Passkey</label>
-                <input type="password" defaultValue="••••••••••••" className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white/50 focus:border-nx-violet/30 focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-[10px] text-white/30 uppercase tracking-wider mb-1 block">Short Code</label>
-                <input defaultValue="174379" className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white focus:border-nx-violet/30 focus:outline-none" />
-              </div>
+            <h3 className="text-sm font-semibold text-white mb-2">M-Pesa Configuration</h3>
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-nx-cyan/[0.03] border border-nx-cyan/10">
+              <Info className="w-4 h-4 text-nx-cyan shrink-0 mt-0.5" />
+              <p className="text-xs text-white/40">
+                M-Pesa Daraja credentials (Consumer Key, Consumer Secret, Passkey, Short Code) are stored
+                as server-side environment variables and never exposed to the browser. Payments run through
+                the wallet engine in <span className="text-nx-cyan">src/convex/mpesa.ts</span> and <span className="text-nx-cyan">src/convex/wallet.ts</span>.
+              </p>
             </div>
-            <p className="text-[10px] text-white/20 mt-3">M-Pesa credentials are stored securely on the server and never exposed to the frontend.</p>
           </div>
         </div>
       )}
@@ -75,26 +70,9 @@ export default function AdminSettings() {
       {activeTab === "fees" && (
         <div className="space-y-4">
           <div className="p-5 rounded-xl border border-white/5 bg-[#0A0A12]">
-            <h3 className="text-sm font-semibold text-white mb-4">Commission Structure</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-              { tier: "Starter (Free)", fee: "5%", desc: "Standard sellers" },
-              { tier: "Professional (KES 1,499/mo)", fee: "3%", desc: "Active sellers" },
-              { tier: "Enterprise (KES 3,999/mo)", fee: "1%", desc: "High-volume sellers" },
-              ].map(t => (
-                <div key={t.tier} className="p-4 rounded-lg bg-white/[0.02] border border-white/5">
-                  <p className="text-xs text-white/50 font-medium">{t.tier}</p>
-                  <p className="text-2xl font-bold text-white mt-1">{t.fee}</p>
-                  <p className="text-[10px] text-white/25 mt-1">{t.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="p-5 rounded-xl border border-white/5 bg-[#0A0A12]">
-            <h3 className="text-sm font-semibold text-white mb-1">Platform Fees</h3>
-            <p className="text-[11px] text-white/30 mb-4">Tiered schedule enforced by the fee engine (src/convex/fees.ts). Withdrawals carry no Nexora percentage fee — only actual external provider costs.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className="text-sm font-semibold text-white mb-1">Seller Commission Structure</h3>
+            <p className="text-[11px] text-white/30 mb-4">Tiered schedule enforced by the fee engine. Withdrawals carry no Nexora percentage fee — only actual external provider costs.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[
                 { label: "Seller Commission (KSh 1–4,999)", value: "3%" },
                 { label: "Seller Commission (KSh 5,000–49,999)", value: "2.5%" },
@@ -108,11 +86,10 @@ export default function AdminSettings() {
                 { label: "Freelancer Commission (KSh 5,001–50,000)", value: "2%" },
                 { label: "Freelancer Commission (KSh 50,001–250,000)", value: "1.5%" },
                 { label: "Freelancer Commission (KSh 250,000+)", value: "1%" },
-                { label: "Withdrawal Fee (default)", value: "None — provider cost only" },
               ].map(f => (
-                <div key={f.label} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02]">
+                <div key={f.label} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
                   <span className="text-xs text-white/40">{f.label}</span>
-                  <input defaultValue={f.value} className="w-32 px-2 py-1 rounded bg-white/[0.03] border border-white/5 text-xs text-white text-right focus:border-nx-violet/30 focus:outline-none" />
+                  <span className="text-sm font-semibold text-white">{f.value}</span>
                 </div>
               ))}
             </div>
@@ -123,7 +100,7 @@ export default function AdminSettings() {
       {activeTab === "delivery" && (
         <div className="p-5 rounded-xl border border-white/5 bg-[#0A0A12]">
           <h3 className="text-sm font-semibold text-white mb-4">Delivery Zone Configuration</h3>
-          <p className="text-xs text-white/30 mb-4">Configure delivery fees and estimated times for each zone. Sellers cannot modify these settings.</p>
+          <p className="text-xs text-white/30 mb-4">Transport pricing is computed by the Nexora delivery engine when an order is placed. Sellers cannot modify these settings.</p>
           <div className="space-y-3">
             {[
               { zone: "Nairobi CBD", fee: "FREE", time: "1-2 hours" },
@@ -134,10 +111,10 @@ export default function AdminSettings() {
               { zone: "Eldoret", fee: "KES 600", time: "1-2 days" },
               { zone: "Mombasa", fee: "KES 800", time: "2-3 days" },
             ].map(z => (
-              <div key={z.zone} className="flex items-center gap-4 p-3 rounded-lg bg-white/[0.02]">
+              <div key={z.zone} className="flex items-center gap-4 p-3 rounded-lg bg-white/[0.02] border border-white/5">
                 <span className="text-xs text-white/50 flex-1">{z.zone}</span>
-                <input defaultValue={z.fee} className="w-24 px-2 py-1 rounded bg-white/[0.03] border border-white/5 text-xs text-white text-right focus:border-nx-violet/30 focus:outline-none" />
-                <input defaultValue={z.time} className="w-28 px-2 py-1 rounded bg-white/[0.03] border border-white/5 text-xs text-white text-right focus:border-nx-violet/30 focus:outline-none" />
+                <span className="text-xs font-medium text-white w-24 text-right">{z.fee}</span>
+                <span className="text-xs text-white/30 w-28 text-right">{z.time}</span>
               </div>
             ))}
           </div>
@@ -146,15 +123,16 @@ export default function AdminSettings() {
 
       {(activeTab === "security" || activeTab === "notifications") && (
         <div className="p-5 rounded-xl border border-white/5 bg-[#0A0A12]">
-          <p className="text-xs text-white/30">Configuration options for {activeTab} settings.</p>
+          <h3 className="text-sm font-semibold text-white mb-2">
+            {activeTab === "security" ? "Security" : "Notifications"}
+          </h3>
+          <p className="text-xs text-white/30">
+            {activeTab === "security"
+              ? "Authentication, 2FA and password policies are enforced by the auth engine (src/convex/users.ts). Owner-level controls live in Owner Control."
+              : "In-app notifications are generated automatically by escrow, KYC, dispute and order events. Per-user email/SMS preferences are coming with the East Africa expansion."}
+          </p>
         </div>
       )}
-
-      <div className="mt-6 flex justify-end">
-        <button className="px-6 py-2.5 rounded-lg bg-nx-violet text-white text-sm font-medium hover:bg-nx-violet/80 transition-colors flex items-center gap-2">
-          <Save className="w-4 h-4" /> Save Changes
-        </button>
-      </div>
     </AdminLayout>
   );
 }

@@ -8,7 +8,7 @@ import {
   Brain, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
   User, Truck, Briefcase, Activity, Wallet, Bell,
   Search, Package, CreditCard, MessageSquare, AlertTriangle,
-  MapPin, Receipt, TrendingUp, X, Menu, Eye, Crown,
+  Receipt, TrendingUp, X, Menu, Eye, Crown,
 } from "lucide-react";
 
 const navSections = [
@@ -35,7 +35,6 @@ const navSections = [
   ]},
   { label: "DELIVERY", items: [
     { icon: Truck, label: "Deliveries", path: "/admin/deliveries" },
-    { icon: MapPin, label: "Zones & Fees", path: "/admin/zones" },
   ]},
   { label: "SECURITY", items: [
     { icon: Brain, label: "AI & Fraud", path: "/admin/ai" },

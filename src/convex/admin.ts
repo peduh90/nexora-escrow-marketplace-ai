@@ -483,6 +483,91 @@ export const reviewKYC = mutation({
   },
 });
 
+/** Seller: submit a KYC business verification application. Creates the
+ * application record the admin Verification page reviews and flips the
+ * seller's KYC status to pending so every panel reflects it immediately. */
+export const submitKYC = mutation({
+  args: {
+    businessName: v.string(),
+    businessType: v.string(),
+    registrationNumber: v.optional(v.string()),
+    taxPin: v.optional(v.string()),
+    county: v.string(),
+    town: v.string(),
+    phone: v.string(),
+    idDocumentUrl: v.string(),
+    businessDocumentUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx);
+    if (!user) throw new Error("Not authenticated");
+
+    const now = Date.now();
+
+    // One pending application per seller — resubmitting replaces the old one.
+    const mine = await ctx.db.query("kycApplications").collect();
+    const pending = mine.find(
+      (a: any) => a.userId === (user as any)._id && a.status === "pending"
+    );
+    if (pending) {
+      await ctx.db.patch(pending._id, { ...args, submittedAt: now });
+      return { success: true, applicationId: pending._id as string };
+    }
+
+    const applicationId = await ctx.db.insert("kycApplications", {
+      userId: (user as any)._id,
+      businessName: args.businessName,
+      businessType: args.businessType,
+      registrationNumber: args.registrationNumber,
+      taxPin: args.taxPin,
+      county: args.county,
+      town: args.town,
+      phone: args.phone,
+      idDocumentUrl: args.idDocumentUrl,
+      businessDocumentUrl: args.businessDocumentUrl,
+      status: "pending",
+      submittedAt: now,
+    });
+
+    await ctx.db.patch((user as any)._id, {
+      kycStatus: "pending",
+      kycSubmittedAt: now,
+    });
+
+    // Notify every admin so the request is visible without hunting for it.
+    const admins = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q: any) => q.eq("role", "admin"))
+      .collect();
+    for (const admin of admins) {
+      await ctx.db.insert("notifications", {
+        userId: admin._id,
+        type: "kyc_submitted",
+        title: "New KYC verification request",
+        message: `${args.businessName} submitted business verification for review.`,
+        read: false,
+        link: "/admin/kyc",
+        createdAt: now,
+      });
+    }
+
+    return { success: true, applicationId: applicationId as string };
+  },
+});
+
+/** Seller: get my own KYC applications (used by the seller verification page). */
+export const getMyKYCApplications = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getSessionUser(ctx);
+    if (!user) return [];
+    const apps = await ctx.db.query("kycApplications").collect();
+    return apps
+      .filter((a: any) => a.userId === (user as any)._id)
+      .sort((a: any, b: any) => b.submittedAt - a.submittedAt);
+  },
+});
+
 // ─── DELIVERY MANAGEMENT ───
 
 /** Admin: get all deliveries */

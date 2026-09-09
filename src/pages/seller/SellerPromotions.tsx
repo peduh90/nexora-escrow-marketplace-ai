@@ -1,5 +1,6 @@
 import SellerLayout from "./SellerLayout";
 import { Megaphone, Star, TrendingUp, Zap, Eye } from "lucide-react";
+import { toast } from "sonner";
 
 const promotions = [
   { type: "Featured Listing", price: 500, description: "Get your product featured on the homepage and category pages", icon: Star, duration: "7 days" },
@@ -36,7 +37,10 @@ export default function SellerPromotions() {
                     </div>
                   </div>
                 </div>
-                <button className="w-full mt-3 py-2 rounded-lg bg-nx-violet/10 text-nx-violet text-xs font-medium hover:bg-nx-violet/20 transition-colors">
+                <button
+                  onClick={() => toast.info("Promoted listings launch soon — we'll notify you when they go live")}
+                  className="w-full mt-3 py-2 rounded-lg bg-nx-violet/10 text-nx-violet text-xs font-medium hover:bg-nx-violet/20 transition-colors"
+                >
                   Promote Product
                 </button>
               </div>

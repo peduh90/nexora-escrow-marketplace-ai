@@ -59,26 +59,59 @@ export const createReview = mutation({
 export const getSellerReviews = query({
   args: { sellerId: v.string() },
   handler: async (ctx, args) => {
+    let sellerId = args.sellerId;
+    if (sellerId === "me") {
+      const me = await getSessionUser(ctx);
+      if (!me) return [];
+      sellerId = me._id as unknown as string;
+    }
     return await ctx.db
       .query("reviews")
-      .withIndex("by_seller", (q) => q.eq("sellerId", args.sellerId))
+      .withIndex("by_seller", (q) => q.eq("sellerId", sellerId))
       .order("desc")
       .collect();
   },
 });
 
-/** Get average rating for a seller */
+/** Get average rating for a seller. Accepts "me" for the current user. */
 export const getSellerRating = query({
   args: { sellerId: v.string() },
   handler: async (ctx, args) => {
+    let sellerId = args.sellerId;
+    if (sellerId === "me") {
+      const me = await getSessionUser(ctx);
+      if (!me) return { average: 0, count: 0 };
+      sellerId = me._id as unknown as string;
+    }
     const reviews = await ctx.db
       .query("reviews")
-      .withIndex("by_seller", (q) => q.eq("sellerId", args.sellerId))
+      .withIndex("by_seller", (q) => q.eq("sellerId", sellerId))
       .collect();
 
     if (reviews.length === 0) return { average: 0, count: 0 };
     const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
     return { average: Math.round((sum / reviews.length) * 10) / 10, count: reviews.length };
+  },
+});
+
+/** Seller: post a public reply to a review of their own store. */
+export const replyToReview = mutation({
+  args: {
+    reviewId: v.string(),
+    reply: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx);
+    if (!user) throw new Error("Not authenticated");
+
+    const review = (await ctx.db.get(args.reviewId as any)) as any;
+    if (!review) throw new Error("Review not found");
+    if (review.sellerId !== (user as any)._id) {
+      throw new Error("You can only reply to reviews of your own store");
+    }
+
+    await ctx.db.patch(review._id, { sellerReply: args.reply });
+    return { success: true };
   },
 });
 
