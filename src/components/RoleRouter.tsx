@@ -69,6 +69,34 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
   const isUnverified =
     (!role || accountStatus === "pending") && role !== "admin" && !isOwner;
 
+  // ── Suspension gate ──
+  // A suspended account is blocked from every panel (admins/owner exempt).
+  if (accountStatus === "suspended" && role !== "admin" && !isOwner) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#05050A] px-4">
+        <div className="w-full max-w-md rounded-2xl border border-red-400/10 bg-[#0A0A12]/90 p-8 shadow-2xl text-center">
+          <div className="w-14 h-14 rounded-2xl bg-red-400/10 flex items-center justify-center mx-auto mb-5">
+            <ShieldAlert className="w-7 h-7 text-red-400" />
+          </div>
+          <h1 className="text-xl font-bold text-white text-center">Account suspended</h1>
+          <p className="text-sm text-white/40 text-center mt-2">
+            Your Nexora account has been suspended by an administrator.
+            {(user as any)?.suspensionReason
+              ? ` Reason: ${(user as any).suspensionReason}.`
+              : ""}{" "}
+            Contact support if you believe this is a mistake.
+          </p>
+          <button
+            onClick={() => { window.location.href = "/"; }}
+            className="mt-6 w-full py-3 rounded-xl bg-white/[0.03] border border-white/5 text-white/60 text-sm font-medium hover:bg-white/[0.06] transition-colors"
+          >
+            Back to home
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   if (isUnverified) {
     if (!onboarding || onboarding.authenticated === false) {
       return (

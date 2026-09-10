@@ -297,6 +297,71 @@ export const getUserCounts = query({
 });
 
 /** Admin: suspend a user */
+/**
+ * Admin: set a user's account status (suspend / reactivate).
+ *
+ * A suspended user is blocked from every panel by the verification gate
+ * (RoleRouter treats non-active as unverified) and from placing orders by
+ * wallet.createOrder. The owner admin account can never be suspended.
+ */
+export const setUserSuspended = mutation({
+  args: { userId: v.string(), suspended: v.boolean(), reason: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const { user } = await requireAdmin(ctx);
+    const target = (await ctx.db.get(args.userId as any)) as any;
+    if (!target) throw new Error("User not found");
+    if (target.email === ADMIN_EMAIL) {
+      throw new Error("The platform owner account cannot be suspended");
+    }
+
+    if (args.suspended) {
+      await ctx.db.patch(target._id, {
+        accountStatus: "suspended" as const,
+        suspensionReason: args.reason || "Policy violation",
+        suspendedAt: Date.now(),
+      });
+      await ctx.db.insert("notifications", {
+        userId: target._id,
+        type: "account",
+        title: "Account suspended",
+        message: `Your Nexora account has been suspended. Reason: ${args.reason || "Policy violation"}. Contact support if you believe this is a mistake.`,
+        read: false,
+        link: "/",
+        createdAt: Date.now(),
+      });
+    } else {
+      await ctx.db.patch(target._id, {
+        accountStatus: "active" as const,
+        suspensionReason: undefined,
+        suspendedAt: undefined,
+      });
+      await ctx.db.insert("notifications", {
+        userId: target._id,
+        type: "account",
+        title: "Account reinstated",
+        message: "Your Nexora account has been reinstated. Welcome back!",
+        read: false,
+        link: "/",
+        createdAt: Date.now(),
+      });
+    }
+
+    await auditLog(
+      ctx as any,
+      user._id,
+      user.name || user.email || "Admin",
+      args.suspended ? "SUSPEND_USER" : "REINSTATE_USER",
+      "user",
+      String(args.userId),
+      `${target.email} — ${args.reason || (args.suspended ? "Suspended" : "Reinstated")}`
+    );
+    return { success: true };
+  },
+});
+
+/**
+ * @deprecated Legacy stub kept only so old clients don't crash. Does nothing.
+ */
 export const suspendUser = mutation({
   args: { userId: v.string(), reason: v.string() },
   handler: async (ctx, args) => {

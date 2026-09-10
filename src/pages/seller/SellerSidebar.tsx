@@ -100,7 +100,7 @@ export default function SellerSidebar() {
         <div className="p-2 border-t border-white/5 space-y-0.5">
           <button onClick={async () => { await signOut(); navigate("/"); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-white/25 hover:text-white/50 hover:bg-white/[0.03] transition-colors">
             <LogOut className="w-4 h-4 shrink-0" />
-            {!collapsed && <span>Logout</span>}
+            {!collapsed && <span>Sign Out</span>}
           </button>
         </div>
       </aside>

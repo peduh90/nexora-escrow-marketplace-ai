@@ -339,8 +339,19 @@ export const createOrder = mutation({
     const buyer = await getUserByEmail(ctx, identity.email);
     if (!buyer) throw new Error("Buyer not found");
 
+    // Suspended accounts cannot place orders (admin enforcement).
+    if ((buyer as any).accountStatus === "suspended") {
+      throw new Error("Your account is suspended — orders are disabled. Contact support.");
+    }
+
     const listing = await getRecord<ListingRecord>(ctx, args.listingId as string, "listings");
     if (!listing) throw new Error("Product not found");
+
+    // Suspended sellers cannot receive new orders (admin enforcement).
+    const seller = (await ctx.db.get(args.sellerId as any)) as any;
+    if (seller && seller.accountStatus === "suspended") {
+      throw new Error("This store is currently unavailable — please contact support.");
+    }
 
     // ── Nexora fee engine (src/convex/fees.ts) ──
     // The buyer pays: listing price + buyer protection fee (tiered).

@@ -91,6 +91,8 @@ const schema = defineSchema(
         v.literal("active"),
         v.literal("suspended"),
       )),
+      suspensionReason: v.optional(v.string()),
+      suspendedAt: v.optional(v.number()),
       // The role the user requested during onboarding, held until verification
       // completes. Copied into `role` by completeVerification.
       pendingRole: v.optional(v.string()),

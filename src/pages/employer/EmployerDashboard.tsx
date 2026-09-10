@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowLeft, Briefcase, Plus, FolderOpen, FileText, MessageSquare, Wallet, Settings, Phone, Search, Users, Clock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Briefcase, Plus, FolderOpen, FileText, MessageSquare, Wallet, LogOut, Settings, Phone, Search, Users, Clock, CheckCircle2, Bell } from "lucide-react";
 
 export default function EmployerDashboard() {
   const navigate = useNavigate();
@@ -13,6 +13,9 @@ export default function EmployerDashboard() {
   const projects = useQuery(api.freelance.getEmployerProjects);
   const stats = useQuery(api.freelance.getFreelanceStats);
   const walletBalance = useQuery(api.wallet.getWalletBalance);
+  // Real unread notifications for the bell badge (hire confirmations, revision
+  // requests, escrow releases, etc. all land in the notifications table).
+  const unreadNotifications = useQuery(api.reviews.getUnreadCount);
 
   const [collapsed, setCollapsed] = useState(false);
 
@@ -92,7 +95,7 @@ export default function EmployerDashboard() {
             )}
           </div>
           <button onClick={async () => { await signOut(); navigate("/"); }} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/30 hover:text-white/60 hover:bg-white/[0.03] transition-colors mt-2 w-full justify-center">
-            <Settings className="w-3.5 h-3.5" /> Sign Out
+            <LogOut className="w-3.5 h-3.5" /> Sign Out
           </button>
         </div>
       </aside>
@@ -124,9 +127,25 @@ export default function EmployerDashboard() {
             </button>
             <h1 className="text-sm font-semibold text-white hidden sm:block">Employer Dashboard</h1>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-400/5 border border-emerald-400/10">
-            <Wallet className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-xs font-medium text-emerald-400">KES {(walletBalance?.walletBalance || 0).toLocaleString()}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/employer/notifications")}
+              className="relative p-2 rounded-lg hover:bg-white/[0.03] text-white/40 hover:text-white/70 transition-colors"
+              title="Notifications"
+            >
+              <Bell className="w-4 h-4" />
+              {!!unreadNotifications && unreadNotifications > 0 && (
+                <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 rounded-full bg-red-500 flex items-center justify-center">
+                  <span className="text-[8px] font-bold text-white">
+                    {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                  </span>
+                </span>
+              )}
+            </button>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-400/5 border border-emerald-400/10">
+              <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-xs font-medium text-emerald-400">KES {(walletBalance?.walletBalance || 0).toLocaleString()}</span>
+            </div>
           </div>
         </div>
 

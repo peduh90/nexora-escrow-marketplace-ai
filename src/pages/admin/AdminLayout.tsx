@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import AIChat from "@/components/AIChat";
 import {
@@ -58,6 +60,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // REAL unread platform notifications for the admin — powers the bell badge.
+  const unreadNotifications = useQuery(api.reviews.getUnreadCount);
 
   return (
     <div className="flex min-h-screen bg-[#050508]">
@@ -94,9 +98,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
         <div className="border-t border-white/5 p-2">
-          <button onClick={() => signOut()} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/25 hover:text-red-400 hover:bg-red-400/5 transition-colors ${collapsed ? "justify-center" : ""}`}>
+          <button onClick={async () => { await signOut(); navigate("/"); }} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/25 hover:text-red-400 hover:bg-red-400/5 transition-colors ${collapsed ? "justify-center" : ""}`}>
             <LogOut className="w-4 h-4 shrink-0" />
-            {!collapsed && <span>Logout</span>}
+            {!collapsed && <span>Sign Out</span>}
           </button>
         </div>
       </aside>
@@ -136,8 +140,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 ))}
               </nav>
               <div className="border-t border-white/5 p-2 mt-2">
-                <button onClick={() => signOut()} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-white/25 hover:text-red-400 hover:bg-red-400/5 transition-colors">
-                  <LogOut className="w-4 h-4" /><span>Logout</span>
+                <button onClick={async () => { await signOut(); navigate("/"); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-white/25 hover:text-red-400 hover:bg-red-400/5 transition-colors">
+                  <LogOut className="w-4 h-4" /><span>Sign Out</span>
                 </button>
               </div>
             </motion.aside>
@@ -161,9 +165,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-nx-emerald bg-nx-emerald/10 px-2 py-0.5 rounded-full font-medium hidden sm:inline">● System Healthy</span>
-            <button className="relative p-2 rounded-lg text-white/30 hover:text-white hover:bg-white/[0.03] transition-colors">
+            <button
+              onClick={() => navigate("/admin/notifications")}
+              className="relative p-2 rounded-lg text-white/30 hover:text-white hover:bg-white/[0.03] transition-colors"
+              title="Notifications"
+            >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
+              {!!unreadNotifications && unreadNotifications > 0 && (
+                <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 rounded-full bg-red-500 flex items-center justify-center">
+                  <span className="text-[8px] font-bold text-white">
+                    {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                  </span>
+                </span>
+              )}
             </button>
             <div className="flex items-center gap-2 pl-2 border-l border-white/5">
               <div className="w-7 h-7 rounded-full bg-nx-gold/15 flex items-center justify-center">

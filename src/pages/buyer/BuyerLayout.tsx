@@ -23,7 +23,10 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
   const { user } = useAuth();
   const walletData = useQuery(api.wallet.getWalletBalance);
   const balance = walletData?.walletBalance ?? 0;
-  const unreadCount = useQuery(api.messages.getUnreadCount);
+  // Bell badge counts UNREAD NOTIFICATIONS — the same list the notifications
+  // page shows and marks read. (Counting chat messages here made the badge
+  // permanently stuck, since the notifications page never clears messages.)
+  const unreadCount = useQuery(api.reviews.getUnreadCount);
 
   const getPageLabel = () => {
     for (const [path, label] of Object.entries(navLabels)) {

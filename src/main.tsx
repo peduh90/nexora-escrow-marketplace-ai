@@ -68,6 +68,7 @@ const FreelanceServices = lazy(() => import("./pages/freelance/FreelanceServices
 const FreelanceEarnings = lazy(() => import("./pages/freelance/FreelanceEarnings.tsx"));
 const FreelanceSettings = lazy(() => import("./pages/freelance/FreelanceSettings.tsx"));
 const FreelanceMessages = lazy(() => import("./pages/freelance/FreelanceMessages.tsx"));
+const FreelanceNotifications = lazy(() => import("./pages/freelance/FreelanceNotifications.tsx"));
 const Chat = lazy(() => import("./pages/Chat.tsx"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails.tsx"));
 const PrivacyPage = lazy(() => import("./pages/Privacy.tsx"));
@@ -255,8 +256,10 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/employer/jobs" element={<RoleRouter allowedRoles={["employer"]}><EmployerJobs /></RoleRouter>} />
               <Route path="/employer/projects" element={<RoleRouter allowedRoles={["employer"]}><EmployerProjects /></RoleRouter>} />
               <Route path="/employer/messages" element={<RoleRouter allowedRoles={["employer"]}><FreelanceMessages /></RoleRouter>} />
+              <Route path="/employer/notifications" element={<RoleRouter allowedRoles={["employer"]}><FreelanceNotifications /></RoleRouter>} />
               <Route path="/employer/earnings" element={<RoleRouter allowedRoles={["employer"]}><FreelanceEarnings /></RoleRouter>} />
               <Route path="/employer/settings" element={<RoleRouter allowedRoles={["employer"]}><FreelanceSettings /></RoleRouter>} />
+              <Route path="/employer/notifications" element={<RoleRouter allowedRoles={["employer"]}><FreelanceNotifications /></RoleRouter>} />
               <Route path="/freelance/find-work" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceFindWork /></RoleRouter>} />
               {/* Finding talent is an employer action, not a freelancer one. */}
               <Route path="/freelance/find-freelancers" element={<RoleRouter allowedRoles={["employer"]}><FreelanceFindFreelancers /></RoleRouter>} />
@@ -269,6 +272,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/freelance/earnings" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceEarnings /></RoleRouter>} />
               <Route path="/freelance/settings" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceSettings /></RoleRouter>} />
               <Route path="/freelance/messages" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceMessages /></RoleRouter>} />
+              <Route path="/freelance/notifications" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceNotifications /></RoleRouter>} />
+              <Route path="/freelance/notifications" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceNotifications /></RoleRouter>} />
               <Route path="/product/:id" element={<ProductDetails />} />
               <Route path="/chat" element={<RequireAuth><Chat /></RequireAuth>} />
               <Route path="/chat/:conversationId" element={<RequireAuth><Chat /></RequireAuth>} />

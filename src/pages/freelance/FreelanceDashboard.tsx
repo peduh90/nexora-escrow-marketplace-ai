@@ -47,6 +47,8 @@ export default function FreelanceDashboard() {
   const stats = useQuery(api.freelance.getFreelanceStats);
   const projects = useQuery(api.freelance.getMyProjects);
   const walletBalance = useQuery(api.wallet.getWalletBalance);
+  // Real unread notifications for the bell badge.
+  const unreadNotifications = useQuery(api.reviews.getUnreadCount);
 
   const allProjects = projects ?? [];
   const activeProjects = allProjects.filter((p: any) =>
@@ -116,8 +118,19 @@ export default function FreelanceDashboard() {
             <h1 className="text-sm font-semibold text-white hidden sm:block">Freelance Dashboard</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button className="relative p-2 rounded-lg hover:bg-white/[0.03] transition-colors">
+            <button
+              onClick={() => navigate("/freelance/notifications")}
+              className="relative p-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+              title="Notifications"
+            >
               <Bell className="w-4 h-4 text-white/40" />
+              {!!unreadNotifications && unreadNotifications > 0 && (
+                <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 rounded-full bg-red-500 flex items-center justify-center">
+                  <span className="text-[8px] font-bold text-white">
+                    {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                  </span>
+                </span>
+              )}
             </button>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-400/5 border border-emerald-400/10">
               <Wallet className="w-3.5 h-3.5 text-emerald-400" />
