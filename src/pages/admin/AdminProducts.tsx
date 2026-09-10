@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Package, Search, CheckCircle2, XCircle, Trash2, Shield, Loader2, Eye } from "lucide-react";
+import { Package, Search, CheckCircle2, XCircle, Trash2, Shield, Loader2, Eye, ChevronUp, ExternalLink as ExternalLinkIcon } from "lucide-react";
 
 export default function AdminProducts() {
   const allListings = useQuery(api.admin.getAllListings);
@@ -11,6 +11,7 @@ export default function AdminProducts() {
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [acting, setActing] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const listings = allListings ?? [];
   const users = allUsers ?? [];
@@ -121,6 +122,19 @@ export default function AdminProducts() {
                           <p className="text-[10px] text-white/25">{product.category}</p>
                         </div>
                       </div>
+                      {expandedId === product._id && (
+                        <div className="mt-3 ml-13 p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5 text-[11px]">
+                          <p className="text-white/40">Description: <span className="text-white/70">{product.description || "—"}</span></p>
+                          <p className="text-white/40">Condition: <span className="text-white/70">{product.condition || "Not specified"}</span></p>
+                          <p className="text-white/40">Escrow protection: <span className="text-white/70">{product.escrowProtection ? "Yes" : "No"}</span></p>
+                          <p className="text-white/40">Transport: <span className="text-white/70">{product.transportAvailable ? `Available — KES ${(product.transportFee ?? 0).toLocaleString()} from ${product.originCounty}/${product.originTown}` : "Buyer pickup"}</span></p>
+                          <p className="text-white/40">Favorites: <span className="text-white/70">{product.favorites ?? 0}</span></p>
+                          <p className="text-white/40">Listed: <span className="text-white/70">{new Date(product.createdAt).toLocaleDateString()}</span></p>
+                          <a href={`/product/${product._id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-nx-cyan hover:text-nx-cyan/80 mt-1">
+                            Open public product page <ExternalLinkIcon className="w-3 h-3" />
+                          </a>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3.5 hidden md:table-cell">
                       <p className="text-xs text-white/50">{product.sellerName}</p>
@@ -141,8 +155,12 @@ export default function AdminProducts() {
                     </td>
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors" title="View">
-                          <Eye className="w-3.5 h-3.5" />
+                        <button
+                          onClick={() => setExpandedId(expandedId === product._id ? null : product._id)}
+                          className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
+                          title={expandedId === product._id ? "Hide product details" : "View product details"}
+                        >
+                          {expandedId === product._id ? <ChevronUp className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                         {product.status !== "sold" && product.status !== "removed" && (
                           <>

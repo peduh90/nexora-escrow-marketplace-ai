@@ -74,6 +74,79 @@ function AccountSection({ user }: { user: any }) {
   );
 }
 
+function SecuritySection({ email }: { email?: string }) {
+  const updatePassword = useMutation(api.users.updatePassword);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const handleChange = async () => {
+    setError(null);
+    if (next !== confirm) {
+      setError("New passwords do not match.");
+      return;
+    }
+    if (next.length < 8) {
+      setError("New password must be at least 8 characters.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updatePassword({
+        currentPassword: current || undefined,
+        newPassword: next,
+        confirmPassword: confirm,
+      });
+      setDone(true);
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      setTimeout(() => setDone(false), 2500);
+    } catch (err: any) {
+      setError(err?.message || "Could not change password.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="p-4 rounded-lg bg-white/[0.02] border border-white/5 space-y-3">
+        <p className="text-sm text-white">Change Password</p>
+        <div>
+          <label className="text-xs text-white/40 mb-1 block">Current password</label>
+          <input type="password" value={current} onChange={e => setCurrent(e.target.value)} autoComplete="current-password"
+            className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" />
+          {email && <p className="text-[10px] text-white/20 mt-1">Signing in with {email}</p>}
+        </div>
+        <div>
+          <label className="text-xs text-white/40 mb-1 block">New password</label>
+          <input type="password" value={next} onChange={e => setNext(e.target.value)} autoComplete="new-password"
+            className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" />
+        </div>
+        <div>
+          <label className="text-xs text-white/40 mb-1 block">Confirm new password</label>
+          <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password"
+            className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" />
+        </div>
+        {error && <p className="text-xs text-red-400">{error}</p>}
+        {done && <p className="text-xs text-emerald-400">Password updated successfully.</p>}
+        <button onClick={handleChange} disabled={saving || next.length < 8 || next !== confirm}
+          className="px-4 py-2 rounded-lg bg-nx-violet text-white text-xs font-medium hover:bg-nx-violet/80 transition-colors disabled:opacity-40">
+          {saving ? "Updating..." : "Update Password"}
+        </button>
+      </div>
+      <div className="p-4 rounded-lg bg-white/[0.02] border border-white/5">
+        <p className="text-sm text-white">Two-Factor Authentication</p>
+        <p className="text-xs text-white/30 mt-0.5">Additional 2FA methods are coming with the East Africa expansion. Your account is protected by escrow-verified sign-in.</p>
+      </div>
+    </div>
+  );
+}
+
 export default function SellerSettings() {
   const user = useQuery(api.users.currentUser);
   const [activeSection, setActiveSection] = useState("Account");
@@ -104,18 +177,7 @@ export default function SellerSettings() {
           <div className="lg:col-span-3 p-6 rounded-xl bg-white/[0.02] border border-white/5">
             <h3 className="text-lg font-semibold text-white mb-4">{activeSection}</h3>
             {activeSection === "Account" && <AccountSection user={user} />}
-            {activeSection === "Security" && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                  <div><p className="text-sm text-white">Change Password</p><p className="text-xs text-white/30">Last changed 30 days ago</p></div>
-                  <button className="px-3 py-1.5 rounded-lg bg-white/[0.03] text-xs text-white/40 hover:text-white/60">Change</button>
-                </div>
-                <div className="p-4 rounded-lg bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                  <div><p className="text-sm text-white">Two-Factor Authentication</p><p className="text-xs text-white/30">Add an extra layer of security</p></div>
-                  <button className="px-3 py-1.5 rounded-lg bg-emerald-400/10 text-xs text-emerald-400">Enable</button>
-                </div>
-              </div>
-            )}
+            {activeSection === "Security" && <SecuritySection email={user?.email} />}
             {activeSection === "Notifications" && (
               <div className="space-y-3">
                 {["New order", "New message", "New offer", "Payment update", "Escrow release", "Dispute alert", "Product approval", "Review received"].map(n => (

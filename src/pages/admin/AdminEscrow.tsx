@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Shield, Search, Eye, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Shield, Search, Eye, ChevronUp } from "lucide-react";
 
 export default function AdminEscrow() {
   const allEscrows = useQuery(api.admin.getAllEscrows);
   const allUsers = useQuery(api.admin.getAllUsers);
   const [tab, setTab] = useState("All");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const escrows = allEscrows ?? [];
   const users = allUsers ?? [];
@@ -77,14 +78,34 @@ export default function AdminEscrow() {
                       <span>Buyer: {buyer?.name || "Unknown"}</span>
                       <span>Seller: {seller?.name || seller?.businessName || "Unknown"}</span>
                     </div>
+                    {expandedId === escrow._id && (
+                      <div className="mt-3 p-3 rounded-lg bg-white/[0.02] border border-white/5 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 text-[11px]">
+                        <p className="text-white/40">Description: <span className="text-white/70">{escrow.description || "—"}</span></p>
+                        <p className="text-white/40">Conditions: <span className="text-white/70">{escrow.conditions || "—"}</span></p>
+                        <p className="text-white/40">Release condition: <span className="text-white/70">{escrow.releaseCondition || "Buyer approval"}</span></p>
+                        <p className="text-white/40">Inspection period: <span className="text-white/70">{escrow.inspectionPeriodHours}h</span></p>
+                        <p className="text-white/40">Seller commission ({escrow.commissionRate}%): <span className="text-white/70">KES {(escrow.platformFee ?? 0).toLocaleString()}</span></p>
+                        {escrow.buyerFee != null && <p className="text-white/40">Buyer protection fee: <span className="text-white/70">KES {escrow.buyerFee.toLocaleString()}</span></p>}
+                        <p className="text-white/40">Transport: <span className="text-white/70">{escrow.transportRequired ? `${escrow.transportPartner || "Nexora"} — KES ${(escrow.transportFee ?? 0).toLocaleString()}` : "Buyer pickup"}</span></p>
+                        <p className="text-white/40">Created: <span className="text-white/70">{new Date(escrow.createdAt).toLocaleString()}</span></p>
+                        {escrow.fundedAt && <p className="text-white/40">Funded: <span className="text-white/70">{new Date(escrow.fundedAt).toLocaleString()}</span></p>}
+                        {escrow.deliveredAt && <p className="text-white/40">Delivered: <span className="text-white/70">{new Date(escrow.deliveredAt).toLocaleString()}</span></p>}
+                        {escrow.releasedAt && <p className="text-white/40">Released: <span className="text-white/70">{new Date(escrow.releasedAt).toLocaleString()}</span></p>}
+                        {escrow.aiRiskScore != null && <p className="text-white/40">AI risk score: <span className={escrow.aiRiskLevel === "high" || escrow.aiRiskLevel === "critical" ? "text-red-400" : "text-white/70"}>{escrow.aiRiskScore} ({escrow.aiRiskLevel || "unknown"})</span></p>}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-4 shrink-0">
                     <div className="text-right">
                       <p className="text-sm font-bold text-white">KES {escrow.amount?.toLocaleString()}</p>
                       <p className="text-[10px] text-white/25">{escrow.currency}</p>
                     </div>
-                    <button className="p-2 rounded-lg text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors">
-                      <Eye className="w-4 h-4" />
+                    <button
+                      onClick={() => setExpandedId(expandedId === escrow._id ? null : escrow._id)}
+                      className="p-2 rounded-lg text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
+                      title={expandedId === escrow._id ? "Hide escrow details" : "View escrow details"}
+                    >
+                      {expandedId === escrow._id ? <ChevronUp className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>

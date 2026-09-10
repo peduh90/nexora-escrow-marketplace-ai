@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Wallet, Search, Eye } from "lucide-react";
+import { Wallet, Search, Eye, ChevronUp } from "lucide-react";
 
 export default function AdminWallets() {
   const allUsers = useQuery(api.admin.getAllUsers);
   const allEscrows = useQuery(api.admin.getAllEscrows);
   const allTransactions = useQuery(api.wallet.getWalletTransactions);
   const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const users = allUsers ?? [];
   const escrows = allEscrows ?? [];
@@ -109,15 +110,30 @@ export default function AdminWallets() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.03]">
-                {filtered.map((w: any) => (
-                  <tr key={w.id} className="hover:bg-white/[0.01] transition-colors">
+                {filtered.map((w: any) => {
+                  const isExpanded = expandedId === w.id;
+                  const user = users.find((u: any) => u._id === w.id);
+                  return (
+                  <tr key={w.id} className="hover:bg-white/[0.01] transition-colors align-top">
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-nx-violet/15 flex items-center justify-center shrink-0">
                           <span className="text-[10px] font-bold text-nx-violet">{w.name[0]?.toUpperCase()}</span>
                         </div>
-                        <span className="text-sm text-white/70">{w.name}</span>
+                        <div>
+                          <span className="text-sm text-white/70">{w.name}</span>
+                          <p className="text-[10px] text-white/25">{user?.email || ""}</p>
+                        </div>
                       </div>
+                      {isExpanded && (
+                        <div className="mt-3 p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5 text-[11px]">
+                          <p className="text-white/40">Wallet balance: <span className="text-white/70">KES {(user?.walletBalance ?? 0).toLocaleString()}</span></p>
+                          <p className="text-white/40">Transactions: <span className="text-white/70">{w.txCount}</span></p>
+                          <p className="text-white/40">Active escrow (held): <span className="text-white/70">KES {w.escrowBalance.toLocaleString()}</span></p>
+                          <p className="text-white/40">Completed volume: <span className="text-white/70">KES {w.totalCompleted.toLocaleString()}</span></p>
+                          <p className="text-white/40">Total withdrawn: <span className="text-white/70">KES {w.totalWithdrawn.toLocaleString()}</span></p>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3.5">
                       <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${w.role === "seller" ? "bg-nx-cyan/10 text-nx-cyan" : "bg-nx-emerald/10 text-nx-emerald"}`}>
@@ -128,12 +144,17 @@ export default function AdminWallets() {
                     <td className="px-4 py-3.5 text-xs text-white/40 hidden md:table-cell">KES {w.totalCompleted.toLocaleString()}</td>
                     <td className="px-4 py-3.5 text-xs text-white/40 hidden md:table-cell">KES {w.totalWithdrawn.toLocaleString()}</td>
                     <td className="px-4 py-3.5 text-right">
-                      <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors">
-                        <Eye className="w-3.5 h-3.5" />
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : w.id)}
+                        className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
+                        title={isExpanded ? "Hide wallet details" : "View wallet details"}
+                      >
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

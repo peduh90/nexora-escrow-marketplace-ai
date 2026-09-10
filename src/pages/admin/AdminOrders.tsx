@@ -2,14 +2,19 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { ShoppingCart, Search, Eye } from "lucide-react";
+import { ShoppingCart, Search, Eye, ChevronUp, ChevronDown } from "lucide-react";
 
 export default function AdminOrders() {
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const escrows = useQuery(api.admin.getAllEscrows);
+  const allUsers = useQuery(api.admin.getAllUsers);
 
   const orders = escrows ?? [];
+  const users = allUsers ?? [];
+  const getUser = (id: string) => users.find((u: any) => u._id === id);
+
   const filtered = orders.filter(e => {
     if (filter === "Active" && e.status !== "funded" && e.status !== "active") return false;
     if (filter === "Delivered" && e.status !== "released" && e.status !== "completed") return false;
@@ -73,31 +78,63 @@ export default function AdminOrders() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.03]">
-                {filtered.map(order => (
-                  <tr key={order._id} className="hover:bg-white/[0.01] transition-colors">
-                    <td className="px-4 py-3.5">
-                      <p className="text-sm text-white/70 font-medium">{order.title}</p>
-                      <p className="text-[10px] text-white/25">{order.currency} {order.amount.toLocaleString()}</p>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <p className="text-xs text-white/60 font-medium">{order.currency} {order.amount.toLocaleString()}</p>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
-                        order.status === "completed" || order.status === "released" ? "bg-nx-emerald/10 text-nx-emerald" :
-                        order.status === "disputed" ? "bg-red-400/10 text-red-400" :
-                        order.status === "refunded" ? "bg-nx-gold/10 text-nx-gold" :
-                        "bg-nx-cyan/10 text-nx-cyan"
-                      }`}>{order.status}</span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="text-[10px] text-white/30">{order.commissionRate}%</span>
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"><Eye className="w-3.5 h-3.5" /></button>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map(order => {
+                  const buyer = getUser(order.buyerId);
+                  const seller = getUser(order.sellerId);
+                  const isExpanded = expandedId === order._id;
+                  return (
+                    <tr key={order._id} className="hover:bg-white/[0.01] transition-colors align-top">
+                      <td className="px-4 py-3.5">
+                        <p className="text-sm text-white/70 font-medium">{order.title}</p>
+                        <p className="text-[10px] text-white/25">{new Date(order.createdAt).toLocaleDateString()}</p>
+                        {isExpanded && (
+                          <div className="mt-3 p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
+                            <p className="text-[10px] text-white/50">Buyer: <span className="text-white/80">{buyer?.name || buyer?.email || "Unknown"}</span></p>
+                            <p className="text-[10px] text-white/50">Seller: <span className="text-white/80">{seller?.businessName || seller?.name || "Unknown"}</span></p>
+                            <p className="text-[10px] text-white/50">Description: <span className="text-white/70">{order.description || "—"}</span></p>
+                            <p className="text-[10px] text-white/50">Release condition: <span className="text-white/70">{order.releaseCondition || "Buyer approval"}</span></p>
+                            <p className="text-[10px] text-white/50">Escrow held: <span className="text-white/70">KES {(order.amount).toLocaleString()}</span></p>
+                            {order.platformFee != null && (
+                              <p className="text-[10px] text-white/50">Seller commission: <span className="text-white/70">KES {order.platformFee.toLocaleString()}</span></p>
+                            )}
+                            {order.buyerFee != null && (
+                              <p className="text-[10px] text-white/50">Buyer protection fee: <span className="text-white/70">KES {order.buyerFee.toLocaleString()}</span></p>
+                            )}
+                            {order.actualDeliveryDate && (
+                              <p className="text-[10px] text-white/50">Delivered: <span className="text-white/70">{new Date(order.actualDeliveryDate).toLocaleDateString()}</span></p>
+                            )}
+                            {order.releasedAt && (
+                              <p className="text-[10px] text-white/50">Released: <span className="text-white/70">{new Date(order.releasedAt).toLocaleDateString()}</span></p>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <p className="text-xs text-white/60 font-medium">{order.currency} {order.amount.toLocaleString()}</p>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+                          order.status === "completed" || order.status === "released" ? "bg-nx-emerald/10 text-nx-emerald" :
+                          order.status === "disputed" ? "bg-red-400/10 text-red-400" :
+                          order.status === "refunded" ? "bg-nx-gold/10 text-nx-gold" :
+                          "bg-nx-cyan/10 text-nx-cyan"
+                        }`}>{order.status}</span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="text-[10px] text-white/30">{order.commissionRate}%</span>
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <button
+                          onClick={() => setExpandedId(isExpanded ? null : order._id)}
+                          className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
+                          title={isExpanded ? "Hide order details" : "View order details"}
+                        >
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

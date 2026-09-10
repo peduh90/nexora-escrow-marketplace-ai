@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Wallet, Search, Eye, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Wallet, Search, Eye, ChevronUp } from "lucide-react";
 
 export default function AdminWithdrawals() {
   const allTransactions = useQuery(api.wallet.getWalletTransactions);
   const allUsers = useQuery(api.admin.getAllUsers);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const transactions = allTransactions ?? [];
   const users = allUsers ?? [];
@@ -67,10 +69,21 @@ export default function AdminWithdrawals() {
               <tbody className="divide-y divide-white/[0.03]">
                 {withdrawals.map((w: any) => {
                   const user = getUser(w.userId);
+                  const isExpanded = expandedId === w._id;
                   return (
-                    <tr key={w._id} className="hover:bg-white/[0.01] transition-colors">
+                    <tr key={w._id} className="hover:bg-white/[0.01] transition-colors align-top">
                       <td className="px-4 py-3.5">
                         <span className="text-sm text-white/70">{user?.name || user?.email || "Unknown"}</span>
+                        {isExpanded && (
+                          <div className="mt-3 p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5 text-[11px]">
+                            <p className="text-white/40">Reference: <span className="text-white/70">{w.reference}</span></p>
+                            <p className="text-white/40">Description: <span className="text-white/70">{w.description || "—"}</span></p>
+                            <p className="text-white/40">Currency: <span className="text-white/70">{w.currency}</span></p>
+                            <p className="text-white/40">Requested: <span className="text-white/70">{new Date(w.createdAt).toLocaleString()}</span></p>
+                            {user && <p className="text-white/40">Wallet balance now: <span className="text-white/70">KES {(user.walletBalance ?? 0).toLocaleString()}</span></p>}
+                            {user && <p className="text-white/40">Contact: <span className="text-white/70">{user.email} {user.phone ? `· ${user.phone}` : ""}</span></p>}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3.5 text-sm text-white/70 font-medium">KES {w.amount.toLocaleString()}</td>
                       <td className="px-4 py-3.5 text-[11px] text-white/30 hidden md:table-cell">{w.reference}</td>
@@ -80,8 +93,12 @@ export default function AdminWithdrawals() {
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors">
-                          <Eye className="w-3.5 h-3.5" />
+                        <button
+                          onClick={() => setExpandedId(isExpanded ? null : w._id)}
+                          className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
+                          title={isExpanded ? "Hide withdrawal details" : "View withdrawal details"}
+                        >
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                       </td>
                     </tr>

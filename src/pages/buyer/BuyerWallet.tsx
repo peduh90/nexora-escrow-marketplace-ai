@@ -72,13 +72,13 @@ export default function BuyerWallet() {
           </div>
           <span className="text-xs text-white/60">Deposit</span>
         </button>
-        <button className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-cyan/20 transition-all opacity-40" disabled>
+        <button className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all opacity-40" disabled title="P2P wallet-to-wallet transfers arrive with the East Africa expansion">
           <div className="w-10 h-10 rounded-lg bg-nx-cyan/10 flex items-center justify-center">
             <Send className="w-5 h-5 text-nx-cyan" />
           </div>
           <span className="text-xs text-white/60">Send</span>
         </button>
-        <button className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-cyan/20 transition-all opacity-40" disabled>
+        <button className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all opacity-40" disabled title="Shareable receive links arrive with the East Africa expansion">
           <div className="w-10 h-10 rounded-lg bg-nx-violet/10 flex items-center justify-center">
             <Copy className="w-5 h-5 text-nx-violet" />
           </div>

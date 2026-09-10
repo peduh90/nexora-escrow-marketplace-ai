@@ -1,11 +1,19 @@
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { AlertTriangle, Eye } from "lucide-react";
+import { AlertTriangle, Eye, ChevronUp } from "lucide-react";
 
 export default function AdminReports() {
   const disputes = useQuery(api.admin.getAllDisputes);
+  const allUsers = useQuery(api.admin.getAllUsers);
+  const allEscrows = useQuery(api.admin.getAllEscrows);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const allDisputes = disputes ?? [];
+  const users = allUsers ?? [];
+  const escrows = allEscrows ?? [];
+  const getUser = (id: string) => users.find((u: any) => u._id === id);
+  const getEscrow = (id: string) => escrows.find((e: any) => e._id === id);
 
   // Reports are modeled as disputes in the current schema
   const openReports = allDisputes.filter((d: any) => d.status === "open").length;
@@ -44,7 +52,11 @@ export default function AdminReports() {
             <h3 className="text-sm font-semibold text-white">Recent Reports</h3>
           </div>
           <div className="divide-y divide-white/[0.03]">
-            {allDisputes.map((r: any) => (
+            {allDisputes.map((r: any) => {
+              const filer = getUser(r.filedBy);
+              const escrow = getEscrow(r.escrowId);
+              const isExpanded = expandedId === r._id;
+              return (
               <div key={r._id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.01] transition-colors">
                 <div className="w-8 h-8 rounded-lg bg-nx-gold/10 flex items-center justify-center shrink-0">
                   <AlertTriangle className="w-4 h-4 text-nx-gold" />
@@ -58,12 +70,27 @@ export default function AdminReports() {
                   </div>
                   <p className="text-xs text-white/60">{r.reason}</p>
                   {r.description && <p className="text-[10px] text-white/25 truncate">{r.description}</p>}
+                  {isExpanded && (
+                    <div className="mt-3 p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5 text-[11px]">
+                      <p className="text-white/40">Filed by: <span className="text-white/70">{filer?.name || filer?.email || "Unknown"}</span></p>
+                      <p className="text-white/40">Filed: <span className="text-white/70">{new Date(r.createdAt).toLocaleString()}</span></p>
+                      {escrow && <p className="text-white/40">Order: <span className="text-white/70">{escrow.title} — KES {escrow.amount?.toLocaleString()}</span></p>}
+                      {r.resolution && <p className="text-white/40">Resolution: <span className="text-white/70">{r.resolution}</span></p>}
+                      {r.refundAmount ? <p className="text-white/40">Refunded: <span className="text-amber-400/80">KES {r.refundAmount.toLocaleString()}</span></p> : null}
+                      <p className="text-white/40">Full description: <span className="text-white/70">{r.description || "Not provided"}</span></p>
+                    </div>
+                  )}
                 </div>
-                <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors">
-                  <Eye className="w-3.5 h-3.5" />
+                <button
+                  onClick={() => setExpandedId(isExpanded ? null : r._id)}
+                  className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
+                  title={isExpanded ? "Hide report details" : "View report details"}
+                >
+                  {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

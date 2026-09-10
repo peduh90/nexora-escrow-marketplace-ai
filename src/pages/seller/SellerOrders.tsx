@@ -335,10 +335,15 @@ export default function SellerOrders() {
                             Refund initiated
                           </div>
                         )}
-                        <button className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] text-white/40 text-xs font-medium hover:bg-white/[0.05] hover:text-white/60 transition-colors">
+                        <a
+                          href={`https://wa.me/254769739216?text=${encodeURIComponent("Hello Nexora Support, I need help with my order: " + order.title)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] text-white/40 text-xs font-medium hover:bg-white/[0.05] hover:text-white/60 transition-colors"
+                        >
                           <MessageSquare className="w-3.5 h-3.5" />
                           Contact Support
-                        </button>
+                        </a>
                       </div>
                     </div>
                   </div>

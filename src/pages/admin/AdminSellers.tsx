@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Users, Search, Eye, Mail, CheckCircle2, Clock } from "lucide-react";
+import { Users, Search, Eye, Mail, CheckCircle2, Clock, ChevronUp, ChevronDown, ExternalLink } from "lucide-react";
 
 export default function AdminSellers() {
   const allUsers = useQuery(api.admin.getAllUsers);
   const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const users = allUsers ?? [];
 
@@ -67,8 +68,11 @@ export default function AdminSellers() {
                 {filtered.map((s: any) => {
                   const status = s.accountStatus || (s.role ? "active" : "pending");
                   const requested = s.pendingRole || s.role || "seller";
+                  const isExpanded = expandedId === s._id;
+                  const listingCount = s.listingCount ?? 0;
+                  const orderCount = s.orderCount ?? 0;
                   return (
-                    <tr key={s._id} className="hover:bg-white/[0.01] transition-colors">
+                    <tr key={s._id} className="hover:bg-white/[0.01] transition-colors align-top">
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-nx-violet/15 flex items-center justify-center shrink-0">
@@ -79,6 +83,29 @@ export default function AdminSellers() {
                             <p className="text-[10px] text-white/25">{s.email || ""}</p>
                           </div>
                         </div>
+                        {isExpanded && (
+                          <div className="mt-3 ml-11 p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
+                            <p className="text-[10px] text-white/50">Requested role: <span className="text-white/80">{requested}</span></p>
+                            <p className="text-[10px] text-white/50">Store type: <span className="text-white/80">{s.businessType || "Not specified"}</span></p>
+                            <p className="text-[10px] text-white/50">Location: <span className="text-white/80">{[s.town, s.county, s.country].filter(Boolean).join(", ") || "Not set"}</span></p>
+                            <p className="text-[10px] text-white/50">Phone: <span className="text-white/80">{s.phone || "Not set"}</span></p>
+                            <p className="text-[10px] text-white/50">Listings: <span className="text-white/80">{listingCount}</span></p>
+                            <p className="text-[10px] text-white/50">Orders: <span className="text-white/80">{orderCount}</span></p>
+                            <p className="text-[10px] text-white/50">Total earned: <span className="text-white/80">KES {(s.totalEarned ?? 0).toLocaleString()}</span></p>
+                            <p className="text-[10px] text-white/50">Wallet balance: <span className="text-white/80">KES {(s.walletBalance ?? 0).toLocaleString()}</span></p>
+                            {s.storeDescription && (
+                              <p className="text-[10px] text-white/50">About: <span className="text-white/70">{s.storeDescription}</span></p>
+                            )}
+                            <a
+                              href={`/seller/${s._id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[10px] text-nx-cyan hover:text-nx-cyan/80 mt-1"
+                            >
+                              View public store profile <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3.5 hidden md:table-cell">
                         <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${s.kycStatus === "verified" ? "bg-nx-emerald/10 text-nx-emerald" : s.kycStatus === "pending" ? "bg-nx-gold/10 text-nx-gold" : "bg-white/5 text-white/30"}`}>
@@ -97,8 +124,22 @@ export default function AdminSellers() {
                       </td>
                       <td className="px-4 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03]"><Eye className="w-3.5 h-3.5" /></button>
-                          <button className="p-1.5 rounded text-white/20 hover:text-nx-cyan hover:bg-nx-cyan/5"><Mail className="w-3.5 h-3.5" /></button>
+                          <button
+                            onClick={() => setExpandedId(isExpanded ? null : s._id)}
+                            className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
+                            title={isExpanded ? "Hide details" : "View seller details"}
+                          >
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                          {s.email && (
+                            <a
+                              href={`mailto:${s.email}?subject=${encodeURIComponent("Nexora Market — seller account")}`}
+                              className="p-1.5 rounded text-white/20 hover:text-nx-cyan hover:bg-nx-cyan/5 transition-colors"
+                              title={`Email ${s.businessName || s.name || "seller"}`}
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                            </a>
+                          )}
                         </div>
                       </td>
                     </tr>

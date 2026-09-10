@@ -102,14 +102,16 @@ export default function AdminDeliveries() {
           )}
         </div>
 
-        {/* Delivery Zones */}
+        {/* Delivery Zones — read-only reference: live transport pricing is
+            computed by the Nexora delivery engine (src/lib/delivery-config.ts)
+            at order time, so zones are informational here. */}
         <div className="rounded-xl border border-white/5 bg-[#0A0A12]">
           <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-nx-emerald" />
               <h3 className="text-sm font-semibold text-white">Delivery Zones</h3>
             </div>
-            <button className="text-[10px] text-nx-violet hover:text-nx-violet/80">+ Add Zone</button>
+            <span className="text-[10px] text-white/25">Pricing set by the delivery engine</span>
           </div>
           <div className="divide-y divide-white/[0.03]">
             {deliveryZones.map(z => (
