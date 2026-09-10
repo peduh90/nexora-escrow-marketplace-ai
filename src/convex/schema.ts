@@ -73,6 +73,11 @@ const schema = defineSchema(
       // Seller-specific
       businessName: v.optional(v.string()),
       businessType: v.optional(v.string()),
+      // Seller store profile (set from the seller Store page, shown on the
+      // public seller profile page)
+      storeDescription: v.optional(v.string()),
+      storeWebsite: v.optional(v.string()),
+      storeHours: v.optional(v.string()),
       kycStatus: v.optional(kycStatusValidator),
       kycSubmittedAt: v.optional(v.number()),
       kycVerifiedAt: v.optional(v.number()),

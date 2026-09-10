@@ -4,12 +4,16 @@ import AdminLayout from "./AdminLayout";
 import { MessageSquare, Eye, Flag } from "lucide-react";
 
 export default function AdminMessages() {
-  const allConversations = useQuery(api.messages.getConversations);
+  // REAL platform-wide conversation feed. (Previously this used the
+  // session-scoped messages.getConversations, which only ever returns the
+  // ADMIN'S OWN chats — so the page was permanently empty for everyone else.)
+  const allConversations = useQuery(api.admin.getAllConversations);
   const allUsers = useQuery(api.admin.getAllUsers);
 
   const conversations = allConversations ?? [];
   const users = allUsers ?? [];
   const getUser = (id: string) => users.find((u: any) => u._id === id);
+  const flagged = conversations.filter((c: any) => c.flagged);
 
   return (
     <AdminLayout>
@@ -28,6 +32,7 @@ export default function AdminMessages() {
           <div className="px-5 py-3 border-b border-white/5 flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-nx-cyan" />
             <h3 className="text-sm font-semibold text-white">Recent Conversations</h3>
+            <span className="ml-auto text-[10px] text-white/30">{conversations.length} total</span>
           </div>
           <div className="divide-y divide-white/[0.03]">
             {conversations.map((c: any) => {
@@ -36,9 +41,9 @@ export default function AdminMessages() {
               const buyerName = buyer?.name || buyer?.email || "Buyer";
               const sellerName = seller?.name || seller?.businessName || seller?.email || "Seller";
               return (
-                <div key={c._id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.01] transition-colors cursor-pointer">
+                <div key={c._id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.01] transition-colors">
                   <div className="w-9 h-9 rounded-full bg-nx-violet/15 flex items-center justify-center shrink-0">
-                    <span className="text-xs font-bold text-nx-violet">{buyerName[0]?.toUpperCase()}</span>
+                    <span className="text-xs font-bold text-nx-violet">{buyerName[0]?.toUpperCase() || "?"}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
@@ -51,7 +56,7 @@ export default function AdminMessages() {
                   <div className="text-right shrink-0">
                     {c.unreadBuyer > 0 && <span className="text-[9px] px-1.5 py-0.5 rounded bg-nx-violet/20 text-nx-violet font-medium">{c.unreadBuyer}</span>}
                   </div>
-                  <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors">
+                  <button className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors" title="View conversation">
                     <Eye className="w-3.5 h-3.5" />
                   </button>
                 </div>

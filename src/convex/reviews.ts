@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getSessionUser } from "./users";
-
 /** Create a review after a completed transaction */
 export const createReview = mutation({
   args: {
@@ -90,7 +89,16 @@ export const getSellerRating = query({
 
     if (reviews.length === 0) return { average: 0, count: 0 };
     const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
-    return { average: Math.round((sum / reviews.length) * 10) / 10, count: reviews.length };
+    const breakdown: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const r of reviews) {
+      const stars = Math.min(5, Math.max(1, Math.round(r.rating)));
+      breakdown[stars] = (breakdown[stars] || 0) + 1;
+    }
+    return {
+      average: Math.round((sum / reviews.length) * 10) / 10,
+      count: reviews.length,
+      breakdown,
+    };
   },
 });
 
@@ -111,6 +119,25 @@ export const replyToReview = mutation({
     }
 
     await ctx.db.patch(review._id, { sellerReply: args.reply });
+    return { success: true };
+  },
+});
+
+/** Admin: remove an abusive/fake review. Seller replies are kept in audit
+ * trails through the notifications system; the review itself is deleted. */
+export const deleteReview = mutation({
+  args: { reviewId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx);
+    if (!user) throw new Error("Not authenticated");
+    if ((user as any).role !== "admin") {
+      throw new Error("Unauthorized: admin only");
+    }
+
+    const review = (await ctx.db.get(args.reviewId as any)) as any;
+    if (!review) throw new Error("Review not found");
+
+    await ctx.db.delete(review._id);
     return { success: true };
   },
 });

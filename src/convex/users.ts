@@ -1174,6 +1174,9 @@ export const updateProfile = mutation({
     phone: v.optional(v.string()),
     county: v.optional(v.string()),
     town: v.optional(v.string()),
+    storeDescription: v.optional(v.string()),
+    storeWebsite: v.optional(v.string()),
+    storeHours: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -1187,12 +1190,39 @@ export const updateProfile = mutation({
     if (args.phone !== undefined) updates.phone = args.phone;
     if (args.county !== undefined) updates.county = args.county;
     if (args.town !== undefined) updates.town = args.town;
+    if (args.storeDescription !== undefined) updates.storeDescription = args.storeDescription;
+    if (args.storeWebsite !== undefined) updates.storeWebsite = args.storeWebsite;
+    if (args.storeHours !== undefined) updates.storeHours = args.storeHours;
 
     if (Object.keys(updates).length > 0) {
       await ctx.db.patch(user._id, updates);
     }
 
     return { success: true };
+  },
+});
+
+/** Public profile for a seller's storefront page. Returns ONLY the fields a
+ * stranger may see — never contact details, wallet balances, or auth data. */
+export const getPublicProfile = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const user = (await ctx.db.get(args.userId as any)) as any;
+    if (!user) return null;
+    return {
+      _id: user._id as string,
+      _creationTime: user._creationTime,
+      name: (user.name as string | undefined) ?? undefined,
+      businessName: (user.businessName as string | undefined) ?? undefined,
+      county: (user.county as string | undefined) ?? undefined,
+      town: (user.town as string | undefined) ?? undefined,
+      storeDescription: (user.storeDescription as string | undefined) ?? undefined,
+      storeWebsite: (user.storeWebsite as string | undefined) ?? undefined,
+      storeHours: (user.storeHours as string | undefined) ?? undefined,
+      kycStatus: (user.kycStatus as string | undefined) ?? undefined,
+      joinedAt: (user.joinedAt as number | undefined) ?? undefined,
+      reputation: (user.reputation as number | undefined) ?? undefined,
+    };
   },
 });
 

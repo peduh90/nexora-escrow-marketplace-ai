@@ -2,21 +2,30 @@ import { useQuery } from "convex/react";
 import { useNavigate, useParams } from "react-router";
 import { api } from "../convex/_generated/api";
 import ScrollReveal from "@/components/ScrollReveal";
-import { MapPin, Star, Shield, Package, MessageSquare, ArrowLeft, Clock, CheckCircle2, ExternalLink } from "lucide-react";
+import { MapPin, Star, Shield, Package, MessageSquare, ArrowLeft, Clock, CheckCircle2, ExternalLink, Store } from "lucide-react";
+
+/** Use the SELLER's stored profile fields (name / business name / county) so a
+ * store page is correct even when the seller has no listings yet — previously
+ * everything came from the first listing, so a new seller's page showed
+ * "Seller / Kenya / Member since 2024 / 98% response rate" fabrications. */
 
 export default function SellerProfile() {
   const { userId } = useParams();
   const navigate = useNavigate();
 
+  const seller = useQuery(api.users.getPublicProfile, { userId: userId as string });
+  const rating = useQuery(api.reviews.getSellerRating, { sellerId: userId as string });
   const allListings = useQuery(api.listings.getActiveListings, { limit: 100 });
 
   // Get seller info from listings
   const sellerListings = (allListings ?? []).filter((l: any) => l.sellerId === userId);
   const firstListing = sellerListings[0];
 
-  const sellerName = firstListing?.sellerName || "Seller";
-  const sellerVerified = firstListing?.sellerVerified || false;
-  const sellerLocation = firstListing?.originCounty || "Kenya";
+  const sellerName = seller?.businessName || seller?.name || firstListing?.sellerName || "Seller";
+  const sellerVerified = seller?.kycStatus === "verified" || firstListing?.sellerVerified || false;
+  const sellerLocation = seller?.county || firstListing?.originCounty || "Kenya";
+  const storeDescription = seller?.storeDescription || undefined;
+  const memberSince = seller?.joinedAt || seller?._creationTime;
   const totalProducts = sellerListings.length;
   const avgPrice = sellerListings.length > 0
     ? Math.round(sellerListings.reduce((s: number, l: any) => s + (l.price || 0), 0) / sellerListings.length)
@@ -25,6 +34,8 @@ export default function SellerProfile() {
   const handleChat = () => {
     if (sellerListings[0]) {
       navigate(`/product/${sellerListings[0]._id}`);
+    } else {
+      navigate("/marketplace");
     }
   };
 
@@ -60,8 +71,8 @@ export default function SellerProfile() {
                 </div>
                 <div className="flex items-center gap-4 text-xs text-white/40 mt-2">
                   <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{sellerLocation}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Member since 2024</span>
-                  <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />98% response rate</span>
+                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{memberSince ? `Member since ${new Date(memberSince).getFullYear()}` : "New seller"}</span>
+                  <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{totalProducts > 0 ? "Active seller" : "Building their store"}</span>
                 </div>
                 {/* Stats */}
                 <div className="flex items-center gap-6 mt-4">
@@ -70,8 +81,8 @@ export default function SellerProfile() {
                     <p className="text-[10px] text-white/30">Products</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-lg font-bold text-white">4.8</p>
-                    <p className="text-[10px] text-white/30">Rating</p>
+                    <p className="text-lg font-bold text-white">{rating && rating.count > 0 ? rating.average.toFixed(1) : "—"}</p>
+                    <p className="text-[10px] text-white/30">Rating{rating && rating.count > 0 ? ` (${rating.count})` : ""}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-lg font-bold text-white">
@@ -94,6 +105,19 @@ export default function SellerProfile() {
           </div>
         </ScrollReveal>
 
+        {/* Store description (from the seller's saved store profile) */}
+        {storeDescription && (
+          <ScrollReveal delay={80}>
+            <div className="mt-6 p-5 rounded-xl border border-white/5 bg-white/[0.02]">
+              <div className="flex items-center gap-3 mb-2">
+                <Store className="w-4 h-4 text-nx-cyan" />
+                <h3 className="text-sm font-semibold text-white">About the store</h3>
+              </div>
+              <p className="text-xs text-white/50 whitespace-pre-wrap">{storeDescription}</p>
+            </div>
+          </ScrollReveal>
+        )}
+
         {/* Rating Summary */}
         <ScrollReveal delay={100}>
           <div className="mt-6 p-5 rounded-xl border border-white/5 bg-white/[0.02]">
@@ -101,34 +125,36 @@ export default function SellerProfile() {
               <Star className="w-5 h-5 text-yellow-400" />
               <h3 className="text-sm font-semibold text-white">Rating Summary</h3>
             </div>
-            <div className="flex items-center gap-6">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-white">4.8</p>
-                <div className="flex items-center gap-0.5 mt-1">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Star key={s} className={`w-3 h-3 ${s <= 4 ? "text-yellow-400 fill-yellow-400" : "text-white/10"}`} />
-                  ))}
-                </div>
-                <p className="text-[10px] text-white/30 mt-1">Based on reviews</p>
-              </div>
-              <div className="flex-1 space-y-1.5">
-                {[
-                  { stars: 5, pct: 78 },
-                  { stars: 4, pct: 15 },
-                  { stars: 3, pct: 5 },
-                  { stars: 2, pct: 1 },
-                  { stars: 1, pct: 1 },
-                ].map((r) => (
-                  <div key={r.stars} className="flex items-center gap-2">
-                    <span className="text-[10px] text-white/30 w-3">{r.stars}</span>
-                    <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                      <div className="h-full rounded-full bg-yellow-400/60" style={{ width: `${r.pct}%` }} />
-                    </div>
-                    <span className="text-[10px] text-white/20 w-8">{r.pct}%</span>
+            {rating && rating.count > 0 ? (
+              <div className="flex items-center gap-6">
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-white">{rating.average.toFixed(1)}</p>
+                  <div className="flex items-center gap-0.5 mt-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star key={s} className={`w-3 h-3 ${s <= Math.round(rating.average) ? "text-yellow-400 fill-yellow-400" : "text-white/10"}`} />
+                    ))}
                   </div>
-                ))}
+                  <p className="text-[10px] text-white/30 mt-1">{rating.count} review{rating.count === 1 ? "" : "s"}</p>
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  {([5, 4, 3, 2, 1] as const).map((stars) => {
+                    const count = (rating as any).breakdown?.[stars] ?? 0;
+                    const pct = rating.count > 0 ? Math.round((count / rating.count) * 100) : 0;
+                    return (
+                      <div key={stars} className="flex items-center gap-2">
+                        <span className="text-[10px] text-white/30 w-3">{stars}</span>
+                        <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                          <div className="h-full rounded-full bg-yellow-400/60" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-white/20 w-8">{pct}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-xs text-white/30">No reviews yet — this seller's rating will appear here after their first completed orders.</p>
+            )}
           </div>
         </ScrollReveal>
 
