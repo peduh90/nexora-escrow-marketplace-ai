@@ -39,8 +39,17 @@ async function requireAdmin(ctx: any) {
 
   // Owner fallback: the platform owner email is always authorized, even while
   // the stored role is still being repaired by the mutations above.
+  //
+  // Match BOTH the session identity's email claim AND the DB record's email.
+  // Password-auth sessions on production may not carry an email claim in the
+  // identity token, which previously let this check fail while users:isAdmin
+  // (which reads the record's email) already passed — the gate opened the panel
+  // and every admin query then crashed with "Server Error". Using the same
+  // criteria as the gate makes that split impossible.
   const isOwner =
-    typeof identity.email === "string" && identity.email === ADMIN_EMAIL;
+    (typeof identity.email === "string" && identity.email === ADMIN_EMAIL) ||
+    (typeof (fresh as any).email === "string" &&
+      (fresh as any).email === ADMIN_EMAIL);
 
   if (fresh.role !== "admin" && !isOwner) {
     throw new Error("Unauthorized: admin only");

@@ -531,6 +531,15 @@ export const ensureUserProfile = mutation({
 
     let user = await getSessionUser(ctx);
 
+    // Password-auth sessions may not carry an email claim in their identity
+    // token; fall back to the session record's own email for duplicate
+    // merging so the canonical account still gets repaired and promoted.
+    const sessionEmail = typeof (user as any)?.email === "string" ? (user as any).email : undefined;
+    if (typeof sessionEmail === "string" && sessionEmail.includes("@")) {
+      await mergeDuplicateAccountsByEmail(ctx, sessionEmail);
+      user = await getSessionUser(ctx);
+    }
+
     const existingBusinessName =
       user && typeof (user as any).businessName === "string" ? (user as any).businessName : undefined;
     const existingRole =
@@ -578,7 +587,9 @@ export const ensureUserProfile = mutation({
 
       // Platform owner: always force admin + active, bypassing the pending
       // gate entirely (fixes stale buyer/pending records from older flows).
-      if (identity.email === ADMIN_EMAIL) {
+      // Accept the record's own email too: password sessions may lack the
+      // identity email claim on production.
+      if (identity.email === ADMIN_EMAIL || u.email === ADMIN_EMAIL) {
         if (u.role !== "admin" || u.accountStatus !== "active") {
           await ctx.db.patch(u._id, {
             role: "admin" as any,
@@ -1119,10 +1130,26 @@ export const ensureAdminAccess = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return { isAdmin: false, authenticated: false };
 
-    const caller = await getSessionUser(ctx);
+    // Merge duplicate rows for this identity first so the session binds to the
+    // canonical record — a stale duplicate must never receive the promotion.
+    if (typeof identity.email === "string" && identity.email.includes("@")) {
+      await mergeDuplicateAccountsByEmail(ctx, identity.email);
+    }
+
+    let caller = await getSessionUser(ctx);
     if (!caller) return { isAdmin: false, authenticated: true };
 
-    if (identity.email === ADMIN_EMAIL) {
+    // Owner detection: prefer the identity token's email claim, but also accept
+    // the session record's own email — password-auth sessions on production may
+    // not carry the email claim, which previously left prod with zero admins
+    // (the gate passed via the record email but no query ever promoted the
+    // record, so every admin query threw "Server Error").
+    const callerEmail = (caller as any).email;
+    const isOwnerCaller =
+      identity.email === ADMIN_EMAIL ||
+      (typeof callerEmail === "string" && callerEmail === ADMIN_EMAIL);
+
+    if (isOwnerCaller) {
       const ownerPatch: Record<string, any> = {};
       if (caller.role !== "admin") ownerPatch.role = "admin" as const;
       // Also clear the verification gate so a stale pending record can never
