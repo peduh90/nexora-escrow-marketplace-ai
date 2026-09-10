@@ -5,6 +5,11 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 
+// Must match ADMIN_EMAIL in src/convex/users.ts and OWNER_EMAIL in
+// src/hooks/use-auth.ts — the platform owner is never blocked by the
+// buyer-oriented verification gate.
+const OWNER_EMAIL = "murimiedwin227@gmail.com";
+
 interface RoleRouterProps {
   children: React.ReactNode;
   allowedRoles?: string[];
@@ -23,6 +28,11 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
   const completeVerification = useMutation(api.users.completeVerification);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Inline inputs so the user can actually complete pending steps here.
+  // (Previously the screen listed pending requirements with no way to fill
+  // them in, so "Finish verification" stayed disabled forever.)
+  const [nameInput, setNameInput] = useState<string | null>(null);
+  const [phoneInput, setPhoneInput] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -51,7 +61,13 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
   // ── Verification gate ──
   // A user with no role yet is unverified by definition, regardless of the
   // stored accountStatus, so they never reach a panel. Show onboarding.
-  const isUnverified = !role || accountStatus === "pending";
+  // Admins (including the platform owner) are exempt: this buyer-oriented
+  // name/phone gate must never be able to trap the admin out of the panel.
+  const isOwner =
+    typeof (user as any)?.email === "string" &&
+    (user as any).email === OWNER_EMAIL;
+  const isUnverified =
+    (!role || accountStatus === "pending") && role !== "admin" && !isOwner;
 
   if (isUnverified) {
     if (!onboarding || onboarding.authenticated === false) {
@@ -63,15 +79,24 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
     }
 
     const reqs = onboarding.requirements ?? [];
-    const allMet = onboarding.isComplete;
+
+    // Effective values: local edits win over the stored profile.
+    const effName = (nameInput ?? onboarding.profile?.name ?? "").trim();
+    const effPhone = (phoneInput ?? onboarding.profile?.phone ?? "").trim();
+    const reqMet = (key: string, extra: boolean) =>
+      !!reqs.find((r: any) => r.key === key)?.met || extra;
+    const emailMet = reqMet("email", false);
+    const nameMet = reqMet("name", effName.length > 1);
+    const phoneMet = reqMet("phone", effPhone.replace(/[^0-9]/g, "").length >= 9);
+    const allMet = emailMet && nameMet && phoneMet;
 
     const handleComplete = async () => {
       setSubmitting(true);
       setError(null);
       try {
         const result = await completeVerification({
-          name: onboarding.profile?.name || undefined,
-          phone: onboarding.profile?.phone || undefined,
+          name: effName || undefined,
+          phone: effPhone || undefined,
         });
         if (result?.role) {
           // Reload so the auth hook picks up the newly assigned role.
@@ -95,24 +120,69 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
           </p>
 
           <div className="mt-6 space-y-2.5">
-            {reqs.map((r: any) => (
-              <div key={r.key} className={`flex items-center gap-3 p-3 rounded-lg border ${r.met ? "border-nx-emerald/20 bg-nx-emerald/5" : "border-white/5 bg-white/[0.02]"}`}>
-                {r.met ? (
-                  <CheckCircle2 className="w-4 h-4 text-nx-emerald shrink-0" />
-                ) : (
-                  <Circle className="w-4 h-4 text-white/25 shrink-0" />
-                )}
-                <span className={`text-sm ${r.met ? "text-white/70" : "text-white"}`}>{r.label}</span>
-                <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full ${r.met ? "bg-nx-emerald/10 text-nx-emerald" : "bg-white/5 text-white/40"}`}>
-                  {r.met ? "Done" : "Pending"}
-                </span>
-              </div>
-            ))}
+            {reqs.map((r: any) => {
+              const rowMet =
+                r.met ||
+                (r.key === "name" && nameMet) ||
+                (r.key === "phone" && phoneMet);
+              const showNameInput = !rowMet && r.key === "name";
+              const showPhoneInput = !rowMet && r.key === "phone";
+              return (
+                <div
+                  key={r.key}
+                  className={`p-3 rounded-lg border ${
+                    rowMet
+                      ? "border-nx-emerald/20 bg-nx-emerald/5"
+                      : "border-white/5 bg-white/[0.02]"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {rowMet ? (
+                      <CheckCircle2 className="w-4 h-4 text-nx-emerald shrink-0" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-white/25 shrink-0" />
+                    )}
+                    <span className={`text-sm ${rowMet ? "text-white/70" : "text-white"}`}>
+                      {r.label}
+                    </span>
+                    <span
+                      className={`ml-auto text-[10px] px-2 py-0.5 rounded-full ${
+                        rowMet
+                          ? "bg-nx-emerald/10 text-nx-emerald"
+                          : "bg-white/5 text-white/40"
+                      }`}
+                    >
+                      {rowMet ? "Done" : "Pending"}
+                    </span>
+                  </div>
+                  {showNameInput && (
+                    <input
+                      type="text"
+                      value={effName}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      placeholder="Enter your full name, e.g. Jane Wanjiku"
+                      autoComplete="name"
+                      className="mt-2.5 w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/40"
+                    />
+                  )}
+                  {showPhoneInput && (
+                    <input
+                      type="tel"
+                      value={effPhone}
+                      onChange={(e) => setPhoneInput(e.target.value)}
+                      placeholder="M-Pesa number, e.g. 07XX XXX XXX"
+                      autoComplete="tel"
+                      className="mt-2.5 w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/40"
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          {onboarding.requestedRole === "seller" && !reqs.find((r: any) => r.key === "approval")?.met && (
+          {onboarding.requestedRole === "seller" && (
             <p className="text-[11px] text-white/30 mt-4">
-              Your store is registered and visible to the Nexora admin team while you finish verification.
+              Your store details are saved — finish the steps above to open your seller panel.
             </p>
           )}
 
