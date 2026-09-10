@@ -19,22 +19,30 @@ function isRealUser(u: any): boolean {
   );
 }
 
-/** Helper: verify the current user is an admin */
+/** Helper: verify the current user is an admin.
+ * STRICTLY read-only: this runs inside queries, and Convex queries must never
+ * write. (The old version patched the role here, which made EVERY admin query
+ * throw "Server Error" whenever the stored role was still stale — exactly the
+ * getDashboardStats crash on the published site.) The actual role repair is
+ * done by the ensureUserProfile / ensureAdminAccess mutations, which run from
+ * use-auth and the admin route guard.
+ */
 async function requireAdmin(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Not authenticated");
 
   const user = await getSessionUser(ctx);
-
   if (!user) throw new Error("User not found");
 
-  // Auto-promote admin email
-  if (identity.email === ADMIN_EMAIL && user.role !== "admin") {
-    await ctx.db.patch(user._id, { role: "admin" });
-  }
-
   const fresh = await ctx.db.get(user._id);
-  if (!fresh || fresh.role !== "admin") {
+  if (!fresh) throw new Error("Unauthorized: admin only");
+
+  // Owner fallback: the platform owner email is always authorized, even while
+  // the stored role is still being repaired by the mutations above.
+  const isOwner =
+    typeof identity.email === "string" && identity.email === ADMIN_EMAIL;
+
+  if (fresh.role !== "admin" && !isOwner) {
     throw new Error("Unauthorized: admin only");
   }
 
