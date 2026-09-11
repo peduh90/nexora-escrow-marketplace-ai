@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import FreelanceNav from "./FreelanceNav";
 import { FREELANCE_CATEGORIES, freelanceCategoryName } from "@/lib/freelance-marketplace";
+import { shortKES } from "@/lib/fees";
 import {
   Search, Briefcase, MapPin, Clock, Users, Globe, X, Plus, Loader2,
   CheckCircle2, Shield, ArrowRight, Filter, ChevronDown,
@@ -257,7 +258,7 @@ export default function FreelanceJobs() {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-base font-bold text-nx-emerald">KES {task.budget.toLocaleString()}</p>
+                    <p className="text-base font-bold text-nx-emerald">{shortKES(task.budget)}</p>
                     <p className="text-[10px] text-white/25 mt-0.5 capitalize">{task.budgetType}</p>
                     <span className="hidden md:flex items-center gap-1 text-[11px] text-nx-violet mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                       View & Apply <ArrowRight className="w-3 h-3" />

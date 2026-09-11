@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import FreelanceNav from "./FreelanceNav";
+import { freelanceCategoryName } from "@/lib/freelance-marketplace";
+import { shortKES } from "@/lib/fees";
 import {
   FileText, PenTool, Sparkles, Calculator, Receipt, CheckSquare,
-  X, Plus, Copy, Check, Trash2, Loader2,
+  X, Plus, Copy, Check, Trash2, Loader2, Briefcase, ArrowRight,
 } from "lucide-react";
 
 const TOOLS = [
@@ -404,7 +407,7 @@ export default function FreelancerTools() {
           <p className="text-sm text-white/40 max-w-xl mx-auto">Free productivity tools for African freelancers — everything stays in your browser.</p>
         </div>
 
-        {/* Tool picker */}
+        {/* Tool marketplace */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
           {TOOLS.map((tool) => (
             <button
@@ -432,7 +435,66 @@ export default function FreelancerTools() {
           {active === "invoice" && <InvoiceTool />}
           {active === "tasks" && <TaskTool />}
         </div>
+
+        {/* Posted jobs — live from the jobs board, right below the tools */}
+        <ToolsJobsStrip />
       </div>
+    </div>
+  );
+}
+
+/** Latest open jobs from the real freelance tasks table, linking into the jobs board. */
+function ToolsJobsStrip() {
+  const navigate = useNavigate();
+  const jobs = useQuery(api.freelance.getOpenTasks, { limit: 5 });
+
+  return (
+    <div className="mt-10">
+      <div className="flex items-end justify-between gap-3 mb-4">
+        <div>
+          <div className="inline-flex items-center gap-2 text-nx-gold text-[11px] font-semibold tracking-widest uppercase mb-1">
+            <Briefcase className="w-3.5 h-3.5" /> Posted Jobs
+          </div>
+          <h2 className="text-lg md:text-xl font-bold text-white">Fresh jobs to apply for</h2>
+        </div>
+        <button
+          onClick={() => navigate("/freelance/jobs")}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-white/60 text-xs font-medium hover:border-nx-violet/30 hover:text-white transition-colors shrink-0"
+        >
+          View all jobs <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {jobs === undefined ? (
+        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 text-nx-violet animate-spin" /></div>
+      ) : jobs.length === 0 ? (
+        <div className="text-center py-10 rounded-2xl bg-white/[0.02] border border-white/5">
+          <Briefcase className="w-10 h-10 text-white/10 mx-auto mb-2" />
+          <p className="text-sm text-white/40 font-medium">No open jobs right now</p>
+          <p className="text-[11px] text-white/25 mt-1">Check the jobs board — new posts appear here the moment clients publish them.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {jobs.map((job: any) => (
+            <button
+              key={job._id}
+              onClick={() => navigate(`/freelance/jobs/${job._id}`)}
+              className="w-full text-left p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-violet/20 hover:bg-white/[0.03] transition-all group flex items-center gap-4"
+            >
+              <div className="w-9 h-9 rounded-lg bg-nx-gold/10 flex items-center justify-center shrink-0">
+                <Briefcase className="w-4 h-4 text-nx-gold" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate group-hover:text-nx-violet transition-colors">{job.title}</p>
+                <p className="text-[11px] text-white/30 mt-0.5 truncate">
+                  {freelanceCategoryName(job.category)} · {job.applicants} applicant{job.applicants === 1 ? "" : "s"}
+                </p>
+              </div>
+              <span className="text-sm font-bold text-nx-emerald shrink-0">{shortKES(job.budget)}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

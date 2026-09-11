@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import SellerLayout from "./SellerLayout";
 import { CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
+import { publishFeeSummary, rateLabel } from "@/lib/fees";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft } from "lucide-react";
 
 const steps = ["Category", "Details", "Specifications", "Images", "Location", "Pricing", "Preview"];
@@ -135,6 +136,14 @@ export default function SellerEditProduct({ freelanceMode = false }: { freelance
   }
 
   const update = (key: string, value: any) => setForm({ ...form, [key]: value });
+
+  // Live, tiered fee preview — the exact settled Nexora schedule. The listing's
+  // marketplace (product vs freelance) decides which commission tiers apply.
+  const isFreelanceListing = (listing as any)?.marketplace === "freelance";
+  const feeSummary = useMemo(
+    () => publishFeeSummary(isFreelanceListing ? "freelance" : "product", Number(form.price) || 0),
+    [isFreelanceListing, form.price],
+  );
 
   const selectedCategory = CATEGORIES.find(c => c.slug === form.category);
   const selectedSubcategory = selectedCategory?.subcategories.find(s => s.slug === form.subcategory);
@@ -362,8 +371,9 @@ export default function SellerEditProduct({ freelanceMode = false }: { freelance
                 <span className="text-sm text-white/60">Price is negotiable</span>
               </label>
               <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
-                <div className="flex justify-between text-xs"><span className="text-white/40">Platform Fee (5%)</span><span className="text-white/60">KES {Math.round(Number(form.price || 0) * 0.05).toLocaleString()}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-white/40">Your Earnings</span><span className="text-emerald-400 font-bold">KES {Math.round(Number(form.price || 0) * 0.95).toLocaleString()}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-white/40">Platform commission ({rateLabel(feeSummary.fee.rate)})</span><span className="text-white/60">− KES {feeSummary.fee.fee.toLocaleString()}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-white/40">Your Earnings</span><span className="text-emerald-400 font-bold">KES {feeSummary.earnings.toLocaleString()}</span></div>
+                <p className="text-[10px] text-white/25 pt-1.5 border-t border-white/5">Tiered commission: 3% under KES 5,000 · 2.5% to KES 50,000 · 2% to KES 200,000 · 1.5% above.</p>
               </div>
             </div>
           )}

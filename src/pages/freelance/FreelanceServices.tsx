@@ -4,9 +4,13 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  ArrowLeft, Search, Star, Clock, Package, Plus, Pencil, Eye, Store,
+  ArrowLeft, Search, Star, Package, Plus, Eye, Store,
 } from "lucide-react";
-import { FREELANCE_CATEGORY_GRADIENTS } from "@/lib/freelance-marketplace";
+import {
+  FREELANCE_CATEGORY_GRADIENTS,
+  getFreelanceCategory,
+} from "@/lib/freelance-marketplace";
+import { shortKES } from "@/lib/fees";
 
 /**
  * "My Services" — the freelancer's own published service listings.
@@ -52,7 +56,7 @@ export default function FreelanceServices() {
             <h1 className="text-sm font-semibold text-white">My Services</h1>
           </div>
           <button
-            onClick={() => navigate("/seller/add-product")}
+            onClick={() => navigate("/freelance/publish")}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-nx-violet text-white text-xs font-semibold hover:bg-nx-violet/80 transition-colors"
             title="Publish a new service listing"
           >
@@ -100,7 +104,7 @@ export default function FreelanceServices() {
                 Freelance Marketplace where buyers can order them with escrow protection.
               </p>
               <button
-                onClick={() => navigate("/seller/add-product")}
+                onClick={() => navigate("/freelance/publish")}
                 className="mt-4 px-5 py-2 rounded-xl bg-nx-violet text-white text-xs font-semibold hover:bg-nx-violet/80 transition-colors"
               >
                 Publish your first service
@@ -109,8 +113,8 @@ export default function FreelanceServices() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {display.map((svc: any) => {
+                const cat = getFreelanceCategory(svc.category);
                 const gradient = FREELANCE_CATEGORY_GRADIENTS[svc.category] || FREELANCE_CATEGORY_GRADIENTS["other-services"];
-                const deliveryTime = svc.attributes?.["Delivery Time"] || svc.attributes?.["Delivery"];
                 return (
                   <div
                     key={svc._id}
@@ -121,7 +125,7 @@ export default function FreelanceServices() {
                       {svc.images?.[0] ? (
                         <img src={svc.images[0]} alt={svc.title} className="w-full h-full object-cover" />
                       ) : (
-                        <Package className="w-10 h-10 text-white/10" />
+                        <span className="text-5xl drop-shadow-lg">{cat?.icon || "💼"}</span>
                       )}
                       <span className={`absolute top-2 left-2 text-[9px] px-2 py-0.5 rounded-full font-medium ${
                         svc.status === "active" ? "bg-nx-emerald/15 text-nx-emerald" : "bg-white/10 text-white/50"
@@ -131,7 +135,7 @@ export default function FreelanceServices() {
                     </div>
                     <div className="p-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] text-white/40 truncate">{svc.category}</span>
+                        <span className="text-[10px] text-white/40 truncate">{cat?.icon} {cat?.name || svc.category}</span>
                         <div className="flex items-center gap-0.5 ml-auto">
                           <Eye className="w-3 h-3 text-white/20" />
                           <span className="text-[10px] text-white/40">{svc.views || 0}</span>
@@ -139,7 +143,6 @@ export default function FreelanceServices() {
                       </div>
                       <h3 className="text-sm font-semibold text-white mb-1.5 line-clamp-2 group-hover:text-nx-violet transition-colors">{svc.title}</h3>
                       <div className="flex items-center gap-3 text-[10px] text-white/25 mb-3">
-                        {deliveryTime && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{deliveryTime}</span>}
                         <span className="flex items-center gap-1">
                           <Star className="w-3 h-3 text-nx-gold fill-nx-gold" />
                           {svc.reputation ? svc.reputation.toFixed(1) : "New"}
@@ -147,7 +150,7 @@ export default function FreelanceServices() {
                       </div>
                       <div className="flex items-center justify-between pt-3 border-t border-white/5">
                         <span className="text-[10px] text-white/30">Your price</span>
-                        <span className="text-base font-bold text-nx-emerald">KES {svc.price.toLocaleString()}</span>
+                        <span className="text-base font-bold text-nx-emerald">{shortKES(svc.price)}</span>
                       </div>
                     </div>
                   </div>
@@ -158,7 +161,7 @@ export default function FreelanceServices() {
 
           {/* Edit hint — the management surface lives in the seller panel */}
           <div className="flex items-center gap-2 p-3.5 rounded-xl bg-nx-cyan/[0.04] border border-nx-cyan/10">
-            <Pencil className="w-4 h-4 text-nx-cyan shrink-0" />
+            <Eye className="w-4 h-4 text-nx-cyan shrink-0" />
             <p className="text-[11px] text-white/40">
               Services are managed together with your listings. Use{" "}
               <button onClick={() => navigate("/seller/products")} className="text-nx-cyan underline underline-offset-2">

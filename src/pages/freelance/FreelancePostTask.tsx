@@ -4,13 +4,10 @@ import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import DocumentUpload, { type PickedFile } from "@/components/DocumentUpload";
+import { FREELANCE_CATEGORIES, freelanceCategoryName } from "@/lib/freelance-marketplace";
 import {
   ArrowLeft, Briefcase, X, Plus, Loader2, CheckCircle2,
 } from "lucide-react";
-
-const CATEGORIES = [
-  "web-development", "writing", "design", "marketing", "business", "video", "education", "ai-tech",
-];
 
 export default function FreelancePostTask() {
   const navigate = useNavigate();
@@ -131,10 +128,10 @@ export default function FreelancePostTask() {
           <div>
             <label className="text-xs font-medium text-white/60 mb-1.5 block">Category</label>
             <div className="flex flex-wrap gap-2">
-              {CATEGORIES.map((c) => (
-                <button key={c} onClick={() => setCategory(c)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${category === c ? "bg-nx-violet/20 text-nx-violet border border-nx-violet/30" : "bg-white/[0.03] text-white/40 border border-white/5 hover:border-white/10"}`}>
-                  {c.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+              {FREELANCE_CATEGORIES.map((c) => (
+                <button key={c.slug} onClick={() => setCategory(c.slug)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${category === c.slug ? "bg-nx-violet/20 text-nx-violet border border-nx-violet/30" : "bg-white/[0.03] text-white/40 border border-white/5 hover:border-white/10"}`}>
+                  {c.icon} {freelanceCategoryName(c.slug)}
                 </button>
               ))}
             </div>

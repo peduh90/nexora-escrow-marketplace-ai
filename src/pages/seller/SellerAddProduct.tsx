@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -7,6 +7,7 @@ import SellerLayout from "./SellerLayout";
 import { CATEGORIES as FALLBACK_CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
 import { CATEGORY_BANNERS } from "@/lib/category-images";
 import { FREELANCE_CATEGORIES, getFreelanceCategory } from "@/lib/freelance-marketplace";
+import { publishFeeSummary, rateLabel } from "@/lib/fees";
 import DocumentUpload, { type PickedFile } from "@/components/DocumentUpload";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 
@@ -412,6 +413,18 @@ function PublishWizard({
   onPublish: () => void;
   onBack: () => void;
 }) {
+  // Live, tiered fee preview — the exact settled Nexora schedule, never a flat
+  // percentage. Freelance listings use the freelancer commission tiers; normal
+  // marketplace products use the seller commission tiers.
+  const summary = useMemo(
+    () => publishFeeSummary("freelance", Number(form.price) || 0),
+    [form.price],
+  );
+  const productSummary = useMemo(
+    () => publishFeeSummary("product", Number(form.price) || 0),
+    [form.price],
+  );
+
   return (
     <div className="max-w-4xl mx-auto">
 
@@ -645,13 +658,16 @@ function PublishWizard({
               </div>
               <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/40">Platform Fee (5%)</span>
-                  <span className="text-white/60">KES {Math.round(Number(form.price || 0) * 0.05).toLocaleString()}</span>
+                  <span className="text-white/40">Platform commission ({rateLabel(productSummary.fee.rate)})</span>
+                  <span className="text-white/60">− KES {productSummary.fee.fee.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-white/40">Your Earnings</span>
-                  <span className="text-emerald-400 font-bold">KES {Math.round(Number(form.price || 0) * 0.95).toLocaleString()}</span>
+                  <span className="text-emerald-400 font-bold">KES {productSummary.earnings.toLocaleString()}</span>
                 </div>
+                <p className="text-[10px] text-white/25 pt-1.5 border-t border-white/5">
+                  Tiered commission: 3% under KES 5,000 · 2.5% to KES 50,000 · 2% to KES 200,000 · 1.5% above.
+                </p>
               </div>
             </div>
           </div>
@@ -660,45 +676,31 @@ function PublishWizard({
         {step === 4 && isFreelanceMode && (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold text-white mb-1">Pricing & Delivery</h2>
-              <p className="text-sm text-white/30">How much, how fast, and what you deliver.</p>
+              <h2 className="text-xl font-bold text-white mb-1">Service Pricing</h2>
+              <p className="text-sm text-white/30">Set the price employers pay for this service.</p>
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-white/40 mb-1.5 block font-medium">Price (KES) *</label>
-                  <input type="number" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="0"
-                    className="w-full px-3 py-3 rounded-lg bg-white/[0.03] border border-white/10 text-xl text-white font-bold placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="text-xs text-white/40 mb-1.5 block font-medium">Delivery time *</label>
-                  <input value={form.attributes["Delivery Time"] || ""}
-                    onChange={(e) => update("attributes", { ...form.attributes, "Delivery Time": e.target.value })}
-                    placeholder="e.g. 3 days, 1 week, 24 hours"
-                    className="w-full px-3 py-3 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
-                </div>
-              </div>
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block font-medium">Revisions included</label>
-                <select value={form.attributes["Revisions"] || "2"}
-                  onChange={(e) => update("attributes", { ...form.attributes, Revisions: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-cyan/50 focus:outline-none">
-                  {["0", "1", "2", "3", "Unlimited"].map(r => <option key={r} value={r}>{r === "Unlimited" ? "Unlimited revisions" : `${r} ${Number(r) === 1 ? "revision" : "revisions"}`}</option>)}
-                </select>
+                <label className="text-xs text-white/40 mb-1.5 block font-medium">Price (KES) *</label>
+                <input type="number" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="0"
+                  className="w-full px-3 py-3 rounded-lg bg-white/[0.03] border border-white/10 text-xl text-white font-bold placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
               </div>
               <div className="p-3 rounded-lg bg-nx-violet/5 border border-nx-violet/10">
                 <p className="text-xs text-white/50">💼 <span className="text-nx-violet font-medium">Digital delivery.</span> Work is delivered online and the fee stays in escrow until the buyer confirms delivery.</p>
               </div>
               <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/40">Platform Fee (5%)</span>
-                  <span className="text-white/60">KES {Math.round(Number(form.price || 0) * 0.05).toLocaleString()}</span>
+                  <span className="text-white/40">Platform commission ({rateLabel(summary.fee.rate)})</span>
+                  <span className="text-white/60">− KES {summary.fee.fee.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-white/40">Your Earnings</span>
-                  <span className="text-emerald-400 font-bold">KES {Math.round(Number(form.price || 0) * 0.95).toLocaleString()}</span>
+                  <span className="text-emerald-400 font-bold">KES {summary.earnings.toLocaleString()}</span>
                 </div>
+                <p className="text-[10px] text-white/25 pt-1.5 border-t border-white/5">
+                  Tiered commission: 3% under KES 5,000 · 2% to KES 50,000 · 1.5% to KES 250,000 · 1% above.
+                </p>
               </div>
             </div>
           </div>

@@ -6,16 +6,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { getWhatsAppSupportUrl, getWhatsAppSellerUrl, openWhatsApp } from "@/lib/whatsapp";
 import { getViewerKey } from "@/lib/viewer";
 import { buyerProtectionFee, rateLabel } from "@/lib/fees";
-import {
-  FREELANCE_CATEGORY_GRADIENTS,
-  freelanceCategoryName,
-  getFreelanceCategory,
-  formatSlug,
-} from "@/lib/freelance-marketplace";
+import { FREELANCE_CATEGORY_GRADIENTS, freelanceCategoryName, getFreelanceCategory, formatSlug } from "@/lib/freelance-marketplace";
+import { shortKES } from "@/lib/fees";
 import FreelanceNav from "./FreelanceNav";
 import {
-  Shield, Heart, Share2, MessageSquare, Star, Clock, CheckCircle2,
-  Truck, Package, X, Loader2, Send, MessageCircle, Briefcase, Layers, Wrench, FileText,
+  Shield, Heart, Share2, MessageSquare, Star, CheckCircle2,
+  Truck, Package, X, Loader2, Send, MessageCircle, Briefcase, Wrench, FileText,
 } from "lucide-react";
 
 export default function FreelanceServiceDetail() {
@@ -110,9 +106,6 @@ export default function FreelanceServiceDetail() {
   const buyerFee = buyerProtectionFee("freelance", fl.price);
   const platformFee = buyerFee.fee;
   const grandTotal = fl.price + platformFee;
-  const deliveryTime =
-    (fl.attributes && (fl.attributes["Delivery Time"] || fl.attributes["Delivery"])) || "Flexible";
-  const revisions = (fl.attributes && fl.attributes["Revisions"]) || undefined;
 
   const sameCategory = (similar ?? []).filter((s: any) => s._id !== fl._id).slice(0, 4);
 
@@ -357,16 +350,6 @@ export default function FreelanceServiceDetail() {
 
             {/* Meta chips */}
             <div className="flex flex-wrap gap-2">
-              {deliveryTime && (
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs text-white/50">
-                  <Clock className="w-3.5 h-3.5 text-nx-cyan" /> {deliveryTime} delivery
-                </span>
-              )}
-              {revisions !== undefined && (
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs text-white/50">
-                  <Layers className="w-3.5 h-3.5 text-nx-violet" /> {revisions} {Number(revisions) === 1 ? "revision" : "revisions"}
-                </span>
-              )}
               <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs text-white/50">
                 <Package className="w-3.5 h-3.5 text-nx-emerald" /> Digital delivery
               </span>
@@ -454,18 +437,16 @@ export default function FreelanceServiceDetail() {
 
             {/* Key facts */}
             <div className="grid grid-cols-2 gap-3">
-              {deliveryTime && (
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                  <p className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Delivery</p>
-                  <p className="text-sm font-medium text-white flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-nx-cyan" /> {deliveryTime}
-                  </p>
-                </div>
-              )}
               <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
                 <p className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Protection</p>
                 <p className="text-sm font-medium text-emerald-400 flex items-center gap-1.5">
                   <Shield className="w-3.5 h-3.5" /> Escrow + Disputes
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <p className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Category</p>
+                <p className="text-sm font-medium text-white flex items-center gap-1.5">
+                  <span>{category?.icon || "💼"}</span> {freelanceCategoryName(fl.category)}
                 </p>
               </div>
             </div>
@@ -546,7 +527,7 @@ export default function FreelanceServiceDetail() {
                   </div>
                   <div className="p-3">
                     <h4 className="text-xs text-white/70 font-medium truncate group-hover:text-white transition-colors">{svc.title}</h4>
-                    <p className="text-sm font-bold text-white mt-1">KES {svc.price.toLocaleString()}</p>
+                    <p className="text-sm font-bold text-white mt-1">{shortKES(svc.price)}</p>
                   </div>
                 </button>
               ))}

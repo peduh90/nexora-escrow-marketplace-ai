@@ -3,11 +3,8 @@ import { useNavigate } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  FREELANCE_CATEGORIES,
-  FREELANCE_CATEGORY_GRADIENTS,
-  getFreelanceCategory,
-} from "@/lib/freelance-marketplace";
+import { FREELANCE_CATEGORIES, FREELANCE_CATEGORY_GRADIENTS, getFreelanceCategory } from "@/lib/freelance-marketplace";
+import { shortKES } from "@/lib/fees";
 import FreelanceNav from "./FreelanceNav";
 import {
   Search, ArrowRight, Shield, Globe, Zap, Star, Clock, Briefcase,
@@ -40,7 +37,11 @@ export default function FreelanceLanding() {
 
   const display = services ?? [];
   const activeCategory = category !== "all" ? getFreelanceCategory(category) : null;
-  const isSeller = isAuthenticated && user?.role === "seller";
+  // Freelancers and sellers can publish services. Freelancers use the
+  // standalone freelance publish flow (no store required); sellers use their
+  // store's publish wizard.
+  const canPublish = isAuthenticated && (user?.role === "freelancer" || user?.role === "seller");
+  const publishTarget = user?.role === "seller" ? "/seller/add-product" : "/freelance/publish";
 
   const scrollToListings = () => {
     document.getElementById("freelance-listings")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -58,13 +59,15 @@ export default function FreelanceLanding() {
     setSearch("");
   };
 
-  // Existing sellers go straight to publishing; everyone else lands on the
-  // dedicated seller panel (register/sign in) and continues from /seller.
   const publishCta = () => {
-    if (isSeller) {
-      navigate("/seller/add-product");
+    if (canPublish) {
+      navigate(publishTarget);
+    } else if (isAuthenticated) {
+      // Signed in as buyer/employer/admin — publishing needs a freelancer or
+      // seller account, so route through the freelance registration flow.
+      navigate("/auth/freelance?returnTo=%2Ffreelance%2Fpublish");
     } else {
-      navigate("/auth/seller?returnTo=%2Fseller%2Fadd-product");
+      navigate("/auth?returnTo=%2Ffreelance%2Fpublish");
     }
   };
 
@@ -109,7 +112,7 @@ export default function FreelanceLanding() {
               onClick={publishCta}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-nx-violet text-white text-sm font-semibold hover:bg-nx-violet/80 transition-colors"
             >
-              <Wrench className="w-4 h-4" /> {isSeller ? "Offer a Service" : user ? "Register a Seller Store" : "Become a Seller & Offer Services"}
+              <Wrench className="w-4 h-4" /> {canPublish ? "Offer a Service" : user ? "Register as a Freelancer to Offer Services" : "Become a Freelancer & Offer Services"}
             </button>
             <button
               onClick={() => navigate("/freelance/jobs")}
@@ -244,20 +247,19 @@ export default function FreelanceLanding() {
               <p className="text-xs text-white/25 mt-1.5 max-w-sm mx-auto">
                 {search.trim() || category !== "all"
                   ? "Try a different keyword or category."
-                  : "When a seller publishes with a freelance category, the listing appears here — and only here."}
+                  : "When a freelancer publishes a service, it appears here instantly."}
               </p>
               <button
                 onClick={publishCta}
                 className="mt-5 px-5 py-2.5 rounded-xl bg-nx-violet text-white text-sm font-semibold hover:bg-nx-violet/80 transition-colors"
               >
-                {isSeller ? "Offer the first service" : "Register a Seller Store to Offer Services"}
+                {canPublish ? "Offer the first service" : "Become a Freelancer to Offer Services"}
               </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {display.map((svc: any) => {
                 const cat = getFreelanceCategory(svc.category);
-                const deliveryTime = svc.attributes?.["Delivery Time"] || svc.attributes?.["Delivery"];
                 return (
                   <button
                     key={svc._id}
@@ -279,11 +281,6 @@ export default function FreelanceLanding() {
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-nx-emerald/10 text-nx-emerald font-medium flex items-center gap-1">
                           <Shield className="w-2.5 h-2.5" /> Escrow
                         </span>
-                        {deliveryTime && (
-                          <span className="flex items-center gap-1 text-[10px] text-white/30">
-                            <Clock className="w-2.5 h-2.5" /> {deliveryTime}
-                          </span>
-                        )}
                       </div>
                       <h3 className="text-sm font-semibold text-white leading-snug group-hover:text-nx-violet transition-colors line-clamp-2 mb-2">
                         {svc.title}
@@ -301,7 +298,7 @@ export default function FreelanceLanding() {
                       </div>
                       <div className="flex items-baseline justify-between mt-2">
                         <span className="text-[10px] text-white/30">from</span>
-                        <span className="text-base font-bold text-white">KES {svc.price.toLocaleString()}</span>
+                        <span className="text-base font-bold text-white">{shortKES(svc.price)}</span>
                       </div>
                     </div>
                   </button>
