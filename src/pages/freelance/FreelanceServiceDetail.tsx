@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -50,6 +50,10 @@ export default function FreelanceServiceDetail() {
   const [hiring, setHiring] = useState(false);
   const [hireError, setHireError] = useState("");
   const [orderSuccess, setOrderSuccess] = useState(false);
+  // Conversation opened automatically when the order is placed, so the buyer
+  // lands with a direct chat line to the provider and the provider is notified
+  // with the actual order brief.
+  const [orderConvoId, setOrderConvoId] = useState<string | null>(null);
 
   useEffect(() => {
     if (listing) {
@@ -217,6 +221,21 @@ export default function FreelanceServiceDetail() {
       deliveryAddress: brief.trim(),
       paymentMethod: "wallet",
     });
+
+    // Open the order chat with the provider right away — the provider gets a
+    // notification containing the real brief, and the buyer has a direct line
+    // to coordinate delivery. Best-effort: the order itself is already placed.
+    try {
+      const result = await startConversation({
+        sellerId: fl.sellerId,
+        listingId: fl._id,
+        firstMessage: `Order confirmed — "${fl.title}" (KES ${fl.price.toLocaleString()}) is paid and held in escrow. My brief: ${brief.trim().slice(0, 400)}`,
+      });
+      setOrderConvoId((result as any)?.conversationId ?? null);
+    } catch {
+      setOrderConvoId(null);
+    }
+
     setOrderSuccess(true);
     setShowHire(false);
     setBrief("");
@@ -232,16 +251,16 @@ export default function FreelanceServiceDetail() {
     return `${days}d ago`;
   };
 
-  const entries = useMemo(
-    () =>
-      Object.entries(fl.attributes || {})
-        .filter(
-          ([k, v]) =>
-            v && k !== "Marketplace" && k !== "Delivery Time" && k !== "Revisions" && k !== "SellerPhone" && k !== "BusinessName",
-        )
-        .slice(0, 6),
-    [fl.attributes],
-  );
+  // Plain computation (not a hook): this sits after the loading/not-found early
+  // returns, so any hook here would change the render's hook count and crash
+  // with React error #310 when the listing data arrived. Object.entries on a
+  // small spec object is trivially cheap, so memoization was never needed.
+  const entries = Object.entries(fl.attributes || {})
+    .filter(
+      ([k, v]) =>
+        v && k !== "Marketplace" && k !== "Delivery Time" && k !== "Revisions" && k !== "SellerPhone" && k !== "BusinessName",
+    )
+    .slice(0, 6);
 
   return (
     <div className="min-h-screen bg-[#05050A]">
@@ -260,12 +279,18 @@ export default function FreelanceServiceDetail() {
         {orderSuccess && (
           <div className="mb-6 p-4 rounded-xl bg-emerald-400/5 border border-emerald-400/10 flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-medium text-emerald-400">Service booked successfully!</p>
               <p className="text-xs text-white/40 mt-0.5">
                 Your payment is protected by escrow until the provider delivers the work.
               </p>
             </div>
+            <button
+              onClick={() => navigate(orderConvoId ? `/chat/${orderConvoId}` : "/chat")}
+              className="ml-auto shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-400/10 text-emerald-300 text-xs font-semibold hover:bg-emerald-400/20 border border-emerald-400/20 transition-colors"
+            >
+              <MessageSquare className="w-4 h-4" /> Chat with provider
+            </button>
           </div>
         )}
 
