@@ -101,7 +101,7 @@ export default function FreelanceServices() {
               </p>
               <p className="text-[11px] text-white/20 mt-1 max-w-sm mx-auto">
                 Services you publish through the listing form appear on the public
-                Freelance Marketplace where buyers can order them with escrow protection.
+                Freelance Marketplace where employers can hire them with escrow protection.
               </p>
               <button
                 onClick={() => navigate("/freelance/publish")}
@@ -159,13 +159,13 @@ export default function FreelanceServices() {
             </div>
           )}
 
-          {/* Edit hint — the management surface lives in the seller panel */}
+          {/* Edit hint — service management lives in the provider's listing manager */}
           <div className="flex items-center gap-2 p-3.5 rounded-xl bg-nx-cyan/[0.04] border border-nx-cyan/10">
             <Eye className="w-4 h-4 text-nx-cyan shrink-0" />
             <p className="text-[11px] text-white/40">
               Services are managed together with your listings. Use{" "}
               <button onClick={() => navigate("/seller/products")} className="text-nx-cyan underline underline-offset-2">
-                Seller → Products
+                My Listings → Products
               </button>{" "}
               to edit, pause, or remove any service.
             </p>

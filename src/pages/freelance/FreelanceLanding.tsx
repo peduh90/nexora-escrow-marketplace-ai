@@ -83,13 +83,13 @@ export default function FreelanceLanding() {
             <Bot className="w-3.5 h-3.5" /> FREELANCE MARKETPLACE · SERVICES, ACCOUNTS & DIGITAL TOOLS
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight tracking-tight">
-            Buy & sell <span className="bg-gradient-to-r from-nx-violet via-nx-cyan to-nx-violet bg-clip-text text-transparent">freelance services</span>,
+            Hire talent & <span className="bg-gradient-to-r from-nx-violet via-nx-cyan to-nx-violet bg-clip-text text-transparent">get hired</span> for
             <br />
-            <span className="text-white">accounts & digital tools</span>
+            <span className="text-white">services, accounts & digital tools</span>
           </h1>
           <p className="text-sm md:text-base text-white/40 max-w-2xl mx-auto mt-4 leading-relaxed">
             AI accounts & tools, writing accounts, Grammarly-style bots, design, development, marketing and more —
-            escrow protected until the work is delivered.
+            posted by providers, hired by employers, escrow protected until the work is delivered.
           </p>
 
           <div className="w-full max-w-2xl mx-auto mt-7">

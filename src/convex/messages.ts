@@ -88,21 +88,21 @@ export const startConversation = mutation({
       createdAt: Date.now(),
     });
 
-    // Notify the seller about the new inquiry — with a link to the panel the
+    // Notify the provider about the new inquiry — with a link to the panel the
     // recipient actually uses (freelancers and employers have their own
     // message pages; only store sellers use the seller panel).
-    let sellerLink = "/seller/messages";
+    let providerLink = "/seller/messages";
     if (args.sellerId !== buyer._id) {
       const sellerDoc = await ctx.db.get(args.sellerId as any);
-      sellerLink = messagesLinkFor((sellerDoc as any)?.role);
+      providerLink = messagesLinkFor((sellerDoc as any)?.role);
     }
     await ctx.db.insert("notifications", {
       userId: args.sellerId,
       type: "message",
-      title: "New buyer message",
+      title: "New client inquiry",
       message: `Someone is interested in "${listingTitle}". Open Messages to reply.`,
       read: false,
-      link: sellerLink,
+      link: providerLink,
       createdAt: Date.now(),
     });
 

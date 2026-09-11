@@ -155,7 +155,7 @@ export default function Chat() {
                 </div>
                 <p className="text-white/40 text-sm">No conversations yet</p>
                 <p className="text-white/20 text-xs mt-1">
-                  Start chatting with a seller from a product page
+                  Start a chat from any product or freelance service page
                 </p>
               </div>
             ) : (
