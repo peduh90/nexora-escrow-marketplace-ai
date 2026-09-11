@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
+import { api } from "./_generated/api";
 import { getSessionUser } from "./users";
 
 /**
@@ -87,9 +88,30 @@ export const createListing = mutation({
     const user = await getSessionUser(ctx);
     if (!user) throw new Error("Not authenticated");
 
-    // Sellers can publish products immediately — no admin store approval gate.
-
     const marketplace = normalizeMarketplace(args.marketplace);
+
+    // ── ROLE GATES: the two marketplaces have separate providers ──
+    //  • Freelance services (Writer/Freelancer accounts) and Sellers may
+    //    publish to the Freelance Marketplace.
+    //  • Only Sellers publish physical products in the Normal Marketplace —
+    //    a Writer/Freelancer never needs a store, and Buyers/Employers never
+    //    publish either. Admin can act in both marketplaces.
+    const role = (user as any).role as string | undefined;
+    if (role === "admin") {
+      // admins are allowed in both marketplaces (moderation/testing)
+    } else if (marketplace === MARKETPLACE.FREELANCE) {
+      if (role !== "freelancer" && role !== "seller") {
+        throw new Error(
+          "Only Writer/Freelancer (or Seller) accounts can publish services to Nexora Freelance. Register as a Writer/Freelancer first."
+        );
+      }
+    } else {
+      if (role !== "seller") {
+        throw new Error(
+          "Only Seller accounts can publish products in the Normal Marketplace."
+        );
+      }
+    }
 
     // A freelance listing must use a freelance category so it is guaranteed to
     // show up only inside the Freelance Marketplace.
@@ -97,6 +119,7 @@ export const createListing = mutation({
       throw new Error("Freelance listings must use a Freelance Marketplace category (AI tools, writing, design, development, marketing, bots or other services).");
     }
 
+    const now = Date.now();
     const listingId = await ctx.db.insert("listings", {
       marketplace,
       sellerId: user._id,
@@ -123,11 +146,38 @@ export const createListing = mutation({
       views: 0,
       favorites: 0,
       status: "active",
-      createdAt: Date.now(),
+      createdAt: now,
     });
 
     const current = user.activeListings || 0;
     await ctx.db.patch(user._id, { activeListings: current + 1 });
+
+    // ── Notify the admin team of the new listing (in-app + email) ──
+    // In-app: one notification per admin, always delivered to the bell.
+    // Email: scheduled as a background action so publishing never blocks on
+    // the mail provider; it no-ops safely when RESEND_API_KEY is unset.
+    const admins = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q: any) => q.eq("role", "admin"))
+      .collect();
+    for (const admin of admins) {
+      await ctx.db.insert("notifications", {
+        userId: admin._id,
+        type: "listing",
+        title: marketplace === MARKETPLACE.FREELANCE ? "New freelance service published" : "New product published",
+        message: `${args.sellerName || user.name || "A provider"} published "${args.title}" (KES ${args.price.toLocaleString()}) in the ${marketplace === MARKETPLACE.FREELANCE ? "Freelance" : "Normal"} Marketplace.`,
+        read: false,
+        link: marketplace === MARKETPLACE.FREELANCE ? `/freelance/service/${listingId}` : `/product/${listingId}`,
+        createdAt: now,
+      });
+    }
+    await ctx.scheduler.runAfter(0, api.notify.sendNewListingEmail, {
+      title: args.title,
+      price: args.price,
+      marketplace,
+      sellerName: args.sellerName || user.name || "A provider",
+      listingId,
+    });
 
     return { listingId };
   },
@@ -140,6 +190,7 @@ export const updateListing = mutation({
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     price: v.optional(v.number()),
+    subcategory: v.optional(v.string()),
     images: v.optional(v.array(v.string())),
     condition: v.optional(v.string()),
     attributes: v.optional(v.record(v.string(), v.string())),
@@ -157,6 +208,7 @@ export const updateListing = mutation({
     if (args.title !== undefined) updates.title = args.title;
     if (args.description !== undefined) updates.description = args.description;
     if (args.price !== undefined) updates.price = args.price;
+    if (args.subcategory !== undefined) updates.subcategory = args.subcategory;
     if (args.images !== undefined) updates.images = args.images;
     if (args.condition !== undefined) updates.condition = args.condition;
     if (args.attributes !== undefined) updates.attributes = args.attributes;
@@ -223,6 +275,36 @@ export const getFreelanceListings = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     return getActiveListingsForMarketplace(ctx, MARKETPLACE.FREELANCE, args.limit ?? 50);
+  },
+});
+
+/**
+ * Public: all ACTIVE listings belonging to one user in one marketplace.
+ * Powers the public freelancer profile page (their published services).
+ */
+export const getUserListings = query({
+  args: {
+    userId: v.string(),
+    marketplace: marketplaceValidator,
+  },
+  handler: async (ctx, args) => {
+    const marketplace = normalizeMarketplace(args.marketplace);
+    const listings = await ctx.db
+      .query("listings")
+      .withIndex("by_seller", (q: any) => q.eq("sellerId", args.userId))
+      .order("desc")
+      .collect();
+
+    const scoped = listings.filter(
+      (l: any) => l.status === "active" && normalizeMarketplace(l.marketplace) === marketplace
+    );
+
+    return Promise.all(
+      scoped.map(async (listing: any) => ({
+        ...listing,
+        images: await resolveListingImages(ctx, listing.images),
+      }))
+    );
   },
 });
 

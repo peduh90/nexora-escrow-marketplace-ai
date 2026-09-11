@@ -938,36 +938,6 @@ const schema = defineSchema(
     })
       .index("by_freelancer", ["freelancerId"])
       .index("by_project", ["projectId"]),
-
-    // Freelance service listings (accounts marketplace)
-    freelanceServices: defineTable({
-      freelancerId: v.string(),
-      freelancerName: v.string(),
-      freelancerImage: v.optional(v.string()),
-      title: v.string(),
-      description: v.string(),
-      category: v.string(),
-      price: v.number(),
-      priceType: v.union(v.literal("fixed"), v.literal("hourly"), v.literal("starting_at")),
-      currency: v.string(),
-      deliveryTime: v.string(), // e.g. "3 days"
-      revisions: v.number(),
-      features: v.array(v.string()),
-      images: v.optional(v.array(v.string())),
-      tags: v.array(v.string()),
-      orders: v.number(), // completed orders
-      views: v.number(),
-      status: v.union(
-        v.literal("active"),
-        v.literal("paused"),
-        v.literal("removed"),
-      ),
-      createdAt: v.number(),
-      updatedAt: v.number(),
-    })
-      .index("by_freelancer", ["freelancerId"])
-      .index("by_category", ["category"])
-      .index("by_status", ["status"]),
   },
   {
     schemaValidation: false,
