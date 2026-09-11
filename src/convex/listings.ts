@@ -58,6 +58,18 @@ async function resolveListingImages(ctx: any, images: string[] | undefined): Pro
   return out;
 }
 
+/** Resolve document storage keys to displayable URLs (gracefully skips dead keys). */
+async function resolveListingDocuments(ctx: any, docs: string[] | undefined): Promise<string[]> {
+  const out: string[] = [];
+  for (const doc of docs || []) {
+    try {
+      const url = await ctx.storage.getUrl(doc);
+      if (url) { out.push(url); continue; }
+    } catch { /* dead or invalid storage key — skip */ }
+  }
+  return out;
+}
+
 /** Create a new listing (seller adds product or freelance service) */
 export const createListing = mutation({
   args: {
@@ -81,6 +93,7 @@ export const createListing = mutation({
     sellerReputation: v.number(),
     sellerVerified: v.boolean(),
     negotiable: v.optional(v.boolean()),
+    documents: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     // Always bind the listing to the session's OWN user — never an email
@@ -130,6 +143,7 @@ export const createListing = mutation({
       category: args.category,
       subcategory: args.subcategory,
       images: args.images ?? [],
+      documents: args.documents ?? [],
       transportAvailable: args.transportAvailable,
       transportFee: args.transportFee,
       originCounty: args.originCounty,
@@ -254,6 +268,7 @@ async function getActiveListingsForMarketplace(ctx: any, marketplace: Marketplac
     scoped.map(async (listing: any) => ({
       ...listing,
       images: await resolveListingImages(ctx, listing.images),
+      documents: await resolveListingDocuments(ctx, listing.documents),
     }))
   );
 }
@@ -303,6 +318,7 @@ export const getUserListings = query({
       scoped.map(async (listing: any) => ({
         ...listing,
         images: await resolveListingImages(ctx, listing.images),
+      documents: await resolveListingDocuments(ctx, listing.documents),
       }))
     );
   },
@@ -328,6 +344,7 @@ export const getSellerListings = query({
       listings.map(async (listing: any) => ({
         ...listing,
         images: await resolveListingImages(ctx, listing.images),
+      documents: await resolveListingDocuments(ctx, listing.documents),
       }))
     );
   },
@@ -343,6 +360,7 @@ export const getListing = query({
     return {
       ...listing,
       images: await resolveListingImages(ctx, listing.images),
+      documents: await resolveListingDocuments(ctx, listing.documents),
     };
   },
 });
@@ -532,6 +550,7 @@ export const searchListings = query({
       results.map(async (listing: any) => ({
         ...listing,
         images: await resolveListingImages(ctx, listing.images),
+      documents: await resolveListingDocuments(ctx, listing.documents),
       }))
     );
   },
@@ -586,6 +605,7 @@ export const searchFreelanceListings = query({
       sliced.map(async (listing: any) => ({
         ...listing,
         images: await resolveListingImages(ctx, listing.images),
+      documents: await resolveListingDocuments(ctx, listing.documents),
       }))
     );
   },

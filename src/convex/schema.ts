@@ -230,6 +230,9 @@ const schema = defineSchema(
       category: v.string(),
       subcategory: v.optional(v.string()),
       images: v.optional(v.array(v.string())),
+      // Supporting documents (spec sheets, invoices, portfolios, briefs).
+      // Convex storage keys — resolved to URLs when listings are read.
+      documents: v.optional(v.array(v.string())),
       // Transport
       transportAvailable: v.boolean(),
       transportFee: v.optional(v.number()),
