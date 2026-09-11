@@ -106,9 +106,35 @@ function ImageUploadStep({ form, update }: { form: any; update: (key: string, va
 
 const TOTAL_STEPS = 5;
 
-export default function SellerAddProduct() {
+/** Minimal top bar for the standalone freelance publish flow (no seller shell). */
+function FreelancePublishHeader({ onBack, step }: { onBack: () => void; step: number }) {
+  return (
+    <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack}
+          className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-nx-violet/10 flex items-center justify-center">
+            <Package className="w-4 h-4 text-nx-violet" />
+          </div>
+          <span className="text-sm font-bold text-white">NEXORA<span className="text-nx-violet">.</span></span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-nx-violet/10 text-nx-violet font-medium hidden sm:inline">FREELANCE</span>
+        </div>
+      </div>
+      <span className="text-xs text-white/40">Step {step + 1} of {TOTAL_STEPS}</span>
+    </div>
+  );
+}
+
+export default function SellerAddProduct({ freelanceMode: freelanceModeProp = false }: { freelanceMode?: boolean }) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  // When mounted under /freelance/publish the marketplace is LOCKED to
+  // "freelance" — a Writer/Freelancer never publishes physical products and
+  // never needs a store.
+  const forcedFreelance = freelanceModeProp === true;
   const createListing = useMutation(api.listings.createListing);
   const generateUploadUrl = useMutation(api.listings.generateUploadUrl);
   const [step, setStep] = useState(0);
@@ -119,8 +145,8 @@ export default function SellerAddProduct() {
     // the chosen category — Freelance Marketplace categories (AI tools,
     // writing, design, development, marketing, bots, other services) place the
     // listing in the Freelance Marketplace; every other category publishes to
-    // the Normal Marketplace.
-    marketplace: "" as "" | "product" | "freelance",
+    // the Normal Marketplace. In freelance mode this is locked to "freelance".
+    marketplace: (forcedFreelance ? "freelance" : "") as "" | "product" | "freelance",
     category: "",
     subcategory: "",
     title: "",
@@ -147,7 +173,7 @@ export default function SellerAddProduct() {
       }))
     : FALLBACK_CATEGORIES;
 
-  const isFreelanceMode = form.marketplace === "freelance";
+  const isFreelanceMode = forcedFreelance || form.marketplace === "freelance";
   // Freelance Marketplace categories (digital services & tools) or the Normal
   // Marketplace product categories.
   const categories = isFreelanceMode ? FREELANCE_CATEGORIES : productCategories;
@@ -161,7 +187,11 @@ export default function SellerAddProduct() {
   // Choosing a category decides the marketplace automatically — the two
   // marketplaces can never mix.
   const pickCategory = (catSlug: string) => {
-    const nextMarketplace = FREELANCE_SLUGS.has(catSlug) ? "freelance" : "product";
+    const nextMarketplace = forcedFreelance
+      ? "freelance"
+      : FREELANCE_SLUGS.has(catSlug)
+      ? "freelance"
+      : "product";
     update("marketplace", nextMarketplace);
     update("category", catSlug);
     update("subcategory", "");
@@ -244,8 +274,8 @@ export default function SellerAddProduct() {
         sellerVerified: user?.kycStatus === "verified",
       });
 
-      // Return the seller to their dashboard after publishing
-      navigate("/seller");
+      // Return to the panel that owns the listing.
+      navigate(forcedFreelance ? "/freelance/services" : "/seller");
     } catch (err: any) {
       setError(err.message || "Failed to publish. Please try again.");
     } finally {
@@ -253,24 +283,110 @@ export default function SellerAddProduct() {
     }
   };
 
+  // Freelance providers are NOT Marketplace Sellers and never see the seller
+  // shell — the publish flow renders standalone with its own header.
+  if (forcedFreelance) {
+    return (
+      <div className="min-h-screen bg-[#05050A] px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <FreelancePublishHeader onBack={() => (step > 0 ? setStep(step - 1) : navigate("/freelance/services"))} step={step} />
+          <PublishWizard
+            step={step}
+            setStep={setStep}
+            form={form}
+            update={update}
+            pickCategory={pickCategory}
+            selectMarketplace={selectMarketplace}
+            isFreelanceMode={isFreelanceMode}
+            selectedCategory={selectedCategory}
+            selectedSubcategory={selectedSubcategory}
+            specTemplate={specTemplate}
+            countyTowns={countyTowns}
+            publishing={publishing}
+            error={error}
+            onPublish={handlePublish}
+            onBack={() => (step > 0 ? setStep(step - 1) : navigate("/freelance/services"))}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <SellerLayout>
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <button onClick={() => step > 0 ? setStep(step - 1) : navigate(-1)}
-              className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-nx-cyan/10 flex items-center justify-center">
-                <Package className="w-4 h-4 text-nx-cyan" />
-              </div>
-              <span className="text-sm font-bold text-white">NEXORA<span className="text-nx-cyan">.</span></span>
-            </div>
-          </div>
-          <span className="text-xs text-white/40">Step {step + 1} of {TOTAL_STEPS}</span>
-        </div>
+        <PublishWizard
+          step={step}
+          setStep={setStep}
+          form={form}
+          update={update}
+          pickCategory={pickCategory}
+          selectMarketplace={selectMarketplace}
+          isFreelanceMode={isFreelanceMode}
+          selectedCategory={selectedCategory}
+          selectedSubcategory={selectedSubcategory}
+          specTemplate={specTemplate}
+          countyTowns={countyTowns}
+          publishing={publishing}
+          error={error}
+          onPublish={handlePublish}
+          onBack={() => (step > 0 ? setStep(step - 1) : navigate("/seller"))}
+        />
+      </div>
+    </SellerLayout>
+  );
+}
+
+/** The 5-step publish wizard body, shared by the seller shell and the standalone freelance flow. */
+function PublishWizard({
+  step,
+  setStep,
+  form,
+  update,
+  pickCategory,
+  selectMarketplace,
+  isFreelanceMode,
+  selectedCategory,
+  selectedSubcategory,
+  specTemplate,
+  countyTowns,
+  publishing,
+  error,
+  onPublish,
+  onBack,
+}: {
+  step: number;
+  setStep: (s: number) => void;
+  form: {
+    marketplace: "" | "product" | "freelance";
+    category: string;
+    subcategory: string;
+    title: string;
+    description: string;
+    condition: string;
+    price: string;
+    originalPrice: string;
+    negotiable: boolean;
+    county: string;
+    town: string;
+    attributes: Record<string, string>;
+    images: { file: File; preview: string }[];
+  };
+  update: (key: string, value: any) => void;
+  pickCategory: (slug: string) => void;
+  selectMarketplace: (mp: "product" | "freelance") => void;
+  isFreelanceMode: boolean;
+  selectedCategory?: { name: string; slug: string; icon: string; image?: string; description: string; subcategories: { name: string; slug: string }[] };
+  selectedSubcategory?: { name: string; slug: string };
+  specTemplate: { label: string; type: string; options?: string[] }[];
+  countyTowns: string[];
+  publishing: boolean;
+  error: string;
+  onPublish: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="max-w-4xl mx-auto">
 
         {error && (
           <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
@@ -551,7 +667,7 @@ export default function SellerAddProduct() {
         )}
 
         <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/5">
-          <button onClick={() => step > 0 ? setStep(step - 1) : navigate(-1)}
+          <button onClick={onBack}
             className="px-4 py-2.5 rounded-xl text-sm text-white/40 hover:text-white/60 transition-colors flex items-center gap-1">
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
@@ -561,7 +677,7 @@ export default function SellerAddProduct() {
               Next <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
-            <button onClick={handlePublish} disabled={publishing}
+            <button onClick={onPublish} disabled={publishing}
               className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-500/80 transition-colors flex items-center gap-2 disabled:opacity-50">
               {publishing ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Publishing...</>
@@ -572,6 +688,5 @@ export default function SellerAddProduct() {
           )}
         </div>
       </div>
-    </SellerLayout>
   );
 }

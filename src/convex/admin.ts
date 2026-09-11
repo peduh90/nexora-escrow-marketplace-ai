@@ -154,7 +154,10 @@ export const getDashboardStats = query({
     const freelanceTasks = await ctx.db.query("freelanceTasks").collect();
     const freelanceProjects = await ctx.db.query("freelanceProjects").collect();
     const freelanceApplications = await ctx.db.query("freelanceApplications").collect();
-    const freelanceServices = await ctx.db.query("freelanceServices").collect();
+    // Freelance services are listings published to the Freelance Marketplace.
+    const freelanceServiceCount = listings.filter(
+      (l: any) => l.marketplace === "freelance"
+    ).length;
 
     return {
       users: {
@@ -176,7 +179,7 @@ export const getDashboardStats = query({
         activeProjects: freelanceProjects.filter((p) => p.status === "active").length,
         completedProjects: freelanceProjects.filter((p) => p.status === "completed").length,
         applications: freelanceApplications.length,
-        services: freelanceServices.length,
+        services: freelanceServiceCount,
       },
       products: {
         total: listings.length,

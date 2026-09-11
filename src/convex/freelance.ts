@@ -634,8 +634,8 @@ export const updateProjectProgress = mutation({
   },
 });
 
-/** Get project messages */
-export const getProjectMessages = query({
+/** Send a project message */
+export const sendProjectMessage = mutation({
   args: {
     projectId: v.id("freelanceProjects"),
     content: v.string(),

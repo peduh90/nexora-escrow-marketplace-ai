@@ -129,7 +129,6 @@ const OWNED_TABLE_FIELDS: Array<[string, string[]]> = [
   ["freelanceApplications", ["freelancerId"]],
   ["freelanceProjects", ["employerId", "freelancerId"]],
   ["freelanceEarnings", ["freelancerId"]],
-  ["freelanceServices", ["freelancerId"]],
   ["freelanceReviews", ["reviewerId", "revieweeId"]],
   ["freelanceMessages", ["senderId"]],
   ["jobPosts", ["posterId"]],

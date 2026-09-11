@@ -47,6 +47,7 @@ const SellerWithdrawals = lazy(() => import("./pages/seller/SellerWithdrawals.ts
 const SellerPromotions = lazy(() => import("./pages/seller/SellerPromotions.tsx"));
 const SellerAddProduct = lazy(() => import("./pages/seller/SellerAddProduct.tsx"));
 const SellerEditProduct = lazy(() => import("./pages/seller/SellerEditProduct.tsx"));
+const FreelancerProfile = lazy(() => import("./pages/freelance/FreelancerProfile.tsx"));
 // Freelance marketplace
 const FreelanceLanding = lazy(() => import("./pages/freelance/FreelanceLanding.tsx"));
 const FreelanceServiceDetail = lazy(() => import("./pages/freelance/FreelanceServiceDetail.tsx"));
@@ -236,6 +237,10 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/auth" element={<AuthPage redirectAfterAuth="/buyer" />} />
               {/* Dedicated seller registration/sign-in panel — skips the "Choose Your Path" role cards */}
               <Route path="/auth/seller" element={<AuthPage sellerFirst redirectAfterAuth="/seller" />} />
+              {/* Dedicated Writer/Freelancer registration/sign-in panel — the
+                  Freelance counterpart of /auth/seller. Freelance accounts are
+                  separate from Marketplace Seller accounts and never need a store. */}
+              <Route path="/auth/freelance" element={<AuthPage freelanceFirst redirectAfterAuth="/freelance/dashboard" />} />
               {/* Public freelance jobs board (legacy /jobs URL) */}
               <Route path="/jobs" element={<FreelanceJobs />} />
 
@@ -266,6 +271,13 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/freelance/post-task" element={<RoleRouter allowedRoles={["employer"]}><FreelancePostTask /></RoleRouter>} />
               <Route path="/freelance/projects" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceProjects /></RoleRouter>} />
               <Route path="/freelance/applications" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceApplications /></RoleRouter>} />
+              {/* Publishing a freelance service — the freelancer's own flow
+                  (seller-style wizard, no seller layout, marketplace locked to
+                  freelance). Services land in the Freelance Marketplace. */}
+              <Route path="/freelance/publish" element={<RoleRouter allowedRoles={["freelancer", "seller"]}><SellerAddProduct freelanceMode /></RoleRouter>} />
+              <Route path="/freelance/edit-service/:id" element={<RoleRouter allowedRoles={["freelancer", "seller"]}><SellerEditProduct freelanceMode /></RoleRouter>} />
+              {/* Public freelancer profile — NOT a seller store page. */}
+              <Route path="/freelancer/:userId" element={<FreelancerProfile />} />
               <Route path="/freelance/services" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceServices /></RoleRouter>} />
               <Route path="/freelance/earnings" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceEarnings /></RoleRouter>} />
               <Route path="/freelance/settings" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceSettings /></RoleRouter>} />

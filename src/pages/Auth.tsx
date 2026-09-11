@@ -16,7 +16,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import {
   ArrowRight, Loader2, Shield, ShoppingBag, Store, ChevronRight, Check,
-  Lock, Globe, Zap, Phone, User, ArrowLeft, KeyRound, Mail,
+  Lock, Globe, Zap, Phone, User, ArrowLeft, KeyRound, Mail, PenLine,
 } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -29,6 +29,8 @@ interface AuthProps {
   redirectAfterAuth?: string;
   /** Dedicated seller registration panel — skips "Choose Your Path" entirely. */
   sellerFirst?: boolean;
+  /** Dedicated freelance (Writer/Freelancer) registration panel. */
+  freelanceFirst?: boolean;
 }
 
 function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/buyer") {
@@ -48,7 +50,7 @@ type AuthStep =
   | "forgotCode"
   | "forgotNewPassword";
 
-function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
+function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}) {
   const { isLoading: authLoading, isAuthenticated, signIn, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -57,16 +59,24 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
   const redirect = resolveRedirectAfterAuth(searchParams.get("returnTo"), "/auth");
   const isAdminLogin = redirect === "/admin";
   const isSellerRegister = sellerFirst === true;
+  // Dedicated freelance panel — the Writer/Freelancer counterpart of the
+  // seller panel: no store, no role cards, straight to the freelance form.
+  const isFreelanceRegister = searchParams.get("freelance") === "1" || freelanceFirst === true;
 
   // Dedicated seller panel: the role is fixed to seller, so we start straight
   // at the seller sign-up form instead of the "Choose Your Path" role cards.
+  // The freelance panel does the same for the Writer/Freelancer role.
   const [step, setStep] = useState<AuthStep>(
-    isAdminLogin ? "adminEmail" : isSellerRegister ? "signIn" : "roleSelect",
+    isAdminLogin
+      ? "adminEmail"
+      : isSellerRegister || isFreelanceRegister
+      ? "signIn"
+      : "roleSelect",
   );
   const [selectedRole, setSelectedRole] = useState<
     "buyer" | "seller" | "freelancer" | "employer" | null
   >(
-    isSellerRegister ? "seller" : null,
+    isFreelanceRegister ? "freelancer" : isSellerRegister ? "seller" : null,
   );
   // On the dedicated seller panel, toggle between creating an account and
   // signing in to an existing one.
@@ -208,11 +218,25 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
     return null;
   };
 
-  const isFreelanceRoute = redirect.startsWith("/freelance");
+  const isFreelanceRoute = redirect.startsWith("/freelance") || isFreelanceRegister;
+
+  // The dedicated freelance panel toggles between register and sign-in, like
+  // the seller panel does.
+  const [freelanceMode, setFreelanceMode] = useState<"register" | "login">("register");
+  const freelancePanelLogin = isFreelanceRegister && freelanceMode === "login";
 
   const handleRoleSelect = (role: "buyer" | "seller" | "freelancer" | "employer") => {
     setSelectedRole(role);
     setStep("signIn");
+  };
+
+  /** Freelance panel: flip between register and sign-in. */
+  const setFreelancePanelMode = (mode: "register" | "login") => {
+    setFreelanceMode(mode);
+    setError(null);
+    setPasswordError(null);
+    setConfirmPasswordError(null);
+    setLoginPassword("");
   };
 
   const handleEmailSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -679,6 +703,47 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
         </div>
       )}
 
+      {/* Dedicated freelance-panel intro (no role cards) — Writer/Freelancer
+          accounts live in Nexora Freelance, never in a seller store. */}
+      {isFreelanceRegister && !isAdminLogin && (
+        <div className="relative z-10 w-full max-w-[440px] text-center mb-5">
+          <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold tracking-widest uppercase">
+            <PenLine className="w-3.5 h-3.5" /> Nexora Freelance
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+            {freelanceMode === "register" ? "Join as a Writer / Freelancer" : "Freelancer Sign In"}
+          </h1>
+          <p className="text-sm text-white/40 leading-relaxed">
+            {freelanceMode === "register"
+              ? "Offer writing, AI tools, design, development and other digital services — no store required. Your services publish straight to Nexora Freelance."
+              : "Sign in to manage your services, projects and earnings."}
+          </p>
+          {freelanceMode === "register" && (
+            <p className="text-[11px] text-white/25 mt-2 leading-relaxed">
+              <Shield className="inline w-3 h-3 mr-1 text-emerald-400" />
+              Your account appears under <span className="text-white/50">Admin → Users</span> the moment you register.
+            </p>
+          )}
+          {/* Register / Sign-in switch */}
+          <div className="inline-flex items-center gap-1 mt-5 p-1 rounded-xl border border-white/10 bg-white/[0.03]">
+            <button
+              type="button"
+              onClick={() => setFreelancePanelMode("register")}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${freelanceMode === "register" ? "bg-emerald-500 text-black" : "text-white/40 hover:text-white"}`}
+            >
+              Register as Freelancer
+            </button>
+            <button
+              type="button"
+              onClick={() => setFreelancePanelMode("login")}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${freelanceMode === "login" ? "bg-emerald-500 text-black" : "text-white/40 hover:text-white"}`}
+            >
+              I'm a Freelancer
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex items-center justify-center w-full px-4 relative z-10">
         <div className="flex items-center justify-center h-full flex-col w-full max-w-[900px]">
           <button onClick={() => navigate("/")} className="flex items-center gap-2 mb-6 group">
@@ -694,8 +759,9 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
                 <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{isFreelanceRoute ? "Join Nexora Freelance" : "Choose Your Path"}</h1>
                 <p className="text-white/40 text-sm">{isFreelanceRoute ? "How will you use Nexora Freelance?" : "How will you use Nexora Market?"}</p>
               </div>
-              <div className={`grid grid-cols-1 ${isFreelanceRoute ? "md:grid-cols-2" : "md:grid-cols-2"} gap-4`}>
-                <button onClick={() => handleRoleSelect("buyer")} className="group relative p-6 rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-sm hover:border-nx-cyan/30 hover:bg-nx-cyan/5 transition-all duration-300 text-left">
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4`}>
+                {!isFreelanceRoute && (
+                  <button onClick={() => handleRoleSelect("buyer")} className="group relative p-6 rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-sm hover:border-nx-cyan/30 hover:bg-nx-cyan/5 transition-all duration-300 text-left">
                   <div className="w-14 h-14 rounded-xl bg-nx-cyan/10 flex items-center justify-center mb-4 group-hover:bg-nx-cyan/20 transition-colors">
                     <ShoppingBag className="w-7 h-7 text-nx-cyan" />
                   </div>
@@ -709,7 +775,8 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
                     ))}
                   </div>
                   <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-nx-cyan/50 transition-colors" />
-                </button>
+                  </button>
+                )}
 
                 <button onClick={() => handleRoleSelect("seller")} className="group relative p-6 rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-sm hover:border-nx-violet/30 hover:bg-nx-violet/5 transition-all duration-300 text-left">
                   <div className="w-14 h-14 rounded-xl bg-nx-violet/10 flex items-center justify-center mb-4 group-hover:bg-nx-violet/20 transition-colors">
@@ -728,7 +795,10 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
                 </button>
               </div>
 
-              {/* Freelance role options when coming from /freelance */}
+              {/* Freelance role options when coming from /freelance — these are
+                  the ONLY cards shown: Nexora Freelance is a separate system
+                  with its own Writer/Freelancer and Employer accounts, distinct
+                  from the Marketplace Buyer/Seller system. */}
               {isFreelanceRoute && (
                 <>
                   <p className="text-xs text-white/30 text-center mt-6 mb-2">Or choose a freelance role:</p>
@@ -823,7 +893,7 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
             <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  {!isSellerRegister && (
+                  {!isSellerRegister && !isFreelanceRegister && (
                     <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Change</button>
                   )}
                   <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : selectedRole === "employer" ? "bg-amber-500/10 text-amber-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "🏪 Seller" : selectedRole === "freelancer" ? "✍️ Freelancer" : selectedRole === "employer" ? "💼 Employer" : "🛒 Buyer"}</span>
@@ -982,6 +1052,42 @@ function Auth({ redirectAfterAuth, sellerFirst }: AuthProps = {}) {
                   ← Back to sign in
                 </button>
               </CardContent>
+            </Card>
+          )}
+
+          {/* Dedicated freelance panel — login mode */}
+          {freelancePanelLogin && (
+            <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-emerald-500/5">
+              <CardHeader className="text-center pt-6">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">✍️ Freelancer Sign In</span>
+                </div>
+                <CardTitle className="text-xl text-white">Welcome back, Freelancer</CardTitle>
+                <CardDescription className="text-white/40">Enter your email and password to access your freelance account</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form onSubmit={handlePasswordLogin} className="space-y-3">
+                  <div className="relative"><Mail className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="email" placeholder="Email address" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-emerald-500/50" required autoFocus /></div>
+                  <div className="relative"><Lock className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="password" placeholder="Password" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-emerald-500/50" required /></div>
+                  {error && <p className="text-sm text-red-400">{error}</p>}
+                  <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-500/80 text-black h-11" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign In to Freelance Panel <ArrowRight className="ml-2 h-4 w-4" /></>}
+                  </Button>
+                  <button type="button" onClick={startForgotPassword} className="w-full text-center text-xs text-white/40 hover:text-emerald-400 transition-colors">
+                    Forgot password?
+                  </button>
+                  <p className="text-[11px] text-white/25 text-center leading-relaxed">
+                    Never set a password on this account? Tap <span className="text-white/50">Forgot password</span> — we'll email you a code to create one.
+                  </p>
+                </form>
+                <p className="text-[11px] text-white/20 text-center">
+                  New to Nexora Freelance?{" "}
+                  <button type="button" onClick={() => setFreelancePanelMode("register")} className="text-emerald-400 hover:text-emerald-400/80 font-medium">Register as a Freelancer</button>
+                </p>
+              </CardContent>
+              <div className="py-3 px-6 text-xs text-center text-white/20 bg-white/[0.02] border-t border-white/5 rounded-b-lg flex items-center justify-center gap-1.5">
+                <Shield className="w-3 h-3" /> Protected by Nexora Escrow Security
+              </div>
             </Card>
           )}
 
