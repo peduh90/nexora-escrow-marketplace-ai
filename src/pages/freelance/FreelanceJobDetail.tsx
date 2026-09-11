@@ -7,7 +7,7 @@ import FreelanceNav from "./FreelanceNav";
 import { FREELANCE_CATEGORIES, freelanceCategoryName } from "@/lib/freelance-marketplace";
 import {
   Briefcase, Globe, Clock, Users, Shield, CheckCircle2, X, Loader2,
-  Star, ArrowLeft, BadgeCheck, MapPin,
+  Star, ArrowLeft, BadgeCheck, MapPin, FileText,
 } from "lucide-react";
 
 const statusColors: Record<string, string> = {
@@ -180,6 +180,34 @@ export default function FreelanceJobDetail() {
             <h3 className="text-sm font-semibold text-white mb-2">Project details</h3>
             <p className="text-sm text-white/50 leading-relaxed whitespace-pre-wrap">{t.description}</p>
           </div>
+
+          {/* Brief attachments uploaded by the employer */}
+          {Array.isArray(t.attachments) && t.attachments.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-white mb-2">Attachments ({t.attachments.length})</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {t.attachments.map((url: string, i: number) => (
+                  <a
+                    key={i}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group relative aspect-[4/3] rounded-xl overflow-hidden border border-white/5 bg-white/[0.02] hover:border-nx-violet/30 transition-colors"
+                  >
+                    {/\.(pdf|docx?|xlsx?|txt|csv)(\?|$)/i.test(url) ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-1.5">
+                        <FileText className="w-6 h-6 text-nx-violet/50" />
+                        <span className="text-[10px] text-white/40">Document {i + 1}</span>
+                      </div>
+                    ) : (
+                      <img src={url} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    )}
+                  </a>
+                ))}
+              </div>
+              <p className="text-[11px] text-white/25 mt-2">Click an attachment to open it in a new tab.</p>
+            </div>
+          )}
 
           {isOwner ? (
             <div className="p-4 rounded-xl bg-nx-violet/5 border border-nx-violet/15">

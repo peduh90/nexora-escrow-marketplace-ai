@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
+import DocumentUpload, { type PickedFile } from "@/components/DocumentUpload";
 import {
   ArrowLeft, Briefcase, X, Plus, Loader2, CheckCircle2,
 } from "lucide-react";
@@ -15,6 +16,7 @@ export default function FreelancePostTask() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const createTask = useMutation(api.freelance.createTask);
+  const generateUploadUrl = useMutation(api.freelance.generateFileUploadUrl);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -26,6 +28,7 @@ export default function FreelancePostTask() {
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
   const [deadline, setDeadline] = useState("");
   const [remote, setRemote] = useState(true);
+  const [files, setFiles] = useState<PickedFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -40,6 +43,24 @@ export default function FreelancePostTask() {
     if (!title || !description || !category || !budget || skills.length === 0) return;
     setSubmitting(true);
     try {
+      // Upload each brief/reference file to Convex Storage first so the task
+      // record only ever holds stable storage keys.
+      const attachmentKeys: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const picked = files[i];
+        const uploadUrl = await generateUploadUrl();
+        const res = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": picked.file.type || "application/octet-stream" },
+          body: picked.file,
+        });
+        if (!res.ok) throw new Error(`File upload failed for "${picked.file.name}"`);
+        const data = (await res.json()) as { storageKey?: string; storageId?: string; key?: string };
+        const key = data.storageKey || data.storageId || data.key;
+        if (!key) throw new Error(`No storage key returned for "${picked.file.name}"`);
+        attachmentKeys.push(key);
+      }
+
       const deadlineMs = deadline ? new Date(deadline).getTime() : undefined;
       const result = await createTask({
         title,
@@ -52,6 +73,7 @@ export default function FreelancePostTask() {
         deadline: deadlineMs,
         remote,
         experienceLevel: "intermediate",
+        attachments: attachmentKeys,
       });
       setSuccess(true);
       // Employers manage applicants from their own panel — always return there,
@@ -190,6 +212,14 @@ export default function FreelancePostTask() {
             </button>
             <span className="text-sm text-white/60">Remote work available</span>
           </div>
+
+          {/* Brief attachments — images & documents */}
+          <DocumentUpload
+            files={files}
+            onChange={setFiles}
+            label="Brief & reference files (optional)"
+            hint="PDF, DOC/DOCX, XLS/XLSX, TXT, CSV, JPG, PNG, WebP — Max 10MB each — Up to 5 files"
+          />
 
           {/* Submit */}
           <button onClick={handleSubmit} disabled={!title || !description || !category || !budget || skills.length === 0 || submitting}

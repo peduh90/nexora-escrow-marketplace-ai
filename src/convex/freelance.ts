@@ -16,6 +16,21 @@ async function requireUser(ctx: any) {
   return user;
 }
 
+/**
+ * Resolve task attachment storage keys to displayable URLs. Dead/invalid keys
+ * are skipped so a single bad attachment never breaks a job posting page.
+ */
+async function resolveAttachments(ctx: any, attachments: string[] | undefined): Promise<string[]> {
+  const out: string[] = [];
+  for (const att of attachments || []) {
+    try {
+      const url = await ctx.storage.getUrl(att);
+      if (url) { out.push(url); continue; }
+    } catch { /* dead or invalid storage key — skip */ }
+  }
+  return out;
+}
+
 /** Insert an in-app notification for a user. */
 async function notify(
   ctx: any,
@@ -256,6 +271,9 @@ export const createTask = mutation({
     experienceLevel: v.optional(v.string()),
     remote: v.boolean(),
     location: v.optional(v.string()),
+    // Briefs, spec sheets, reference images — Convex storage keys resolved to
+    // URLs whenever the task is read.
+    attachments: v.optional(v.array(v.string())),
     freelancerCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -289,6 +307,7 @@ export const createTask = mutation({
       experienceLevel: args.experienceLevel,
       remote: args.remote,
       location: args.location,
+      attachments: args.attachments ?? [],
       freelancerCount: args.freelancerCount || 1,
       applicants: 0,
       views: 0,
@@ -329,7 +348,14 @@ export const getOpenTasks = query({
       );
     }
 
-    return tasks.slice(0, args.limit ?? 50);
+    const sliced = tasks.slice(0, args.limit ?? 50);
+
+    return Promise.all(
+      sliced.map(async (task: any) => ({
+        ...task,
+        attachments: await resolveAttachments(ctx, task.attachments),
+      }))
+    );
   },
 });
 
@@ -346,11 +372,18 @@ export const getMyTasks = query({
       .first();
     if (!user) return [];
 
-    return await ctx.db
+    const tasks = await ctx.db
       .query("freelanceTasks")
       .withIndex("by_employer", (q) => q.eq("employerId", user._id))
       .order("desc")
       .collect();
+
+    return Promise.all(
+      tasks.map(async (task: any) => ({
+        ...task,
+        attachments: await resolveAttachments(ctx, task.attachments),
+      }))
+    );
   },
 });
 
@@ -359,7 +392,8 @@ export const getTask = query({
   args: { taskId: v.id("freelanceTasks") },
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.taskId);
-    return task || null;
+    if (!task) return null;
+    return { ...task, attachments: await resolveAttachments(ctx, task.attachments) };
   },
 });
 

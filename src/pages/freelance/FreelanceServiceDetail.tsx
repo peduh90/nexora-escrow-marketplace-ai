@@ -15,7 +15,7 @@ import {
 import FreelanceNav from "./FreelanceNav";
 import {
   Shield, Heart, Share2, MessageSquare, Star, Clock, CheckCircle2,
-  Truck, Package, X, Loader2, Send, MessageCircle, Briefcase, Layers, Wrench,
+  Truck, Package, X, Loader2, Send, MessageCircle, Briefcase, Layers, Wrench, FileText,
 } from "lucide-react";
 
 export default function FreelanceServiceDetail() {
@@ -317,6 +317,22 @@ export default function FreelanceServiceDetail() {
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
+              </div>
+            )}
+            {/* Service documents — portfolios, samples, credentials */}
+            {Array.isArray(fl.documents) && fl.documents.length > 0 && (
+              <div className="mt-3 p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                <h3 className="text-xs font-semibold text-white/70 mb-2 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-nx-violet" /> Service documents ({fl.documents.length})
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {fl.documents.map((url: string, i: number) => (
+                    <a key={i} href={url} target="_blank" rel="noreferrer"
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-nx-violet/10 text-nx-violet hover:bg-nx-violet/20 transition-colors border border-nx-violet/15">
+                      {/\.(pdf|docx?|xlsx?|txt|csv)(\?|$)/i.test(url) ? `Document ${i + 1}` : `Sample ${i + 1}`} ↗
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
           </div>

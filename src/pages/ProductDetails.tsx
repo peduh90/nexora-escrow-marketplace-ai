@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useEffect, useState } from "react";
 import {
   Shield, Heart, Share2, MessageSquare, ShoppingCart, ArrowLeft, Star, MapPin, Clock,
-  CheckCircle2, Truck, ChevronRight, Package, Eye, X, Minus, Plus, Loader2, Send, MessageCircle, Phone,
+  CheckCircle2, Truck, ChevronRight, Package, Eye, X, Minus, Plus, Loader2, Send, MessageCircle, Phone, FileText,
 } from "lucide-react";
 import { getWhatsAppSellerUrl, getWhatsAppSupportUrl, openWhatsApp, normalizeKenyanPhone } from "@/lib/whatsapp";
 import { getViewerKey } from "@/lib/viewer";
@@ -368,6 +368,22 @@ export default function ProductDetails() {
                     <img src={img} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
+              </div>
+            )}
+            {/* Documents — spec sheets, invoices, warranties uploaded by the seller */}
+            {Array.isArray(listing.documents) && listing.documents.length > 0 && (
+              <div className="mt-4 p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                <h3 className="text-xs font-semibold text-white/70 mb-2 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-nx-violet" /> Documents ({listing.documents.length})
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {listing.documents.map((url: string, i: number) => (
+                    <a key={i} href={url} target="_blank" rel="noreferrer"
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-nx-violet/10 text-nx-violet hover:bg-nx-violet/20 transition-colors border border-nx-violet/15">
+                      {/\.(pdf|docx?|xlsx?|txt|csv)(\?|$)/i.test(url) ? `Document ${i + 1}` : `Attachment ${i + 1}`} ↗
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
           </div>

@@ -37,6 +37,7 @@ export default function AdminUsers() {
     if (filter === "Buyers" && role !== "buyer") return false;
     if (filter === "Sellers" && role !== "seller") return false;
     if (filter === "Freelancers" && role !== "freelancer") return false;
+    if (filter === "Employers" && role !== "employer") return false;
     if (filter === "Suspended" && u.accountStatus !== "suspended") return false;
     if (filter === "Admins" && role !== "admin") return false;
     if (search && !(u.name || "").toLowerCase().includes(search.toLowerCase()) && !(u.email || "").toLowerCase().includes(search.toLowerCase())) return false;
@@ -46,6 +47,7 @@ export default function AdminUsers() {
   const buyerCount = counts?.buyers ?? users.filter((u: any) => effectiveRole(u) === "buyer").length;
   const sellerCount = counts?.sellers ?? users.filter((u: any) => effectiveRole(u) === "seller").length;
   const freelancerCount = counts?.freelancers ?? users.filter((u: any) => effectiveRole(u) === "freelancer").length;
+  const employerCount = counts?.employers ?? users.filter((u: any) => effectiveRole(u) === "employer").length;
   const suspendedCount = users.filter((u: any) => u.accountStatus === "suspended").length;
 
   const handleSuspend = async () => {
@@ -82,11 +84,13 @@ export default function AdminUsers() {
         <p className="text-sm text-white/40 mt-1">Manage all platform users — {counts?.total ?? users.length} total</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         {[
           { label: "Total Users", value: (counts?.total ?? users.length).toString(), color: "#8B5CF6" },
           { label: "Buyers", value: buyerCount.toString(), color: "#06B6D4" },
           { label: "Sellers", value: sellerCount.toString(), color: "#10B981" },
+          { label: "Freelancers", value: freelancerCount.toString(), color: "#34D399" },
+          { label: "Employers", value: employerCount.toString(), color: "#F59E0B" },
           { label: "Suspended", value: suspendedCount.toString(), color: "#EF4444" },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-white/5 bg-[#0A0A12]">
@@ -103,7 +107,7 @@ export default function AdminUsers() {
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0A12] border border-white/5 text-sm text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none" />
         </div>
         <div className="flex gap-1 flex-wrap">
-          {["All", "Buyers", "Sellers", "Freelancers", "Suspended", "Admins"].map(f => (
+          {["All", "Buyers", "Sellers", "Freelancers", "Employers", "Suspended", "Admins"].map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${filter === f ? "bg-nx-violet/10 text-nx-violet" : "text-white/30 hover:text-white/50 bg-[#0A0A12] border border-white/5"}`}>{f}</button>
           ))}
         </div>
@@ -168,7 +172,7 @@ export default function AdminUsers() {
                           );
                         }
                         const r = effectiveRole(user);
-                        return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${r === "seller" ? "bg-nx-violet/10 text-nx-violet" : r === "admin" ? "bg-nx-gold/10 text-nx-gold" : r === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{r}</span>);
+                        return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${r === "seller" ? "bg-nx-violet/10 text-nx-violet" : r === "admin" ? "bg-nx-gold/10 text-nx-gold" : r === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : r === "employer" ? "bg-amber-500/10 text-amber-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{r}</span>);
                       })()}
                     </td>
                     <td className="px-4 py-3.5 hidden lg:table-cell">

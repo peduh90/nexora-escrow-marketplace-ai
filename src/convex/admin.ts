@@ -166,7 +166,9 @@ export const getDashboardStats = query({
         sellers: sellers.length,
         admins: realUsers.filter((u) => u.role === "admin").length,
         freelancers: freelanceProfiles.length,
-        employers: new Set(freelanceTasks.map((t) => t.employerId)).size,
+        // Counted by role, not by who has posted a task — an employer with no
+        // job posts yet is still an employer account.
+        employers: realUsers.filter((u) => u.role === "employer").length,
         newToday: newUsersToday,
         verified: realUsers.filter((u) => u.kycStatus === "verified").length,
         pendingKyc: realUsers.filter((u) => u.kycStatus === "pending").length,
@@ -294,12 +296,17 @@ export const getUserCounts = query({
     );
     const sellers = realUsers.filter(isSellerAccount);
     const admins = realUsers.filter((u: any) => u.role === "admin");
+    // Employers live in users.role — counted directly so the admin panel
+    // always shows every employer account, even ones that haven't posted a
+    // job yet (task-based counting would hide them).
+    const employers = realUsers.filter((u: any) => u.role === "employer");
 
     return {
       total: realUsers.length,
       buyers: buyers.length,
       sellers: sellers.length,
       freelancers: freelanceProfiles.length,
+      employers: employers.length,
       admins: admins.length,
       verified: realUsers.filter((u: any) => u.kycStatus === "verified").length,
       pendingKyc: realUsers.filter((u: any) => u.kycStatus === "pending").length,

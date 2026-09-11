@@ -7,6 +7,7 @@ import SellerLayout from "./SellerLayout";
 import { CATEGORIES as FALLBACK_CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
 import { CATEGORY_BANNERS } from "@/lib/category-images";
 import { FREELANCE_CATEGORIES, getFreelanceCategory } from "@/lib/freelance-marketplace";
+import DocumentUpload, { type PickedFile } from "@/components/DocumentUpload";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 
 const KENYA_COUNTIES: Record<string, string[]> = {
@@ -159,6 +160,7 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
     town: "",
     attributes: {} as Record<string, string>,
     images: [] as { file: File; preview: string }[],
+    documents: [] as PickedFile[],
   });
 
   const dbCategories = useQuery(api.adminCategories.getActiveCategories);
@@ -245,6 +247,25 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
         imageKeys.push(key);
       }
 
+      // Upload supporting documents (PDFs, docs, sample images) the same way
+      const documentKeys: string[] = [];
+      for (let i = 0; i < form.documents.length; i++) {
+        const doc = form.documents[i];
+        const uploadUrl = await generateUploadUrl();
+        const response = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": doc.file.type || "application/octet-stream" },
+          body: doc.file,
+        });
+        if (!response.ok) {
+          throw new Error(`Document upload failed for "${doc.file.name}"`);
+        }
+        const data = (await response.json()) as { storageKey?: string; storageId?: string; key?: string };
+        const key = data.storageKey || data.storageId || data.key;
+        if (!key) throw new Error(`No storage key returned for "${doc.file.name}"`);
+        documentKeys.push(key);
+      }
+
       // Physical products ship from a county/town; digital freelance services
       // are delivered online, so their location is normalized.
       const attributes = { ...form.attributes };
@@ -261,6 +282,7 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
         category: form.category,
         subcategory: form.subcategory || undefined,
         images: imageKeys,
+        documents: documentKeys,
         transportAvailable: !isFreelanceMode,
         originCounty: isFreelanceMode ? "Online" : form.county,
         originTown: isFreelanceMode ? "Digital" : form.town,
@@ -374,6 +396,7 @@ function PublishWizard({
     town: string;
     attributes: Record<string, string>;
     images: { file: File; preview: string }[];
+    documents: PickedFile[];
   };
   update: (key: string, value: any) => void;
   categories: { name: string; slug: string; icon: string; image?: string; description: string; subcategories: { name: string; slug: string }[] }[];
@@ -559,6 +582,17 @@ function PublishWizard({
         )}
 
         {step === 3 && <ImageUploadStep form={form} update={update} />}
+
+        {step === 3 && (
+          <div className="mt-8 pt-6 border-t border-white/5">
+            <DocumentUpload
+              files={form.documents}
+              onChange={(docs) => update("documents", docs)}
+              label={isFreelanceMode ? "Service documents — portfolio, samples, credentials (optional)" : "Product documents — spec sheet, invoice, warranty (optional)"}
+              hint="PDF, DOC/DOCX, XLS/XLSX, TXT, CSV, JPG, PNG, WebP — Max 10MB each — Up to 5 files"
+            />
+          </div>
+        )}
 
         {step === 4 && !isFreelanceMode && (
           <div className="space-y-6">
