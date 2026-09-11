@@ -295,6 +295,7 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
             setStep={setStep}
             form={form}
             update={update}
+            categories={categories}
             pickCategory={pickCategory}
             selectMarketplace={selectMarketplace}
             isFreelanceMode={isFreelanceMode}
@@ -320,6 +321,7 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
           setStep={setStep}
           form={form}
           update={update}
+          categories={categories}
           pickCategory={pickCategory}
           selectMarketplace={selectMarketplace}
           isFreelanceMode={isFreelanceMode}
@@ -343,6 +345,7 @@ function PublishWizard({
   setStep,
   form,
   update,
+  categories,
   pickCategory,
   selectMarketplace,
   isFreelanceMode,
@@ -373,6 +376,7 @@ function PublishWizard({
     images: { file: File; preview: string }[];
   };
   update: (key: string, value: any) => void;
+  categories: { name: string; slug: string; icon: string; image?: string; description: string; subcategories: { name: string; slug: string }[] }[];
   pickCategory: (slug: string) => void;
   selectMarketplace: (mp: "product" | "freelance") => void;
   isFreelanceMode: boolean;

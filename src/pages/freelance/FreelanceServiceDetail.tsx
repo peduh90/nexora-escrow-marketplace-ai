@@ -382,7 +382,7 @@ export default function FreelanceServiceDetail() {
                   </div>
                 </div>
                 <button
-                  onClick={() => navigate(`/seller/${fl.sellerId}`)}
+                  onClick={() => navigate(`/freelancer/${fl.sellerId}`)}
                   className="text-[11px] px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-white/50 hover:text-white transition-colors"
                 >
                   View Provider

@@ -76,7 +76,7 @@ function ImageUploadStep({ images, setImages }: { images: { file: File; preview:
   );
 }
 
-export default function SellerEditProduct() {
+export default function SellerEditProduct({ freelanceMode = false }: { freelanceMode?: boolean }) {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const listing = useQuery(api.listings.getListing, id ? { listingId: id as any } : "skip");
@@ -84,6 +84,11 @@ export default function SellerEditProduct() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
+
+  // Freelance services are edited in the standalone freelance shell (no seller
+  // store chrome) and navigate back to the freelance services page.
+  const isFreelance = freelanceMode === true;
+  const backTarget = isFreelance ? "/freelance/services" : "/seller/products";
 
   const [form, setForm] = useState({
     category: "",
@@ -147,7 +152,7 @@ export default function SellerEditProduct() {
         condition: form.condition,
         attributes: Object.keys(form.attributes).length > 0 ? form.attributes : undefined,
       });
-      navigate("/seller/products");
+      navigate(backTarget);
     } catch (err) {
       console.error("Failed to update:", err);
       alert("Failed to update product. Please try again.");
@@ -180,8 +185,8 @@ export default function SellerEditProduct() {
         <div className="text-center py-20">
           <Package className="w-12 h-12 text-white/10 mx-auto mb-3" />
           <p className="text-sm text-white/30">Product not found.</p>
-          <button onClick={() => navigate("/seller/products")} className="mt-4 px-5 py-2.5 rounded-lg bg-nx-violet text-white text-sm font-medium">
-            Back to Products
+          <button onClick={() => navigate(backTarget)} className="mt-4 px-5 py-2.5 rounded-lg bg-nx-violet text-white text-sm font-medium">
+            Back to {isFreelance ? "Services" : "Products"}
           </button>
         </div>
       </SellerLayout>
@@ -192,11 +197,11 @@ export default function SellerEditProduct() {
     <SellerLayout>
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate("/seller/products")} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 transition-colors">
+          <button onClick={() => navigate(backTarget)} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white">Edit Product</h1>
+            <h1 className="text-2xl font-bold text-white">{isFreelance ? "Edit Service" : "Edit Product"}</h1>
             <p className="text-sm text-white/40 mt-0.5">Update your listing details</p>
           </div>
         </div>

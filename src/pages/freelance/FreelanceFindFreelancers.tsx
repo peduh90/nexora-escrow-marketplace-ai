@@ -82,7 +82,7 @@ export default function FreelanceFindFreelancers() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {display.map((fl: any, i: number) => (
               <div key={fl._id || fl.userId || i} className="p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-violet/20 hover:bg-white/[0.04] transition-all cursor-pointer"
-                onClick={() => navigate(`/seller/${fl.userId}`)}>
+                onClick={() => navigate(`/freelancer/${fl.userId}`)}>
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-12 h-12 rounded-full bg-nx-violet/15 flex items-center justify-center text-nx-violet font-bold text-lg shrink-0">
                     {(fl.displayName || "U")[0]}
