@@ -80,7 +80,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div key={section.label}>
               {!collapsed && <p className="px-3 mb-1 text-[9px] font-bold text-white/15 tracking-widest uppercase">{section.label}</p>}
               {section.items.map((item) => {
-                const isActive = location.pathname === item.path || (item.path !== "/admin" && location.pathname.startsWith(item.path));
+                const isActive = item.path === "/" ? location.pathname === "/" : location.pathname === item.path || (item.path !== "/admin" && location.pathname.startsWith(item.path));
                 return (
                   <button key={item.path} onClick={() => { navigate(item.path); setMobileOpen(false); }}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all group ${isActive ? "bg-nx-gold/10 text-nx-gold" : "text-white/35 hover:text-white/70 hover:bg-white/[0.03]"} ${collapsed ? "justify-center" : ""}`}
@@ -128,7 +128,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <div key={section.label}>
                     <p className="px-3 mb-1 text-[9px] font-bold text-white/15 tracking-widest uppercase">{section.label}</p>
                     {section.items.map((item) => {
-                      const isActive = location.pathname === item.path || (item.path !== "/admin" && location.pathname.startsWith(item.path));
+                      const isActive = item.path === "/" ? location.pathname === "/" : location.pathname === item.path || (item.path !== "/admin" && location.pathname.startsWith(item.path));
                       return (
                         <button key={item.path} onClick={() => { navigate(item.path); setMobileOpen(false); }}
                           className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all ${isActive ? "bg-nx-gold/10 text-nx-gold" : "text-white/35 hover:text-white/70 hover:bg-white/[0.03]"}`}>

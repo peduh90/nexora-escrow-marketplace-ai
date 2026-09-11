@@ -11,12 +11,13 @@ async function getMessagingUser(ctx: QueryCtx) {
  * Messages page for a recipient, by their role. Freelancers and employers read
  * their messages inside their own panels — a seller-only link sent them to a
  * route they cannot access (RequireAuth bounced them), so nothing ever showed
- * a freelancer the customer's inquiry.
+ * a freelancer the customer's inquiry. Buyers and admins use the unified chat.
  */
 function messagesLinkFor(role: string | undefined): string {
   if (role === "freelancer") return "/freelance/messages";
   if (role === "employer") return "/employer/messages";
-  return "/seller/messages";
+  if (role === "seller") return "/seller/messages";
+  return "/chat";
 }
 
 /** Start or get a conversation about a listing */
@@ -144,14 +145,16 @@ export const sendMessage = mutation({
       unreadSeller: isBuyer ? convo.unreadSeller + 1 : convo.unreadSeller,
     });
 
-    // Notify the recipient — link to the message page of THEIR panel.
+    // Notify the recipient — link to the message page of THEIR panel (the
+    // RECEIVER's role decides the link, never the sender's).
+    const receiverDoc = await ctx.db.get(receiverId as any);
     await ctx.db.insert("notifications", {
       userId: receiverId,
       type: "message",
       title: "New message",
       message: args.content.slice(0, 120),
       read: false,
-      link: isBuyer ? messagesLinkFor((user as any)?.role) : "/chat",
+      link: messagesLinkFor((receiverDoc as any)?.role),
       createdAt: Date.now(),
     });
 

@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../convex/_generated/api";
 
-import { Search, ArrowLeft, X, MapPin, Shield, Truck, Heart, ChevronRight } from "lucide-react";
+import { Search, ArrowLeft, X, MapPin, Shield, Truck, Heart, ChevronRight, Wrench, ArrowUpRight } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
 
@@ -122,6 +122,34 @@ export default function Marketplace() {
           </div>
         </div>
       )}
+
+      {/* ═══ FREELANCE BANNER — always visible at the top of the marketplace ═══ */}
+      <div className="max-w-[1600px] mx-auto px-4 md:px-6 pt-4">
+        <button
+          onClick={() => navigate("/freelance")}
+          className="group relative w-full overflow-hidden rounded-2xl border border-nx-violet/25 bg-gradient-to-r from-nx-violet/20 via-nx-violet/8 to-nx-cyan/10 p-4 md:p-5 text-left transition-all hover:border-nx-violet/50 hover:shadow-[0_0_30px_rgba(139,92,246,0.15)]"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-nx-violet/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="relative flex items-center gap-4">
+            <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-nx-violet/20 border border-nx-violet/30 flex items-center justify-center shrink-0">
+              <Wrench className="w-6 h-6 text-nx-violet" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm md:text-base font-bold text-white">Freelance Services & Digital Tools</h3>
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-nx-violet/15 text-nx-violet font-bold uppercase tracking-wider">Nexora Freelance</span>
+              </div>
+              <p className="text-[11px] md:text-xs text-white/45 mt-0.5 leading-relaxed">
+                AI accounts & tools, writing, design, development, marketing, bots — escrow protected until delivery.
+              </p>
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-xl bg-nx-violet text-white text-xs font-semibold shrink-0 group-hover:bg-nx-violet/85 transition-colors">
+              Open <ArrowUpRight className="w-3.5 h-3.5" />
+            </div>
+            <ChevronRight className="w-5 h-5 text-nx-violet sm:hidden shrink-0" />
+          </div>
+        </button>
+      </div>
 
       <div className="flex max-w-[1600px] mx-auto">
         {/* ═══ SIDEBAR ═══ */}
