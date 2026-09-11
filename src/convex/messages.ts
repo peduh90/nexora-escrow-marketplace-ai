@@ -7,6 +7,18 @@ async function getMessagingUser(ctx: QueryCtx) {
   return await getSessionUser(ctx);
 }
 
+/**
+ * Messages page for a recipient, by their role. Freelancers and employers read
+ * their messages inside their own panels — a seller-only link sent them to a
+ * route they cannot access (RequireAuth bounced them), so nothing ever showed
+ * a freelancer the customer's inquiry.
+ */
+function messagesLinkFor(role: string | undefined): string {
+  if (role === "freelancer") return "/freelance/messages";
+  if (role === "employer") return "/employer/messages";
+  return "/seller/messages";
+}
+
 /** Start or get a conversation about a listing */
 export const startConversation = mutation({
   args: {
@@ -75,14 +87,21 @@ export const startConversation = mutation({
       createdAt: Date.now(),
     });
 
-    // Notify the seller about the new inquiry
+    // Notify the seller about the new inquiry — with a link to the panel the
+    // recipient actually uses (freelancers and employers have their own
+    // message pages; only store sellers use the seller panel).
+    let sellerLink = "/seller/messages";
+    if (args.sellerId !== buyer._id) {
+      const sellerDoc = await ctx.db.get(args.sellerId as any);
+      sellerLink = messagesLinkFor((sellerDoc as any)?.role);
+    }
     await ctx.db.insert("notifications", {
       userId: args.sellerId,
       type: "message",
       title: "New buyer message",
       message: `Someone is interested in "${listingTitle}". Open Messages to reply.`,
       read: false,
-      link: "/seller/messages",
+      link: sellerLink,
       createdAt: Date.now(),
     });
 
@@ -125,14 +144,14 @@ export const sendMessage = mutation({
       unreadSeller: isBuyer ? convo.unreadSeller + 1 : convo.unreadSeller,
     });
 
-    // Notify the recipient about the new message
+    // Notify the recipient — link to the message page of THEIR panel.
     await ctx.db.insert("notifications", {
       userId: receiverId,
       type: "message",
       title: "New message",
       message: args.content.slice(0, 120),
       read: false,
-      link: isBuyer ? "/seller/messages" : "/chat",
+      link: isBuyer ? messagesLinkFor((user as any)?.role) : "/chat",
       createdAt: Date.now(),
     });
 

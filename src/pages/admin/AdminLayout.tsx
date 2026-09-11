@@ -10,12 +10,13 @@ import {
   Brain, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
   User, Truck, Briefcase, Activity, Wallet, Bell,
   Search, Package, CreditCard, MessageSquare, AlertTriangle,
-  Receipt, TrendingUp, X, Menu, Eye, Crown,
+  Receipt, TrendingUp, X, Menu, Eye, Crown, Home,
 } from "lucide-react";
 
 const navSections = [
   { label: "OVERVIEW", items: [
     { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
+    { icon: Home, label: "Home", path: "/" },
   ]},
   { label: "USERS", items: [
     { icon: Users, label: "All Users", path: "/admin/users" },

@@ -29,6 +29,9 @@ export default function Chat() {
     api.listings.getListing,
     activeConvo?.listingId ? { listingId: activeConvo.listingId } : ("skip" as any)
   );
+  // Freelance services open on their own detail page — never the product page.
+  const isFreelanceListing = (product as any)?.marketplace === "freelance";
+  const listingHref = isFreelanceListing ? `/freelance/service/${product!._id}` : `/product/${product!._id}`;
 
   // otherUserName comes enriched from getConversations
   const otherUserName = activeConvo?.otherUserName || "User";
@@ -175,21 +178,23 @@ export default function Chat() {
                           {convo.otherUserName || "User"}
                         </span>
                         <span className="text-[10px] text-white/30 ml-2">
-                          {convo.lastMessageTime ? formatTime(convo.lastMessageTime) : ""}
+                          {convo.lastMessageAt ? formatTime(convo.lastMessageAt) : ""}
                         </span>
                       </div>
-                      {convo.productTitle && (
+                      {convo.listingTitle && convo.listingTitle !== "Unknown product" && (
                         <p className="text-[10px] text-nx-violet/60 truncate mt-0.5">
-                          📦 {convo.productTitle}
+                          {convo.listingPrice > 0 ? `📦 ${convo.listingTitle}` : `💼 ${convo.listingTitle}`}
                         </p>
                       )}
                       <p className="text-xs text-white/40 truncate mt-0.5">
                         {convo.lastMessage || "No messages yet"}
                       </p>
                     </div>
-                    {convo.unreadCount > 0 && (
+                    {(convo.isBuyer ? convo.unreadBuyer : convo.unreadSeller) > 0 && (
                       <div className="w-5 h-5 rounded-full bg-nx-violet flex items-center justify-center shrink-0">
-                        <span className="text-[10px] font-bold text-white">{convo.unreadCount}</span>
+                        <span className="text-[10px] font-bold text-white">
+                          {convo.isBuyer ? convo.unreadBuyer : convo.unreadSeller}
+                        </span>
                       </div>
                     )}
                   </button>
@@ -282,7 +287,7 @@ export default function Chat() {
                       </p>
                     </div>
                     <button
-                      onClick={() => navigate(`/product/${product._id}`)}
+                      onClick={() => navigate(listingHref)}
                       className="px-3 py-1.5 rounded-lg bg-nx-violet/10 text-nx-violet text-xs font-semibold hover:bg-nx-violet/20 transition-colors border border-nx-violet/20"
                     >
                       View
@@ -349,14 +354,16 @@ export default function Chat() {
                   {product && (
                     <>
                       <button
-                        onClick={() => navigate(`/product/${product._id}`)}
+                        onClick={() => navigate(listingHref)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-nx-emerald/10 text-nx-emerald text-xs font-semibold hover:bg-nx-emerald/20 transition-colors border border-nx-emerald/20"
                       >
-                        🛒 Buy Now
+                        {isFreelanceListing ? "💼 View Service" : "🛒 Buy Now"}
                       </button>
-                      <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-nx-blue/10 text-nx-blue text-xs font-semibold hover:bg-nx-blue/20 transition-colors border border-nx-blue/20">
-                        💰 Make Offer
-                      </button>
+                      {!isFreelanceListing && (
+                        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-nx-blue/10 text-nx-blue text-xs font-semibold hover:bg-nx-blue/20 transition-colors border border-nx-blue/20">
+                          💰 Make Offer
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
