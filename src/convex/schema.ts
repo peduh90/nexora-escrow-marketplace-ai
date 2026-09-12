@@ -921,6 +921,160 @@ const schema = defineSchema(
       .index("by_project", ["projectId"])
       .index("by_sender", ["senderId"]),
 
+    // ─── NEXORA CREATOR / REFERRAL PROGRAM ───
+
+    // Approved marketing creators with their unique referral code. The
+    // creator program is SEPARATE from marketplace roles: being a creator
+    // never grants buyer/seller/employer/freelancer permissions.
+    referralCreators: defineTable({
+      userId: v.string(),
+      referralCode: v.string(),
+      displayName: v.string(),
+      platform: v.union(
+        v.literal("tiktok"),
+        v.literal("whatsapp"),
+        v.literal("instagram"),
+        v.literal("youtube"),
+        v.literal("x"),
+        v.literal("facebook"),
+        v.literal("other"),
+      ),
+      platformHandle: v.string(),
+      audienceSize: v.optional(v.string()),
+      promoPlan: v.string(),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("suspended"),
+        v.literal("rejected"),
+      ),
+      appliedAt: v.number(),
+      reviewedAt: v.optional(v.number()),
+      reviewedBy: v.optional(v.string()),
+      reviewNotes: v.optional(v.string()),
+      // Live counters (server-maintained by the referral engine — never
+      // written by the client).
+      clicks: v.optional(v.number()),
+      registrations: v.optional(v.number()),
+      verified: v.optional(v.number()),
+      activeUsers: v.optional(v.number()),
+      sellersReferred: v.optional(v.number()),
+      freelancersReferred: v.optional(v.number()),
+      transactionsGenerated: v.optional(v.number()),
+      totalEarned: v.optional(v.number()),
+      pendingCommission: v.optional(v.number()),
+      paidCommission: v.optional(v.number()),
+      fraudFlags: v.optional(v.array(v.string())),
+    })
+      .index("by_user", ["userId"])
+      .index("by_code", ["referralCode"])
+      .index("by_status", ["status"]),
+
+    // Click tracking — one row per unique visitor per creator code. No PII:
+    // visitorKey is a random device id generated client-side; referrerDomain
+    // is coarse (hostname only).
+    referralClicks: defineTable({
+      creatorId: v.string(),
+      code: v.string(),
+      visitorKey: v.string(),
+      referrerDomain: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_creator_visitor", ["creatorId", "visitorKey"])
+      .index("by_creator", ["creatorId"])
+      .index("by_created", ["createdAt"]),
+
+    // The permanent creator → referred-user relationship. Written ONCE at
+    // registration time by the server (never by the client) and immutable in
+    // its attribution fields afterwards.
+    referralRecords: defineTable({
+      creatorId: v.string(),
+      code: v.string(),
+      referredUserId: v.string(),
+      registeredAt: v.number(),
+      // Journey: registered → verified → active → (seller|freelancer) → transaction
+      stage: v.union(
+        v.literal("registered"),
+        v.literal("verified"),
+        v.literal("active"),
+        v.literal("seller"),
+        v.literal("freelancer"),
+        v.literal("transaction"),
+      ),
+      verifiedAt: v.optional(v.number()),
+      activatedAt: v.optional(v.number()),
+      kycVerifiedAt: v.optional(v.number()),
+      sellerActivatedAt: v.optional(v.number()),
+      freelancerActivatedAt: v.optional(v.number()),
+      firstTransactionAt: v.optional(v.number()),
+      firstTransactionAmount: v.optional(v.number()),
+      qualified: v.optional(v.boolean()),
+      qualifiedAt: v.optional(v.number()),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("qualified"),
+        v.literal("flagged"),
+        v.literal("rejected"),
+      ),
+      flags: v.optional(v.array(v.string())),
+      adminNotes: v.optional(v.string()),
+      clickId: v.optional(v.string()),
+    })
+      .index("by_referred", ["referredUserId"])
+      .index("by_creator", ["creatorId"])
+      .index("by_status", ["status"]),
+
+    // Commission ledger — every shilling a creator earns, with the reason it
+    // was earned. Pending → approved → paid (or rejected by admin).
+    referralEarnings: defineTable({
+      creatorId: v.string(),
+      referralId: v.optional(v.string()),
+      referredUserId: v.optional(v.string()),
+      type: v.union(
+        v.literal("verified_user"),
+        v.literal("seller_bonus"),
+        v.literal("freelancer_bonus"),
+        v.literal("first_transaction"),
+        v.literal("revenue_share"),
+      ),
+      amount: v.number(),
+      currency: v.string(),
+      reason: v.string(),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("paid"),
+        v.literal("rejected"),
+      ),
+      escrowId: v.optional(v.string()),
+      txAmount: v.optional(v.number()),
+      createdAt: v.number(),
+      approvedAt: v.optional(v.number()),
+      approvedBy: v.optional(v.string()),
+      paidAt: v.optional(v.number()),
+      payoutReference: v.optional(v.string()),
+      rejectionReason: v.optional(v.string()),
+      adjustedBy: v.optional(v.string()),
+      adjustNote: v.optional(v.string()),
+    })
+      .index("by_creator", ["creatorId"])
+      .index("by_status", ["status"])
+      .index("by_referral", ["referralId"]),
+
+    // Admin-configurable commission rules (singleton doc). Never hard-coded
+    // in the engine — always read live from here.
+    referralSettings: defineTable({
+      fixedPerVerifiedUser: v.number(),
+      sellerActivationBonus: v.number(),
+      freelancerActivationBonus: v.number(),
+      firstTransactionBonus: v.number(),
+      revenueSharePercent: v.number(),
+      revenueShareCap: v.number(),
+      maxReferralsPerHour: v.number(),
+      updatedBy: v.optional(v.string()),
+      updatedAt: v.optional(v.number()),
+    }),
+
     // Freelance earnings/wallet
     freelanceEarnings: defineTable({
       freelancerId: v.string(),

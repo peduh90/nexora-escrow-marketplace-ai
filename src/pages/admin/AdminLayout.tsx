@@ -10,7 +10,7 @@ import {
   Brain, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
   User, Truck, Briefcase, Activity, Wallet, Bell,
   Search, Package, CreditCard, MessageSquare, AlertTriangle,
-  Receipt, TrendingUp, X, Menu, Eye, Crown, Home,
+  Receipt, TrendingUp, X, Menu, Eye, Crown, Home, Share2,
 } from "lucide-react";
 
 const navSections = [
@@ -22,6 +22,7 @@ const navSections = [
     { icon: Users, label: "All Users", path: "/admin/users" },
     { icon: Briefcase, label: "Sellers", path: "/admin/sellers" },
     { icon: Eye, label: "Verification", path: "/admin/kyc" },
+    { icon: Share2, label: "Creator Program", path: "/admin/referrals" },
   ]},
   { label: "MARKETPLACE", items: [
     { icon: Package, label: "Products", path: "/admin/products" },

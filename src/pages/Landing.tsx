@@ -559,6 +559,7 @@ export default function Landing() {
             </div>
             {[
               { title: "Platform", links: ["Marketplace", "Freelance", "Escrow", "Wallet", "Seller Hub"] },
+              { title: "Earn with Nexora", links: ["Creator Program"] },
               { title: "Company", links: ["About", "Blog", "Careers", "Press"] },
               { title: "Support", links: ["Help Center", "API Docs", "Status", "Contact"] },
             ].map((col) => (
@@ -566,7 +567,14 @@ export default function Landing() {
                 <h4 className="text-white font-semibold text-xs mb-3">{col.title}</h4>
                 <ul className="space-y-2">
                   {col.links.map((link) => (
-                    <li key={link}><a href="#" className="text-xs text-white/25 hover:text-white/50 transition-colors">{link}</a></li>
+                    <li key={link}>
+                      <a
+                        href={link === "Creator Program" ? "/join" : "#"}
+                        className="text-xs text-white/25 hover:text-white/50 transition-colors"
+                      >
+                        {link}
+                      </a>
+                    </li>
                   ))}
                 </ul>
               </div>

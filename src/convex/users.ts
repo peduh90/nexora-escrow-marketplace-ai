@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { query, mutation, internalMutation, QueryCtx } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 import { ALLOWED_ROLES, resolveRole, resolveRoleForAdminFlow, ADMIN_EMAIL } from "./roles";
 import type { AllowedRole } from "./roles";
 
@@ -768,6 +769,16 @@ export const completeVerification = mutation({
       accountStatus: "active" as any,
       pendingRole: undefined,
     });
+
+    // ── Referral program hooks: the referred user has passed verification ──
+    // and is now active with their role. These are best-effort — a referral
+    // hiccup must never block account activation.
+    try {
+      await ctx.runMutation(internal.referral.internalOnUserVerified, { userId: u._id });
+      await ctx.runMutation(internal.referral.internalOnUserActivated, { userId: u._id, role: finalRole });
+    } catch (err) {
+      console.error("[referral] verification/activation hook failed:", err);
+    }
 
     await ctx.db.insert("notifications", {
       userId: u._id,

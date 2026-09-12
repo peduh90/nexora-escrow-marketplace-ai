@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { getSessionUser } from "./users";
 
 const ADMIN_EMAIL = "murimiedwin227@gmail.com";
@@ -560,6 +560,14 @@ export const reviewKYC = mutation({
         kycStatus: args.status === "approved" ? "verified" : "rejected",
         kycVerifiedAt: args.status === "approved" ? Date.now() : undefined,
       });
+      // Referral hook: KYC milestone for the referred user's journey.
+      if (args.status === "approved") {
+        try {
+          await ctx.runMutation(internal.referral.internalOnKycVerified, { userId: kycApp.userId });
+        } catch (err) {
+          console.error("[referral] KYC hook failed:", err);
+        }
+      }
     }
 
     await auditLog(

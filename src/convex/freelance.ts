@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 import { sellerCommission, buyerProtectionFee } from "./fees";
 
 // ─── SHARED HELPERS ───
@@ -989,6 +990,18 @@ export const approveWork = mutation({
     await ctx.db.patch(employer._id, {
       escrowBalance: Math.max(0, (employer.escrowBalance || 0) - (amount + protection.fee)),
     });
+
+    // ── Referral hook: completed freelance project payment ──
+    try {
+      await ctx.runMutation(internal.referral.internalOnEscrowReleased, {
+        participantIds: [employer._id, project.freelancerId].filter(Boolean),
+        escrowId: (project.escrowId as string) || args.projectId,
+        amount,
+        currency: project.currency || "KES",
+      });
+    } catch (err) {
+      console.error("[referral] freelance release hook failed:", err);
+    }
 
     // Pay the freelancer their net earnings into their wallet.
     if (freelancer) {

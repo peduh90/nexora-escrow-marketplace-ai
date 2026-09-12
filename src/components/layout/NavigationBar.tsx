@@ -78,6 +78,12 @@ export default function NavigationBar() {
               Freelance
             </button>
             <button
+              onClick={() => navigate(user ? "/creator" : "/join")}
+              className="px-3 py-1.5 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+            >
+              Creator Program
+            </button>
+            <button
               onClick={() => { window.location.pathname === "/" ? scrollToSection("#how-it-works") : navigate("/"); }}
               className="px-3 py-1.5 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/5"
             >

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 import {
   sellerCommission as sellerCommissionFee,
   buyerProtectionFee,
@@ -520,6 +521,18 @@ export const confirmDelivery = mutation({
       status: "released",
       releasedAt,
     });
+
+    // ── Referral hook: a completed escrow involving a referred user ──
+    try {
+      await ctx.runMutation(internal.referral.internalOnEscrowReleased, {
+        participantIds: [escrow.buyerId, escrow.sellerId],
+        escrowId: escrow._id as string,
+        amount: escrow.amount,
+        currency: escrow.currency,
+      });
+    } catch (err) {
+      console.error("[referral] escrow release hook failed:", err);
+    }
 
     // Release the seller’s share into their wallet, less platform fee.
     const seller = await getUserById(ctx, escrow.sellerId);

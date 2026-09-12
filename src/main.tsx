@@ -16,6 +16,10 @@ import "./index.css";
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+// Creator / Referral program
+const JoinCreator = lazy(() => import("./pages/creator/JoinCreator.tsx"));
+const CreatorDashboard = lazy(() => import("./pages/creator/CreatorDashboard.tsx"));
+const AdminReferrals = lazy(() => import("./pages/admin/AdminReferrals.tsx"));
 // Buyer panel
 const BuyerDashboard = lazy(() => import("./pages/buyer/BuyerDashboard.tsx"));
 const BuyerWallet = lazy(() => import("./pages/buyer/BuyerWallet.tsx"));
@@ -288,6 +292,12 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/chat/:conversationId" element={<RequireAuth><Chat /></RequireAuth>} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
+
+              {/* Creator / Referral program: public landing, protected dashboard,
+                  admin management */}
+              <Route path="/join" element={<JoinCreator />} />
+              <Route path="/creator" element={<RequireAuth><CreatorDashboard /></RequireAuth>} />
+              <Route path="/admin/referrals" element={<RequireAdmin><AdminReferrals /></RequireAdmin>} />
 
               {/* Legacy /dashboard/* URLs redirect to the current role-based panel */}
               <Route path="/dashboard/*" element={<LegacyDashboardRedirect />} />

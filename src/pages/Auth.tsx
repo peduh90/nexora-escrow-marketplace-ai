@@ -24,6 +24,12 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isPasswordValid } from "@/lib/password-strength";
 import { PasswordField } from "@/components/ui/password-field";
+import { getVisitorKey } from "@/lib/visitor-key";
+import {
+  rememberReferralCode,
+  getRememberedReferralCode,
+  clearRememberedReferralCode,
+} from "@/lib/referral-client";
 
 interface AuthProps {
   redirectAfterAuth?: string;
@@ -103,6 +109,17 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
 
   const checkAndPromoteAdmin = useMutation(api.users.checkAndPromoteAdmin);
   const ensureUserProfile = useMutation(api.users.ensureUserProfile);
+  const attributeReferral = useMutation(api.referral.onUserRegistered);
+
+  // ── Referral memory: /join clicks land on /auth?ref=CODE (possibly long ──
+  // before the visitor registers). Remember the code briefly and surface it so
+  // registration can attribute server-side even across tabs/visits.
+  const refParam = (searchParams.get("ref") || "").trim().toUpperCase();
+  useEffect(() => {
+    if (refParam) rememberReferralCode(refParam);
+  }, [refParam]);
+  const [rememberedRef] = useState(() => getRememberedReferralCode());
+  const activeRefCode = refParam || rememberedRef || "";
 
   // Mirrors the auth state so async handlers can wait for the Convex client to
   // attach the token after sign-in (client.setAuth runs in a React effect).
@@ -146,7 +163,20 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
         businessName: selectedRole === "seller" ? fullName || undefined : undefined,
         password: password.trim() || undefined,
       })
-        .then(() => {
+        .then(async () => {
+          // Effect-based path (Google sign-in, recovered OTP sync): the account
+          // now exists, so bind referral attribution here too.
+          if (activeRefCode) {
+            try {
+              const result = await attributeReferral({
+                code: activeRefCode,
+                visitorKey: getVisitorKey(),
+              });
+              if (result?.attributed) clearRememberedReferralCode();
+            } catch (err) {
+              console.error("Referral attribution failed:", err);
+            }
+          }
           profileSyncRef.current = false;
         })
         .catch((err) => {
@@ -181,7 +211,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
     if (role && typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")) {
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, user, navigate, redirect, fullName, phoneNumber, selectedRole, password, ensureUserProfile]);
+  }, [authLoading, isAuthenticated, user, navigate, redirect, fullName, phoneNumber, selectedRole, password, ensureUserProfile, activeRefCode, attributeReferral]);
 
   // Guarded check: reject only when the password actually contains the email
   // (full address or local part) or a meaningful name. An empty field must
@@ -336,6 +366,23 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       }
       if (syncError) {
         console.error("Account profile sync failed:", syncError);
+      }
+
+      // ── Referral attribution: bind this new account to the creator whose ──
+      // link/code the visitor arrived with (via /join). The server re-verifies
+      // the tracked click and writes the relationship permanently — the client
+      // only reminds it of the code + visitor key. Best-effort; never blocks
+      // signup and never blocks navigation.
+      if (activeRefCode) {
+        try {
+          const result = await attributeReferral({
+            code: activeRefCode,
+            visitorKey: getVisitorKey(),
+          });
+          if (result?.attributed) clearRememberedReferralCode();
+        } catch (err) {
+          console.error("Referral attribution failed:", err);
+        }
       }
 
       // After creating/syncing the persistent profile, navigate to the panel
