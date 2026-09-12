@@ -8,6 +8,7 @@ import {
   ArrowLeft, MapPin, Search, Star, Navigation, Loader2,
 } from "lucide-react";
 import { KENYA_COUNTIES } from "@/lib/kenya-locations";
+import { serviceImage } from "@/lib/service-images";
 
 /**
  * Local Services hub + category browser. Extremely simple:
@@ -78,9 +79,19 @@ export default function ServicesHub() {
               <button
                 key={c.slug}
                 onClick={() => navigate(`/services/category/${c.slug}`)}
-                className="shrink-0 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-medium text-white/75 hover:border-nx-cyan/40 hover:text-white transition-colors"
+                className="shrink-0 flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] pl-1.5 pr-3.5 py-1.5 text-xs font-medium text-white/75 hover:border-nx-cyan/40 hover:text-white transition-colors"
               >
-                <span>{c.emoji}</span> {c.name}
+                {serviceImage(c.slug) ? (
+                  <img
+                    src={serviceImage(c.slug)}
+                    alt=""
+                    loading="lazy"
+                    className="w-7 h-7 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="ml-1.5">{c.emoji}</span>
+                )}
+                {c.name}
               </button>
             ))}
           </div>
