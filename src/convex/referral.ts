@@ -184,7 +184,7 @@ async function syncReferralEarnings(ctx: any, referralId: string) {
     awards.push({
       type: "seller_bonus",
       amount: settings.sellerActivationBonus,
-      reason: "Referred seller FULLY verified: KYC approved + genuine listing live",
+      reason: "Referred seller FULLY verified: genuine listing live (+ KYC for product sellers)",
     });
   }
   if (r.freelancerActivatedAt && settings.freelancerActivationBonus > 0 && !has("freelancer_bonus")) {
@@ -620,7 +620,7 @@ export const internalOnBusinessActivated = internalMutation({
         (creator as any).userId,
         args.role === "seller" ? "Referred seller fully verified!" : "Referred employer fully verified!",
         args.role === "seller"
-          ? "A seller you referred passed full business verification (KYC + genuine listing). Your activation bonus is now pending."
+          ? "A seller you referred passed full business verification (genuine live listing; KYC too if they sell products). Your activation bonus is now pending."
           : "An employer you referred passed full business verification (complete profile + 5 distinct jobs). Your activation bonus is now pending.",
         "/creator",
       );

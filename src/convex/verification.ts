@@ -9,7 +9,9 @@ import { getSessionUser } from "./users";
 //  • basic    — phone/email + real name + phone number (every active account,
 //               including buyers: simple, secure, no onboarding friction).
 //  • business — the role's full business gate:
-//               · Seller   → KYC verified AND ≥1 genuine product listing.
+//               · Seller   → ≥1 genuine listing. KYC is additionally required
+//                 ONLY for the Normal Marketplace (physical products) — the
+//                 Freelance Marketplace never requires KYC.
 //               · Employer → complete profile AND ≥5 legitimate, DIFFERENT
 //                 jobs/services posted.
 //
@@ -54,18 +56,24 @@ async function employerDistinctJobCount(ctx: any, userId: string): Promise<numbe
   return seen.size;
 }
 
-/** Whether this seller has at least one genuine, active marketplace offering. */
-async function sellerHasGenuineListing(ctx: any, userId: string): Promise<boolean> {
+/**
+ * The seller's genuine, active offerings, split by marketplace. Legacy rows
+ * without the `marketplace` field are product listings (mirrors listings.ts).
+ * KYC is only relevant to the product side — the freelance side never gates
+ * on KYC.
+ */
+async function sellerGenuineListings(ctx: any, userId: string) {
   const listings = await ctx.db
     .query("listings")
     .withIndex("by_seller", (q: any) => q.eq("sellerId", userId))
     .collect();
-  return listings.some(
-    (l: any) =>
-      l.status === "active" &&
-      typeof l.description === "string" &&
-      l.description.replace(/\s+/g, " ").trim().length >= MIN_DESCRIPTION_CHARS
-  );
+  const isGenuine = (l: any) =>
+    l.status === "active" &&
+    typeof l.description === "string" &&
+    l.description.replace(/\s+/g, " ").trim().length >= MIN_DESCRIPTION_CHARS;
+  const hasProduct = listings.some((l: any) => isGenuine(l) && l.marketplace !== "freelance");
+  const hasFreelance = listings.some((l: any) => isGenuine(l) && l.marketplace === "freelance");
+  return { hasProduct, hasFreelance, hasAny: hasProduct || hasFreelance };
 }
 
 /** The shared checklist powering dashboards and the activation engines. */
@@ -84,7 +92,8 @@ async function buildChecklist(ctx: any, user: any) {
 
   const kycStatus = (u.kycStatus as string) || "not_started";
   const kycVerified = kycStatus === "verified";
-  const hasListing = role === "seller" ? await sellerHasGenuineListing(ctx, u._id) : false;
+  const listings =
+    role === "seller" ? await sellerGenuineListings(ctx, u._id) : { hasProduct: false, hasFreelance: false, hasAny: false };
   const jobCount = role === "employer" ? await employerDistinctJobCount(ctx, u._id) : 0;
 
   const requirements: Array<{
@@ -126,28 +135,30 @@ async function buildChecklist(ctx: any, user: any) {
         action: profileOk ? undefined : "/seller/store",
       },
       {
-        key: "kyc",
-        label: "KYC business verification approved",
-        done: kycVerified,
-        detail:
-          kycVerified
-            ? undefined
-            : kycStatus === "pending"
-              ? "Under review by the Nexora team."
-              : "Submit your ID and business documents.",
-        action: kycVerified ? undefined : "/seller/kyc",
-      },
-      {
         key: "listing",
-        label: "At least one genuine product listing",
-        done: hasListing,
+        label: "At least one genuine product or service listing",
+        done: listings.hasAny,
         detail:
-          hasListing
+          listings.hasAny
             ? undefined
-            : "Publish a real product with a full description (60+ characters).",
-        action: hasListing ? undefined : "/seller/add-product",
+            : "Publish a real offering with a full description (60+ characters).",
+        action: listings.hasAny ? undefined : "/seller/add-product",
       },
     );
+    // KYC applies ONLY to the Normal Marketplace (products). Freelance
+    // services & digital tools never require it.
+    if (listings.hasProduct && !kycVerified) {
+      requirements.push({
+        key: "kyc",
+        label: "KYC business verification (product sellers)",
+        done: false,
+        detail:
+          kycStatus === "pending"
+            ? "Under review by the Nexora team."
+            : "Required to sell physical products in the Normal Marketplace. Freelance services don't need it.",
+        action: "/seller/kyc",
+      });
+    }
   }
 
   if (role === "employer") {
@@ -184,7 +195,9 @@ async function buildChecklist(ctx: any, user: any) {
     sellerActivatedAt: u.sellerActivatedAt,
     employerActivatedAt: u.employerActivatedAt,
     kycStatus,
-    genuineListings: role === "seller" ? (hasListing ? 1 : 0) : undefined,
+    genuineListings: role === "seller" ? (listings.hasAny ? 1 : 0) : undefined,
+    sellsProducts: role === "seller" ? listings.hasProduct : undefined,
+    sellsFreelance: role === "seller" ? listings.hasFreelance : undefined,
     distinctJobs: role === "employer" ? jobCount : undefined,
     requiredJobs: role === "employer" ? EMPLOYER_REQUIRED_JOBS : undefined,
     requirements,
@@ -223,7 +236,10 @@ async function reevaluateBusinessVerification(ctx: any, user: any) {
 
   let qualified = false;
   if (role === "seller") {
-    qualified = kycVerified && profileOk && (await sellerHasGenuineListing(ctx, u._id));
+    // Freelance sellers are fully verified with a genuine service listing —
+    // no KYC. Product (Normal Marketplace) sellers additionally need KYC.
+    const l = await sellerGenuineListings(ctx, u._id);
+    qualified = profileOk && l.hasAny && (l.hasProduct ? kycVerified : true);
   } else {
     qualified =
       profileOk && (await employerDistinctJobCount(ctx, u._id)) >= EMPLOYER_REQUIRED_JOBS;
@@ -254,7 +270,7 @@ async function reevaluateBusinessVerification(ctx: any, user: any) {
       title: "Business verification complete",
       message:
         role === "seller"
-          ? "Your store is fully verified (KYC + genuine listing). All seller privileges are now active."
+          ? "Your seller account is fully verified with a genuine live listing. All selling privileges are active."
           : "Your employer account is fully verified — you've posted 5 distinct legitimate offerings. Full hiring privileges are active.",
       read: false,
       link: role === "seller" ? "/seller" : "/employer",

@@ -135,7 +135,7 @@ export default function SellerKYC() {
       <div className="space-y-6 max-w-3xl">
         <FadeIn>
           <h1 className="text-2xl font-bold text-white">Business Verification</h1>
-          <p className="text-sm text-white/40 mt-1">Verify your business to unlock full seller features</p>
+          <p className="text-sm text-white/40 mt-1">Required for selling physical products in the Normal Marketplace — freelance services & digital tools don't need it</p>
         </FadeIn>
 
         {/* Status Card */}

@@ -101,7 +101,10 @@ export const upsertProfile = mutation({
       responseRate: existing?.responseRate || 100,
       avgRating: existing?.avgRating || 0,
       totalReviews: existing?.totalReviews || 0,
-      isVerified: user.kycStatus === "verified",
+      // Verified badge: KYC (voluntary) OR full business verification from the
+      // progressive engine — freelance providers never REQUIRE KYC.
+      isVerified:
+        user.kycStatus === "verified" || (user as any).verificationLevel === "business",
       status: "active" as const,
       roleMode: args.roleMode,
       updatedAt: now,

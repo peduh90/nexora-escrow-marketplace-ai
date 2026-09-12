@@ -200,7 +200,7 @@ export default function JoinCreator() {
               {
                 step: "3",
                 title: "They fully activate",
-                body: "The big bonus: a referred seller passes full business verification (KYC + a genuine listing), or an employer completes their profile and posts 5 distinct legitimate jobs. Choosing a role at signup pays nothing — real verification does.",
+                body: "The big bonus: a referred seller publishes a genuine service or product (KYC only for physical-product sellers), or an employer completes their profile and posts 5 distinct legitimate jobs. Choosing a role at signup pays nothing — real verification does.",
               },
               {
                 step: "4",

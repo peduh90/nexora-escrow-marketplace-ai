@@ -291,10 +291,16 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
         condition: isFreelanceMode ? "Service" : form.condition,
         attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
         negotiable: form.negotiable,
-        verified: user?.kycStatus === "verified",
+        // Verified flag: KYC or full business verification. Freelance services
+        // never require KYC, so a fully-verified freelance seller counts too.
+        verified:
+          user?.kycStatus === "verified" ||
+          (user as any)?.verificationLevel === "business",
         sellerName: user?.businessName || user?.name || "Seller",
         sellerReputation: user?.reputation || 0,
-        sellerVerified: user?.kycStatus === "verified",
+        sellerVerified:
+          user?.kycStatus === "verified" ||
+          (user as any)?.verificationLevel === "business",
       });
 
       // Return to the panel that owns the listing.
