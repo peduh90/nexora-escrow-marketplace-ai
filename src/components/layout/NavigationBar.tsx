@@ -97,7 +97,9 @@ export default function NavigationBar() {
             </button>
           </div>
 
-          {/* Right side - Auth / Dashboard */}
+          {/* Right side - Auth / Dashboard. Get Started intentionally lives on
+              the Marketplace page (below the nav links) where buyers — the
+              default audience — land, not in the global menu. */}
           <div className="hidden md:flex items-center gap-3">
             {user ? (
               <button
@@ -116,14 +118,6 @@ export default function NavigationBar() {
                   className="text-sm text-white/70 hover:text-white px-4 py-2 transition-colors"
                 >
                   Sign In
-                </button>
-                <button
-                  onClick={() => navigate("/auth")}
-                  className="relative text-sm font-medium text-white px-5 py-2.5 rounded-lg overflow-hidden group"
-                  style={{ background: "linear-gradient(135deg, #8B5CF6, #6D28D9)" }}
-                >
-                  <span className="relative z-10">Get Started</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-nx-violet to-nx-cyan opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 </button>
               </>
             )}
@@ -187,10 +181,9 @@ export default function NavigationBar() {
               ) : (
                 <button
                   onClick={() => { navigate("/auth"); setMobileOpen(false); }}
-                  className="text-sm font-medium text-white px-5 py-2.5 rounded-lg mt-2"
-                  style={{ background: "linear-gradient(135deg, #8B5CF6, #6D28D9)" }}
+                  className="text-sm text-white/70 hover:text-white py-2 text-left"
                 >
-                  Get Started
+                  Sign In
                 </button>
               )}
             </div>

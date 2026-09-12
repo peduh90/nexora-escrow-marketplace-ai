@@ -2,8 +2,9 @@ import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../convex/_generated/api";
+import { useAuth } from "@/hooks/use-auth";
 
-import { Search, ArrowLeft, X, MapPin, Shield, Truck, Heart, ChevronRight, Wrench, ArrowUpRight } from "lucide-react";
+import { Search, ArrowLeft, X, MapPin, Shield, Truck, Heart, ChevronRight, Wrench, ArrowUpRight, Sparkles } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
 
@@ -16,6 +17,7 @@ const KENYA_COUNTIES = [
 ];
 
 export default function Marketplace() {
+  const { user, isLoading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
@@ -120,6 +122,35 @@ export default function Marketplace() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ═══ GET STARTED — prominent, thumb-reachable, for signed-out visitors ═══
+          Lives on the marketplace (where new users land) instead of the global
+          menu, so registration is one tap away on any phone. Routes to the
+          role chooser — never straight to a seller-only panel. */}
+      {!authLoading && !user && (
+        <div className="max-w-[1600px] mx-auto px-4 md:px-6 pt-4">
+          <button
+            onClick={() => navigate("/auth")}
+            className="group relative w-full overflow-hidden rounded-2xl border border-nx-cyan/25 bg-gradient-to-r from-nx-violet/25 via-nx-violet/10 to-nx-cyan/15 p-4 md:p-5 text-left transition-all hover:border-nx-cyan/50 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]"
+          >
+            <div className="relative flex items-center gap-4">
+              <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-nx-cyan/20 border border-nx-cyan/30 flex items-center justify-center shrink-0">
+                <Sparkles className="w-6 h-6 text-nx-cyan" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm md:text-base font-bold text-white">New to Nexora? Get Started free</h3>
+                <p className="text-[11px] md:text-xs text-white/50 mt-0.5 leading-relaxed">
+                  Buy, sell or hire with escrow protection — choose your account type in under a minute.
+                </p>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-xl bg-nx-cyan text-black text-xs font-semibold shrink-0 group-hover:bg-nx-cyan/85 transition-colors">
+                Get Started <ArrowUpRight className="w-3.5 h-3.5" />
+              </div>
+              <ChevronRight className="w-5 h-5 text-nx-cyan sm:hidden shrink-0" />
+            </div>
+          </button>
         </div>
       )}
 

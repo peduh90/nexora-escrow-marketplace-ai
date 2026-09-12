@@ -17,12 +17,29 @@ export default function MobileBottomNav() {
   const isAdminRoute = location.pathname.startsWith("/admin");
   if (hideOn.includes(location.pathname) || isAdminRoute) return null;
 
+  // Role-aware destinations. Signed-out users NEVER get pushed into a
+  // seller-only signup: Sell sends them to the general role chooser and
+  // Profile to the default auth flow — the "Get Started opened seller
+  // registration" complaint came from the old /auth/seller hardcode.
+  const sellPath =
+    user?.role === "seller" ? "/seller/add-product"
+    : user?.role === "freelancer" ? "/freelance/publish"
+    : user ? "/auth" // signed-in non-sellers see their panel chooser, not seller signup
+    : "/auth"; // signed-out visitors get the Choose Your Path screen
+  const profilePath =
+    user?.role === "seller" ? "/seller"
+    : user?.role === "admin" ? "/admin"
+    : user?.role === "freelancer" ? "/freelance/dashboard"
+    : user?.role === "employer" ? "/employer"
+    : user ? "/buyer"
+    : "/auth";
+
   const tabs = [
     { icon: Home, label: "Home", path: "/marketplace" },
     { icon: Search, label: "Search", path: "/marketplace" },
-    { icon: PlusCircle, label: "Sell", path: user?.role === "seller" ? "/seller/add-product" : "/auth/seller" },
+    { icon: PlusCircle, label: "Sell", path: sellPath },
     { icon: MessageSquare, label: "Messages", path: "/chat" },
-    { icon: User, label: "Profile", path: user?.role === "seller" ? "/seller" : user?.role === "admin" ? "/admin" : "/buyer" },
+    { icon: User, label: "Profile", path: profilePath },
   ];
 
   const isActive = (path: string) => {
