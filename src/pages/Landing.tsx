@@ -7,8 +7,9 @@ import {
   Shield, Brain, Eye, Scale, CheckCircle2, Globe, ArrowRight, Zap,
   Lock, Users, TrendingUp, ChevronRight, ShieldCheck, Fingerprint,
   AlertTriangle, CreditCard, Search, Star, MapPin, Heart,
-  Truck, Briefcase, Store, Package, ShoppingCart,
+  Truck, Briefcase, Store, Package, ShoppingCart, Sparkles,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import ParticleCanvas from "@/components/canvas/ParticleCanvas";
 import GalacticCore from "@/components/canvas/GalacticCore";
 import NavigationBar from "@/components/layout/NavigationBar";
@@ -85,6 +86,7 @@ function ProductCard({ listing }: { listing: any }) {
 /* ═══════════════════ HOMEPAGE ═══════════════════ */
 export default function Landing() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   // Real products from database
   const latestListings = useQuery(api.listings.getActiveListings, { limit: 8 });
@@ -121,9 +123,17 @@ export default function Landing() {
           AI-powered escrow marketplace for buyers & sellers. Plus a freelance marketplace for writers & employers. Every transaction protected.
         </motion.p>
 
-        {/* Two Marketplace CTAs */}
+        {/* Hero CTAs — Get Started leads for signed-out visitors; explore
+            buttons remain for everyone. Signed-in users keep a Dashboard
+            shortcut instead of a registration CTA. */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.2 }}
-          className="flex flex-col sm:flex-row gap-4 mt-6">
+          className="flex flex-col sm:flex-row gap-4 mt-6 items-center">
+          {!user && (
+            <button onClick={() => navigate("/auth")}
+              className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-nx-violet to-nx-cyan text-white font-bold text-sm hover:opacity-90 transition-all hover:scale-[1.02] flex items-center gap-2 justify-center shadow-[0_0_30px_rgba(139,92,246,0.35)]">
+              <Sparkles className="w-4 h-4" /> Get Started Free
+            </button>
+          )}
           <button onClick={() => navigate("/marketplace")}
             className="px-8 py-3.5 rounded-xl bg-nx-cyan text-black font-semibold text-sm hover:bg-nx-cyan/80 transition-all hover:scale-[1.02] flex items-center gap-2 justify-center">
             <ShoppingCart className="w-4 h-4" /> Explore Marketplace
