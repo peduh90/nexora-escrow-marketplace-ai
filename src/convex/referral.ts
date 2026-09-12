@@ -60,24 +60,38 @@ async function requireAdmin(ctx: any): Promise<any> {
   return user;
 }
 
+const DEFAULT_SETTINGS = {
+  fixedPerVerifiedUser: 50,
+  sellerActivationBonus: 200,
+  freelancerActivationBonus: 100,
+  firstTransactionBonus: 150,
+  revenueSharePercent: 1,
+  revenueShareCap: 500,
+  maxReferralsPerHour: 10,
+};
+
 /**
- * The commission-rules singleton. Seeded with sensible KES defaults on first
- * read; every value is admin-editable (see updateProgramSettings).
+ * The commission-rules singleton. Mutating contexts (mutations) may seed the
+ * row on first use; queries MUST use getSettingsRowReadOnly because Convex
+ * forbids writes inside queries — that was the "Server Error" on the admin
+ * referrals page.
  */
 export async function getSettingsRow(ctx: any): Promise<any> {
   const row = await ctx.db.query("referralSettings").first();
   if (row) return row;
   const id = await ctx.db.insert("referralSettings", {
-    fixedPerVerifiedUser: 50,
-    sellerActivationBonus: 200,
-    freelancerActivationBonus: 100,
-    firstTransactionBonus: 150,
-    revenueSharePercent: 1,
-    revenueShareCap: 500,
-    maxReferralsPerHour: 10,
+    ...DEFAULT_SETTINGS,
     updatedAt: Date.now(),
   });
   return await ctx.db.get(id);
+}
+
+/** Read-only twin for queries — returns defaults when the row doesn't exist
+ * yet, without writing. */
+export async function getSettingsRowReadOnly(ctx: any): Promise<any> {
+  const row = await ctx.db.query("referralSettings").first();
+  if (row) return row;
+  return { ...DEFAULT_SETTINGS, updatedBy: undefined, updatedAt: undefined };
 }
 
 function normalizeCode(code: string): string {
@@ -211,7 +225,7 @@ async function syncReferralEarnings(ctx: any, referralId: string) {
  * involving a referred user; capped per transaction by revenueShareCap.
  */
 async function awardRevenueShare(ctx: any, rec: any, amount: number, currency: string, escrowId: string) {
-  const settings = await getSettingsRow(ctx);
+  const settings = await getSettingsRowReadOnly(ctx);
   if (settings.revenueSharePercent <= 0) return;
   const share = Math.min(
     Math.round((amount * settings.revenueSharePercent) / 100),
@@ -457,7 +471,7 @@ export const onUserRegistered = mutation({
     }
 
     // Hourly registration cap for this creator.
-    const settings = await getSettingsRow(ctx);
+    const settings = await getSettingsRowReadOnly(ctx);
     const hourAgo = Date.now() - 60 * 60 * 1000;
     const creatorsRefs = await ctx.db
       .query("referralRecords")
@@ -1076,12 +1090,13 @@ export const payoutCreator = mutation({
   },
 });
 
-/** Program commission rules — admin-editable, engine reads them live. */
+/** Program commission rules — admin-editable, engine reads them live.
+ *  Read-only: settings show defaults until an admin first saves them. */
 export const getProgramSettings = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    return await getSettingsRow(ctx);
+    return await getSettingsRowReadOnly(ctx);
   },
 });
 
