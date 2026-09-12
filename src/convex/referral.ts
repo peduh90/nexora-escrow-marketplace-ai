@@ -1118,21 +1118,22 @@ export const updateProgramSettings = mutation({
 });
 
 /**
- * Export every referral row flattened for CSV (admin reports). Real ledger
- * data, joined with creator + user identity for audit purposes.
+ * Export referral data flattened for CSV (admin reports). Fetched on demand
+ * via convex.query() — real ledger data, joined with creator + user identity
+ * for audit purposes.
  */
-export const exportReport = query({
+export const generateExport = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const creators = await ctx.db.query("referralCreators").collect();
     const referrals = await ctx.db.query("referralRecords").collect();
-    const rows: any[] = [];
+    const referralRows: any[] = [];
     for (const r of referrals) {
       const rr = r as any;
       const c = creators.find((x: any) => x._id === rr.creatorId);
       const u = await ctx.db.get(rr.referredUserId as any);
-      rows.push({
+      referralRows.push({
         referralId: rr._id,
         creatorName: (c as any)?.displayName || "",
         creatorCode: (c as any)?.referralCode || "",
@@ -1168,6 +1169,6 @@ export const exportReport = query({
         payoutReference: e.payoutReference || "",
       };
     });
-    return { referrals: rows, earnings: earningRows };
+    return { referrals: referralRows, earnings: earningRows };
   },
 });

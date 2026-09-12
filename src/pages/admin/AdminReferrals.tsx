@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import AdminLayout from "./AdminLayout";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useConvex } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { toast } from "sonner";
 import {
@@ -39,16 +39,68 @@ function downloadCsv(filename: string, rows: Record<string, any>[]) {
   toast.success(`Exported ${rows.length} rows`);
 }
 
-export default function AdminReferrals() {
+/**
+ * Page-level error boundary. Convex useQuery throws server errors during
+ * render — without this, one unavailable referral query (e.g. functions not
+ * yet pushed to the deployment the site points at) blanks the whole admin
+ * panel with "Preview runtime error". Instead we show a clear, calm message
+ * and keep the rest of the admin app alive.
+ */
+class ReferralErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; message: string }
+> {
+  state = { hasError: false, message: "" };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, message: error.message || "Unknown error" };
+  }
+  componentDidCatch(err: Error) {
+    console.error("[AdminReferrals] query error caught:", err.message);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <AdminLayout>
+          <div className="rounded-xl border border-amber-400/25 bg-amber-500/[0.06] p-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
+              <div>
+                <h2 className="font-semibold text-white">Creator & Referral data is unavailable right now</h2>
+                <p className="mt-1.5 text-sm text-white/55 max-w-2xl leading-relaxed">
+                  The referral backend didn't answer this request. If the site was just updated, give it
+                  a moment and refresh — the referral functions may still be syncing to this deployment.
+                  Nothing was lost: creators, referrals and commissions are stored safely in the database.
+                </p>
+                <p className="mt-2 text-xs text-white/35 font-mono break-all">{this.state.message}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-500/15 border border-amber-400/30 px-4 py-2 text-sm font-medium text-amber-200 hover:bg-amber-500/25"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        </AdminLayout>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AdminReferralsInner() {
+  // Live queries. An error on any of these (e.g. a deployment that hasn't
+  // received the referral functions yet) surfaces through the page-level
+  // error boundary instead of crashing the whole admin panel.
   const overview = useQuery(api.referral.adminOverview);
   const settingsRow = useQuery(api.referral.getProgramSettings);
+  const convexClient = useConvex();
   const reviewCreator = useMutation(api.referral.reviewCreator);
   const reviewReferral = useMutation(api.referral.reviewReferral);
   const reviewEarning = useMutation(api.referral.reviewEarning);
   const adjustEarning = useMutation(api.referral.adjustEarning);
   const payoutCreator = useMutation(api.referral.payoutCreator);
   const updateProgramSettings = useMutation(api.referral.updateProgramSettings);
-  const exportReport = useQuery(api.referral.exportReport);
 
   const [tab, setTab] = useState<"creators" | "fraud" | "earnings" | "settings">("creators");
   const [search, setSearch] = useState("");
@@ -62,7 +114,7 @@ export default function AdminReferrals() {
 
   const detail = useQuery(
     api.referral.creatorDetail,
-    expandedCreator ? { creatorId: expandedCreator } : "skip" as any,
+    expandedCreator ? { creatorId: expandedCreator } : "skip",
   );
 
   const filteredCreators = useMemo(() => {
@@ -139,6 +191,18 @@ export default function AdminReferrals() {
 
   const t = overview.totals;
 
+  const fetchExport = async (kind: "referrals" | "earnings") => {
+    try {
+      const rep: any = await convexClient.query(api.referral.generateExport, {});
+      downloadCsv(
+        kind === "referrals" ? "nexora-referral-referrals.csv" : "nexora-referral-earnings.csv",
+        kind === "referrals" ? rep?.referrals || [] : rep?.earnings || [],
+      );
+    } catch (err: any) {
+      toast.error(err?.message || "Export failed.");
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -160,13 +224,13 @@ export default function AdminReferrals() {
               <Settings2 className="w-4 h-4" /> Commission rules
             </button>
             <button
-              onClick={() => downloadCsv("nexora-referral-referrals.csv", exportReport?.referrals || [])}
+              onClick={() => fetchExport("referrals")}
               className="inline-flex items-center gap-2 rounded-lg border border-white/12 px-3.5 py-2 text-sm text-white/75 hover:bg-white/5 transition-colors"
             >
               <Download className="w-4 h-4" /> Referrals CSV
             </button>
             <button
-              onClick={() => downloadCsv("nexora-referral-earnings.csv", exportReport?.earnings || [])}
+              onClick={() => fetchExport("earnings")}
               className="inline-flex items-center gap-2 rounded-lg border border-white/12 px-3.5 py-2 text-sm text-white/75 hover:bg-white/5 transition-colors"
             >
               <Download className="w-4 h-4" /> Earnings CSV
@@ -301,7 +365,7 @@ export default function AdminReferrals() {
                             onClick={() => act(`p-${c._id}`, async () => {
                               const res = await payoutCreator({ creatorId: c._id });
                               toast.success(`Paid ${fmtKES(res.total)} across ${res.paidCount} earnings (${res.reference})`);
-                            }, undefined)}
+                            })}
                             disabled={busy === `p-${c._id}` || c.pendingCommission <= 0}
                             title={c.pendingCommission <= 0 ? "Nothing approved to pay — approve earnings first" : "Pay all approved earnings"}
                             className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-500/15 border border-cyan-400/30 px-3 py-2 text-xs font-medium text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-40"
@@ -588,5 +652,14 @@ export default function AdminReferrals() {
         )}
       </div>
     </AdminLayout>
+  );
+}
+
+/** Exported page wrapped in the fail-soft boundary. */
+export default function AdminReferrals() {
+  return (
+    <ReferralErrorBoundary>
+      <AdminReferralsInner />
+    </ReferralErrorBoundary>
   );
 }

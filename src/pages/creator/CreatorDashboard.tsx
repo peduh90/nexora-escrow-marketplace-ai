@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -52,7 +52,51 @@ function timeAgo(n: number) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-export default function CreatorDashboard() {
+/**
+ * Page-level error boundary — if the referral backend is briefly unreachable
+ * (e.g. right after an update while functions sync), show a clear message
+ * instead of a blank page.
+ */
+class CreatorErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; message: string }
+> {
+  state = { hasError: false, message: "" };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, message: error.message || "Unknown error" };
+  }
+  componentDidCatch(err: Error) {
+    console.error("[CreatorDashboard] error caught:", err.message);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#07070c] text-white flex items-center justify-center px-4">
+          <div className="max-w-md text-center">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-400/25 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6 text-amber-300" />
+            </div>
+            <h1 className="mt-4 text-xl font-bold">Creator data is loading up</h1>
+            <p className="mt-2 text-sm text-white/55 leading-relaxed">
+              The referral backend didn't answer just now — if the site was recently updated,
+              give it a moment and refresh. Your application, referrals and earnings are safe.
+            </p>
+            <p className="mt-2 text-xs text-white/30 font-mono break-all">{this.state.message}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-violet-500 hover:bg-violet-400 px-5 py-2.5 text-sm font-semibold"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function CreatorDashboardInner() {
   const navigate = useNavigate();
   const data = useQuery(api.referral.getMyDashboard);
   const applyToBeCreator = useMutation(api.referral.applyToBeCreator);
@@ -554,5 +598,14 @@ export default function CreatorDashboard() {
         )}
       </div>
     </div>
+  );
+}
+
+/** Exported page wrapped in the fail-soft boundary. */
+export default function CreatorDashboard() {
+  return (
+    <CreatorErrorBoundary>
+      <CreatorDashboardInner />
+    </CreatorErrorBoundary>
   );
 }
