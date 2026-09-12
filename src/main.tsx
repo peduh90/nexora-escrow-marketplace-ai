@@ -20,6 +20,13 @@ const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const JoinCreator = lazy(() => import("./pages/creator/JoinCreator.tsx"));
 const CreatorDashboard = lazy(() => import("./pages/creator/CreatorDashboard.tsx"));
 const AdminReferrals = lazy(() => import("./pages/admin/AdminReferrals.tsx"));
+
+const ServicesHub = lazy(() => import("./pages/services/ServicesHub.tsx"));
+const ProviderProfile = lazy(() => import("./pages/services/ProviderProfile.tsx"));
+const MyBookings = lazy(() => import("./pages/services/MyBookings.tsx"));
+const ServiceProviderDashboard = lazy(() => import("./pages/services/ServiceProviderDashboard.tsx"));
+const TransportPage = lazy(() => import("./pages/transport/TransportPage.tsx"));
+const AdminServices = lazy(() => import("./pages/admin/AdminServices.tsx"));
 // Buyer panel
 const BuyerDashboard = lazy(() => import("./pages/buyer/BuyerDashboard.tsx"));
 const BuyerWallet = lazy(() => import("./pages/buyer/BuyerWallet.tsx"));
@@ -298,6 +305,18 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/join" element={<JoinCreator />} />
               <Route path="/creator" element={<RequireAuth><CreatorDashboard /></RequireAuth>} />
               <Route path="/admin/referrals" element={<RequireAdmin><AdminReferrals /></RequireAdmin>} />
+              <Route path="/admin/services" element={<RequireAdmin><AdminServices /></RequireAdmin>} />
+
+              {/* ── Local Services & Transport (Kenya-first) ── */}
+              <Route path="/services" element={<ServicesHub />} />
+              <Route path="/services/category/:category" element={<ServicesHub />} />
+              <Route path="/services/provider/:providerId" element={<ProviderProfile />} />
+              <Route path="/services/register" element={<RequireAuth><ServiceProviderDashboard /></RequireAuth>} />
+              <Route path="/services/dashboard" element={<RequireAuth><ServiceProviderDashboard /></RequireAuth>} />
+              <Route path="/services/bookings" element={<RequireAuth><MyBookings /></RequireAuth>} />
+              <Route path="/transport" element={<TransportPage />} />
+              <Route path="/transport/register" element={<RequireAuth><ServiceProviderDashboard /></RequireAuth>} />
+              <Route path="/transport/dashboard" element={<RequireAuth><ServiceProviderDashboard /></RequireAuth>} />
 
               {/* Legacy /dashboard/* URLs redirect to the current role-based panel */}
               <Route path="/dashboard/*" element={<LegacyDashboardRedirect />} />

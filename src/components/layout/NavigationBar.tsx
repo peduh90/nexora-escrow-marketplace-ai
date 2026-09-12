@@ -78,6 +78,12 @@ export default function NavigationBar() {
               Freelance
             </button>
             <button
+              onClick={() => navigate("/services")}
+              className="px-3 py-1.5 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+            >
+              Services
+            </button>
+            <button
               onClick={() => navigate(user ? "/creator" : "/join")}
               className="px-3 py-1.5 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/5"
             >
@@ -161,6 +167,12 @@ export default function NavigationBar() {
                 className="text-white/70 hover:text-white text-sm py-2 text-left"
               >
                 Freelance Marketplace
+              </button>
+              <button
+                onClick={() => { navigate("/services"); setMobileOpen(false); }}
+                className="text-white/70 hover:text-white text-sm py-2 text-left"
+              >
+                Services & Transport
               </button>
               {user && (
                 <button

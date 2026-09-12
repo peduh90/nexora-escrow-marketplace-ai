@@ -15,6 +15,7 @@ import GalacticCore from "@/components/canvas/GalacticCore";
 import NavigationBar from "@/components/layout/NavigationBar";
 import { TrustBanner } from "@/components/layout/TrustBadges";
 import SocialLinks from "@/components/layout/SocialLinks";
+import ServicesNearYou from "@/components/home/ServicesNearYou";
 import { CATEGORIES } from "@/lib/categories";
 import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
 
@@ -180,6 +181,9 @@ export default function Landing() {
           ))}
         </motion.div>
       </section>
+
+      {/* ══════ SERVICES & TRANSPORT NEAR YOU (Kenya-first local services) ══════ */}
+      <ServicesNearYou />
 
       {/* ══════ CATEGORIES (same grid as Marketplace) ══════ */}
       <section className="relative z-10 py-6 px-6 border-y border-white/5">

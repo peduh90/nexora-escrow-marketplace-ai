@@ -1112,6 +1112,224 @@ const schema = defineSchema(
     })
       .index("by_freelancer", ["freelancerId"])
       .index("by_project", ["projectId"]),
+
+    // ─── LOCAL SERVICES & TRANSPORT (Kenya-first, simple English) ───────────
+
+    // A local service provider (salon, plumber, mechanic, cleaner, …).
+    // Prices are the provider's own; verification = business verification or
+    // direct admin approval. No fake rows anywhere — created by real users.
+    serviceProfiles: defineTable({
+      userId: v.string(),
+      displayName: v.string(),
+      category: v.string(), // services.ts category slug e.g. "beauty", "home"
+      serviceType: v.string(), // simple type e.g. "Salon", "Plumber"
+      tagline: v.optional(v.string()),
+      description: v.optional(v.string()),
+      county: v.string(),
+      town: v.string(),
+      coverageAreas: v.optional(v.array(v.string())),
+      serviceRadiusKm: v.optional(v.number()),
+      pricingMode: v.union(
+        v.literal("fixed"),
+        v.literal("starting_from"),
+        v.literal("quote"),
+      ),
+      basePrice: v.optional(v.number()),
+      phone: v.optional(v.string()),
+      whatsapp: v.optional(v.string()),
+      availability: v.union(
+        v.literal("available_now"),
+        v.literal("busy"),
+        v.literal("off"),
+      ),
+      workingHours: v.optional(v.string()),
+      adminVerified: v.optional(v.boolean()),
+      verificationNote: v.optional(v.string()),
+      // Server-maintained stats only.
+      ratingSum: v.optional(v.number()),
+      ratingCount: v.optional(v.number()),
+      completedJobs: v.optional(v.number()),
+      views: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_user", ["userId"])
+      .index("by_category", ["category"])
+      .index("by_availability", ["availability"]),
+
+    // A customer's request for a local service (escrow-protected booking).
+    serviceRequests: defineTable({
+      providerId: v.string(),
+      providerUserId: v.string(),
+      customerId: v.string(),
+      category: v.string(),
+      serviceType: v.string(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      location: v.optional(v.string()),
+      county: v.optional(v.string()),
+      town: v.optional(v.string()),
+      amount: v.number(),
+      currency: v.string(),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("funded"),
+        v.literal("accepted"),
+        v.literal("in_progress"),
+        v.literal("completed"),
+        v.literal("declined"),
+        v.literal("cancelled"),
+        v.literal("disputed"),
+      ),
+      customerFunded: v.optional(v.boolean()),
+      providerAcceptedAt: v.optional(v.number()),
+      startedAt: v.optional(v.number()),
+      completedAt: v.optional(v.number()),
+      declinedReason: v.optional(v.string()),
+      cancelledBy: v.optional(v.string()),
+      cancelReason: v.optional(v.string()),
+      completionNote: v.optional(v.string()),
+      payout: v.optional(v.number()),
+      rating: v.optional(v.number()),
+      ratedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_customer", ["customerId"])
+      .index("by_provider", ["providerId"])
+      .index("by_provider_user", ["providerUserId"])
+      .index("by_status", ["status"]),
+
+    // Transport provider (Boda Boda, Matatu, Tuk-Tuk, Taxi, Delivery).
+    transportProfiles: defineTable({
+      userId: v.string(),
+      displayName: v.string(),
+      serviceType: v.union(
+        v.literal("boda"),
+        v.literal("matatu"),
+        v.literal("tuktuk"),
+        v.literal("taxi"),
+        v.literal("delivery"),
+      ),
+      vehicleModel: v.optional(v.string()),
+      plateNumber: v.optional(v.string()),
+      licenseNumber: v.optional(v.string()),
+      county: v.string(),
+      town: v.string(),
+      baseStage: v.optional(v.string()),
+      routeCodes: v.optional(v.array(v.string())), // matatu routes served
+      schedule: v.optional(v.string()), // matatu departure times (text)
+      availability: v.union(
+        v.literal("available_now"),
+        v.literal("busy"),
+        v.literal("off"),
+      ),
+      phone: v.optional(v.string()),
+      idDocumentUrl: v.optional(v.string()),
+      vehicleDocumentUrl: v.optional(v.string()),
+      // Verification: identity + vehicle + regulatory — reviewed by admin.
+      verificationStatus: v.union(
+        v.literal("unverified"),
+        v.literal("pending"),
+        v.literal("verified"),
+        v.literal("rejected"),
+      ),
+      verificationNote: v.optional(v.string()),
+      ratingSum: v.optional(v.number()),
+      ratingCount: v.optional(v.number()),
+      completedTrips: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_user", ["userId"])
+      .index("by_service_type", ["serviceType"])
+      .index("by_availability", ["availability"])
+      .index("by_verification", ["verificationStatus"]),
+
+    // Matatu routes: stage-based fares, NOT on-demand pricing. fares[i] is
+    // the cumulative fare from stages[0]; fare(A→B) = |fares[B] − fares[A]).
+    transportRoutes: defineTable({
+      name: v.string(),
+      code: v.string(),
+      stages: v.array(v.string()),
+      fares: v.array(v.number()),
+      notes: v.optional(v.string()),
+      active: v.boolean(),
+      updatedBy: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_code", ["code"]),
+
+    // A transport trip. Fares are computed ONLY by the pricing engine from
+    // admin-configured rules — no client/provider can set an arbitrary price.
+    trips: defineTable({
+      customerId: v.string(),
+      providerId: v.optional(v.string()),
+      providerUserId: v.optional(v.string()),
+      serviceType: v.union(
+        v.literal("boda"),
+        v.literal("matatu"),
+        v.literal("tuktuk"),
+        v.literal("taxi"),
+        v.literal("delivery"),
+      ),
+      pickup: v.string(),
+      pickupPlace: v.optional(v.string()), // gazetteer key (exact fare math)
+      destination: v.string(),
+      destinationPlace: v.optional(v.string()),
+      routeCode: v.optional(v.string()), // matatu
+      fromStage: v.optional(v.string()),
+      toStage: v.optional(v.string()),
+      distanceKm: v.optional(v.number()),
+      durationMin: v.optional(v.number()),
+      fare: v.number(),
+      currency: v.string(),
+      fareBreakdown: v.optional(v.record(v.string(), v.number())),
+      status: v.union(
+        v.literal("requested"),
+        v.literal("funded"),
+        v.literal("accepted"),
+        v.literal("arriving"),
+        v.literal("in_progress"),
+        v.literal("completed"),
+        v.literal("cancelled"),
+        v.literal("disputed"),
+      ),
+      customerFunded: v.optional(v.boolean()),
+      requestedAt: v.number(),
+      acceptedAt: v.optional(v.number()),
+      startedAt: v.optional(v.number()),
+      completedAt: v.optional(v.number()),
+      cancelledAt: v.optional(v.number()),
+      cancelledBy: v.optional(v.string()),
+      cancelReason: v.optional(v.string()),
+      emergencyAt: v.optional(v.number()),
+      payout: v.optional(v.number()),
+      rating: v.optional(v.number()),
+      ratedAt: v.optional(v.number()),
+      completionNote: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_customer", ["customerId"])
+      .index("by_provider", ["providerId"])
+      .index("by_provider_user", ["providerUserId"])
+      .index("by_status", ["status"]),
+
+    // Admin-configurable transport pricing rules (singleton). The fare engine
+    // reads these live — never hard-coded, never client-settable.
+    transportSettings: defineTable({
+      baseFare: v.number(),
+      pricePerKm: v.number(),
+      pricePerMinute: v.number(),
+      minimumFare: v.number(),
+      routeFactor: v.number(), // straight-line × this ≈ road distance
+      surgeEnabled: v.boolean(),
+      maxSurgeMultiplier: v.number(),
+      updatedAt: v.optional(v.number()),
+      updatedBy: v.optional(v.string()),
+    }),
   },
   {
     schemaValidation: false,
