@@ -11,55 +11,185 @@ import { sellerCommission, buyerProtectionFee } from "./fees";
 // bookings through the existing wallet + fee engine, real ratings only.
 // No seeded/demo rows are ever created here.
 
-/** The simple, ordinary-Kenyan category names shown on the homepage. */
+/**
+ * The simple, ordinary-Kenyan service categories — ordered by everyday
+ * demand. Transport types (Boda, Matatu) link into the transport system;
+ * everything else books through the escrow-protected service flow.
+ */
 export const SERVICE_CATEGORIES = [
   {
-    slug: "beauty",
-    name: "Beauty & Wellness",
-    emoji: "💅",
-    types: ["Salon", "Barber", "Braiding", "Nails", "Facial", "Massage", "Spa", "Makeup", "Beauty Products"],
+    slug: "boda",
+    name: "Boda Boda & Rides",
+    emoji: "🏍️",
+    types: ["Boda Boda", "Taxi", "Tuk-Tuk", "Car Hire"],
   },
   {
-    slug: "home",
-    name: "Home Services",
-    emoji: "🏠",
-    types: ["Plumber", "Electrician", "Cleaning", "Painting", "Moving", "Repairs"],
+    slug: "matatu",
+    name: "Matatu & Transport",
+    emoji: "🚐",
+    types: ["Matatu", "Truck & Van Hire", "Shuttle Services"],
+  },
+  {
+    slug: "delivery",
+    name: "Moving & Delivery",
+    emoji: "📦",
+    types: ["Parcel Delivery", "Courier", "Moving & House Shifting", "Errands", "Shopping Delivery"],
+  },
+  {
+    slug: "plumbers",
+    name: "Plumbers",
+    emoji: "🚰",
+    types: ["Plumber", "Water Tank Cleaning", "Drain Unblocking", "Pipe Installation"],
+  },
+  {
+    slug: "electricians",
+    name: "Electricians",
+    emoji: "⚡",
+    types: ["Electrician", "Wiring", "Solar Installation", "Appliance Hookup"],
   },
   {
     slug: "auto",
-    name: "Auto Services",
+    name: "Mechanics & Car Repair",
     emoji: "🔧",
-    types: ["Mechanic", "Car Wash", "Tyre Services", "Spare Parts"],
+    types: ["Mechanic", "Car Wash", "Tyre Services", "Spare Parts", "Battery Services"],
+  },
+  {
+    slug: "cleaning",
+    name: "Cleaning Services",
+    emoji: "🧹",
+    types: ["House Cleaning", "Office Cleaning", "Carpet Cleaning", "Fumigation & Pest Control"],
+  },
+  {
+    slug: "laundry",
+    name: "Laundry & Ironing",
+    emoji: "👕",
+    types: ["Laundry", "Ironing", "Dry Cleaning", "Shoe Cleaning"],
+  },
+  {
+    slug: "beauty",
+    name: "Salon & Barber",
+    emoji: "💈",
+    types: ["Salon", "Barber", "Braiding", "Nails", "Facial", "Massage", "Spa"],
+  },
+  {
+    slug: "makeup",
+    name: "Beauty & Makeup",
+    emoji: "💅",
+    types: ["Makeup Artist", "Bridal Makeup", "Beauty Products", "Henna Art"],
+  },
+  {
+    slug: "home",
+    name: "Home Repairs & Maintenance",
+    emoji: "🏠",
+    types: ["Handyman", "Painting", "Roof Repair", "Furniture Repair", "Repairs"],
+  },
+  {
+    slug: "fundis",
+    name: "Construction & Fundis",
+    emoji: "🧱",
+    types: ["Mason / Fundi", "Carpenter", "Welder", "Roofing", "Tiling", "Construction Worker"],
+  },
+  {
+    slug: "tech-repair",
+    name: "Computer & Phone Repair",
+    emoji: "📱",
+    types: ["Phone Repair", "Computer Repair", "Software Installation", "Virus Removal"],
+  },
+  {
+    slug: "cyber",
+    name: "Printing, Photocopy & Cyber",
+    emoji: "🖨️",
+    types: ["Printing", "Photocopying", "Cyber Services", "Lamination", "Binding", "Photo Studio"],
+  },
+  {
+    slug: "courier",
+    name: "Courier & Parcel Delivery",
+    emoji: "🚚",
+    types: ["Same-Day Courier", "Inter-County Parcel", "Document Delivery"],
+  },
+  {
+    slug: "carhire",
+    name: "Car & Truck Hire",
+    emoji: "🚗",
+    types: ["Car Hire", "Truck Hire", "Van Hire", "Driver Hire"],
+  },
+  {
+    slug: "events",
+    name: "Events & Equipment Hire",
+    emoji: "🎉",
+    types: ["Tents & Chairs Hire", "Sound System", "MC", "DJ", "Catering", "Decor", "Photography & Video"],
+  },
+  {
+    slug: "photography",
+    name: "Photography & Videography",
+    emoji: "📸",
+    types: ["Photographer", "Videographer", "Drone Shots", "Photo Editing"],
+  },
+  {
+    slug: "appliance",
+    name: "Appliance Repair",
+    emoji: "🔌",
+    types: ["Fridge Repair", "TV Repair", "Washing Machine Repair", "Microwave Repair"],
+  },
+  {
+    slug: "garden",
+    name: "Gardening & Landscaping",
+    emoji: "🌿",
+    types: ["Gardener", "Landscaping", "Lawn Mowing", "Tree Trimming"],
+  },
+  {
+    slug: "waste",
+    name: "Waste Collection",
+    emoji: "🗑️",
+    types: ["Household Waste", "Business Waste", "Compound Cleaning"],
+  },
+  {
+    slug: "water",
+    name: "Water Delivery",
+    emoji: "💧",
+    types: ["Water Bowser", "Drinking Water Refill", "Water Vending"],
+  },
+  {
+    slug: "gas",
+    name: "Gas / LPG Delivery",
+    emoji: "🔥",
+    types: ["Gas Refill", "Gas Delivery", "Cooking Oil Delivery"],
+  },
+  {
+    slug: "tutoring",
+    name: "Tutoring & Education",
+    emoji: "📚",
+    types: ["Home Tutor", "Exam Prep (KCPE/KCSE)", "Music Lessons", "Computer Classes"],
+  },
+  {
+    slug: "childcare",
+    name: "Childcare & Domestic Help",
+    emoji: "👶",
+    types: ["House Help / Mboch", "Nanny", "Baby Sitter", "House Manager"],
+  },
+  {
+    slug: "pets",
+    name: "Pet Services",
+    emoji: "🐕",
+    types: ["Dog Walking", "Veterinary", "Pet Grooming", "Pet Sitting"],
   },
   {
     slug: "professional",
     name: "Professional Services",
     emoji: "💼",
-    types: ["Lawyer", "Accountant", "Photographer", "Printing", "IT Support", "Tutor"],
+    types: ["Lawyer", "Accountant", "IT Support", "Business Consultant", "Agri Consultant"],
   },
   {
-    slug: "events",
-    name: "Events & Entertainment",
-    emoji: "🎉",
-    types: ["MC", "DJ", "Photography & Video", "Catering", "Decor", "Sound System"],
+    slug: "marketing",
+    name: "Business & Marketing Services",
+    emoji: "📈",
+    types: ["Marketing Agent", "Branding", "Social Media Management", "Business Registration"],
   },
   {
-    slug: "health",
-    name: "Health & Fitness",
-    emoji: "💪",
-    types: ["Gym Trainer", "Yoga", "Nutritionist", "Physiotherapy"],
-  },
-  {
-    slug: "agriculture",
-    name: "Agriculture",
-    emoji: "🌾",
-    types: ["Farm Inputs", "Veterinary", "Farm Machinery", "Agri Consultant"],
-  },
-  {
-    slug: "delivery",
-    name: "Delivery",
-    emoji: "📦",
-    types: ["Parcel Delivery", "Errands", "Shopping Delivery"],
+    slug: "emergency",
+    name: "Emergency Services",
+    emoji: "🚨",
+    types: ["Locksmith (Locked Out)", "Emergency Plumber", "Emergency Electrician", "Towing", "Roadside Rescue"],
   },
 ] as const;
 
@@ -136,7 +266,7 @@ async function toPublicProvider(ctx: any, p: any) {
 
 /** Providers in one category (homepage + category page). */
 export const getProvidersByCategory = query({
-  args: { category: v.string(), availableNow: v.optional(v.boolean()) },
+  args: { category: v.string(), availableNow: v.optional(v.boolean()), county: v.optional(v.string()) },
   handler: async (ctx, args) => {
     let rows = await ctx.db
       .query("serviceProfiles")
@@ -144,6 +274,10 @@ export const getProvidersByCategory = query({
       .collect();
     if (args.availableNow) {
       rows = rows.filter((p: any) => p.availability === "available_now");
+    }
+    if (args.county) {
+      const c = args.county.trim().toLowerCase();
+      if (c) rows = rows.filter((p: any) => (p.county || "").toLowerCase() === c);
     }
     const out = await Promise.all(rows.map((p: any) => toPublicProvider(ctx, p)));
     // Verified first, then available, then rating, then newest.
@@ -159,12 +293,16 @@ export const getProvidersByCategory = query({
 
 /** Simple text search across service type, name, town, county, tagline. */
 export const searchProviders = query({
-  args: { q: v.string(), category: v.optional(v.string()) },
+  args: { q: v.string(), category: v.optional(v.string()), county: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const needle = args.q.trim().toLowerCase();
     if (!needle) return [];
     let rows = await ctx.db.query("serviceProfiles").collect();
     if (args.category) rows = rows.filter((p: any) => p.category === args.category);
+    if (args.county) {
+      const c = args.county.trim().toLowerCase();
+      if (c) rows = rows.filter((p: any) => (p.county || "").toLowerCase() === c);
+    }
     const matched = rows.filter((p: any) =>
       [p.serviceType, p.displayName, p.town, p.county, p.tagline, p.category]
         .some((f: any) => typeof f === "string" && f.toLowerCase().includes(needle)),

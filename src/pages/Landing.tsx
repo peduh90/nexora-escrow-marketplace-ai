@@ -8,6 +8,8 @@ import {
   Lock, Users, TrendingUp, ChevronRight, ShieldCheck, Fingerprint,
   AlertTriangle, CreditCard, Search, Star, MapPin, Heart,
   Truck, Briefcase, Store, Package, ShoppingCart, Sparkles,
+  Wrench, Bike, Car, TruckIcon, Boxes, Printer, Droplets, Flame, Leaf,
+  BookOpen, Baby, Dog, LineChart, Siren, Home, Tv, BabyIcon, SprayCan,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import ParticleCanvas from "@/components/canvas/ParticleCanvas";
@@ -16,7 +18,7 @@ import NavigationBar from "@/components/layout/NavigationBar";
 import { TrustBanner } from "@/components/layout/TrustBadges";
 import SocialLinks from "@/components/layout/SocialLinks";
 import ServicesNearYou from "@/components/home/ServicesNearYou";
-import { CATEGORIES } from "@/lib/categories";
+import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
 
 /* ───── Reusable ───── */
@@ -88,16 +90,33 @@ function ProductCard({ listing }: { listing: any }) {
 export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // Signed-in users tap "Get Started" → their own dashboard.
+  const dashboardPath = () => {
+    if (!user) return "/auth";
+    switch (user.role) {
+      case "admin": return "/admin";
+      case "seller": return "/seller";
+      case "freelancer": return "/freelance/dashboard";
+      case "employer": return "/employer";
+      default: return "/buyer";
+    }
+  };
   const [searchQuery, setSearchQuery] = useState("");
+  // Universal search scope — results stay inside ONE marketplace.
+  const [searchScope, setSearchScope] = useState<"products" | "services" | "freelance">("products");
   // Real products from database
   const latestListings = useQuery(api.listings.getActiveListings, { limit: 8 });
   const featuredListings = useQuery(api.listings.getActiveListings, { limit: 4 });
 
   const handleSearch = () => {
-    if (searchQuery.trim()) {
-      navigate(`/marketplace?q=${encodeURIComponent(searchQuery.trim())}`);
+    const q = searchQuery.trim();
+    if (searchScope === "services") {
+      navigate(q ? `/services?q=${encodeURIComponent(q)}` : "/services");
+    } else if (searchScope === "freelance") {
+      navigate(q ? `/freelance/jobs?q=${encodeURIComponent(q)}` : "/freelance/jobs");
     } else {
-      navigate("/marketplace");
+      navigate(q ? `/marketplace?q=${encodeURIComponent(q)}` : "/marketplace");
     }
   };
 
@@ -120,41 +139,20 @@ export default function Landing() {
         </motion.h1>
 
         <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.0 }}
-          className="text-xs sm:text-sm md:text-base text-white/40 text-center max-w-2xl mt-2 leading-relaxed">
-          AI-powered escrow marketplace for buyers & sellers. Plus a freelance marketplace for writers & employers. Every transaction protected.
+          className="text-xs sm:text-sm md:text-base text-white/45 text-center max-w-2xl mt-2 leading-relaxed">
+          One trusted marketplace for <span className="text-white/80 font-medium">products</span>, <span className="text-white/80 font-medium">services</span> and <span className="text-white/80 font-medium">freelance work</span> — every shilling escrow-protected until you're satisfied.
         </motion.p>
 
-        {/* Hero CTAs — Get Started leads for signed-out visitors; explore
-            buttons remain for everyone. Signed-in users keep a Dashboard
-            shortcut instead of a registration CTA. */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.2 }}
-          className="flex flex-col sm:flex-row gap-4 mt-6 items-center">
-          {!user && (
-            <button onClick={() => navigate("/auth")}
-              className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-nx-violet to-nx-cyan text-white font-bold text-sm hover:opacity-90 transition-all hover:scale-[1.02] flex items-center gap-2 justify-center shadow-[0_0_30px_rgba(139,92,246,0.35)]">
-              <Sparkles className="w-4 h-4" /> Get Started Free
-            </button>
-          )}
-          <button onClick={() => navigate("/marketplace")}
-            className="px-8 py-3.5 rounded-xl bg-nx-cyan text-black font-semibold text-sm hover:bg-nx-cyan/80 transition-all hover:scale-[1.02] flex items-center gap-2 justify-center">
-            <ShoppingCart className="w-4 h-4" /> Explore Marketplace
-          </button>
-          <button onClick={() => navigate("/freelance")}
-            className="px-8 py-3.5 rounded-xl bg-nx-violet text-white font-semibold text-sm hover:bg-nx-violet/80 transition-all hover:scale-[1.02] flex items-center gap-2 justify-center">
-            <Briefcase className="w-4 h-4" /> Explore Freelance
-          </button>
-        </motion.div>
-
-        {/* Search Bar */}
+        {/* Search Bar — universal, scoped by marketplace */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.1 }}
-          className="w-full max-w-2xl mt-4">
+          className="w-full max-w-2xl mt-5">
           <div className="flex items-center rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl overflow-hidden hover:border-white/20 transition-colors">
             <div className="pl-4"><Search className="w-5 h-5 text-white/30" /></div>
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="Search products, vehicles, fashion, electronics..."
+              placeholder="What are you looking for today? Search products, services, jobs, transport, professionals…"
               className="flex-1 px-4 py-3 md:py-4 bg-transparent text-sm text-white placeholder:text-white/25 focus:outline-none"
             />
             <button onClick={handleSearch}
@@ -162,7 +160,86 @@ export default function Landing() {
               Search
             </button>
           </div>
+          {/* Scope selector — results stay in one marketplace, never mixed */}
+          <div className="flex items-center justify-center gap-2 mt-2.5">
+            {([
+              ["products", "🛒 Products"],
+              ["services", "🔧 Services"],
+              ["freelance", "💼 Freelance"],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setSearchScope(key)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  searchScope === key
+                    ? "border-nx-cyan/50 bg-nx-cyan/10 text-nx-cyan"
+                    : "border-white/10 text-white/40 hover:text-white/70"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </motion.div>
+
+        {/* ══════ THE FOUR MAIN ACTIONS — primary navigation for ordinary users.
+            Equally important, clearly differentiated, far more prominent than
+            the small top nav. ══════ */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.2 }}
+          className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mt-8 w-full max-w-4xl"
+        >
+          {/* ✨ GET STARTED FREE — the main onboarding CTA */}
+          <button
+            onClick={() => (user ? navigate(dashboardPath()) : navigate("/auth"))}
+            className="group relative col-span-2 lg:col-span-1 overflow-hidden rounded-2xl bg-gradient-to-br from-nx-violet to-nx-cyan p-5 md:p-6 text-left transition-all hover:scale-[1.03] hover:shadow-[0_0_40px_rgba(139,92,246,0.45)]"
+          >
+            <Sparkles className="w-7 h-7 text-white" />
+            <p className="mt-3 text-base md:text-lg font-extrabold text-white tracking-tight">GET STARTED FREE</p>
+            <p className="mt-1 text-[11px] md:text-xs text-white/85 leading-snug">
+              {user ? "Go to your dashboard" : "Join Nexora — pick how you'll use it"}
+            </p>
+            <ArrowRight className="absolute right-4 bottom-4 w-4 h-4 text-white/70 group-hover:translate-x-1 transition-transform" />
+          </button>
+
+          {/* 🛒 SHOP PRODUCTS — only the products marketplace */}
+          <button
+            onClick={() => navigate("/marketplace")}
+            className="group rounded-2xl border border-nx-cyan/25 bg-nx-cyan/[0.06] hover:bg-nx-cyan/[0.12] p-5 md:p-6 text-left transition-all hover:scale-[1.03]"
+          >
+            <ShoppingCart className="w-7 h-7 text-nx-cyan" />
+            <p className="mt-3 text-base md:text-lg font-extrabold text-white tracking-tight">SHOP PRODUCTS</p>
+            <p className="mt-1 text-[11px] md:text-xs text-white/45 leading-snug">Buy & sell goods — escrow protected</p>
+            <ArrowRight className="mt-2 w-4 h-4 text-nx-cyan/60 group-hover:translate-x-1 transition-transform" />
+          </button>
+
+          {/* 🔧 FIND SERVICES — only the services marketplace */}
+          <button
+            onClick={() => navigate("/services")}
+            className="group rounded-2xl border border-amber-400/25 bg-amber-400/[0.06] hover:bg-amber-400/[0.12] p-5 md:p-6 text-left transition-all hover:scale-[1.03]"
+          >
+            <Wrench className="w-7 h-7 text-amber-300" />
+            <p className="mt-3 text-base md:text-lg font-extrabold text-white tracking-tight">FIND SERVICES</p>
+            <p className="mt-1 text-[11px] md:text-xs text-white/45 leading-snug">Salon, plumber, boda, fundi — nearby</p>
+            <ArrowRight className="mt-2 w-4 h-4 text-amber-300/60 group-hover:translate-x-1 transition-transform" />
+          </button>
+
+          {/* 💼 WORK & HIRE — only Nexora Freelance */}
+          <button
+            onClick={() => navigate("/freelance")}
+            className="group rounded-2xl border border-nx-violet/30 bg-nx-violet/[0.07] hover:bg-nx-violet/[0.14] p-5 md:p-6 text-left transition-all hover:scale-[1.03]"
+          >
+            <Briefcase className="w-7 h-7 text-nx-violet" />
+            <p className="mt-3 text-base md:text-lg font-extrabold text-white tracking-tight">WORK & HIRE</p>
+            <p className="mt-1 text-[11px] md:text-xs text-white/45 leading-snug">Freelance jobs — writers & employers</p>
+            <ArrowRight className="mt-2 w-4 h-4 text-nx-violet/70 group-hover:translate-x-1 transition-transform" />
+          </button>
+        </motion.div>
+
+        {/* Search Bar (legacy position removed — search now sits above) */}
+        <motion.div className="hidden" />
 
         {/* Trust badges */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 1.5 }}
@@ -185,19 +262,74 @@ export default function Landing() {
       {/* ══════ SERVICES & TRANSPORT NEAR YOU (Kenya-first local services) ══════ */}
       <ServicesNearYou />
 
-      {/* ══════ CATEGORIES (same grid as Marketplace) ══════ */}
-      <section className="relative z-10 py-6 px-6 border-y border-white/5">
+      {/* ══════ WHAT DO YOU NEED TODAY? — the same four clear paths ══════ */}
+      <section className="relative z-10 py-8 px-6 border-y border-white/5">
         <div className="max-w-6xl mx-auto">
-          <FadeIn className="text-center mb-6">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              Browse <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-cyan-200 bg-clip-text text-transparent">Categories</span>
+          <FadeIn className="text-center mb-7">
+            <h2 className="text-2xl md:text-3xl font-bold text-white">
+              What do you <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-violet-300 bg-clip-text text-transparent">need today?</span>
             </h2>
-            <p className="text-sm text-white/40">Find exactly what you need across our marketplace</p>
+            <p className="text-sm text-white/40 mt-1.5">Four doors, one trusted platform. Pick where you're going.</p>
           </FadeIn>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-2 justify-items-center">
-            {CATEGORIES.map((cat, i) => (
-              <FadeIn key={cat.slug} delay={i * 0.03}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              {
+                icon: Sparkles, emoji: "✨", title: "Get Started Free",
+                desc: "Join Nexora and choose your path — buyer, seller, freelancer or employer",
+                onClick: () => (user ? navigate(dashboardPath()) : navigate("/auth")),
+                cls: "from-nx-violet/20 to-nx-cyan/10 border-nx-violet/30 hover:border-nx-violet/50",
+                iconCls: "text-nx-violet",
+              },
+              {
+                icon: ShoppingCart, emoji: "🛒", title: "Shop Products",
+                desc: "Phones, fashion, home, farm inputs — buy & sell with escrow protection",
+                onClick: () => navigate("/marketplace"),
+                cls: "from-nx-cyan/10 to-transparent border-nx-cyan/25 hover:border-nx-cyan/45",
+                iconCls: "text-nx-cyan",
+              },
+              {
+                icon: Wrench, emoji: "🔧", title: "Find Services",
+                desc: "Salon, plumber, electrician, boda, fundi — verified providers near you",
+                onClick: () => navigate("/services"),
+                cls: "from-amber-400/10 to-transparent border-amber-400/25 hover:border-amber-400/45",
+                iconCls: "text-amber-300",
+              },
+              {
+                icon: Briefcase, emoji: "💼", title: "Work & Hire",
+                desc: "Freelance jobs only — writers, designers & employers, escrow-paid",
+                onClick: () => navigate("/freelance"),
+                cls: "from-nx-violet/12 to-transparent border-nx-violet/25 hover:border-nx-violet/45",
+                iconCls: "text-nx-violet",
+              },
+            ].map((a, i) => (
+              <FadeIn key={a.title} delay={i * 0.06}>
                 <button
+                  onClick={a.onClick}
+                  className={`group w-full h-full rounded-2xl border bg-gradient-to-b p-5 text-left transition-all hover:scale-[1.02] ${a.cls}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <a.icon className={`w-7 h-7 ${a.iconCls}`} />
+                    <span className="text-xl">{a.emoji}</span>
+                  </div>
+                  <p className="mt-3 font-extrabold text-white tracking-tight">{a.title}</p>
+                  <p className="mt-1 text-xs text-white/45 leading-relaxed">{a.desc}</p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-white/60 group-hover:text-white transition-colors">
+                    Continue <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </button>
+              </FadeIn>
+            ))}
+          </div>
+
+          {/* Products-only category grid (Kenyan-first order) */}
+          <FadeIn delay={0.2} className="mt-9">
+            <h3 className="text-sm font-bold text-white/80 text-center mb-4">
+              Popular product categories
+            </h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 justify-items-center">
+              {PRODUCT_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.slug}
                   onClick={() => navigate(`/marketplace?category=${cat.slug}`)}
                   className="relative flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-center transition-all overflow-hidden h-24 md:h-28 w-full group hover:ring-1 hover:ring-white/20"
                 >
@@ -211,14 +343,12 @@ export default function Landing() {
                   <span className="relative z-10 text-xl group-hover:scale-110 transition-transform drop-shadow-lg">{cat.icon}</span>
                   <span className="relative z-10 text-[10px] md:text-xs font-bold text-white leading-tight drop-shadow-lg">{cat.name}</span>
                 </button>
-              </FadeIn>
-            ))}
-          </div>
-          <FadeIn delay={0.3}>
-            <div className="text-center mt-6">
+              ))}
+            </div>
+            <div className="text-center mt-5">
               <button onClick={() => navigate("/marketplace")}
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-white/10 text-white/60 text-sm font-medium hover:border-cyan-300/30 hover:text-white transition-all">
-                Browse All Products <ArrowRight className="w-4 h-4" />
+                Shop All Products <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </FadeIn>
@@ -413,17 +543,20 @@ export default function Landing() {
                 Join Nexora
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                Choose Your <span className="nx-gradient-text">Experience</span>
+                Three Marketplaces. <span className="nx-gradient-text">One Account.</span>
               </h2>
               <p className="text-white/40 max-w-lg mx-auto">
-                One account. Four roles. Full flexibility.
+                Products, services and freelance work stay clearly separated — pick the world you're in.
               </p>
             </div>
           </FadeIn>
 
-          {/* Marketplace Row */}
+          {/* ── 1. SHOP PRODUCTS ── */}
           <FadeIn delay={0.05}>
-            <p className="text-xs text-white/30 font-medium tracking-wider uppercase mb-4 text-center">Marketplace — Buy & Sell</p>
+            <div className="flex items-center gap-2 mb-4">
+              <ShoppingCart className="w-4 h-4 text-nx-cyan" />
+              <p className="text-sm font-bold text-white tracking-wide">Shop Products <span className="text-white/30 font-normal">— buy &amp; sell goods</span></p>
+            </div>
           </FadeIn>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
             <FadeIn delay={0.1}>
@@ -475,9 +608,71 @@ export default function Landing() {
             </FadeIn>
           </div>
 
-          {/* Freelance Row */}
-          <FadeIn delay={0.2}>
-            <p className="text-xs text-white/30 font-medium tracking-wider uppercase mb-4 text-center">Freelance Marketplace — Work & Hire</p>
+          {/* ── 2. FIND SERVICES (local pros & transport — separate world) ── */}
+          <FadeIn delay={0.18}>
+            <div className="flex items-center gap-2 mb-4">
+              <Wrench className="w-4 h-4 text-amber-300" />
+              <p className="text-sm font-bold text-white tracking-wide">Find Services <span className="text-white/30 font-normal">— local professionals &amp; transport</span></p>
+            </div>
+          </FadeIn>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-9">
+            <FadeIn delay={0.22}>
+              <div className="group relative p-6 rounded-2xl border border-amber-400/10 bg-gradient-to-br from-amber-400/5 to-transparent hover:border-amber-400/25 transition-all">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-amber-400/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span className="text-lg">🔧</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Customer</h3>
+                    <p className="text-xs text-white/40">Hire a pro or request a boda</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5 mb-4">
+                  {['See providers near you & Available Now', 'Fair fares from the pricing engine', 'Pay into escrow — price shown first', 'Confirm the job, then money moves'].map((f) => (
+                    <div key={f} className="flex items-center gap-2 text-xs text-white/40">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-amber-400/50 shrink-0" />{f}
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => navigate('/services')}
+                  className="w-full py-2.5 rounded-xl bg-amber-400/10 text-amber-300 font-medium text-xs hover:bg-amber-400/20 transition-colors border border-amber-400/25">
+                  Find Services
+                </button>
+              </div>
+            </FadeIn>
+
+            <FadeIn delay={0.26}>
+              <div className="group relative p-6 rounded-2xl border border-amber-400/10 bg-gradient-to-br from-amber-400/5 to-transparent hover:border-amber-400/25 transition-all">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-amber-400/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span className="text-lg">🏍️</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Service Provider / Driver</h3>
+                    <p className="text-xs text-white/40">Offer your skill or ride &amp; earn</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5 mb-4">
+                  {['Register your service, boda, taxi or fundi work', 'Set your own prices & availability', 'Get requests from customers nearby', 'Earnings straight to your wallet'].map((f) => (
+                    <div key={f} className="flex items-center gap-2 text-xs text-white/40">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-amber-400/50 shrink-0" />{f}
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => navigate('/services/register')}
+                  className="w-full py-2.5 rounded-xl bg-amber-400/10 text-amber-300 font-medium text-xs hover:bg-amber-400/20 transition-colors border border-amber-400/25">
+                  List My Service / Drive
+                </button>
+              </div>
+            </FadeIn>
+          </div>
+
+          {/* ── 3. WORK & HIRE (Freelance only — Writer/Freelancer & Employer) ── */}
+          <FadeIn delay={0.3}>
+            <div className="flex items-center gap-2 mb-4">
+              <Briefcase className="w-4 h-4 text-nx-violet" />
+              <p className="text-sm font-bold text-white tracking-wide">Work &amp; Hire <span className="text-white/30 font-normal">— Nexora Freelance: writers, digital pros &amp; employers</span></p>
+            </div>
           </FadeIn>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <FadeIn delay={0.25}>

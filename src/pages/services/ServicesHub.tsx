@@ -7,6 +7,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import {
   ArrowLeft, MapPin, Search, Star, Navigation, Loader2,
 } from "lucide-react";
+import { KENYA_COUNTIES } from "@/lib/kenya-locations";
 
 /**
  * Local Services hub + category browser. Extremely simple:
@@ -16,15 +17,22 @@ export default function ServicesHub() {
   const navigate = useNavigate();
   const { category } = useParams();
   const [params] = useSearchParams();
-  const [q, setQ] = useState("");
+  // Accept ?q= from the homepage universal search (scope: Services).
+  const [q, setQ] = useState(params.get("q") ?? "");
   const [availableOnly, setAvailableOnly] = useState(false);
+  // Location-based discovery — the user picks their county; results are
+  // filtered server-side. Persisted so it survives page navigation.
+  const [county, setCounty] = useState(localStorage.getItem("nx_service_county") ?? "");
+  useEffect(() => {
+    if (county) localStorage.setItem("nx_service_county", county);
+  }, [county]);
 
   const categories = useQuery(api.services.getCategories);
   const results = useQuery(
     q.trim() ? api.services.searchProviders : api.services.getProvidersByCategory,
     q.trim()
-      ? { q: q.trim(), ...(category ? { category } : {}) }
-      : { category: category || "beauty", availableNow: availableOnly || undefined },
+      ? { q: q.trim(), ...(category ? { category } : {}), ...(county ? { county } : {}) }
+      : { category: category || "beauty", availableNow: availableOnly || undefined, ...(county ? { county } : {}) },
   );
   const availableNow = useQuery(api.services.getAvailableNow, { limit: 6 });
 
@@ -89,6 +97,18 @@ export default function ServicesHub() {
               className="flex-1 px-3 py-2.5 bg-transparent text-sm placeholder:text-white/25 outline-none"
             />
           </div>
+          {/* Location picker — Kenyan-first, all 47 counties */}
+          <select
+            value={county}
+            onChange={(e) => setCounty(e.target.value)}
+            className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-xs font-medium text-white/70 outline-none focus:border-nx-cyan/40 [&>option]:bg-[#0B0B14]"
+            aria-label="Choose your county"
+          >
+            <option value="">📍 All Kenya</option>
+            {KENYA_COUNTIES.map((c) => (
+              <option key={c.name} value={c.name}>{c.name}</option>
+            ))}
+          </select>
           <button
             onClick={() => setAvailableOnly((v) => !v)}
             className={`shrink-0 flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-medium transition-colors ${
