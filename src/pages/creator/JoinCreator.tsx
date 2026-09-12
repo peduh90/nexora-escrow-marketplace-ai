@@ -181,8 +181,9 @@ export default function JoinCreator() {
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-16 md:py-20">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight">How creators earn</h2>
           <p className="mt-2 text-white/50 max-w-2xl">
-            Four real milestones per referral. Admins review every payout, and fraud is filtered out
-            automatically — self-referrals, duplicate accounts and bot signups earn nothing.
+            Real milestones only — clicks and signups alone pay nothing. Nexora pays when a referred
+            person genuinely verifies, fully activates as a verified seller or employer, and actually
+            trades. Admins review every payout; fraud is filtered out automatically.
           </p>
           <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
@@ -198,8 +199,8 @@ export default function JoinCreator() {
               },
               {
                 step: "3",
-                title: "They go active",
-                body: "Bonus when your referral opens a store/business or activates as a freelancer.",
+                title: "They fully activate",
+                body: "The big bonus: a referred seller passes full business verification (KYC + a genuine listing), or an employer completes their profile and posts 5 distinct legitimate jobs. Choosing a role at signup pays nothing — real verification does.",
               },
               {
                 step: "4",

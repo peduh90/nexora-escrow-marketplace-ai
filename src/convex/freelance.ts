@@ -317,6 +317,17 @@ export const createTask = mutation({
       updatedAt: now,
     });
 
+    // ── Progressive verification: each new legitimate job counts toward the
+    // employer's 5-distinct-offerings gate. Best-effort — posting must never
+    // fail because of verification bookkeeping.
+    try {
+      await ctx.runMutation(internal.verification.internalOnJobPosted, {
+        userId: user._id,
+      });
+    } catch (err) {
+      console.error("[verification] job hook failed:", err);
+    }
+
     return { taskId };
   },
 });

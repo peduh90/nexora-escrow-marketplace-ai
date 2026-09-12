@@ -64,6 +64,7 @@ const DEFAULT_SETTINGS = {
   fixedPerVerifiedUser: 50,
   sellerActivationBonus: 200,
   freelancerActivationBonus: 100,
+  employerActivationBonus: 150,
   firstTransactionBonus: 150,
   revenueSharePercent: 1,
   revenueShareCap: 500,
@@ -183,7 +184,7 @@ async function syncReferralEarnings(ctx: any, referralId: string) {
     awards.push({
       type: "seller_bonus",
       amount: settings.sellerActivationBonus,
-      reason: "Referred user activated as a seller/business",
+      reason: "Referred seller FULLY verified: KYC approved + genuine listing live",
     });
   }
   if (r.freelancerActivatedAt && settings.freelancerActivationBonus > 0 && !has("freelancer_bonus")) {
@@ -191,6 +192,13 @@ async function syncReferralEarnings(ctx: any, referralId: string) {
       type: "freelancer_bonus",
       amount: settings.freelancerActivationBonus,
       reason: "Referred user activated as a freelancer",
+    });
+  }
+  if (r.employerActivatedAt && (settings.employerActivationBonus ?? 0) > 0 && !has("employer_bonus")) {
+    awards.push({
+      type: "employer_bonus",
+      amount: settings.employerActivationBonus ?? 0,
+      reason: "Referred employer FULLY verified: complete profile + 5 distinct legitimate jobs",
     });
   }
   if (r.firstTransactionAt && settings.firstTransactionBonus > 0 && !has("first_transaction")) {
@@ -561,16 +569,62 @@ export const internalOnUserActivated = internalMutation({
     if (r.status === "rejected") return;
 
     const patch: Record<string, any> = { activatedAt: Date.now(), stage: "active" as any };
-    if (args.role === "seller") {
-      patch.sellerActivatedAt = Date.now();
-      patch.stage = "seller" as any;
-    } else if (args.role === "freelancer") {
+    if (args.role === "freelancer") {
       patch.freelancerActivatedAt = Date.now();
       patch.stage = "freelancer" as any;
     }
     await ctx.db.patch(r._id, patch);
     await recomputeCreatorCounters(ctx, r.creatorId);
     await syncReferralEarnings(ctx, r._id);
+  },
+});
+
+/**
+ * The referred seller/employer passed the FULL business-verification gate
+ * (progressive verification engine). This — not merely choosing a role — is
+ * what unlocks the seller/employer activation bonus: a referred seller must
+ * have KYC approved plus a genuine listing; an employer must have a complete
+ * profile plus 5 distinct legitimate jobs. Clicks and unverified accounts can
+ * never reach this hook.
+ */
+export const internalOnBusinessActivated = internalMutation({
+  args: { userId: v.string(), role: v.string() },
+  handler: async (ctx, args) => {
+    const rec = await ctx.db
+      .query("referralRecords")
+      .withIndex("by_referred", (q: any) => q.eq("referredUserId", args.userId))
+      .first();
+    if (!rec) return;
+    const r = rec as any;
+    if (r.status === "rejected") return;
+
+    const patch: Record<string, any> = {};
+    if (args.role === "seller" && !r.sellerActivatedAt) {
+      patch.sellerActivatedAt = Date.now();
+      patch.stage = "seller" as any;
+    } else if (args.role === "employer" && !r.employerActivatedAt) {
+      patch.employerActivatedAt = Date.now();
+      patch.stage = "employer" as any;
+    }
+    if (Object.keys(patch).length === 0) return;
+
+    await ctx.db.patch(r._id, patch);
+    await recomputeCreatorCounters(ctx, r.creatorId);
+    await syncReferralEarnings(ctx, r._id);
+
+    // Tell the creator their big milestone hit (no PII about the referred user).
+    const creator = await ctx.db.get(r.creatorId as any);
+    if (creator) {
+      await insertNotification(
+        ctx,
+        (creator as any).userId,
+        args.role === "seller" ? "Referred seller fully verified!" : "Referred employer fully verified!",
+        args.role === "seller"
+          ? "A seller you referred passed full business verification (KYC + genuine listing). Your activation bonus is now pending."
+          : "An employer you referred passed full business verification (complete profile + 5 distinct jobs). Your activation bonus is now pending.",
+        "/creator",
+      );
+    }
   },
 });
 
@@ -1105,6 +1159,7 @@ export const updateProgramSettings = mutation({
     fixedPerVerifiedUser: v.number(),
     sellerActivationBonus: v.number(),
     freelancerActivationBonus: v.number(),
+    employerActivationBonus: v.optional(v.number()),
     firstTransactionBonus: v.number(),
     revenueSharePercent: v.number(),
     revenueShareCap: v.number(),
@@ -1116,6 +1171,7 @@ export const updateProgramSettings = mutation({
       args.fixedPerVerifiedUser < 0 ||
       args.sellerActivationBonus < 0 ||
       args.freelancerActivationBonus < 0 ||
+      (args.employerActivationBonus ?? 0) < 0 ||
       args.firstTransactionBonus < 0 ||
       args.revenueSharePercent < 0 ||
       args.revenueSharePercent > 20 ||

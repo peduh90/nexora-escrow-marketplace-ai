@@ -124,6 +124,19 @@ const schema = defineSchema(
       totalPurchases: v.optional(v.number()),
       activeListings: v.optional(v.number()),
       successfulDeliveries: v.optional(v.number()),
+      // ── Progressive verification ──
+      // "basic" = phone/email + profile (every active account, incl. buyers).
+      // "business" = the role's full business gate passed (seller KYC + genuine
+      // listing; employer complete profile + 5 different real jobs/services).
+      // Written ONLY by the server (verification engine) — never by the client.
+      verificationLevel: v.optional(v.union(
+        v.literal("basic"),
+        v.literal("business"),
+      )),
+      // Server-written activation milestones used by the verification engine,
+      // dashboards and the referral commission engine.
+      sellerActivatedAt: v.optional(v.number()),
+      employerActivatedAt: v.optional(v.number()),
     }).index("email", ["email"])
       .index("by_role", ["role"])
       .index("by_kyc", ["kycStatus"]),
@@ -992,13 +1005,14 @@ const schema = defineSchema(
       code: v.string(),
       referredUserId: v.string(),
       registeredAt: v.number(),
-      // Journey: registered → verified → active → (seller|freelancer) → transaction
+      // Journey: registered → verified → active → (seller|freelancer|employer) → transaction
       stage: v.union(
         v.literal("registered"),
         v.literal("verified"),
         v.literal("active"),
         v.literal("seller"),
         v.literal("freelancer"),
+        v.literal("employer"),
         v.literal("transaction"),
       ),
       verifiedAt: v.optional(v.number()),
@@ -1006,6 +1020,7 @@ const schema = defineSchema(
       kycVerifiedAt: v.optional(v.number()),
       sellerActivatedAt: v.optional(v.number()),
       freelancerActivatedAt: v.optional(v.number()),
+      employerActivatedAt: v.optional(v.number()),
       firstTransactionAt: v.optional(v.number()),
       firstTransactionAmount: v.optional(v.number()),
       qualified: v.optional(v.boolean()),
@@ -1034,6 +1049,7 @@ const schema = defineSchema(
         v.literal("verified_user"),
         v.literal("seller_bonus"),
         v.literal("freelancer_bonus"),
+        v.literal("employer_bonus"),
         v.literal("first_transaction"),
         v.literal("revenue_share"),
       ),
@@ -1067,6 +1083,7 @@ const schema = defineSchema(
       fixedPerVerifiedUser: v.number(),
       sellerActivationBonus: v.number(),
       freelancerActivationBonus: v.number(),
+      employerActivationBonus: v.optional(v.number()),
       firstTransactionBonus: v.number(),
       revenueSharePercent: v.number(),
       revenueShareCap: v.number(),

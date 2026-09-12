@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { getSessionUser } from "./users";
 
 /**
@@ -165,6 +165,17 @@ export const createListing = mutation({
 
     const current = user.activeListings || 0;
     await ctx.db.patch(user._id, { activeListings: current + 1 });
+
+    // ── Progressive verification: a new genuine listing may complete the
+    // seller's business gate (KYC + real listing). Best-effort — publishing
+    // must never fail because of verification bookkeeping.
+    try {
+      await ctx.runMutation(internal.verification.internalOnListingCreated, {
+        userId: user._id,
+      });
+    } catch (err) {
+      console.error("[verification] listing hook failed:", err);
+    }
 
     // ── Notify the admin team of the new listing (in-app + email) ──
     // In-app: one notification per admin, always delivered to the bell.

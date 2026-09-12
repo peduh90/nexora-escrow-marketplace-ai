@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
+import VerificationCard from "@/components/VerificationCard";
 import {
   Package, ShoppingCart, DollarSign, TrendingUp, Plus,
   ArrowRight, Wallet, Shield, Loader2,
@@ -64,6 +65,9 @@ export default function SellerDashboard() {
             </span>
           )}
         </div>
+
+        {/* Progressive verification — KYC + genuine listing gate */}
+        <VerificationCard />
 
         {/* Stats cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

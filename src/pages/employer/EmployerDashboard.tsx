@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
+import VerificationCard from "@/components/VerificationCard";
 import { ArrowLeft, Briefcase, Plus, FolderOpen, FileText, MessageSquare, Wallet, LogOut, Settings, Phone, Search, Users, Clock, CheckCircle2, Bell } from "lucide-react";
 
 export default function EmployerDashboard() {
@@ -155,6 +156,9 @@ export default function EmployerDashboard() {
             <h1 className="text-2xl font-bold text-white">💼 Employer Dashboard</h1>
             <p className="text-sm text-white/40 mt-1">Post jobs, hire writers, review work, release escrow payments</p>
           </div>
+
+          {/* Progressive verification — profile + 5 distinct jobs gate */}
+          <VerificationCard />
 
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

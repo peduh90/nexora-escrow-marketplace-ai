@@ -557,6 +557,7 @@ function CreatorDashboardInner() {
                               e.type === "verified_user" ? "bg-emerald-500/15 text-emerald-300"
                               : e.type === "seller_bonus" ? "bg-violet-500/15 text-violet-300"
                               : e.type === "freelancer_bonus" ? "bg-fuchsia-500/15 text-fuchsia-300"
+                              : e.type === "employer_bonus" ? "bg-sky-500/15 text-sky-300"
                               : e.type === "first_transaction" ? "bg-amber-500/15 text-amber-300"
                               : "bg-cyan-500/15 text-cyan-300"
                             }`}>

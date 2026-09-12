@@ -560,12 +560,18 @@ export const reviewKYC = mutation({
         kycStatus: args.status === "approved" ? "verified" : "rejected",
         kycVerifiedAt: args.status === "approved" ? Date.now() : undefined,
       });
-      // Referral hook: KYC milestone for the referred user's journey.
+      // Progressive verification + referral: a KYC approval may complete the
+      // seller's business gate (KYC + genuine listing). Best-effort.
       if (args.status === "approved") {
         try {
           await ctx.runMutation(internal.referral.internalOnKycVerified, { userId: kycApp.userId });
         } catch (err) {
           console.error("[referral] KYC hook failed:", err);
+        }
+        try {
+          await ctx.runMutation(internal.verification.internalOnKycVerified, { userId: kycApp.userId });
+        } catch (err) {
+          console.error("[verification] KYC hook failed:", err);
         }
       }
     }

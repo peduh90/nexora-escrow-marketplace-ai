@@ -109,7 +109,7 @@ function AdminReferralsInner() {
   const [showSettings, setShowSettings] = useState(false);
 
   // Settings form state
-  const [sForm, setSForm] = useState<{ fixedPerVerifiedUser: string; sellerActivationBonus: string; freelancerActivationBonus: string; firstTransactionBonus: string; revenueSharePercent: string; revenueShareCap: string; maxReferralsPerHour: string } | null>(null);
+  const [sForm, setSForm] = useState<{ fixedPerVerifiedUser: string; sellerActivationBonus: string; freelancerActivationBonus: string; employerActivationBonus: string; firstTransactionBonus: string; revenueSharePercent: string; revenueShareCap: string; maxReferralsPerHour: string } | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
 
   const detail = useQuery(
@@ -148,6 +148,7 @@ function AdminReferralsInner() {
         fixedPerVerifiedUser: String(settingsRow.fixedPerVerifiedUser),
         sellerActivationBonus: String(settingsRow.sellerActivationBonus),
         freelancerActivationBonus: String(settingsRow.freelancerActivationBonus),
+        employerActivationBonus: String(settingsRow.employerActivationBonus ?? 150),
         firstTransactionBonus: String(settingsRow.firstTransactionBonus),
         revenueSharePercent: String(settingsRow.revenueSharePercent),
         revenueShareCap: String(settingsRow.revenueShareCap),
@@ -165,6 +166,7 @@ function AdminReferralsInner() {
         fixedPerVerifiedUser: Number(sForm.fixedPerVerifiedUser) || 0,
         sellerActivationBonus: Number(sForm.sellerActivationBonus) || 0,
         freelancerActivationBonus: Number(sForm.freelancerActivationBonus) || 0,
+        employerActivationBonus: Number(sForm.employerActivationBonus) || 0,
         firstTransactionBonus: Number(sForm.firstTransactionBonus) || 0,
         revenueSharePercent: Number(sForm.revenueSharePercent) || 0,
         revenueShareCap: Number(sForm.revenueShareCap) || 0,
@@ -537,6 +539,7 @@ function AdminReferralsInner() {
                         e.type === "verified_user" ? "bg-emerald-500/15 text-emerald-300"
                         : e.type === "seller_bonus" ? "bg-violet-500/15 text-violet-300"
                         : e.type === "freelancer_bonus" ? "bg-fuchsia-500/15 text-fuchsia-300"
+                        : e.type === "employer_bonus" ? "bg-sky-500/15 text-sky-300"
                         : e.type === "first_transaction" ? "bg-amber-500/15 text-amber-300"
                         : "bg-cyan-500/15 text-cyan-300"
                       }`}>
@@ -612,8 +615,9 @@ function AdminReferralsInner() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   {([
                     ["fixedPerVerifiedUser", "Per verified user (KES)", "Paid when a referral completes registration & verification"],
-                    ["sellerActivationBonus", "Seller activation bonus (KES)", "Paid when a referral opens a business/store"],
+                    ["sellerActivationBonus", "Seller activation bonus (KES)", "Paid ONLY when a referred seller is FULLY verified: KYC approved + a genuine listing live"],
                     ["freelancerActivationBonus", "Freelancer activation bonus (KES)", "Paid when a referral activates as a freelancer"],
+                    ["employerActivationBonus", "Employer activation bonus (KES)", "Paid ONLY when a referred employer is FULLY verified: complete profile + 5 distinct legitimate jobs"],
                     ["firstTransactionBonus", "First transaction bonus (KES)", "Paid on a referral's first completed escrow"],
                     ["revenueSharePercent", "Revenue share (%)", "Share of every completed transaction — 0 to disable"],
                     ["revenueShareCap", "Revenue share cap per transaction (KES)", "Maximum share earned from a single transaction"],
