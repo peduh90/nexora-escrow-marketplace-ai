@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router";
+import { useLowData } from "@/hooks/use-low-data";
+import { SignalLow } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 function scrollToSection(hash: string) {
@@ -107,6 +109,7 @@ export default function NavigationBar() {
               the Marketplace page (below the nav links) where buyers — the
               default audience — land, not in the global menu. */}
           <div className="hidden md:flex items-center gap-3">
+            <LowDataToggle compact />
             {user ? (
               <button
                 onClick={() => navigate(getDashboardPath())}
@@ -150,6 +153,8 @@ export default function NavigationBar() {
             className="fixed inset-x-0 top-[60px] z-40 nx-glass p-6 lg:hidden"
           >
             <div className="flex flex-col gap-2">
+              <LowDataToggle />
+              <div className="border-t border-white/5 my-2" />
               <button
                 onClick={() => { navigate("/"); setMobileOpen(false); }}
                 className="text-white/70 hover:text-white text-sm py-2 text-left"
@@ -203,5 +208,42 @@ export default function NavigationBar() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+/** Low-data mode switch (#56) — visible everywhere so users on poor
+ *  connectivity can lighten the app from any page. */
+function LowDataToggle({ compact = false }: { compact?: boolean }) {
+  const { lowData, toggleLowData } = useLowData();
+  if (compact) {
+    return (
+      <button
+        onClick={toggleLowData}
+        title={lowData ? "Low-data mode: ON — click to disable" : "Enable low-data mode"}
+        aria-pressed={lowData}
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
+          lowData
+            ? "bg-nx-emerald/10 border-nx-emerald/30 text-nx-emerald"
+            : "bg-white/[0.03] border-white/10 text-white/50 hover:text-white/80"
+        }`}
+      >
+        <SignalLow className="w-3.5 h-3.5" />
+        <span className="hidden lg:inline">{lowData ? "Data Saver" : "Low Data"}</span>
+      </button>
+    );
+  }
+  return (
+    <button
+      onClick={toggleLowData}
+      aria-pressed={lowData}
+      className="flex items-center justify-between gap-3 text-sm py-2 text-left"
+    >
+      <span className="flex items-center gap-2 text-white/70">
+        <SignalLow className="w-4 h-4" /> Low-data mode
+      </span>
+      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${lowData ? "bg-nx-emerald/15 text-nx-emerald" : "bg-white/10 text-white/40"}`}>
+        {lowData ? "ON" : "OFF"}
+      </span>
+    </button>
   );
 }

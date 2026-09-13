@@ -218,6 +218,34 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* ─── Low-data mode (#56) ─────────────────────────────────────────────────
+   Applied via .nx-low-data on <html> by src/hooks/use-low-data.ts. Text
+   first, images suppressed, animations off — the marketplace stays usable
+   on inexpensive Android phones and unstable connections. */
+.nx-low-data .nx-heavy-media,
+.nx-low-data .nx-heavy-media * {
+  display: none !important;
+}
+.nx-low-data img {
+  /* Keep layout space but skip decoding work for decorative imagery. */
+  content-visibility: auto;
+}
+.nx-low-data .nx-low-data-hide {
+  display: none !important;
+}
+.nx-low-data *,
+.nx-low-data *::before,
+.nx-low-data *::after {
+  animation-duration: 0.001s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001s !important;
+  scroll-behavior: auto !important;
+}
+.nx-low-data canvas,
+.nx-low-data video {
+  display: none !important;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;

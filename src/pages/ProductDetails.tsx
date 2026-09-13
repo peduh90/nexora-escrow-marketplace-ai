@@ -4,6 +4,8 @@ import { api } from "../convex/_generated/api";
 import { getDeliveryFee } from "@/lib/delivery-config";
 import { useAuth } from "@/hooks/use-auth"
 import { useEffect, useState } from "react";
+import { useLowData } from "@/hooks/use-low-data";
+import { shareListing } from "@/lib/share";
 import {
   Shield, Heart, Share2, MessageSquare, ShoppingCart, ArrowLeft, Star, MapPin, Clock,
   CheckCircle2, Truck, ChevronRight, Package, Eye, X, Minus, Plus, Loader2, Send, MessageCircle, Phone, FileText,
@@ -87,6 +89,57 @@ export default function ProductDetails() {
   const [mpesaStep, setMpesaStep] = useState<"idle" | "sending" | "waiting" | "confirming" | "done" | "error">("idle");
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [mpesaError, setMpesaError] = useState("");
+
+  // ── Structured landmark delivery (#72) + saved addresses (#73) ──
+  const [deliveryArea, setDeliveryArea] = useState("");
+  const [deliveryLandmark, setDeliveryLandmark] = useState("");
+  const [deliveryBuilding, setDeliveryBuilding] = useState("");
+  const [deliveryFloorUnit, setDeliveryFloorUnit] = useState("");
+  const [deliveryInstructions, setDeliveryInstructions] = useState("");
+  const [deliveryPin, setDeliveryPin] = useState("");
+  const [saveThisAddress, setSaveThisAddress] = useState(false);
+  const [addressLabel, setAddressLabel] = useState("Home");
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [addressBookOpen, setAddressBookOpen] = useState(false);
+  const [shareNote, setShareNote] = useState("");
+  const savedAddresses = useQuery(api.addresses.listAddresses, user ? {} : "skip");
+  const saveAddress = useMutation(api.addresses.saveAddress);
+  const { lowData } = useLowData();
+
+  const handleShare = async () => {
+    const result = await shareListing({
+      title: listing.title,
+      price: listing.price,
+      sellerName: listing.sellerName,
+      listingId: id as string,
+      location: [listing.town, listing.county].filter(Boolean).join(", "),
+    });
+    if (result === "copied") {
+      setShareNote("Link copied — share on WhatsApp, SMS or anywhere");
+      setTimeout(() => setShareNote(""), 2600);
+    }
+  };
+
+  /** Apply a saved address to the checkout form (#73: "Deliver to Home"). */
+  const applySavedAddress = (a: any) => {
+    setSelectedAddressId(a._id);
+    setDeliveryCounty(a.county ?? "");
+    setDeliveryTown(a.town ?? "");
+    setDeliveryAddress([a.area, a.building, a.floorUnit].filter(Boolean).join(", "));
+    setDeliveryArea(a.area ?? "");
+    setDeliveryLandmark(a.landmark ?? "");
+    setDeliveryBuilding(a.building ?? "");
+    setDeliveryFloorUnit(a.floorUnit ?? "");
+    setDeliveryInstructions(a.instructions ?? "");
+    setDeliveryPin(a.pin ?? "");
+  };
+
+  const clearAddressForm = () => {
+    setSelectedAddressId(null);
+    setDeliveryCounty(""); setDeliveryTown(""); setDeliveryAddress("");
+    setDeliveryArea(""); setDeliveryLandmark(""); setDeliveryBuilding("");
+    setDeliveryFloorUnit(""); setDeliveryInstructions(""); setDeliveryPin("");
+  };
 
   // Freelance (digital service) listings live on the Freelance Marketplace
   // detail page — never render the physical-goods flow for them here.
@@ -220,6 +273,15 @@ export default function ProductDetails() {
     // ── Wallet flow ──
     setOrdering(true);
     try {
+      const landmarkFields = {
+        deliveryArea: deliveryArea || undefined,
+        deliveryLandmark: deliveryLandmark || undefined,
+        deliveryBuilding: deliveryBuilding || undefined,
+        deliveryFloorUnit: deliveryFloorUnit || undefined,
+        deliveryInstructions: deliveryInstructions || undefined,
+        deliveryPin: deliveryPin || undefined,
+        deliveryAddressId: selectedAddressId ?? undefined,
+      };
       await createOrder({
         listingId: listing._id,
         sellerId: listing.sellerId,
@@ -229,7 +291,9 @@ export default function ProductDetails() {
         deliveryAddress,
         paymentMethod: "wallet",
         deliveryFee,
+        ...landmarkFields,
       });
+      await persistAddressIfRequested();
       setOrderSuccess(true);
       setShowCheckout(false);
     } catch (err: any) {
@@ -305,8 +369,9 @@ export default function ProductDetails() {
           <div className="flex-1">
             <h3 className="text-sm text-white/60 truncate">{listing.title}</h3>
           </div>
-          <button onClick={() => { navigator.share?.({ title: listing.title, url: window.location.href }).catch(() => { navigator.clipboard.writeText(window.location.href); }); }} className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors" title="Share">
+          <button onClick={handleShare} className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors" title="Share">
             <Share2 className="w-5 h-5" />
+            {shareNote && <span className="sr-only">{shareNote}</span>}
           </button>
         </div>
       </div>
@@ -663,16 +728,85 @@ export default function ProductDetails() {
               </div>
             </div>
 
-            {/* Delivery Location */}
+            {/* Delivery Location — structured landmark addressing (#72/#73) */}
             <div className="space-y-3 mb-4">
-              <h4 className="text-xs font-medium text-white/50 uppercase tracking-wider">Delivery Location</h4>
-              <input type="text" value={deliveryCounty} onChange={(e) => setDeliveryCounty(e.target.value)} placeholder="County *"
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-medium text-white/50 uppercase tracking-wider">Delivery Location</h4>
+                {savedAddresses && savedAddresses.length > 0 && (
+                  <button type="button" onClick={() => setAddressBookOpen((v) => !v)} className="text-[11px] text-nx-cyan hover:underline">
+                    {addressBookOpen ? "Hide saved" : `📍 Saved (${savedAddresses.length})`}
+                  </button>
+                )}
+              </div>
+
+              {addressBookOpen && savedAddresses && savedAddresses.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  {savedAddresses.map((a: any) => (
+                    <button key={a._id} type="button" onClick={() => applySavedAddress(a)}
+                      className={`text-left p-2.5 rounded-lg border text-xs transition-colors ${
+                        selectedAddressId === a._id
+                          ? "border-nx-violet/40 bg-nx-violet/10 text-white"
+                          : "border-white/5 bg-white/[0.02] text-white/60 hover:border-white/15"
+                      }`}>
+                      <p className="font-medium text-white/90 flex items-center gap-1">
+                        {a.label}
+                        {a.isDefault && <span className="text-[9px] px-1 rounded bg-nx-cyan/15 text-nx-cyan">default</span>}
+                        {a.verifiedDelivery && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                      </p>
+                      <p className="text-white/40 truncate mt-0.5">{[a.town, a.area || a.landmark].filter(Boolean).join(", ")}</p>
+                    </button>
+                  ))}
+                  <button type="button" onClick={clearAddressForm} className="p-2.5 rounded-lg border border-dashed border-white/10 text-white/40 text-xs hover:text-white/70 hover:border-white/20">
+                    + New address
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <input type="text" value={deliveryCounty} onChange={(e) => setDeliveryCounty(e.target.value)} placeholder="County *"
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
+                <input type="text" value={deliveryTown} onChange={(e) => setDeliveryTown(e.target.value)} placeholder="Town *"
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
+              </div>
+              <input type="text" value={deliveryArea} onChange={(e) => { setDeliveryArea(e.target.value); setSelectedAddressId(null); }} placeholder="Estate / Village / Area (e.g. Kimathi Estate)"
                 className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
-              <input type="text" value={deliveryTown} onChange={(e) => setDeliveryTown(e.target.value)} placeholder="Town / Area *"
+              <div className="grid grid-cols-2 gap-2">
+                <input type="text" value={deliveryLandmark} onChange={(e) => { setDeliveryLandmark(e.target.value); setSelectedAddressId(null); }} placeholder="Nearby landmark (e.g. Total station)"
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
+                <input type="text" value={deliveryBuilding} onChange={(e) => { setDeliveryBuilding(e.target.value); setSelectedAddressId(null); }} placeholder="Building / Gate *"
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input type="text" value={deliveryFloorUnit} onChange={(e) => { setDeliveryFloorUnit(e.target.value); setSelectedAddressId(null); }} placeholder="Floor / Unit / House (optional)"
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
+                <input type="text" value={deliveryPin} onChange={(e) => { setDeliveryPin(e.target.value); setSelectedAddressId(null); }} placeholder="Map pin / GPS (optional)"
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
+              </div>
+              <input type="text" value={deliveryInstructions} onChange={(e) => { setDeliveryInstructions(e.target.value); setSelectedAddressId(null); }} placeholder="Directions for the rider (optional)"
                 className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
-              <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Street / Building / Apartment *"
+              <input type="text" value={deliveryAddress} onChange={(e) => { setDeliveryAddress(e.target.value); setSelectedAddressId(null); }} placeholder="Full address line (auto-filled) *"
                 className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
-              <p className="text-[11px] text-white/20">🚚 Delivery is handled by Nexora Market</p>
+
+              {/* Save this address for next time (#73) */}
+              {!selectedAddressId && (
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={saveThisAddress} onChange={(e) => setSaveThisAddress(e.target.checked)} className="accent-nx-violet" />
+                  <span className="text-xs text-white/50">Save this address for next time</span>
+                </label>
+              )}
+              {saveThisAddress && !selectedAddressId && (
+                <div className="flex flex-wrap gap-1.5">
+                  {["Home", "Work", "Shop", "Farm", "Other"].map((l) => (
+                    <button key={l} type="button" onClick={() => setAddressLabel(l)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] border transition-colors ${
+                        addressLabel === l ? "border-nx-violet/40 bg-nx-violet/15 text-white" : "border-white/10 text-white/40 hover:text-white/70"
+                      }`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="text-[11px] text-white/20">🚚 Delivery is handled by Nexora Market. Landmarks help your rider find you fast.</p>
             </div>
 
             {/* Payment method */}

@@ -196,6 +196,18 @@ const schema = defineSchema(
       deliveryAddress: v.optional(v.string()),
       deliveryCounty: v.optional(v.string()),
       deliveryTown: v.optional(v.string()),
+      // Kenya-first landmark addressing (#72): structured fields supplementing
+      // the free-text address. All optional — legacy rows keep working.
+      deliveryArea: v.optional(v.string()),
+      deliveryLandmark: v.optional(v.string()),
+      deliveryBuilding: v.optional(v.string()),
+      deliveryFloorUnit: vOptionalString(),
+      deliveryInstructions: v.optional(v.string()),
+      deliveryPin: v.optional(v.string()),
+      deliveryAddressId: vOptionalString(),
+      // Delivery proof (#74): OTP + receipt confirmation reference
+      deliveryProofOtp: v.optional(v.string()),
+      deliveryProofConfirmedAt: v.optional(v.number()),
       estimatedDeliveryDate: v.optional(v.number()),
       actualDeliveryDate: v.optional(v.number()),
       // Location
@@ -544,6 +556,67 @@ const schema = defineSchema(
     })
       .index("by_listing_viewer", ["listingId", "viewerKey"])
       .index("by_listing", ["listingId"]),
+
+    // ─── Kenya-first delivery: structured landmark addresses (#72/#73) ───
+    // A user can save named delivery locations (Home / Work / Shop / Farm /
+    // Other) with structured landmark fields + optional map pin. Private
+    // personal data: only ever read by the owner via session-bound queries.
+    savedAddresses: defineTable({
+      userId: v.string(),
+      label: v.string(), // "Home", "Work", "Shop", "Farm", "Other"…
+      county: v.string(),
+      town: v.string(),
+      area: v.optional(v.string()),
+      landmark: v.optional(v.string()),
+      landmarkType: v.optional(v.string()),
+      direction: v.optional(v.string()),
+      building: v.optional(v.string()),
+      floorUnit: v.optional(v.string()),
+      instructions: v.optional(v.string()),
+      pin: v.optional(v.string()), // "lat,lng" string or placeholder
+      recipientName: v.optional(v.string()),
+      recipientPhone: v.optional(v.string()),
+      isDefault: v.optional(v.boolean()),
+      verifiedDelivery: v.optional(v.boolean()), // set after a successful delivery
+      useCount: v.optional(v.number()),
+      lastUsedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_user", ["userId"]),
+
+    // ─── Config/flag engine (#166–168) ───
+    // Admin-controlled rollout flags. Every major feature ships dark and is
+    // enabled per environment (dev / pilot county / full production) without
+    // code deploys. Server reads these; the client receives only what it may
+    // see (never internal thresholds).
+    featureFlags: defineTable({
+      key: v.string(), // e.g. "low_data_mode", "cod", "wholesale"
+      label: v.string(),
+      description: v.string(),
+      enabled: v.boolean(),
+      // Gradual rollout without code deploys (#168/#169)
+      rollout: v.optional(v.union(
+        v.literal("development"),
+        v.literal("pilot"),
+        v.literal("production"),
+      )),
+      updatedBy: v.optional(v.string()),
+      updatedAt: v.number(),
+    })
+      .index("by_key", ["key"]),
+
+    // ─── Data retention ledger (#118) ───
+    // Policy declarations per data type; auditable, admin-editable.
+    dataRetentionPolicies: defineTable({
+      dataType: v.string(), // orders, payments, kyc, location, messages…
+      retentionDays: v.number(),
+      purpose: v.string(),
+      legalBasis: v.optional(v.string()),
+      updatedBy: v.optional(v.string()),
+      updatedAt: v.number(),
+    })
+      .index("by_type", ["dataType"]),
 
     // Password reset codes: a 6-digit code emailed to the account holder.
     // One active code per email — requesting a new one replaces the old.
@@ -1337,3 +1410,8 @@ const schema = defineSchema(
 );
 
 export default schema;
+
+/** Helper: optional string validator (schema file has no top-level imports beyond convex/values usage). */
+function vOptionalString() {
+  return v.optional(v.string());
+}

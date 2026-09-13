@@ -122,13 +122,15 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-      <ParticleCanvas />
+      <div className="nx-heavy-media">
+        <ParticleCanvas />
+      </div>
       <NavigationBar />
       <div className="relative z-10"><TrustBanner /></div>
 
       {/* ══════ HERO ══════ */}
       <section id="platform" className="relative flex flex-col items-center justify-center px-6 pt-20 md:pt-24 pb-6 z-10">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1.5, delay: 0.2 }} className="mb-0">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1.5, delay: 0.2 }} className="mb-0 nx-heavy-media">
           <GalacticCore size={160} />
         </motion.div>
 

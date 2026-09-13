@@ -332,6 +332,15 @@ export const createOrder = mutation({
     // Delivery fee shown at checkout — charged in the wallet path so the
     // buyer pays exactly the total displayed before confirmation.
     deliveryFee: v.optional(v.number()),
+    // Kenya-first landmark addressing (#72): structured delivery fields that
+    // supplement the composed address line. All optional for compatibility.
+    deliveryArea: v.optional(v.string()),
+    deliveryLandmark: v.optional(v.string()),
+    deliveryBuilding: v.optional(v.string()),
+    deliveryFloorUnit: v.optional(v.string()),
+    deliveryInstructions: v.optional(v.string()),
+    deliveryPin: v.optional(v.string()),
+    deliveryAddressId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -406,6 +415,13 @@ export const createOrder = mutation({
       deliveryAddress: args.deliveryAddress,
       deliveryCounty: args.deliveryCounty,
       deliveryTown: args.deliveryTown,
+      deliveryArea: args.deliveryArea,
+      deliveryLandmark: args.deliveryLandmark,
+      deliveryBuilding: args.deliveryBuilding,
+      deliveryFloorUnit: args.deliveryFloorUnit,
+      deliveryInstructions: args.deliveryInstructions,
+      deliveryPin: args.deliveryPin,
+      deliveryAddressId: args.deliveryAddressId,
       originCounty: listing.originCounty,
       originTown: listing.originTown,
       createdAt: Date.now(),
