@@ -46,12 +46,14 @@ export const createRequest = mutation({
   args: {
     title: v.string(),
     details: v.optional(v.string()),
-    kind: v.union(v.literal("product"), v.literal("service")),
+    kind: v.union(v.literal("product"), v.literal("service"), v.literal("procurement")),
+    // Bulk needs (#64): "500 × 50kg cement", "100 office chairs".
     category: v.optional(v.string()),
     county: v.optional(v.string()),
     town: v.optional(v.string()),
     budget: v.optional(v.number()),
     neededBy: v.optional(v.string()),
+    quantity: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -75,6 +77,7 @@ export const createRequest = mutation({
       title,
       details: args.details?.trim() || undefined,
       kind: args.kind,
+      quantity: args.quantity?.trim() || undefined,
       category: args.category?.trim() || undefined,
       county: args.county?.trim() || undefined,
       town: args.town?.trim() || undefined,
@@ -110,6 +113,7 @@ export const listOpenRequests = query({
           town: r.town,
           budget: r.budget,
           neededBy: r.neededBy,
+          quantity: r.quantity,
           offerCount: r.offerCount ?? 0,
           createdAt: r.createdAt,
           customerName: (u as any)?.name || "Nexora member",

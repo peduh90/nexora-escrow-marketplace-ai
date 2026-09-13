@@ -8,7 +8,7 @@ import {
   Lock, Users, TrendingUp, ChevronRight, ShieldCheck, Fingerprint,
   AlertTriangle, CreditCard, Search, Star, MapPin, Heart, Megaphone,
   Truck, Briefcase, Store, Package, ShoppingCart, Sparkles,
-  Wrench, Bike, Car, TruckIcon, Boxes, Printer, Droplets, Flame, Leaf,
+  Wrench, Bike, Car, TruckIcon, Boxes, Printer, Droplets, Flame, Leaf, Hammer,
   BookOpen, Baby, Dog, LineChart, Siren, Home, Tv, BabyIcon, SprayCan,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -333,6 +333,36 @@ export default function Landing() {
               <span className="shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-nx-cyan text-black text-sm font-bold group-hover:bg-nx-cyan/85 transition-colors">
                 Post a request <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </span>
+            </button>
+          </div>
+        </FadeIn>
+      </section>
+
+      {/* ══════ NEXORA BUSINESS — B2B wholesale & procurement (#63/#64) ══════ */}
+      <section className="relative z-10 py-4 px-6">
+        <FadeIn>
+          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-4">
+            <button
+              onClick={() => navigate("/community")}
+              className="group text-left p-6 rounded-2xl border border-nx-violet/20 bg-gradient-to-br from-nx-violet/[0.07] to-transparent hover:border-nx-violet/40 transition-colors"
+            >
+              <div className="w-11 h-11 rounded-xl bg-nx-violet/15 flex items-center justify-center mb-3">
+                <Boxes className="w-5 h-5 text-nx-violet" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Nexora Business — Buy in bulk</h3>
+              <p className="text-sm text-white/40 mt-1">Wholesale pricing from real sellers: stock for your duka, supplies for your restaurant, materials for your site. Volume tiers, escrow-protected.</p>
+              <span className="mt-3 inline-flex items-center gap-1.5 text-sm text-nx-violet font-medium">Explore wholesale <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></span>
+            </button>
+            <button
+              onClick={() => navigate("/community")}
+              className="group text-left p-6 rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-300/[0.06] to-transparent hover:border-amber-300/40 transition-colors"
+            >
+              <div className="w-11 h-11 rounded-xl bg-amber-300/10 flex items-center justify-center mb-3">
+                <Hammer className="w-5 h-5 text-amber-300" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Hire instead of buying</h3>
+              <p className="text-sm text-white/40 mt-1">Tools, tents, sound systems, cameras and machinery — for a day or a month. Deposits held safely in escrow and returned when the item comes back.</p>
+              <span className="mt-3 inline-flex items-center gap-1.5 text-sm text-amber-300 font-medium">Browse rentals <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></span>
             </button>
           </div>
         </FadeIn>

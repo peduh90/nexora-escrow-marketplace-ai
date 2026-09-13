@@ -157,6 +157,14 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
     condition: "Brand New",
     price: "",
     originalPrice: "",
+    // Phase 3: wholesale (#63) & rental (#67) options
+    wholesale: false,
+    moq: "",
+    tiers: [] as { minQty: string; price: string }[],
+    rental: false,
+    ratePerDay: "",
+    depositAmount: "",
+    minRentalDays: "",
     negotiable: false,
     county: "",
     town: "",
@@ -322,6 +330,18 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
         originalPrice: form.originalPrice && Number(form.originalPrice) > Number(form.price)
           ? Number(form.originalPrice)
           : undefined,
+        // ── Phase 3: B2B wholesale (#63) & rentals (#67) ──
+        wholesale: form.wholesale || undefined,
+        moq: form.wholesale ? Number(form.moq) || undefined : undefined,
+        tierPrices: form.wholesale
+          ? (form.tiers || [])
+              .filter((t: any) => t.minQty && t.price)
+              .map((t: any) => ({ minQty: Number(t.minQty), price: Number(t.price) }))
+          : undefined,
+        rental: form.rental || undefined,
+        ratePerDay: form.rental ? Number(form.ratePerDay) || undefined : undefined,
+        depositAmount: form.rental ? Number(form.depositAmount) || 0 : undefined,
+        minRentalDays: form.rental ? Number(form.minRentalDays) || 1 : undefined,
         // Verified flag: KYC or full business verification. Freelance services
         // never require KYC, so a fully-verified freelance seller counts too.
         verified:
@@ -491,6 +511,13 @@ function PublishWizard({
     condition: string;
     price: string;
     originalPrice: string;
+    wholesale?: boolean;
+    moq?: string | number;
+    tiers?: { minQty: string | number; price: string | number }[];
+    rental?: boolean;
+    ratePerDay?: string | number;
+    depositAmount?: string | number;
+    minRentalDays?: string | number;
     negotiable: boolean;
     county: string;
     town: string;
@@ -761,6 +788,52 @@ function PublishWizard({
                 <label className="text-xs text-white/40 mb-1.5 block font-medium">Original Price (KES) — optional, for discount display</label>
                 <input type="number" value={form.originalPrice} onChange={(e) => update("originalPrice", e.target.value)} placeholder="Optional"
                   className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none" />
+              </div>
+
+              {/* ── B2B Wholesale (#63) ── */}
+              <div className="p-3 rounded-lg bg-nx-violet/[0.04] border border-nx-violet/15 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={!!form.wholesale} onChange={(e) => update("wholesale", e.target.checked)} className="accent-nx-violet" />
+                  <span className="text-xs text-white/70 font-medium">Also offer wholesale (B2B)</span>
+                </label>
+                <p className="text-[11px] text-white/30">Retailers, restaurants and institutions buy in bulk with volume pricing. Your normal price stays untouched.</p>
+                {form.wholesale && (
+                  <>
+                    <input type="number" value={form.moq} onChange={(e) => update("moq", e.target.value)} placeholder="Minimum order quantity (MOQ) e.g. 10"
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm outline-none focus:border-nx-violet/50" />
+                    {((form.tiers || []) as any[]).map((t: any, i: number) => (
+                      <div key={i} className="grid grid-cols-2 gap-2">
+                        <input type="number" value={t.minQty} onChange={(e) => { const tiers = [...((form.tiers || []) as any[])]; tiers[i] = { ...t, minQty: e.target.value }; update("tiers", tiers); }} placeholder="From qty"
+                          className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm outline-none" />
+                        <input type="number" value={t.price} onChange={(e) => { const tiers = [...((form.tiers || []) as any[])]; tiers[i] = { ...t, price: e.target.value }; update("tiers", tiers); }} placeholder="Unit price KES"
+                          className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm outline-none" />
+                      </div>
+                    ))}
+                    {((form.tiers?.length ?? 0) as number) < 4 && (
+                      <button type="button" onClick={() => update("tiers", [...((form.tiers || []) as any[]), { minQty: "", price: "" }])}
+                        className="text-[11px] text-nx-violet hover:underline">+ Add price tier</button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* ── Rentals (#67) ── */}
+              <div className="p-3 rounded-lg bg-amber-400/[0.04] border border-amber-300/15 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={!!form.rental} onChange={(e) => update("rental", e.target.checked)} className="accent-amber-400" />
+                  <span className="text-xs text-white/70 font-medium">Also offer for hire / rental</span>
+                </label>
+                <p className="text-[11px] text-white/30">Tools, tents, sound systems, cameras, machinery. The deposit and hire fee are held in escrow.</p>
+                {form.rental && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <input type="number" value={form.ratePerDay} onChange={(e) => update("ratePerDay", e.target.value)} placeholder="Per day KES"
+                      className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm outline-none focus:border-amber-300/50" />
+                    <input type="number" value={form.depositAmount} onChange={(e) => update("depositAmount", e.target.value)} placeholder="Deposit KES"
+                      className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm outline-none" />
+                    <input type="number" value={form.minRentalDays} onChange={(e) => update("minRentalDays", e.target.value)} placeholder="Min days"
+                      className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm outline-none" />
+                  </div>
+                )}
               </div>
               <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
                 <div className="flex justify-between text-xs">

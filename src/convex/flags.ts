@@ -25,7 +25,11 @@ export type FlagKey =
   | "community_requests"
   | "recurring_orders"
   | "pickup_hubs"
-  | "local_deals";
+  | "local_deals"
+  | "wholesale"
+  | "business_procurement"
+  | "rentals"
+  | "diaspora_gift";
 
 export const FLAG_DEFAULTS: Array<{
   key: FlagKey;
@@ -51,6 +55,11 @@ export const FLAG_DEFAULTS: Array<{
   { key: "recurring_orders", label: "Repeat orders", description: "Weekly/monthly repeat purchases with one-tap escrow reorder.", enabled: true, rollout: "production" },
   { key: "pickup_hubs", label: "Pickup hubs", description: "Collect orders at Nexora pickup points instead of door delivery.", enabled: true, rollout: "production" },
   { key: "local_deals", label: "Local deals feed", description: "Honest discount feed from sellers' real was-prices.", enabled: true, rollout: "production" },
+  // Phase 3 (powerful) — B2B, rentals, diaspora & gifts.
+  { key: "wholesale", label: "Wholesale marketplace", description: "MOQ + volume tier pricing for retailers, restaurants and institutions.", enabled: true, rollout: "production" },
+  { key: "business_procurement", label: "Nexora Business procurement", description: "Institutions post bulk needs; verified suppliers quote.", enabled: true, rollout: "production" },
+  { key: "rentals", label: "Rental marketplace", description: "Hire tools, tents, sound, cameras — deposit held in escrow.", enabled: true, rollout: "production" },
+  { key: "diaspora_gift", label: "Diaspora & gift buying", description: "Pay from abroad or gift locally — recipient receives in Kenya.", enabled: true, rollout: "production" },
 ];
 
 /** Seed defaults on first read — idempotent, no destructive updates. */

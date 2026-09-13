@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import NavigationBar from "@/components/layout/NavigationBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import {
-  Megaphone, Loader2, MapPin, Clock, Handshake, MessageSquare, X, Plus, BadgeCheck, Package, Wrench,
+  Megaphone, Loader2, MapPin, Clock, Handshake, MessageSquare, X, Plus, BadgeCheck, Package, Wrench, Building2,
 } from "lucide-react";
 
 // ─── Phase 2: Community Requests (#88/#89) ──────────────────────────────────
@@ -17,6 +17,7 @@ const KIND_TABS = [
   { id: "all", label: "All requests" },
   { id: "product", label: "🛒 Products" },
   { id: "service", label: "🔧 Services" },
+  { id: "procurement", label: "🏢 Business & Bulk" },
 ] as const;
 
 export default function CommunityRequests() {
@@ -38,12 +39,13 @@ export default function CommunityRequests() {
 
   // Post form
   const [pTitle, setPTitle] = useState("");
-  const [pKind, setPKind] = useState<"product" | "service">("product");
+  const [pKind, setPKind] = useState<"product" | "service" | "procurement">("product");
   const [pDetails, setPDetails] = useState("");
   const [pCounty, setPCounty] = useState("");
   const [pTown, setPTown] = useState("");
   const [pBudget, setPBudget] = useState("");
   const [pNeeded, setPNeeded] = useState("");
+  const [pQuantity, setPQuantity] = useState("");
   // Offer form
   const [oAmount, setOAmount] = useState("");
   const [oMessage, setOMessage] = useState("");
@@ -81,9 +83,10 @@ export default function CommunityRequests() {
         town: pTown || undefined,
         budget: pBudget ? Number(pBudget) : undefined,
         neededBy: pNeeded || undefined,
+        quantity: pQuantity || undefined,
       });
       setPostOpen(false);
-      setPTitle(""); setPDetails(""); setPCounty(""); setPTown(""); setPBudget(""); setPNeeded("");
+      setPTitle(""); setPDetails(""); setPCounty(""); setPTown(""); setPBudget(""); setPNeeded(""); setPQuantity("");
     }, "Request posted — sellers and providers can now respond");
     if (ok) setTab("all");
   }
@@ -152,8 +155,12 @@ export default function CommunityRequests() {
               <select value={pKind} onChange={(e) => setPKind(e.target.value as any)} className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none">
                 <option value="product">🛒 A product to buy</option>
                 <option value="service">🔧 A service provider</option>
+                <option value="procurement">🏢 Business / bulk supply (B2B)</option>
               </select>
               <input value={pBudget} onChange={(e) => setPBudget(e.target.value)} type="number" placeholder="Your budget in KES (optional)" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none" />
+              {pKind === "procurement" && (
+                <input value={pQuantity} onChange={(e) => setPQuantity(e.target.value)} placeholder="Quantity e.g. 500 × 50kg cement" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none sm:col-span-2" />
+              )}
               <input value={pCounty} onChange={(e) => setPCounty(e.target.value)} placeholder="County (optional)" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none" />
               <input value={pTown} onChange={(e) => setPTown(e.target.value)} placeholder="Town / estate (optional)" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none" />
               <input value={pNeeded} onChange={(e) => setPNeeded(e.target.value)} placeholder="Needed by? e.g. today, this week (optional)" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none sm:col-span-2" />
@@ -245,9 +252,10 @@ export default function CommunityRequests() {
               {filtered.map((r: any) => (
                 <div key={r._id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 flex flex-col">
                   <div className="flex items-start gap-2.5">
-                    {r.kind === "product" ? <Package className="w-4 h-4 text-nx-cyan shrink-0 mt-0.5" /> : <Wrench className="w-4 h-4 text-nx-violet shrink-0 mt-0.5" />}
+                    {r.kind === "product" ? <Package className="w-4 h-4 text-nx-cyan shrink-0 mt-0.5" /> : r.kind === "service" ? <Wrench className="w-4 h-4 text-nx-violet shrink-0 mt-0.5" /> : <Building2 className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />}
                     <div className="min-w-0">
                       <p className="text-sm font-semibold leading-snug">{r.title}</p>
+                      {r.quantity && <p className="text-[11px] text-amber-200/70 mt-0.5">Qty: {r.quantity}</p>}
                       {r.details && <p className="text-xs text-white/40 mt-1 line-clamp-2">{r.details}</p>}
                     </div>
                   </div>

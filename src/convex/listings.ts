@@ -130,6 +130,14 @@ export const createListing = mutation({
     // Local Deals (#85 price history groundwork): the seller's "was" price.
     // Stored as-is; the deals feed only trusts it when it exceeds price.
     originalPrice: v.optional(v.number()),
+    // ─── Phase 3: Wholesale (#63) & Rentals (#67) ───
+    wholesale: v.optional(v.boolean()),
+    moq: v.optional(v.number()),
+    tierPrices: v.optional(v.array(v.object({ minQty: v.number(), price: v.number() }))),
+    rental: v.optional(v.boolean()),
+    ratePerDay: v.optional(v.number()),
+    depositAmount: v.optional(v.number()),
+    minRentalDays: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     // Always bind the listing to the session's OWN user — never an email
@@ -207,6 +215,28 @@ export const createListing = mutation({
       attributes: args.attributes,
       negotiable: args.negotiable,
       originalPrice: args.originalPrice && args.originalPrice > args.price ? Math.round(args.originalPrice) : undefined,
+      // Phase 3: wholesale + rental configuration (sanitized).
+      wholesale:
+        args.wholesale && args.moq && args.moq >= 2 &&
+        args.tierPrices && args.tierPrices.length > 0 &&
+        args.tierPrices.every((t) => t.minQty >= 2 && t.price > 0)
+          ? true
+          : undefined,
+      moq: args.wholesale && args.moq && args.moq >= 2 ? Math.round(args.moq) : undefined,
+      tierPrices: args.wholesale && args.tierPrices && args.tierPrices.length > 0
+        ? args.tierPrices
+            .filter((t) => t.minQty >= 2 && t.price > 0)
+            .map((t) => ({ minQty: Math.round(t.minQty), price: Math.round(t.price) }))
+            .sort((a, b) => a.minQty - b.minQty)
+        : undefined,
+      rental:
+        args.rental && args.ratePerDay && args.ratePerDay > 0 &&
+        args.depositAmount && args.depositAmount >= 0
+          ? true
+          : undefined,
+      ratePerDay: args.rental && args.ratePerDay && args.ratePerDay > 0 ? Math.round(args.ratePerDay) : undefined,
+      depositAmount: args.rental && args.depositAmount && args.depositAmount >= 0 ? Math.round(args.depositAmount) : undefined,
+      minRentalDays: args.rental && args.minRentalDays && args.minRentalDays >= 1 ? Math.round(args.minRentalDays) : undefined,
       views: 0,
       favorites: 0,
       status: "active",
@@ -343,6 +373,55 @@ export const getActiveListings = query({
   handler: async (ctx, args) => {
     const marketplace = normalizeMarketplace(args.marketplace);
     return getActiveListingsForMarketplace(ctx, marketplace, args.limit ?? 50);
+  },
+});
+
+/**
+ * Wholesale feed (#63): product listings offered B2B with MOQ + tiers.
+ * Powers the Nexora Business supply discovery surface.
+ */
+export const getWholesaleListings = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const all = await ctx.db
+      .query("listings")
+      .withIndex("by_status", (q: any) => q.eq("status", "active"))
+      .order("desc")
+      .take(300);
+    const rows = all
+      .filter((l: any) => normalizeMarketplace((l as any).marketplace) === "product" && !!(l as any).wholesale)
+      .slice(0, args.limit ?? 24);
+    return Promise.all(
+      rows.map(async (listing: any) => ({
+        ...listing,
+        images: await resolveListingImages(ctx, listing.images),
+        documents: await resolveListingDocuments(ctx, listing.documents),
+      })),
+    );
+  },
+});
+
+/**
+ * Rentals feed (#67): items for hire — tools, tents, sound, cameras, vehicles.
+ */
+export const getRentalListings = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const all = await ctx.db
+      .query("listings")
+      .withIndex("by_status", (q: any) => q.eq("status", "active"))
+      .order("desc")
+      .take(300);
+    const rows = all
+      .filter((l: any) => normalizeMarketplace((l as any).marketplace) === "product" && !!(l as any).rental)
+      .slice(0, args.limit ?? 24);
+    return Promise.all(
+      rows.map(async (listing: any) => ({
+        ...listing,
+        images: await resolveListingImages(ctx, listing.images),
+        documents: await resolveListingDocuments(ctx, listing.documents),
+      })),
+    );
   },
 });
 

@@ -200,6 +200,14 @@ const schema = defineSchema(
       // the free-text address. All optional — legacy rows keep working.
       deliveryArea: v.optional(v.string()),
       deliveryLandmark: v.optional(v.string()),
+      // ─── Phase 3: Diaspora & Gift buying (#106/#107) ───
+      // Payer and recipient can be different people: someone abroad (or in
+      // another town) pays; Nexora delivers to the recipient in Kenya.
+      recipientName: v.optional(v.string()),
+      recipientPhone: v.optional(v.string()),
+      recipientCounty: v.optional(v.string()),
+      recipientTown: v.optional(v.string()),
+      giftNote: v.optional(v.string()),
       deliveryBuilding: v.optional(v.string()),
       deliveryFloorUnit: vOptionalString(),
       deliveryInstructions: v.optional(v.string()),
@@ -250,6 +258,24 @@ const schema = defineSchema(
       )),
       // Local Deals: optional "was" price for honest discount display.
       originalPrice: v.optional(v.number()),
+      // ─── Phase 3: B2B Wholesale (#63) ───
+      // A listing may ALSO be offered wholesale with a minimum order quantity
+      // and volume tiers. Consumer price stays untouched — business buyers
+      // see the tier table and request bulk quotes through chat.
+      wholesale: v.optional(v.boolean()),
+      moq: v.optional(v.number()),
+      tierPrices: v.optional(v.array(v.object({
+        minQty: v.number(),
+        price: v.number(),
+      }))),
+      // ─── Phase 3: Rentals (#67) ───
+      // Rental instead of purchase: daily rate + refundable deposit + minimum
+      // days. Booking funds (rate × days + deposit) through the SAME escrow
+      // engine; deposit releases on return confirmation.
+      rental: v.optional(v.boolean()),
+      ratePerDay: v.optional(v.number()),
+      depositAmount: v.optional(v.number()),
+      minRentalDays: v.optional(v.number()),
       title: v.string(),
       description: v.string(),
       price: v.number(),
@@ -1413,8 +1439,11 @@ const schema = defineSchema(
       customerId: v.string(),
       title: v.string(),
       details: v.optional(v.string()),
-      // "product" | "service" — routes the request to the right responders.
-      kind: v.union(v.literal("product"), v.literal("service")),
+      // "product" | "service" | "procurement" — procurement is the Nexora
+      // Business channel: institutions post bulk needs, suppliers quote.
+      kind: v.union(v.literal("product"), v.literal("service"), v.literal("procurement")),
+      // Free-text quantity for bulk needs, e.g. "500 × 50kg bags".
+      quantity: v.optional(v.string()),
       category: v.optional(v.string()),
       county: v.optional(v.string()),
       town: v.optional(v.string()),

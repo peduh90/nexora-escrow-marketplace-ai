@@ -341,6 +341,14 @@ export const createOrder = mutation({
     deliveryInstructions: v.optional(v.string()),
     deliveryPin: v.optional(v.string()),
     deliveryAddressId: v.optional(v.string()),
+    // ─── Phase 3: Diaspora & Gift buying (#106/#107) ───
+    // The payer and the recipient can be different people. Recipient details
+    // ride along with the escrow so the seller/agent delivers to THEM.
+    recipientName: v.optional(v.string()),
+    recipientPhone: v.optional(v.string()),
+    recipientCounty: v.optional(v.string()),
+    recipientTown: v.optional(v.string()),
+    giftNote: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -422,6 +430,11 @@ export const createOrder = mutation({
       deliveryInstructions: args.deliveryInstructions,
       deliveryPin: args.deliveryPin,
       deliveryAddressId: args.deliveryAddressId,
+      recipientName: args.recipientName,
+      recipientPhone: args.recipientPhone,
+      recipientCounty: args.recipientCounty,
+      recipientTown: args.recipientTown,
+      giftNote: args.giftNote,
       originCounty: listing.originCounty,
       originTown: listing.originTown,
       createdAt: Date.now(),

@@ -8,6 +8,7 @@ import { shareListing } from "@/lib/share";
 import {
   Shield, Heart, Share2, MessageSquare, ShoppingCart, ArrowLeft, Star, MapPin, Clock,
   CheckCircle2, Truck, ChevronRight, Package, Eye, X, Minus, Plus, Loader2, Send, MessageCircle, Phone, FileText,
+  Boxes, Hammer, Gift,
 } from "lucide-react";
 import { getWhatsAppSellerUrl, getWhatsAppSupportUrl, openWhatsApp, normalizeKenyanPhone } from "@/lib/whatsapp";
 import { getViewerKey } from "@/lib/viewer";
@@ -110,6 +111,21 @@ export default function ProductDetails() {
   const [selectedHubId, setSelectedHubId] = useState<string | null>(null);
   const [repeatOrder, setRepeatOrder] = useState(false);
   const [repeatFrequency, setRepeatFrequency] = useState<"weekly" | "monthly">("monthly");
+  // ── Phase 3: gift/diaspora (#106/#107), rental days (#67) ──
+  const [isGift, setIsGift] = useState(false);
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientPhone, setRecipientPhone] = useState("");
+  const [recipientCounty, setRecipientCounty] = useState("");
+  const [recipientTown, setRecipientTown] = useState("");
+  const [giftNote, setGiftNote] = useState("");
+  const [rentalDays, setRentalDays] = useState("");
+  const isRentalListing = !!(listing as any)?.rental;
+  const rentalPrice = isRentalListing && rentalDays
+    ? Math.max(
+        Number((listing as any).minRentalDays ?? 1),
+        Number(rentalDays),
+      ) * (listing as any).ratePerDay + ((listing as any).depositAmount ?? 0)
+    : 0;
   const selectedHub = hubs?.find((h: any) => h._id === selectedHubId);
 
   const handleShare = async () => {
@@ -236,7 +252,21 @@ export default function ProductDetails() {
   }
 
   const delivery = getDeliveryFee(listing.originCounty);
-  const totalAmount = listing.price;
+  // Rental (#67): the charged amount is days × rate + refundable deposit.
+  // Wholesale (#63): bulk buyers pay the tier unit price for their quantity.
+  const chargeBase = (() => {
+    if (isRentalListing) {
+      if (!rentalPrice) return listing.price;
+      return rentalPrice;
+    }
+    if ((listing as any).wholesale && quantity > 1) {
+      const tiers = ((listing as any).tierPrices || []) as { minQty: number; price: number }[];
+      const eligible = tiers.filter((t) => quantity >= t.minQty).sort((a, b) => b.minQty - a.minQty)[0];
+      if (eligible) return eligible.price * quantity;
+    }
+    return listing.price * quantity;
+  })();
+  const totalAmount = chargeBase;
   // Buyer protection fee — tiered per Nexora fee schedule (src/lib/fees.ts).
   const buyerFee = buyerProtectionFee("product", totalAmount);
   const platformFee = buyerFee.fee;
@@ -302,6 +332,14 @@ export default function ProductDetails() {
                 deliveryInstructions: deliveryInstructions || undefined,
                 deliveryPin: deliveryPin || undefined,
                 deliveryAddressId: selectedAddressId ?? undefined,
+                // Phase 3: gift/diaspora recipient rides with the order.
+                ...(isGift ? {
+                  recipientName: recipientName || undefined,
+                  recipientPhone: recipientPhone || undefined,
+                  recipientCounty: recipientCounty || undefined,
+                  recipientTown: recipientTown || undefined,
+                  giftNote: giftNote || undefined,
+                } : {}),
               });
               await persistAddressIfRequested();
               await startRecurringIfRequested();
@@ -341,6 +379,14 @@ export default function ProductDetails() {
         deliveryInstructions: deliveryInstructions || undefined,
         deliveryPin: deliveryPin || undefined,
         deliveryAddressId: selectedAddressId ?? undefined,
+        // Phase 3: gift/diaspora recipient rides with the order.
+        ...(isGift ? {
+          recipientName: recipientName || undefined,
+          recipientPhone: recipientPhone || undefined,
+          recipientCounty: recipientCounty || undefined,
+          recipientTown: recipientTown || undefined,
+          giftNote: giftNote || undefined,
+        } : {}),
       };
       await createOrder({
         listingId: listing._id,
@@ -520,11 +566,50 @@ export default function ProductDetails() {
               <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{listing.title}</h1>
               <div className="flex items-center gap-4 mb-3">
                 <span className="text-3xl font-bold text-white">KES {listing.price.toLocaleString()}</span>
+                {(listing as any).originalPrice && (listing as any).originalPrice > listing.price && (
+                  <span className="text-sm text-white/30 line-through">KES {(listing as any).originalPrice.toLocaleString()}</span>
+                )}
                 {listing.negotiable && (
                   <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">Negotiable</span>
                 )}
               </div>
             </div>
+
+            {/* ── Phase 3: Wholesale tiers (#63) ── */}
+            {(listing as any).wholesale && (
+              <div className="p-4 rounded-xl bg-nx-violet/[0.05] border border-nx-violet/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-white flex items-center gap-2">
+                    <Boxes className="w-4 h-4 text-nx-violet" /> Wholesale pricing (B2B)
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-nx-violet/15 text-nx-violet font-bold">MOQ {(listing as any).moq}</span>
+                </div>
+                <div className="space-y-1">
+                  {((listing as any).tierPrices || []).map((t: any, i: number) => (
+                    <div key={i} className="flex justify-between text-xs py-1 border-b border-white/5 last:border-0">
+                      <span className="text-white/45">Buy {t.minQty}+ units</span>
+                      <span className="text-white font-semibold">KES {t.price.toLocaleString()} / unit</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-white/35 mt-2">Order in bulk at checkout — or chat with the seller for a custom quote.</p>
+              </div>
+            )}
+
+            {/* ── Phase 3: Rental (#67) ── */}
+            {(listing as any).rental && (
+              <div className="p-4 rounded-xl bg-amber-300/[0.05] border border-amber-300/20">
+                <span className="text-sm font-semibold text-white flex items-center gap-2 mb-1.5">
+                  <Hammer className="w-4 h-4 text-amber-300" /> Also available for hire
+                </span>
+                <p className="text-xs text-white/50">
+                  <span className="text-amber-300 font-bold">KES {(listing as any).ratePerDay?.toLocaleString()}</span> per day
+                  {((listing as any).minRentalDays ?? 1) > 1 && <> · minimum {(listing as any).minRentalDays} days</>}
+                  {((listing as any).depositAmount ?? 0) > 0 && <> · refundable deposit KES {(listing as any).depositAmount.toLocaleString()}</>}
+                </p>
+                <p className="text-[11px] text-white/35 mt-1.5">Hire fee + deposit are held in escrow — the deposit comes back when the item returns in good shape. Choose days at checkout.</p>
+              </div>
+            )}
 
             {/* Badges */}
             <div className="flex flex-wrap gap-2">
@@ -890,6 +975,44 @@ export default function ProductDetails() {
                   {collectAtHub && selectedHub && (
                     <p className="text-[11px] text-white/40">
                       {[selectedHub.landmark, selectedHub.directions, selectedHub.hours].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* ── Phase 3: Gift / Diaspora delivery (#106/#107) ── */}
+              <div className="p-3 rounded-lg bg-nx-violet/[0.04] border border-nx-violet/15 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} className="accent-nx-violet" />
+                  <span className="text-xs text-white/70 font-medium flex items-center gap-1.5"><Gift className="w-3.5 h-3.5 text-nx-violet" /> Deliver to someone else (gift / family / diaspora)</span>
+                </label>
+                {isGift && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Recipient name *"
+                      className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm text-white placeholder:text-white/20 outline-none focus:border-nx-violet/50" />
+                    <input type="tel" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="Recipient phone *"
+                      className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm text-white placeholder:text-white/20 outline-none focus:border-nx-violet/50" />
+                    <input type="text" value={recipientCounty} onChange={(e) => setRecipientCounty(e.target.value)} placeholder="Their county"
+                      className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm text-white placeholder:text-white/20 outline-none focus:border-nx-violet/50" />
+                    <input type="text" value={recipientTown} onChange={(e) => setRecipientTown(e.target.value)} placeholder="Their town / estate"
+                      className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm text-white placeholder:text-white/20 outline-none focus:border-nx-violet/50" />
+                    <input type="text" value={giftNote} onChange={(e) => setGiftNote(e.target.value)} placeholder="Note on the delivery e.g. Birthday gift 🎂"
+                      className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm text-white placeholder:text-white/20 outline-none focus:border-nx-violet/50 sm:col-span-2" />
+                    <p className="text-[11px] text-white/30 sm:col-span-2">You pay; they receive. We only share their details with the delivery team.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Phase 3: Rental days (#67) ── */}
+              {isRentalListing && (
+                <div className="p-3 rounded-lg bg-amber-300/[0.05] border border-amber-300/15 space-y-2">
+                  <label className="text-xs text-white/70 font-medium flex items-center gap-1.5"><Hammer className="w-3.5 h-3.5 text-amber-300" /> Hire days</label>
+                  <input type="number" min={1} value={rentalDays} onChange={(e) => setRentalDays(e.target.value)}
+                    placeholder={`Days (min ${(listing as any).minRentalDays ?? 1})`}
+                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm text-white placeholder:text-white/20 outline-none focus:border-amber-300/50" />
+                  {rentalPrice > 0 && (
+                    <p className="text-[11px] text-amber-200/80">
+                      {Number(rentalDays || 0)} day(s) × KES {(listing as any).ratePerDay?.toLocaleString()} + refundable deposit KES {((listing as any).depositAmount ?? 0).toLocaleString()} = <span className="font-bold">KES {rentalPrice.toLocaleString()}</span>
                     </p>
                   )}
                 </div>
