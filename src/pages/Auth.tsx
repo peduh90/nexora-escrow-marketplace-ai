@@ -205,7 +205,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
         : role === "employer"
         ? freelanceJoinReturn ?? "/employer"
         : role === "buyer"
-        ? "/buyer"
+        ? providerReturn ?? "/buyer"
         : null;
     if (roleTarget) {
       navigate(roleTarget);
@@ -258,6 +258,11 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   // The /freelance/join flow (returnTo points inside freelance) — drives the
   // card-specific redirect for already-registered users.
   const isFreelanceJoin = redirect.startsWith("/freelance") && !isFreelanceRegister;
+  // A returnTo pointing at the local services/transport provider registration
+  // must survive sign-up — landing in the buyer dashboard instead would break
+  // the "List My Service" / "Drive & Earn" promise.
+  const providerReturn =
+    redirect.startsWith("/services") || redirect.startsWith("/transport") ? redirect : null;
 
   // The dedicated freelance panel toggles between register and sign-in, like
   // the seller panel does.
@@ -268,13 +273,17 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   // successful registration the new freelancer is routed straight into the
   // publish wizard instead of the generic dashboard.
   const [publishIntent, setPublishIntent] = useState(false);
+  // "Offer a Service" intent from the main chooser / marketplace: a buyer-role
+  // account heading straight into the local service provider registration.
+  const [providerIntent, setProviderIntent] = useState(false);
 
   const handleRoleSelect = (
     role: "buyer" | "seller" | "freelancer" | "employer",
-    opts?: { publishIntent?: boolean },
+    opts?: { publishIntent?: boolean; providerIntent?: boolean },
   ) => {
     setSelectedRole(role);
     setPublishIntent(!!opts?.publishIntent && role === "freelancer");
+    setProviderIntent(!!opts?.providerIntent && role === "buyer");
     setStep("signIn");
   };
 
@@ -408,7 +417,8 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       // fix for the seller -> buyer regression on the OTP path.
       if (selectedRole) {
         // "Become a Service Provider" — send the brand-new freelancer straight
-        // into the publish wizard to create their first service.
+        // into the publish wizard to create their first service. "Offer a
+        // Service" — send the new provider into local-service registration.
         const target =
           selectedRole === "seller"
             ? "/seller"
@@ -418,6 +428,8 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
               : "/freelance/dashboard"
             : selectedRole === "employer"
             ? "/employer"
+            : providerIntent || providerReturn
+            ? providerReturn ?? "/services/dashboard"
             : "/buyer";
         try { navigate(target); } catch {}
       }
@@ -864,6 +876,27 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
                       ))}
                     </div>
                     <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-nx-violet/50 transition-colors" />
+                  </button>
+                )}
+
+                {/* Offer a Service — the LOCAL service provider path (salon,
+                    plumber, boda, fundi…). Deliberately NOT a seller account:
+                    no KYC, no store — register, set your price, go online. */}
+                {!isFreelanceRoute && (
+                  <button onClick={() => handleRoleSelect("buyer", { providerIntent: true })} className="group relative p-6 rounded-2xl border border-nx-cyan/20 bg-nx-cyan/[0.03] backdrop-blur-sm hover:border-nx-cyan/40 hover:bg-nx-cyan/[0.07] transition-all duration-300 text-left">
+                    <div className="w-14 h-14 rounded-xl bg-nx-cyan/10 flex items-center justify-center mb-4 group-hover:bg-nx-cyan/20 transition-colors">
+                      <Wrench className="w-7 h-7 text-nx-cyan" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-1">Offer a Service</h3>
+                    <p className="text-white/40 text-sm leading-relaxed mb-4">Salon, plumber, electrician, boda, fundi — get customers near you.</p>
+                    <div className="flex flex-col gap-1.5">
+                      {["No KYC — register in 2 minutes", "Set your own prices & hours", "Get paid to your wallet, escrow-protected"].map((f) => (
+                        <div key={f} className="flex items-center gap-2 text-xs text-white/30">
+                          <Check className="w-3 h-3 text-nx-cyan/60" /><span>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-nx-cyan/50 transition-colors" />
                   </button>
                 )}
               </div>

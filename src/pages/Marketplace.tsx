@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../convex/_generated/api";
+import { useAuth } from "@/hooks/use-auth";
 
 import { Search, ArrowLeft, X, MapPin, Shield, Truck, Heart, ChevronRight, Wrench, ArrowUpRight } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
@@ -29,6 +30,14 @@ export default function Marketplace() {
     !searchParams.get("q") && !searchParams.get("category"),
   );
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+
+  // Offering a local service (salon, plumber, boda…) is a provider path, NOT a
+  // seller path: signed-out users register through the general flow and land
+  // straight in the provider dashboard; signed-in users go there directly.
+  const offerServicePath = isAuthenticated
+    ? "/services/dashboard"
+    : "/auth?returnTo=%2Fservices%2Fdashboard";
 
   const queryArgs = useMemo(() => {
     const args: Record<string, string | number> = { query: searchQuery };
@@ -149,6 +158,37 @@ export default function Marketplace() {
             <ChevronRight className="w-5 h-5 text-nx-violet sm:hidden shrink-0" />
           </div>
         </button>
+      </div>
+
+      {/* ═══ LOCAL SERVICES BANNER — providers register here, NOT as sellers ═══ */}
+      <div className="max-w-[1600px] mx-auto px-4 md:px-6 pt-3">
+        <button
+          onClick={() => navigate(offerServicePath)}
+          className="group relative w-full overflow-hidden rounded-2xl border border-nx-cyan/25 bg-gradient-to-r from-nx-cyan/15 via-nx-cyan/6 to-amber-400/10 p-4 md:p-5 text-left transition-all hover:border-nx-cyan/50 hover:shadow-[0_0_30px_rgba(6,182,212,0.12)]"
+        >
+          <div className="relative flex items-center gap-4">
+            <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-nx-cyan/15 border border-nx-cyan/30 flex items-center justify-center shrink-0">
+              <Wrench className="w-6 h-6 text-nx-cyan" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm md:text-base font-bold text-white">Offer a Local Service — Salon, Plumber, Boda, Fundi</h3>
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-nx-cyan/15 text-nx-cyan font-bold uppercase tracking-wider">No KYC</span>
+              </div>
+              <p className="text-[11px] md:text-xs text-white/45 mt-0.5 leading-relaxed">
+                Register as a service provider in 2 minutes — set your prices, go "Available Now", get paid to your wallet.
+              </p>
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-xl bg-nx-cyan text-black text-xs font-semibold shrink-0 group-hover:bg-nx-cyan/85 transition-colors">
+              Register as Provider <ArrowUpRight className="w-3.5 h-3.5" />
+            </div>
+            <ChevronRight className="w-5 h-5 text-nx-cyan sm:hidden shrink-0" />
+          </div>
+        </button>
+        <div className="flex items-center justify-center gap-2 mt-2 text-[11px] text-white/30">
+          <span>Looking for a provider instead?</span>
+          <button onClick={() => navigate("/services")} className="text-nx-cyan hover:text-white font-medium transition-colors">Find Services Near You →</button>
+        </div>
       </div>
 
       <div className="flex max-w-[1600px] mx-auto">

@@ -160,22 +160,25 @@ export default function Landing() {
               Search
             </button>
           </div>
-          {/* Scope selector — results stay in one marketplace, never mixed */}
+          {/* Scope selector — results stay in one marketplace, never mixed.
+              Real icons, and each pill navigates straight to its marketplace. */}
           <div className="flex items-center justify-center gap-2 mt-2.5">
             {([
-              ["products", "🛒 Products"],
-              ["services", "🔧 Services"],
-              ["freelance", "💼 Freelance"],
-            ] as const).map(([key, label]) => (
+              { key: "products", label: "Products", icon: ShoppingCart, path: "/marketplace" },
+              { key: "services", label: "Services", icon: Wrench, path: "/services" },
+              { key: "freelance", label: "Freelance", icon: Briefcase, path: "/freelance" },
+            ] as const).map(({ key, label, icon: ScopeIcon, path }) => (
               <button
                 key={key}
-                onClick={() => setSearchScope(key)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                onClick={() => { setSearchScope(key); navigate(path); }}
+                title={`Open ${label}`}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                   searchScope === key
                     ? "border-nx-cyan/50 bg-nx-cyan/10 text-nx-cyan"
-                    : "border-white/10 text-white/40 hover:text-white/70"
+                    : "border-white/10 text-white/40 hover:text-white/70 hover:border-white/25"
                 }`}
               >
+                <ScopeIcon className="w-3.5 h-3.5" />
                 {label}
               </button>
             ))}
