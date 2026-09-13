@@ -103,6 +103,14 @@ export default function ProductDetails() {
   const [shareNote, setShareNote] = useState("");
   const savedAddresses = useQuery(api.addresses.listAddresses, user ? {} : "skip");
   const saveAddress = useMutation(api.addresses.saveAddress);
+  // Phase 2: pickup hubs (#71) + recurring orders (#65)
+  const hubs = useQuery(api.hubs.listActiveHubs, {});
+  const startRecurring = useMutation(api.recurring.startRecurring);
+  const [collectAtHub, setCollectAtHub] = useState(false);
+  const [selectedHubId, setSelectedHubId] = useState<string | null>(null);
+  const [repeatOrder, setRepeatOrder] = useState(false);
+  const [repeatFrequency, setRepeatFrequency] = useState<"weekly" | "monthly">("monthly");
+  const selectedHub = hubs?.find((h: any) => h._id === selectedHubId);
 
   const handleShare = async () => {
     if (!listing) return;
@@ -138,6 +146,20 @@ export default function ProductDetails() {
     setDeliveryCounty(""); setDeliveryTown(""); setDeliveryAddress("");
     setDeliveryArea(""); setDeliveryLandmark(""); setDeliveryBuilding("");
     setDeliveryFloorUnit(""); setDeliveryInstructions(""); setDeliveryPin("");
+  };
+
+  /** Opt-in subscription after a successful order (#65) — best-effort. */
+  const startRecurringIfRequested = async () => {
+    if (!repeatOrder || !user || !listing) return;
+    try {
+      await startRecurring({
+        listingId: listing._id,
+        quantity,
+        frequency: repeatFrequency,
+      });
+    } catch {
+      // Non-fatal — the paid order already succeeded.
+    }
   };
 
   /**
@@ -219,7 +241,9 @@ export default function ProductDetails() {
   const buyerFee = buyerProtectionFee("product", totalAmount);
   const platformFee = buyerFee.fee;
   const deliveryFee = delivery.free ? 0 : delivery.fee;
-  const grandTotal = totalAmount + platformFee + deliveryFee;
+  // With hub collection (#71) the hub's fee replaces the door-delivery fee;
+  // declared after the hub state below via hoisted let bindings.
+  const grandTotal = totalAmount + platformFee + (collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee);
 
   const handleBuyNow = async () => {
     if (!user) {
@@ -270,7 +294,7 @@ export default function ProductDetails() {
                 deliveryTown,
                 deliveryAddress,
                 paymentMethod: "mpesa",
-                deliveryFee,
+                deliveryFee: collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee,
                 deliveryArea: deliveryArea || undefined,
                 deliveryLandmark: deliveryLandmark || undefined,
                 deliveryBuilding: deliveryBuilding || undefined,
@@ -280,6 +304,7 @@ export default function ProductDetails() {
                 deliveryAddressId: selectedAddressId ?? undefined,
               });
               await persistAddressIfRequested();
+              await startRecurringIfRequested();
               setMpesaStep("done");
               setOrderSuccess(true);
               setShowCheckout(false);
@@ -325,10 +350,11 @@ export default function ProductDetails() {
         deliveryTown,
         deliveryAddress,
         paymentMethod: "wallet",
-        deliveryFee,
+        deliveryFee: collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee,
         ...landmarkFields,
       });
       await persistAddressIfRequested();
+      await startRecurringIfRequested();
       setOrderSuccess(true);
       setShowCheckout(false);
     } catch (err: any) {
@@ -842,6 +868,47 @@ export default function ProductDetails() {
                 </div>
               )}
               <p className="text-[11px] text-white/20">🚚 Delivery is handled by Nexora Market. Landmarks help your rider find you fast.</p>
+
+              {/* Pickup hubs (#71): collect instead of door delivery */}
+              {hubs && hubs.length > 0 && (
+                <div className="p-3 rounded-lg bg-nx-cyan/[0.04] border border-nx-cyan/15 space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" checked={collectAtHub} onChange={(e) => setCollectAtHub(e.target.checked)} className="accent-nx-cyan" />
+                    <span className="text-xs text-white/70 font-medium">Collect at a Nexora pickup hub instead</span>
+                  </label>
+                  {collectAtHub && (
+                    <select value={selectedHubId ?? ""} onChange={(e) => setSelectedHubId(e.target.value)}
+                      className="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm outline-none focus:border-nx-cyan/50">
+                      <option value="">Choose a hub…</option>
+                      {hubs.map((h: any) => (
+                        <option key={h._id} value={h._id}>
+                          {h.name} — {h.town}, {h.county}{h.fee ? ` (KES ${h.fee})` : " (FREE)"}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {collectAtHub && selectedHub && (
+                    <p className="text-[11px] text-white/40">
+                      {[selectedHub.landmark, selectedHub.directions, selectedHub.hours].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Repeat this order (#65): opt-in subscription */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={repeatOrder} onChange={(e) => setRepeatOrder(e.target.checked)} className="accent-nx-cyan" />
+                <span className="text-xs text-white/50">Repeat this order every {repeatFrequency === "weekly" ? "week" : "month"}</span>
+              </label>
+              {repeatOrder && (
+                <div className="flex gap-1.5">
+                  <button type="button" onClick={() => setRepeatFrequency("weekly")}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] border ${repeatFrequency === "weekly" ? "border-nx-cyan/40 bg-nx-cyan/15 text-white" : "border-white/10 text-white/40"}`}>Weekly</button>
+                  <button type="button" onClick={() => setRepeatFrequency("monthly")}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] border ${repeatFrequency === "monthly" ? "border-nx-cyan/40 bg-nx-cyan/15 text-white" : "border-white/10 text-white/40"}`}>Monthly</button>
+                  <p className="text-[11px] text-white/25 self-center">Reminders only — you confirm every order.</p>
+                </div>
+              )}
             </div>
 
             {/* Payment method */}
@@ -892,7 +959,7 @@ export default function ProductDetails() {
             <div className="space-y-2 mb-4 text-sm p-3 rounded-xl bg-white/[0.02] border border-white/5">
               <div className="flex justify-between text-white/40"><span>Product Price</span><span>KES {totalAmount.toLocaleString()}</span></div>
               <div className="flex justify-between text-white/40"><span>Buyer Protection ({rateLabel(buyerFee.rate)}) — escrow included</span><span>KES {platformFee.toLocaleString()}</span></div>
-              <div className="flex justify-between text-white/40"><span>Delivery Fee</span><span className="text-nx-cyan">{deliveryFee === 0 ? "FREE" : `KES ${deliveryFee.toLocaleString()}`}</span></div>
+              <div className="flex justify-between text-white/40"><span>{collectAtHub ? "Hub collection" : "Delivery Fee"}</span><span className="text-nx-cyan">{(collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee) === 0 ? "FREE" : `KES ${(collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee).toLocaleString()}`}</span></div>
               <div className="flex justify-between text-white font-bold pt-2 border-t border-white/5"><span>Total</span><span>KES {grandTotal.toLocaleString()}</span></div>
             </div>
 

@@ -248,6 +248,8 @@ const schema = defineSchema(
         v.literal("product"),
         v.literal("freelance"),
       )),
+      // Local Deals: optional "was" price for honest discount display.
+      originalPrice: v.optional(v.number()),
       title: v.string(),
       description: v.string(),
       price: v.number(),
@@ -1403,6 +1405,85 @@ const schema = defineSchema(
       updatedAt: v.optional(v.number()),
       updatedBy: v.optional(v.string()),
     }),
+
+    // ─── Phase 2: Community Requests (#88/#89) — demand-first matching ───
+    // A buyer posts what they need; relevant providers/sellers respond with
+    // offers; the buyer compares and picks. Converts demand into supply.
+    communityRequests: defineTable({
+      customerId: v.string(),
+      title: v.string(),
+      details: v.optional(v.string()),
+      // "product" | "service" — routes the request to the right responders.
+      kind: v.union(v.literal("product"), v.literal("service")),
+      category: v.optional(v.string()),
+      county: v.optional(v.string()),
+      town: v.optional(v.string()),
+      budget: v.optional(v.number()),
+      neededBy: v.optional(v.string()), // "today", "this week", free text
+      status: v.union(v.literal("open"), v.literal("awarded"), v.literal("closed")),
+      awardedOfferId: v.optional(v.string()),
+      offerCount: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_status", ["status"])
+      .index("by_customer", ["customerId"]),
+
+    requestOffers: defineTable({
+      requestId: v.string(),
+      // The responding seller/provider's user id.
+      responderId: v.string(),
+      responderName: v.string(),
+      amount: v.number(),
+      message: v.optional(v.string()),
+      // Denormalized so the buyer sees verification at a glance (#89).
+      responderVerified: v.optional(v.boolean()),
+      status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined")),
+      createdAt: v.number(),
+    })
+      .index("by_request", ["requestId"]),
+
+    // ─── Phase 2: Recurring Orders (#65) — purchases that repeat ───
+    // One opt-in record per product per buyer. Reminder ticks are computed
+    // from nextOrderAt; reordering creates a REAL escrow order through the
+    // existing wallet engine — never a fake statistic.
+    recurringOrders: defineTable({
+      userId: v.string(),
+      listingId: v.string(),
+      sellerId: v.string(),
+      title: v.string(),
+      unitPrice: v.number(),
+      quantity: v.number(),
+      frequency: v.union(v.literal("weekly"), v.literal("monthly")),
+      active: v.boolean(),
+      paused: v.optional(v.boolean()),
+      lastOrderedAt: v.optional(v.number()),
+      nextOrderAt: v.number(),
+      orderCount: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_user", ["userId"])
+      .index("by_next", ["nextOrderAt"]),
+
+    // ─── Phase 2: Pickup Hubs (#71) — cut last-mile cost ───
+    // Admin-managed collection points; orders can be marked "collect at hub"
+    // instead of door delivery.
+    pickupHubs: defineTable({
+      name: v.string(),
+      county: v.string(),
+      town: v.string(),
+      // Landmark-style directions (#72) — hubs are found by landmark in Kenya.
+      landmark: v.optional(v.string()),
+      directions: v.optional(v.string()),
+      phone: v.optional(v.string()),
+      hours: v.optional(v.string()),
+      fee: v.optional(v.number()), // collection fee shown at checkout
+      active: v.boolean(),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_active", ["active"]),
   },
   {
     schemaValidation: false,

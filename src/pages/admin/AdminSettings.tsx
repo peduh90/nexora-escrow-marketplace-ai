@@ -2,7 +2,128 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Settings, Shield, Bell, Globe, CreditCard, Info, Flag, Loader2 } from "lucide-react";
+import { Settings, Shield, Bell, Globe, CreditCard, Info, Flag, Loader2, MapPin, Plus, Power } from "lucide-react";
+
+/**
+ * Pickup Hubs tab (#71): admin-managed collection points that cut last-mile
+ * cost. Buyers see the hub fee at checkout; changes are audit-logged.
+ */
+function PickupHubsTab() {
+  const hubs = useQuery(api.hubs.adminListHubs, {});
+  const createHub = useMutation(api.hubs.adminCreateHub);
+  const updateHub = useMutation(api.hubs.adminUpdateHub);
+  const [form, setForm] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+
+  if (hubs === undefined) {
+    return (
+      <div className="p-10 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-nx-violet animate-spin" />
+      </div>
+    );
+  }
+
+  async function save() {
+    if (!form.name?.trim() || !form.county?.trim() || !form.town?.trim()) {
+      alert("Name, county and town are required");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (form._id) {
+        await updateHub({
+          hubId: form._id,
+          name: form.name,
+          county: form.county,
+          town: form.town,
+          landmark: form.landmark || undefined,
+          directions: form.directions || undefined,
+          phone: form.phone || undefined,
+          hours: form.hours || undefined,
+          fee: form.fee ? Number(form.fee) : 0,
+          active: form.active,
+        });
+      } else {
+        await createHub({
+          name: form.name,
+          county: form.county,
+          town: form.town,
+          landmark: form.landmark || undefined,
+          directions: form.directions || undefined,
+          phone: form.phone || undefined,
+          hours: form.hours || undefined,
+          fee: form.fee ? Number(form.fee) : 0,
+        });
+      }
+      setForm(null);
+    } catch (err: any) {
+      alert(err.message || "Failed to save hub");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="p-5 rounded-xl border border-white/5 bg-[#0A0A12]">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-sm font-semibold text-white">Pickup Hubs ({hubs.length})</h3>
+        <button onClick={() => setForm({ name: "", county: "", town: "", fee: "" })} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-nx-violet text-white text-xs font-medium">
+          <Plus className="w-3.5 h-3.5" /> Add hub
+        </button>
+      </div>
+      <p className="text-[11px] text-white/30 mb-4">
+        Collection points where buyers pick up orders instead of door delivery — cuts last-mile cost. Buyers see the fee at checkout.
+      </p>
+
+      {form && (
+        <div className="mb-4 p-4 rounded-xl bg-white/[0.02] border border-white/10 space-y-2.5">
+          <div className="grid sm:grid-cols-2 gap-2.5">
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Hub name e.g. Kerugoya Collect Point" className="rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm outline-none focus:border-nx-violet/50" />
+            <input value={form.town} onChange={(e) => setForm({ ...form, town: e.target.value })} placeholder="Town" className="rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm outline-none" />
+            <input value={form.county} onChange={(e) => setForm({ ...form, county: e.target.value })} placeholder="County" className="rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm outline-none" />
+            <input value={form.landmark} onChange={(e) => setForm({ ...form, landmark: e.target.value })} placeholder="Landmark e.g. opposite Total station" className="rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm outline-none" />
+            <input value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder="Hours e.g. Mon–Sat 8am–6pm" className="rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm outline-none" />
+            <input type="number" value={form.fee} onChange={(e) => setForm({ ...form, fee: e.target.value })} placeholder="Collection fee KES (0 = free)" className="rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm outline-none" />
+            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Hub phone (optional)" className="rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm outline-none" />
+            {form._id && (
+              <label className="flex items-center gap-2 text-xs text-white/60">
+                <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} className="accent-nx-violet" /> Active (visible at checkout)
+              </label>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={save} disabled={busy} className="px-4 py-2 rounded-lg bg-nx-violet text-white text-xs font-bold disabled:opacity-40">{busy ? "Saving…" : form._id ? "Update hub" : "Create hub"}</button>
+            <button onClick={() => setForm(null)} className="px-4 py-2 rounded-lg border border-white/10 text-xs text-white/50 hover:text-white">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {hubs.length === 0 ? (
+        <p className="text-xs text-white/35 bg-white/[0.02] rounded-xl p-4">No hubs yet. Add your first pickup point — start where demand is highest.</p>
+      ) : (
+        <div className="space-y-2">
+          {hubs.map((h: any) => (
+            <div key={h._id} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/5">
+              <MapPin className="w-4 h-4 text-nx-cyan shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white font-medium">{h.name} {h.active === false && <span className="text-[10px] text-red-300">(inactive)</span>}</p>
+                <p className="text-[11px] text-white/35">{h.town}, {h.county}{h.landmark ? ` · ${h.landmark}` : ""}{h.hours ? ` · ${h.hours}` : ""} · {h.fee ? `KES ${h.fee}` : "FREE"}</p>
+              </div>
+              <button onClick={() => setForm({ ...h, fee: h.fee ?? "", active: h.active !== false })} className="px-3 py-1.5 rounded-lg border border-white/10 text-[11px] text-white/60 hover:text-white">Edit</button>
+              <button
+                onClick={async () => { try { await updateHub({ hubId: h._id, name: h.name, county: h.county, town: h.town, landmark: h.landmark, directions: h.directions, phone: h.phone, hours: h.hours, fee: h.fee ?? 0, active: h.active === false }); } catch (err: any) { alert(err.message); } }}
+                title={h.active === false ? "Activate" : "Deactivate"}
+                className="p-2 rounded-lg text-white/30 hover:text-white"
+              >
+                <Power className={`w-3.5 h-3.5 ${h.active === false ? "" : "text-emerald-400"}`} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /**
  * Feature Flags tab (#166–168): every major feature ships dark behind a flag
@@ -95,6 +216,7 @@ export default function AdminSettings() {
           { id: "security", label: "Security", icon: Shield },
           { id: "notifications", label: "Notifications", icon: Bell },
           { id: "flags", label: "Feature Flags", icon: Flag },
+          { id: "hubs", label: "Pickup Hubs", icon: MapPin },
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${activeTab === tab.id ? "bg-nx-violet/10 text-nx-violet" : "text-white/30 hover:text-white/50 bg-[#0A0A12] border border-white/5"}`}>
             <tab.icon className="w-3.5 h-3.5" />{tab.label}
@@ -191,6 +313,7 @@ export default function AdminSettings() {
       )}
 
       {activeTab === "flags" && <FeatureFlagsTab />}
+      {activeTab === "hubs" && <PickupHubsTab />}
 
       {(activeTab === "security" || activeTab === "notifications") && (
         <div className="p-5 rounded-xl border border-white/5 bg-[#0A0A12]">

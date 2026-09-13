@@ -318,6 +318,10 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
         condition: isFreelanceMode ? "Service" : form.condition,
         attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
         negotiable: form.negotiable,
+        // Local Deals: optional "was" price powers the honest-discount feed.
+        originalPrice: form.originalPrice && Number(form.originalPrice) > Number(form.price)
+          ? Number(form.originalPrice)
+          : undefined,
         // Verified flag: KYC or full business verification. Freelance services
         // never require KYC, so a fully-verified freelance seller counts too.
         verified:

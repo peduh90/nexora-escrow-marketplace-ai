@@ -21,7 +21,11 @@ export type FlagKey =
   | "group_buying"
   | "diaspora_buying"
   | "agent_network"
-  | "market_day_mode";
+  | "market_day_mode"
+  | "community_requests"
+  | "recurring_orders"
+  | "pickup_hubs"
+  | "local_deals";
 
 export const FLAG_DEFAULTS: Array<{
   key: FlagKey;
@@ -42,6 +46,11 @@ export const FLAG_DEFAULTS: Array<{
   { key: "diaspora_buying", label: "Diaspora buying", description: "Pay abroad, deliver in Kenya — recipient-based transactions.", enabled: false, rollout: "development" },
   { key: "agent_network", label: "Agent network", description: "Trusted physical agents help communities join, list and order.", enabled: false, rollout: "development" },
   { key: "market_day_mode", label: "Market-day mode", description: "Traders mark \"Selling at this market today\" for town market days.", enabled: false, rollout: "pilot" },
+  // Phase 2 (sticky) — shipped, still kill-switchable without a deploy.
+  { key: "community_requests", label: "Community requests", description: "Post what you need; sellers and providers respond with offers.", enabled: true, rollout: "production" },
+  { key: "recurring_orders", label: "Repeat orders", description: "Weekly/monthly repeat purchases with one-tap escrow reorder.", enabled: true, rollout: "production" },
+  { key: "pickup_hubs", label: "Pickup hubs", description: "Collect orders at Nexora pickup points instead of door delivery.", enabled: true, rollout: "production" },
+  { key: "local_deals", label: "Local deals feed", description: "Honest discount feed from sellers' real was-prices.", enabled: true, rollout: "production" },
 ];
 
 /** Seed defaults on first read — idempotent, no destructive updates. */

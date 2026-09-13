@@ -111,6 +111,7 @@ const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics.tsx"));
 const AdminRevenue = lazy(() => import("./pages/admin/AdminRevenue.tsx"));
 const AdminSystem = lazy(() => import("./pages/admin/AdminSystem.tsx"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings.tsx"));
+const CommunityRequests = lazy(() => import("./pages/community/CommunityRequests.tsx"));
 const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications.tsx"));
 const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs.tsx"));
 const AdminOwner = lazy(() => import("./pages/admin/AdminOwner.tsx"));
@@ -317,6 +318,9 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/services/register" element={<RequireAuth><ServiceProviderDashboard /></RequireAuth>} />
               <Route path="/services/dashboard" element={<RequireAuth><ServiceProviderDashboard /></RequireAuth>} />
               <Route path="/services/bookings" element={<RequireAuth><MyBookings /></RequireAuth>} />
+
+              {/* ── Phase 2: Community Requests (demand matching) ── */}
+              <Route path="/community" element={<CommunityRequests />} />
               <Route path="/transport" element={<TransportPage />} />
               <Route path="/transport/register" element={<RequireAuth><ServiceProviderDashboard /></RequireAuth>} />
               <Route path="/transport/dashboard" element={<RequireAuth><ServiceProviderDashboard /></RequireAuth>} />

@@ -6,7 +6,7 @@ import { api } from "../convex/_generated/api";
 import {
   Shield, Brain, Eye, Scale, CheckCircle2, Globe, ArrowRight, Zap,
   Lock, Users, TrendingUp, ChevronRight, ShieldCheck, Fingerprint,
-  AlertTriangle, CreditCard, Search, Star, MapPin, Heart,
+  AlertTriangle, CreditCard, Search, Star, MapPin, Heart, Megaphone,
   Truck, Briefcase, Store, Package, ShoppingCart, Sparkles,
   Wrench, Bike, Car, TruckIcon, Boxes, Printer, Droplets, Flame, Leaf,
   BookOpen, Baby, Dog, LineChart, Siren, Home, Tv, BabyIcon, SprayCan,
@@ -108,6 +108,8 @@ export default function Landing() {
   // Real products from database
   const latestListings = useQuery(api.listings.getActiveListings, { limit: 8 });
   const featuredListings = useQuery(api.listings.getActiveListings, { limit: 4 });
+  // Phase 2: honest local deals (#85 groundwork) — sellers' real "was" prices.
+  const dealsListings = useQuery(api.listings.getDealsListings, { limit: 4 });
 
   const handleSearch = () => {
     const q = searchQuery.trim();
@@ -266,6 +268,75 @@ export default function Landing() {
 
       {/* ══════ SERVICES & TRANSPORT NEAR YOU (Kenya-first local services) ══════ */}
       <ServicesNearYou />
+
+      {/* ══════ DEALS NEAR YOU — real listings, honest "was" prices (#85) ══════ */}
+      {dealsListings && dealsListings.length > 0 && (
+        <section className="relative z-10 py-10 px-6">
+          <div className="max-w-6xl mx-auto">
+            <FadeIn className="flex items-end justify-between mb-6">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold text-white">
+                  Deals <span className="bg-gradient-to-r from-amber-300 to-orange-400 bg-clip-text text-transparent">Near You</span>
+                </h2>
+                <p className="text-sm text-white/40 mt-1.5">Real listings from real sellers — every price protected by escrow.</p>
+              </div>
+              <button onClick={() => navigate("/marketplace")} className="hidden sm:inline-flex items-center gap-1 text-xs text-nx-cyan hover:underline">
+                See all products <ArrowRight className="w-3 h-3" />
+              </button>
+            </FadeIn>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {dealsListings.map((l: any) => {
+                const pct = l.originalPrice > l.price ? Math.round((1 - l.price / l.originalPrice) * 100) : 0;
+                return (
+                  <button key={l._id} onClick={() => navigate(`/product/${l._id}`)} className="group rounded-2xl overflow-hidden border border-amber-300/10 bg-white/[0.02] hover:border-amber-300/30 transition-colors text-left">
+                    <div className="relative aspect-square bg-white/[0.03] overflow-hidden">
+                      {l.images && l.images[0] ? (
+                        <img src={l.images[0]} alt={l.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center"><Package className="w-10 h-10 text-white/10" /></div>
+                      )}
+                      {pct > 0 && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-amber-400 text-black text-[10px] font-bold">-{pct}%</span>
+                      )}
+                    </div>
+                    <div className="p-3 space-y-1">
+                      <h3 className="text-sm font-semibold text-white truncate">{l.title}</h3>
+                      <p className="flex items-baseline gap-2">
+                        <span className="text-base font-bold text-white">KES {l.price.toLocaleString()}</span>
+                        {pct > 0 && <span className="text-[11px] text-white/30 line-through">KES {l.originalPrice.toLocaleString()}</span>}
+                      </p>
+                      <p className="text-[10px] text-white/30 truncate">{[l.originTown, l.originCounty].filter(Boolean).join(", ")}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ══════ COMMUNITY REQUESTS — post what you need (#88/#89) ══════ */}
+      <section className="relative z-10 py-4 px-6">
+        <FadeIn>
+          <div className="max-w-6xl mx-auto">
+            <button
+              onClick={() => navigate("/community")}
+              className="w-full group flex flex-col md:flex-row md:items-center gap-4 p-6 md:p-7 rounded-2xl border border-nx-cyan/15 bg-gradient-to-r from-nx-cyan/[0.05] to-transparent hover:border-nx-cyan/35 transition-colors text-left"
+            >
+              <div className="w-11 h-11 rounded-xl bg-nx-cyan/10 flex items-center justify-center shrink-0">
+                <Megaphone className="w-5 h-5 text-nx-cyan" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-white">Can't find it? Post what you need.</h3>
+                <p className="text-sm text-white/40 mt-0.5">Tell the community what you're looking for — sellers and service providers near you send offers, you pick the best.</p>
+              </div>
+              <span className="shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-nx-cyan text-black text-sm font-bold group-hover:bg-nx-cyan/85 transition-colors">
+                Post a request <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+            </button>
+          </div>
+        </FadeIn>
+      </section>
 
       {/* ══════ WHAT DO YOU NEED TODAY? — the same four clear paths ══════ */}
       <section className="relative z-10 py-8 px-6 border-y border-white/5">

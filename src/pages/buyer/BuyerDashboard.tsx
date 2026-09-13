@@ -1,11 +1,13 @@
 import BuyerLayout from "./BuyerLayout";
-import { useQuery } from "convex/react";
+import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import {
   Package, ShoppingCart, Wallet, Heart, MessageSquare, TrendingUp,
-  Search, ArrowRight, Shield, Loader2,
+  Search, ArrowRight, Shield, Loader2, Repeat, Pause, Play, X,
 } from "lucide-react";
 
 export default function BuyerDashboard() {
@@ -14,6 +16,14 @@ export default function BuyerDashboard() {
   const walletBalance = useQuery(api.wallet.getWalletBalance);
   const walletTransactions = useQuery(api.wallet.getWalletTransactions);
   const conversations = useQuery(api.messages.getConversations);
+  // Phase 2: recurring orders (#65) — subscriptions with one-tap reorder.
+  const recurring = useQuery(api.recurring.listMyRecurring);
+  const reorder = useMutation(api.recurring.reorderNow);
+  const pause = useMutation(api.recurring.setRecurringPaused);
+  const cancel = useMutation(api.recurring.cancelRecurring);
+  const [busyPlan, setBusyPlan] = useState<string | null>(null);
+
+  const dueCount = (recurring ?? []).filter((r: any) => (r.nextOrderAt ?? 0) <= Date.now()).length;
 
   const isLoading = walletBalance === undefined || walletTransactions === undefined || conversations === undefined;
 
@@ -117,6 +127,71 @@ export default function BuyerDashboard() {
             </div>
           </button>
         </div>
+
+        {/* Recurring orders (#65) — always visible once the buyer opts in */}
+        {recurring !== undefined && recurring.length > 0 && (
+          <div className="p-5 rounded-xl bg-nx-cyan/[0.03] border border-nx-cyan/15">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Repeat className="w-4 h-4 text-nx-cyan" /> Repeat Orders
+                {dueCount > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/15 text-amber-300 font-bold">{dueCount} due now</span>}
+              </h2>
+              <p className="text-[11px] text-white/30">You always confirm each order — nothing is auto-charged.</p>
+            </div>
+            <div className="space-y-2">
+              {recurring.map((r: any) => {
+                const due = (r.nextOrderAt ?? 0) <= Date.now();
+                const total = r.unitPrice * r.quantity;
+                return (
+                  <div key={r._id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white truncate">{r.title} ×{r.quantity}</p>
+                      <p className="text-[11px] text-white/35 capitalize">
+                        {r.frequency} · {r.paused ? "paused" : due ? "due now" : `next ${new Date(r.nextOrderAt).toLocaleDateString("en-KE", { day: "numeric", month: "short" })}`}
+                        {r.orderCount ? ` · ${r.orderCount} ordered` : ""} · KES {total.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {!r.paused && (
+                        <button
+                          onClick={async () => {
+                            setBusyPlan(r._id);
+                            try {
+                              const res = await reorder({ planId: r._id });
+                              toast.success(`Order placed — KES ${res.amount.toLocaleString()} held in escrow`);
+                            } catch (err: any) {
+                              toast.error(err?.message || "Reorder failed");
+                            } finally {
+                              setBusyPlan(null);
+                            }
+                          }}
+                          disabled={busyPlan === r._id}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold ${due ? "bg-nx-cyan text-black hover:bg-nx-cyan/85" : "bg-white/[0.04] border border-white/10 text-white/60 hover:text-white"}`}
+                        >
+                          Order now
+                        </button>
+                      )}
+                      <button
+                        onClick={async () => { try { await pause({ planId: r._id, paused: !r.paused }); } catch { toast.error("Could not update"); } }}
+                        title={r.paused ? "Resume" : "Pause"}
+                        className="p-2 rounded-lg text-white/30 hover:text-white/70"
+                      >
+                        {r.paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={async () => { try { await cancel({ planId: r._id }); toast.success("Subscription cancelled"); } catch { toast.error("Could not cancel"); } }}
+                        title="Cancel"
+                        className="p-2 rounded-lg text-white/30 hover:text-red-300"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Recent transactions */}
         <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5">

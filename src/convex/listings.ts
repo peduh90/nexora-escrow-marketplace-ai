@@ -127,6 +127,9 @@ export const createListing = mutation({
     sellerVerified: v.boolean(),
     negotiable: v.optional(v.boolean()),
     documents: v.optional(v.array(v.string())),
+    // Local Deals (#85 price history groundwork): the seller's "was" price.
+    // Stored as-is; the deals feed only trusts it when it exceeds price.
+    originalPrice: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     // Always bind the listing to the session's OWN user — never an email
@@ -203,6 +206,7 @@ export const createListing = mutation({
       sellerVerified: args.sellerVerified,
       attributes: args.attributes,
       negotiable: args.negotiable,
+      originalPrice: args.originalPrice && args.originalPrice > args.price ? Math.round(args.originalPrice) : undefined,
       views: 0,
       favorites: 0,
       status: "active",
@@ -339,6 +343,37 @@ export const getActiveListings = query({
   handler: async (ctx, args) => {
     const marketplace = normalizeMarketplace(args.marketplace);
     return getActiveListingsForMarketplace(ctx, marketplace, args.limit ?? 50);
+  },
+});
+
+/**
+ * Local Deals feed (#85 groundwork): product listings with an honest "was"
+ * price (originalPrice > price), biggest savings first. Real listings only —
+ * no fake discounts; the discount is whatever the seller actually entered and
+ * the escrow fee engine still applies to the real price.
+ */
+export const getDealsListings = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const all = await ctx.db
+      .query("listings")
+      .withIndex("by_status", (q: any) => q.eq("status", "active"))
+      .order("desc")
+      .take(300);
+    const deals = all
+      .filter((l: any) => {
+        const mp = normalizeMarketplace((l as any).marketplace);
+        return mp === "product" && typeof (l as any).originalPrice === "number" && (l as any).originalPrice > (l as any).price;
+      })
+      .sort((a: any, b: any) => (b.originalPrice - b.price) - (a.originalPrice - a.price))
+      .slice(0, args.limit ?? 12);
+    return Promise.all(
+      deals.map(async (listing: any) => ({
+        ...listing,
+        images: await resolveListingImages(ctx, listing.images),
+        documents: await resolveListingDocuments(ctx, listing.documents),
+      })),
+    );
   },
 });
 
