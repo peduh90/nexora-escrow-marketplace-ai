@@ -1,9 +1,10 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { query, mutation, internalMutation, QueryCtx } from "./_generated/server";
+import { query, mutation, internalMutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { ALLOWED_ROLES, resolveRole, resolveRoleForAdminFlow, ADMIN_EMAIL } from "./roles";
 import type { AllowedRole } from "./roles";
+import type { Id } from "./_generated/dataModel";
 
 /**
  * Get the current signed in user. Returns null if the user is not signed in.
@@ -511,6 +512,33 @@ function inferRole(user: any): string | null {
  * Create or sync a Nexora user profile after authentication.
  * This is the authoritative path that links an auth identity to persistent role.
  */
+/**
+ * Post-activation side effects shared by the frictionless signup path and
+ * completeVerification: referral hooks + a welcome notification. Best-effort —
+ * a hook failure must never block account activation.
+ */
+async function activateNewUser(
+  ctx: MutationCtx,
+  user: { _id: Id<"users">; name?: string; role?: string },
+  finalRole: string,
+) {
+  try {
+    await ctx.runMutation(internal.referral.internalOnUserVerified, { userId: user._id });
+    await ctx.runMutation(internal.referral.internalOnUserActivated, { userId: user._id, role: finalRole });
+  } catch (err) {
+    console.error("[referral] activation hook failed:", err);
+  }
+  await ctx.db.insert("notifications", {
+    userId: user._id,
+    type: "account",
+    title: "Account verified",
+    message: `Your ${finalRole} account is fully verified. Welcome to Nexora!`,
+    read: false,
+    link: "/",
+    createdAt: Date.now(),
+  });
+}
+
 export const ensureUserProfile = mutation({
   args: {
     name: v.optional(v.string()),
@@ -556,22 +584,46 @@ export const ensureUserProfile = mutation({
     const incomingPasswordHash =
       incomingPassword.length > 0 ? await hashStoredPassword(incomingPassword) : undefined;
 
+    // A verified email is the hard proof of registration on every auth path
+    // (email-OTP sign-up, password sign-up, Google) — the identity only exists
+    // after the code was confirmed. When name + phone are also present (the
+    // signup form collects all three), activation is frictionless: assign the
+    // role here instead of walling the user behind a second "complete your
+    // verification" screen. completeVerification stays as the repair path for
+    // accounts that slip through with missing data.
+    const verifiedEmail = typeof identity.email === "string" && identity.email.includes("@");
+    const resolvedPhone =
+      typeof args.phone === "string" && args.phone.trim()
+        ? args.phone
+        : user && typeof (user as any).phone === "string"
+        ? (user as any).phone
+        : undefined;
+    const profileComplete =
+      verifiedEmail &&
+      !!(typeof args.name === "string" && args.name.trim()) &&
+      !!(typeof resolvedPhone === "string" && resolvedPhone.replace(/[^0-9]/g, "").length >= 9);
+
     if (!user) {
       // New accounts start PENDING with no role: no panel access until the
       // registration/verification process completes (see completeVerification).
       // The requested role is held in pendingRole until then.
-      // EXCEPTION: the platform owner email is always created admin + active —
-      // it must never be trapped behind the verification gate.
+      // EXCEPTIONS: the platform owner email is always created admin + active,
+      // and a signup whose form already supplied name + phone (plus the
+      // verified email) activates immediately — no second wall to climb.
+      const activateNow = identity.email === ADMIN_EMAIL || profileComplete;
       user = await ctx.db.insert("users", {
         name: args.name || identity.name || identity.email?.split("@")[0] || "User",
         email: identity.email,
         phone: typeof args.phone === "string" ? args.phone : undefined,
-        role: (identity.email === ADMIN_EMAIL ? "admin" : undefined) as any,
-        pendingRole: identity.email === ADMIN_EMAIL ? undefined : targetRole,
-        accountStatus: (identity.email === ADMIN_EMAIL ? "active" : "pending") as any,
+        role: (activateNow ? targetRole : undefined) as any,
+        pendingRole: activateNow ? undefined : targetRole,
+        accountStatus: (activateNow ? "active" : "pending") as any,
         passwordHash: incomingPasswordHash,
         businessName: typeof args.businessName === "string" ? args.businessName : undefined,
       }) as any;
+      if (activateNow && identity.email !== ADMIN_EMAIL) {
+        await activateNewUser(ctx, user as any, targetRole);
+      }
     } else {
       // If no password is ever submitted, preserve the existing accessible credential
       // so a user cannot be silently locked out by a profile sync that omits password.
@@ -616,6 +668,23 @@ export const ensureUserProfile = mutation({
       // account keeps its pendingRole (updated if the user re-submits); an
       // active account keeps its assigned role unless admin action changes it.
       if ((u as any).accountStatus !== "active") {
+        if (profileComplete) {
+          // Everything the verification gate asks for is already proven
+          // (verified email + name + phone) — activate now instead of
+          // bouncing the user through the second verification screen. This
+          // is what un-sticks provider signups stranded with no role.
+          await ctx.db.patch(u._id, {
+            role: targetRole as any,
+            accountStatus: "active" as any,
+            pendingRole: undefined,
+            ...(typeof resolvedPhone === "string" && u.phone !== resolvedPhone
+              ? { phone: resolvedPhone }
+              : {}),
+          });
+          await activateNewUser(ctx, u, targetRole);
+          user = (await ctx.db.get(u._id)) as any;
+          return { userId: (user as any)._id, role: targetRole as any };
+        }
         // Still pending — record the requested role and stay unverified.
         if (targetRole !== u.pendingRole) {
           await ctx.db.patch(u._id, { pendingRole: targetRole });
