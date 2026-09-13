@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { toast } from "sonner";
@@ -8,7 +8,7 @@ import NavigationBar from "@/components/layout/NavigationBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import {
   ArrowLeft, Loader2, Power, Star, Phone, Wallet, Check, X, Play,
-  ShieldCheck, Clock, AlertTriangle,
+  ShieldCheck, Clock, AlertTriangle, Wrench,
 } from "lucide-react";
 
 /**
@@ -19,6 +19,16 @@ import {
  */
 export default function ServiceProviderDashboard() {
   const navigate = useNavigate();
+  // ?register=1 — arrive here straight from "Offer a Service" registration:
+  // the service chooser form opens immediately instead of a confusing empty
+  // panel the user then has to discover.
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  // ?register=1 or the /services/register path — arrive here straight from
+  // "Offer a Service" registration: the service chooser form opens
+  // immediately instead of a confusing empty panel.
+  const registerIntent =
+    searchParams.get("register") === "1" || location.pathname === "/services/register";
   const { user } = useAuth();
   const myService = useQuery(api.services.getMyService);
   const myTransport = useQuery(api.transport.getMyTransport);
@@ -47,6 +57,19 @@ export default function ServiceProviderDashboard() {
   const tp = (myTransport as any)?.profile;
   const trips = ((myTransport as any)?.trips ?? []) as any[];
 
+  // New provider arriving from "Offer a Service" (?register=1) or
+  // /services/register: open the service chooser automatically once their
+  // (empty) profile query has loaded, so registration can't dead-end on an
+  // empty panel.
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (registerIntent && !autoOpenedRef.current && myService !== undefined && !svc && !form) {
+      autoOpenedRef.current = true;
+      startEdit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registerIntent, myService, svc, form]);
+
   async function run(fn: () => Promise<any>, ok: string) {
     setBusy(true);
     try {
@@ -62,14 +85,16 @@ export default function ServiceProviderDashboard() {
   function startEdit() {
     setForm({
       displayName: svc?.displayName || user?.name || "",
-      category: svc?.category || "beauty",
+      // No silent category default: the provider must choose what they offer
+      // (it's the heart of the service chooser).
+      category: svc?.category || "",
       serviceType: svc?.serviceType || "",
       tagline: svc?.tagline || "",
-      county: svc?.county || user?.county || "Nairobi",
-      town: svc?.town || user?.town || "",
+      county: svc?.county || (user as any)?.county || "",
+      town: svc?.town || (user as any)?.town || "",
       pricingMode: svc?.pricingMode || "fixed",
       basePrice: svc?.basePrice ?? "",
-      phone: svc?.phone || user?.phone || "",
+      phone: svc?.phone || (user as any)?.phone || "",
       workingHours: svc?.workingHours || "",
       description: svc?.description || "",
     });
@@ -80,12 +105,20 @@ export default function ServiceProviderDashboard() {
       toast.error("Add your business name and town");
       return;
     }
+    if (!form.category) {
+      toast.error("Choose your service category (e.g. Beauty, Home, Auto)");
+      return;
+    }
+    if (!form.serviceType) {
+      toast.error("Choose exactly what you do (e.g. Salon, Plumber, Mechanic)");
+      return;
+    }
     setBusy(true);
     try {
       await upsertService({
         displayName: form.displayName,
         category: form.category,
-        serviceType: form.serviceType || "Other",
+        serviceType: form.serviceType,
         tagline: form.tagline || undefined,
         description: form.description || undefined,
         county: form.county,
@@ -127,10 +160,6 @@ export default function ServiceProviderDashboard() {
       toast.error("Add your name and stage/town");
       return;
     }
-    if (!tform.idDocumentUrl.trim() || !tform.vehicleDocumentUrl.trim()) {
-      toast.error("Paste the link (URL) of your ID photo and vehicle document — admin verifies these");
-      return;
-    }
     setBusy(true);
     try {
       await upsertTransport({
@@ -147,10 +176,16 @@ export default function ServiceProviderDashboard() {
           : undefined,
         schedule: tform.schedule || undefined,
         phone: tform.phone || undefined,
-        idDocumentUrl: tform.idDocumentUrl.trim(),
-        vehicleDocumentUrl: tform.vehicleDocumentUrl.trim(),
+        // Documents are OPTIONAL at registration (no logbook fear): register
+        // now, add ID & vehicle papers later, admin verifies before trips.
+        idDocumentUrl: tform.idDocumentUrl?.trim() || undefined,
+        vehicleDocumentUrl: tform.vehicleDocumentUrl?.trim() || undefined,
       });
-      toast.success("Submitted — Nexora admin will verify your documents");
+      toast.success(
+        tform.idDocumentUrl?.trim() && tform.vehicleDocumentUrl?.trim()
+          ? "Submitted — Nexora admin will verify your documents"
+          : "Registered! Add ID & vehicle documents, then admin verification unlocks trips"
+      );
       setTForm(null);
     } catch (err: any) {
       toast.error(err?.message || "Could not submit");
@@ -367,12 +402,12 @@ export default function ServiceProviderDashboard() {
                     <input value={tform.schedule} onChange={(e) => setTForm({ ...tform, schedule: e.target.value })} placeholder="Schedule e.g. 5:30am–9pm daily" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none" />
                   </>
                 )}
-                <input value={tform.idDocumentUrl} onChange={(e) => setTForm({ ...tform, idDocumentUrl: e.target.value })} placeholder="Link (URL) to your ID photo" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none sm:col-span-2" />
-                <input value={tform.vehicleDocumentUrl} onChange={(e) => setTForm({ ...tform, vehicleDocumentUrl: e.target.value })} placeholder="Link (URL) to vehicle logbook / inspection" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none sm:col-span-2" />
+                <input value={tform.idDocumentUrl} onChange={(e) => setTForm({ ...tform, idDocumentUrl: e.target.value })} placeholder="Link (URL) to your ID photo — optional, add later" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none sm:col-span-2" />
+                <input value={tform.vehicleDocumentUrl} onChange={(e) => setTForm({ ...tform, vehicleDocumentUrl: e.target.value })} placeholder="Link (URL) to vehicle logbook / inspection — optional" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none sm:col-span-2" />
               </div>
-              <p className="text-[10px] text-white/35 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Documents are reviewed by Nexora admin only, for verification and safety.</p>
+              <p className="text-[10px] text-white/35 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Optional now — required before trips. Reviewed by Nexora admin only, for verification and safety.</p>
               <div className="flex gap-2">
-                <button onClick={saveTransport} disabled={busy} className="flex-1 py-3 rounded-xl bg-nx-violet text-white font-bold text-sm hover:bg-nx-violet/85 disabled:opacity-40">{busy ? "Submitting…" : "Submit for verification"}</button>
+                <button onClick={saveTransport} disabled={busy} className="flex-1 py-3 rounded-xl bg-nx-violet text-white font-bold text-sm hover:bg-nx-violet/85 disabled:opacity-40">{busy ? "Submitting…" : "Register"}</button>
                 <button onClick={() => setTForm(null)} className="px-5 py-3 rounded-xl border border-white/10 text-sm text-white/60 hover:text-white">Cancel</button>
               </div>
             </div>
@@ -385,8 +420,10 @@ export default function ServiceProviderDashboard() {
                   <div className="mt-1.5 flex items-center gap-3 text-xs">
                     {tp.verificationStatus === "verified" ? (
                       <span className="text-nx-cyan font-semibold flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" /> Verified</span>
+                    ) : tp.idDocumentUrl || tp.vehicleDocumentUrl ? (
+                      <span className="text-amber-300 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Documents under review</span>
                     ) : (
-                      <span className="text-amber-300 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {tp.verificationStatus}</span>
+                      <span className="text-amber-300 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Add documents to unlock trips</span>
                     )}
                     {!!tp.ratingCount && <span className="text-amber-300 flex items-center gap-0.5"><Star className="w-3 h-3" /> {Math.round(((tp.ratingSum || 0) / tp.ratingCount) * 10) / 10}</span>}
                     <span className="text-white/40">{tp.completedTrips} trips</span>

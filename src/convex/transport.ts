@@ -333,9 +333,10 @@ export const upsertTransportProfile = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const isMatatu = args.serviceType === "matatu";
-    if (!args.idDocumentUrl || !args.vehicleDocumentUrl) {
-      throw new Error("Upload your ID and vehicle documents — verification is required before accepting jobs");
-    }
+    // Register first, verify before earning (#51 informal-commerce principle):
+    // documents are optional at registration so no one is scared away by a
+    // logbook upload wall. Admin verification is still mandatory before the
+    // provider can accept trips — that gate is enforced below, not here.
     if (isMatatu && (!args.routeCodes || args.routeCodes.length === 0)) {
       throw new Error("Matatu operators must list at least one route code");
     }
@@ -361,6 +362,8 @@ export const upsertTransportProfile = mutation({
       phone: args.phone,
       idDocumentUrl: args.idDocumentUrl,
       vehicleDocumentUrl: args.vehicleDocumentUrl,
+      // Registration completeness marker: documents can be added later, but a
+      // provider without documents stays "pending" and cannot accept trips.
       // Any re-submission goes back to pending for fresh admin review.
       verificationStatus: "pending" as any,
       updatedAt: now,

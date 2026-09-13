@@ -250,6 +250,7 @@ export default function AdminServices() {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-white">{p.displayName} <span className="text-white/40 text-xs">· {p.serviceType}</span></p>
                     <p className="text-xs text-white/45 mt-0.5">{p.town}, {p.county} · {p.ownerName} {p.ownerPhone ? `· ${p.ownerPhone}` : ""}</p>
+                    <p className="text-[11px] text-white/30 mt-0.5">Owner account: {p.ownerEmail || "—"}</p>
                     <p className="text-[11px] text-white/35 mt-0.5">
                       {p.pricingMode === "quote" ? "Ask-first pricing" : `KES ${p.basePrice?.toLocaleString()}`} · {p.completedJobs} jobs
                       {!!p.rating && <span className="text-amber-300"> · {p.rating}★</span>}

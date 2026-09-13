@@ -132,6 +132,16 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   // Guards the auto profile-sync so it runs at most once per sign-in.
   const profileSyncRef = useRef(false);
 
+  // A returnTo pointing at the local services/transport provider registration
+  // must survive sign-up — landing in the buyer dashboard instead would break
+  // the "List My Service" / "Drive & Earn" promise. Declared before the auth
+  // effect because the effect's redirect decision depends on it.
+  const providerReturn =
+    redirect.startsWith("/services") || redirect.startsWith("/transport") ? redirect : null;
+  // "Offer a Service" intent from the main chooser / marketplace: a buyer-role
+  // account heading straight into the local service provider registration.
+  const [providerIntent, setProviderIntent] = useState(false);
+
   useEffect(() => {
     if (authLoading || !isAuthenticated) {
       profileSyncRef.current = false;
@@ -205,7 +215,12 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
         : role === "employer"
         ? freelanceJoinReturn ?? "/employer"
         : role === "buyer"
-        ? providerReturn ?? "/buyer"
+        ? // "Offer a Service" intent: a buyer-role account that came to register
+          // as a LOCAL SERVICE PROVIDER must land in the provider panel — not
+          // the buyer dashboard. ?register=1 opens the service chooser form.
+          (providerIntent || providerReturn
+            ? providerReturn ?? "/services/dashboard?register=1"
+            : "/buyer")
         : null;
     if (roleTarget) {
       navigate(roleTarget);
@@ -217,7 +232,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
     if (role && typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")) {
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, user, navigate, redirect, fullName, phoneNumber, selectedRole, password, ensureUserProfile, activeRefCode, attributeReferral]);
+  }, [authLoading, isAuthenticated, user, navigate, redirect, fullName, phoneNumber, selectedRole, password, ensureUserProfile, activeRefCode, attributeReferral, providerIntent, providerReturn]);
 
   // Guarded check: reject only when the password actually contains the email
   // (full address or local part) or a meaningful name. An empty field must
@@ -258,11 +273,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   // The /freelance/join flow (returnTo points inside freelance) — drives the
   // card-specific redirect for already-registered users.
   const isFreelanceJoin = redirect.startsWith("/freelance") && !isFreelanceRegister;
-  // A returnTo pointing at the local services/transport provider registration
-  // must survive sign-up — landing in the buyer dashboard instead would break
-  // the "List My Service" / "Drive & Earn" promise.
-  const providerReturn =
-    redirect.startsWith("/services") || redirect.startsWith("/transport") ? redirect : null;
 
   // The dedicated freelance panel toggles between register and sign-in, like
   // the seller panel does.
@@ -273,9 +283,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   // successful registration the new freelancer is routed straight into the
   // publish wizard instead of the generic dashboard.
   const [publishIntent, setPublishIntent] = useState(false);
-  // "Offer a Service" intent from the main chooser / marketplace: a buyer-role
-  // account heading straight into the local service provider registration.
-  const [providerIntent, setProviderIntent] = useState(false);
 
   const handleRoleSelect = (
     role: "buyer" | "seller" | "freelancer" | "employer",
@@ -429,7 +436,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
             : selectedRole === "employer"
             ? "/employer"
             : providerIntent || providerReturn
-            ? providerReturn ?? "/services/dashboard"
+            ? providerReturn ?? "/services/dashboard?register=1"
             : "/buyer";
         try { navigate(target); } catch {}
       }

@@ -36,8 +36,8 @@ export default function Marketplace() {
   // seller path: signed-out users register through the general flow and land
   // straight in the provider dashboard; signed-in users go there directly.
   const offerServicePath = isAuthenticated
-    ? "/services/dashboard"
-    : "/auth?returnTo=%2Fservices%2Fdashboard";
+    ? "/services/dashboard?register=1"
+    : "/auth?returnTo=%2Fservices%2Fdashboard%3Fregister%3D1";
 
   const queryArgs = useMemo(() => {
     const args: Record<string, string | number> = { query: searchQuery };
