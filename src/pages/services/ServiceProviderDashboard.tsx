@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import NavigationBar from "@/components/layout/NavigationBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import SupportDock from "@/components/SupportDock";
 import {
   ArrowLeft, Loader2, Power, Star, Phone, Wallet, Check, X, Play,
   ShieldCheck, Clock, AlertTriangle, Wrench,
@@ -509,6 +510,8 @@ export default function ServiceProviderDashboard() {
       </div>
 
       <MobileBottomNav />
+      {/* Help icons on every surface: WhatsApp + NexoraAI */}
+      <SupportDock panel="services" stacked message="Hello Nexora Support 👋 I am a service provider and need help with my panel." />
     </div>
   );
 }

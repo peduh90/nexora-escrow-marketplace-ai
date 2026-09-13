@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import NavigationBar from "@/components/layout/NavigationBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import SupportDock from "@/components/SupportDock";
 import {
   ArrowLeft, MapPin, Navigation, Loader2, Lock, Star, ShieldCheck, Phone, AlertTriangle,
 } from "lucide-react";
@@ -511,6 +512,8 @@ export default function TransportPage() {
       </div>
 
       <MobileBottomNav />
+      {/* Help icons on every surface: WhatsApp + NexoraAI */}
+      <SupportDock panel="services" stacked message="Hello Nexora Support 👋 I need help with a transport trip." />
     </div>
   );
 }

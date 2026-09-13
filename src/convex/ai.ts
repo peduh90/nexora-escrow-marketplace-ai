@@ -26,10 +26,24 @@ import { v } from "convex/values";
 function tryWhitelist(input: string, role?: string): string | null {
   const msg = input.trim().toLowerCase();
 
-  // Explicit order tracking with an ID
-  const orderMatch = msg.match(/(?:track|order|order)\s*#?(\d{4,})/i);
+  // Explicit order tracking with an ID (English + Swahili "oda")
+  const orderMatch = msg.match(/(?:track|order|oda)\s*#?(\d{4,})/i);
   if (orderMatch) {
-    return `📦 **Order #${orderMatch[1]}**\n\nTo track this order, go to **My Orders** in your dashboard where you'll see the full status, timeline, and tracking details.\n\nIf you can't locate it, share the order ID and I'll help you look it up.`;
+    return `📦 **Order #${orderMatch[1]}**\n\nTo track this order, go to **My Orders** in your dashboard where you'll see the full status, timeline, and tracking details.\n\nKiswahili: Fuatilia oda hii kwenye **My Orders** ndani ya dashibodi yako — utaona hali kamili, mfululizo wa hatua na maelezo ya usafirishaji.\n\nIf you can't locate it, share the order ID and I'll help you look it up. / Ukiishindwa kuipata, tuma ID ya oda nikusaidie.`;
+  }
+
+  // ─── KISWAHILI / SHENG QUICK ANSWERS (work even without an API key) ───
+  if (/bei\s*(ya)?\s*(ni)?ngapi|bei gani|how much.*(kwa )?kiswahili|ghalama|gharama gani/i.test(msg) || (/ngapi|ngapie/.test(msg) && /bei|pesa|doo/.test(msg))) {
+    return "**Bei na Gharama (Kiswahili):**\n\n• **Commission ya muuzaji:** 3% (KSh 1–4,999) · 2.5% (KSh 5,000–49,999) · 2% (KSh 50,000–199,999) · 1.5% (KSh 200,000+)\n• **Ada ya ulinzi kwa mnunuzi:** 1% hadi KSh 10,000, 0.75% hadi 50,000, 0.5% hadi 200,000, 0.25% zaidi\n• **Escrow iko ndani ya ada hizo** — hakuna malipo ya ziada\n• **Usafirishaji:** CBD Nairobi na Westlands bure mara nyingine; kaunti nyingine KES 100–800\n\nBei ya bidhaa yenyewe iko kwenye ukurasa wa bidhaa. Niambie bidhaa unatafuta nikusaidie kulinganisha bei! 🇰🇪";
+  }
+  if (/malipo|jinsi ya kulipa|lipa (na )?m-?pesa|stk push/i.test(msg)) {
+    return "**Malipo kwa M-Pesa (Kiswahili):**\n\n1. Kwenye checkout chagua **M-Pesa**\n2. Weka namba yako ya Safaricom\n3. Safaricom watatuma **STK Push** kwenye simu yako\n4. Weka **PIN yako ya M-Pesa** — malipo yanakamilika mara moja!\n\nPesa zako zinakingwa kwenye **escrow** — muuzaji hapati pesa mpaka wewe uthibitishe umepokea bidhaa.\n\n**Ikiwa STK Push haijafika:** subiri dakika 5, angalia signal, au tumia **Nexora Wallet**. Kamwe usilipe mara mbili ikiwa malipo ya kwanza bado yanachakatwa.";
+  }
+  if (/(escrow|usalama|salio).*(kazi|maana|salio)|jinsi escrow/i.test(msg) || (/escrow/i.test(msg) && /kiswahili|kwa swahili|maana/i.test(msg))) {
+    return "**Escrow ni nini? (Kiswahili):**\n\nEscrow ni kama mdhamini wa kuaminika:\n1. **Unalipa** → pesa zako zinakingwa salama kwa Nexora\n2. **Muuzaji anatuma** bidhaa → Nexora inasafirisha\n3. **Unakagua** bidhaa → una saa 48 kuthibitisha\n4. **Unathibitisha** → pesa zinamwagwa kwa muuzaji\n\nIkiwa kuna tatizo: fungua **dispute**, AI inapitia uthibitisho, ota haki inapewa. Pesa zako **haziwahi** kwenda kwa muuzaji mpaka wewe uthibitisha mwenyewe.";
+  }
+  if (/jinsi ya kuuza|nataka kuuza|kuwa muuzaji|seller.*kiswahili/i.test(msg)) {
+    return "**Kuanza Kuuza kwenye Nexora (Kiswahili):**\n\n1. Ingia kwenye akaunti yako → bonyeza **Start Selling**\n2. Jaza taarifa: jina la biashara, eneo, namba ya simu\n3. Thibitisha utambulisho (**KYC**) — ID yako pamoja na selfie\n4. Ongeza bidhaa: picha za wazi, bei, maelezo\n5. Bidhaa yako huwekwa live dakika chache tu!\n\n**Unapopata faida:** zinazaingia kwenye **Wallet** yako. Kutoa: kima cha chini KES 100, kwa M-Pesa au benki, hakuna ada ya asilimia ya Nexora.";
   }
 
   // ─── COMPREHENSIVE KNOWLEDGE BASE ───
@@ -300,7 +314,7 @@ function getEmergencyFallback(role?: string): string {
   if (role === "admin") {
     return "**NexoraAI Command Center** — AI connection temporarily unavailable.\n\n**Quick navigation:**\n• 👥 **Users** → User management & verification\n• 🏪 **Sellers** → Seller management & KYC\n• 📦 **Products** → Product moderation\n• 💰 **Revenue** → Financial reports\n• 🛡️ **Fraud** → Fraud alerts & detection\n• 📊 **AI Operations** → Automation metrics\n\nUse the admin sidebar to navigate directly. I'll be back online shortly.";
   }
-  return "Hey! I'm NexoraAI — your smart marketplace assistant. My AI connection is temporarily unavailable, but I can still help with common questions:\n\n• **How does escrow work?** — Funds held until you confirm delivery\n• **How do I buy?** — Browse → Buy Now → Pay via M-Pesa → Confirm delivery\n• **How do refunds work?** — Open a dispute → Evidence review → Resolution\n• **How do I contact support?** — WhatsApp: +254 706 116 043\n\nTry asking me any of these, or browse your dashboard. I'll be back to full capacity shortly!";
+  return "Hey! I'm NexoraAI — your smart marketplace assistant. My AI connection is temporarily unavailable, but I can still help with common questions:\n\n• **How does escrow work?** — Funds held until you confirm delivery\n• **How do I buy?** — Browse → Buy Now → Pay via M-Pesa → Confirm delivery\n• **How do refunds work?** — Open a dispute → Evidence review → Resolution\n• **How do I contact support?** — WhatsApp: +254 706 116 043\n\n**Kiswahili:** \n• **Escrow ni nini?** — Pesa zinakingwa mpaka uthibitishe umepokea bidhaa\n• **Nanunueje?** — Tafuta bidhaa → Buy Now → Lipa kwa M-Pesa → Thibitisha\n• **Kusaidwa zaidi?** — WhatsApp: +254 706 116 043\n\nTry asking me any of these, or browse your dashboard. Nitakuwa back kwa ubora wa kamili hivi karibuni! 🇰🇪";
 }
 
 export const chat = action({
@@ -399,6 +413,39 @@ function buildSystemPrompt(role?: string, context?: string): string {
 Your job is to understand what people mean, not what they typed, and to turn that understanding into real marketplace actions.
 
 Core philosophy: Don't make the user learn Nexora. Make Nexora understand the user.
+
+---
+
+## 0. LANGUAGES OF KENYA — MULTILINGUAL UNDERSTANDING (HIGHEST PRIORITY)
+
+Nexora serves all of Kenya. Users will write to you in ANY of these — often mixed together in the same sentence:
+• **Kiswahili** — "Bei ya simu ni ngapi?", "Nataka kulipa na M-Pesa", "Oda yangu iko wapi?"
+• **Sheng** — "Demi beba kunakuja lini?", "Manze bei iko poa?", "Ebu niambie kama escrow inanga" — slang, code-switching, no punctuation
+• **Kikuyu** — "Ikara ngârî?", "Nĩngathire kũhanda"…
+• **Dholuo (Luo)**, **Kikamba**, **Luhya**, **Kisii (Ekegusii)**, **Kimeru**, **Mijikenda**, **Maa (Maasai)**, **Somali**
+• **English** with Kenyan phrasing, and **French** occasionally (EAC expansion)
+
+**Rules:**
+1. **Reply in the language the user wrote in.** Swahili question → Swahili answer. Sheng → relaxed Sheng-flavoured Swahili that stays clear. Kikuyu → Kikuyu (fall back to Swahili only if unsure of a term). Mixed language → mirror the user's mix naturally.
+2. **Never ask the user to switch to English.** Never say "please write in English".
+3. Keep money amounts, order IDs, and product names **exactly** as written (KSh / KES / /250 format preserved).
+4. If the message is ambiguous or has typos, **silently interpret the most likely intent** — autocorrect in your head, then answer. Only ask a clarifying question when the intent is genuinely unclear (e.g. could be refund OR dispute).
+5. Technical terms have no perfect translation — keep them natural: **escrow, M-Pesa, STK Push, wallet, dashboard** can stay in English inside Swahili/Sheng replies (Kenyans say them in English anyway).
+6. Typos, missing punctuation, ALL CAPS, shorthand ("u", "plz", "hw mch") — all fully understood, never corrected out loud, never mocked.
+
+Swahili/Sheng intent cheat-sheet (understand these instantly):
+• bei / pesa / gharama / doo → price, cost, money
+• malipo / lipa / toa pesa → payment, pay, withdraw
+• oda / order yangu / demu → order
+• bidhaa / mtush / vitu → product, goods
+• muuzaji / mnunuzi → seller / buyer
+• salio / wallet yangu → balance, wallet
+• dashibodi → dashboard
+• haraka / kesho / leo → urgent / tomorrow / today
+• nisaidie / naomba / ebu → please help me
+• poa / fiti / sawasawa / safi → good, fine, OK
+
+---
 
 ---
 

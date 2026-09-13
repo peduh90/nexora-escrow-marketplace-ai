@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import NavigationBar from "@/components/layout/NavigationBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import SupportDock from "@/components/SupportDock";
 import {
   ArrowLeft, MapPin, Search, Star, Navigation, Loader2,
 } from "lucide-react";
@@ -244,6 +245,8 @@ export default function ServicesHub() {
       </div>
 
       <MobileBottomNav />
+      {/* Help icons on every surface: WhatsApp + NexoraAI */}
+      <SupportDock panel="services" stacked message="Hello Nexora Support 👋 I need help with Nexora services." />
     </div>
   );
 }

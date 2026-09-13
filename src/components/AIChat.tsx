@@ -46,6 +46,26 @@ const VISITOR_ACTIONS = [
   { label: "Get Help", icon: HelpCircle, prompt: "What can you help me with?" },
 ];
 
+// Services & Transport panel — providers and customers (#53/#54)
+const SERVICES_ACTIONS = [
+  { label: "Offer a Service", icon: Settings, prompt: "How do I register as a service provider on Nexora?" },
+  { label: "Book a Fundi", icon: Search, prompt: "How do I find and book a plumber, electrician or fundi near me?" },
+  { label: "Transport / Boda", icon: Truck, prompt: "How do boda, matatu and delivery trips work on Nexora?" },
+  { label: "Escrow for Jobs", icon: Shield, prompt: "How is my service payment protected by escrow?" },
+  { label: "Do I Need Documents?", icon: HelpCircle, prompt: "Do I need documents to register as a service provider?" },
+  { label: "Bei ni ngapi?", icon: CreditCard, prompt: "Ada za huduma ni ngapi? Service fees ni ngapi kwa muuzaji wa huduma?" },
+];
+
+// Marketplace / community / general public pages
+const MARKET_ACTIONS = [
+  { label: "Find Products", icon: Search, prompt: "Help me find products on Nexora" },
+  { label: "Post a Request", icon: MessageSquare, prompt: "How do I post what I need on the community board?" },
+  { label: "How Escrow Works", icon: Shield, prompt: "How does escrow work?" },
+  { label: "Wholesale / Bulk", icon: Package, prompt: "How does wholesale and bulk buying work on Nexora?" },
+  { label: "Pay with M-Pesa", icon: CreditCard, prompt: "How do I pay with M-Pesa?" },
+  { label: "Nisaidie", icon: HelpCircle, prompt: "Nisaidie — nataka kuanza kununua kwenye Nexora, nianzie hatua kwa hatua." },
+];
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -53,7 +73,9 @@ interface Message {
   timestamp: Date;
 }
 
-export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin" | "freelance" }) {
+type ChatPanel = "buyer" | "seller" | "admin" | "freelance" | "services" | "market" | "general";
+
+export default function AIChat({ panel, stacked }: { panel?: ChatPanel; stacked?: boolean }) {
   const { user } = useAuth();
   const chat = useAction(api.ai.chat);
   const [isOpen, setIsOpen] = useState(false);
@@ -64,15 +86,20 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [voiceError, setVoiceError] = useState("");
+  // Voice input language (#54 voice-first commerce): rotate EN → SW → mixed.
+  const [voiceLang, setVoiceLang] = useState<"en-KE" | "sw-KE">("en-KE");
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Determine quick actions based on role
+  // Determine quick actions based on panel/role — every surface gets the
+  // assistant that fits it (services, marketplace, dashboards…).
   const quickActions = panel === "seller" ? SELLER_ACTIONS
     : panel === "admin" ? ADMIN_ACTIONS
+    : panel === "services" ? SERVICES_ACTIONS
+    : panel === "market" ? MARKET_ACTIONS
     : user?.role === "seller" ? SELLER_ACTIONS
     : user?.role === "admin" ? ADMIN_ACTIONS
     : user?.role === "buyer" ? BUYER_ACTIONS
@@ -82,10 +109,14 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const welcome = panel === "seller"
-        ? "Hey! 👋 I'm your NexoraAI selling copilot. I can help you create listings, analyze pricing, manage orders, and grow your store.\n\nWhat do you need help with?"
+        ? "Hey! 👋 I'm your NexoraAI selling copilot. I can help you create listings, analyze pricing, manage orders, and grow your store.\n\nUnaweza kuuliza kwa Kiswahili pia! What do you need help with?"
         : panel === "admin"
         ? "🛡️ NexoraAI Command Center active. I can help you monitor the platform, resolve disputes, analyze performance, and manage operations.\n\nWhat would you like to review?"
-        : "Hey! 👋 I'm NexoraAI — your smart marketplace assistant. I can help you find products, compare prices, track orders, and more.\n\nWhat are you looking for?";
+        : panel === "services"
+        ? "Hey! 👋 Welcome to Nexora Services & Transport. I can help you register as a provider, book a fundi, arrange boda/delivery, and keep every job escrow-protected.\n\nKaribu! Uliza kwa Kiswahili au English — what do you need?"
+        : panel === "market"
+        ? "Hey! 👋 I'm NexoraAI — I can help you find products, post what you need, buy in bulk, and pay safely with escrow.\n\nKaribu! Uliza kwa Kiswahili au English — what are you looking for?"
+        : "Hey! 👋 I'm NexoraAI — your smart marketplace assistant. I can help you find products, compare prices, track orders, and more.\n\nKaribu! Unaweza kuuliza kwa Kiswahili, Sheng au English.\n\nWhat are you looking for?";
       setMessages([{
         id: "welcome",
         role: "assistant",
@@ -113,47 +144,51 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
     setShowScrollBtn(!atBottom);
   }, []);
 
-  // Initialize speech recognition
+  // (Re)build the recognizer whenever the chosen voice language changes.
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      setSpeechSupported(true);
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = "en-KE"; // Kenya English
-      recognition.maxAlternatives = 1;
-
-      recognition.onresult = (event: any) => {
-        let transcript = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        setInput(transcript);
-        if (event.results[event.resultIndex].isFinal) {
-          setIsListening(false);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        setIsListening(false);
-        if (event.error === "not-allowed") {
-          setVoiceError("Microphone access denied. Please allow microphone in your browser settings.");
-        } else if (event.error === "no-speech") {
-          setVoiceError("No speech detected. Try again.");
-        } else {
-          setVoiceError("Voice recognition error. Please try again.");
-        }
-        setTimeout(() => setVoiceError(""), 3000);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
+    if (!SpeechRecognition) {
+      setSpeechSupported(false);
+      return;
     }
-  }, []);
+    setSpeechSupported(true);
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    // sw-KE captures Kiswahili; en-KE captures Kenyan English.
+    // Sheng and code-switched speech is handled by whichever mode matches better.
+    recognition.lang = voiceLang;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput(transcript);
+      if (event.results[event.resultIndex].isFinal) {
+        setIsListening(false);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      setIsListening(false);
+      if (event.error === "not-allowed") {
+        setVoiceError("Microphone access denied. Please allow microphone in your browser settings.");
+      } else if (event.error === "no-speech") {
+        setVoiceError("No speech detected. Try again.");
+      } else {
+        setVoiceError("Voice recognition error. Please try again.");
+      }
+      setTimeout(() => setVoiceError(""), 3000);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+  }, [voiceLang]);
 
   const toggleVoice = () => {
     if (!recognitionRef.current) return;
@@ -242,7 +277,7 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`fixed right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
-          (panel === "buyer" || panel === "seller") ? "bottom-22" : "bottom-6"
+          stacked ? "bottom-40 max-md:bottom-44" : (panel === "buyer" || panel === "seller") ? "bottom-22" : "bottom-6"
         } ${
           isOpen
             ? "bg-white/10 border border-white/20"
@@ -263,7 +298,7 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
       {/* Chat Window */}
       {isOpen && (
         <div className={`fixed right-6 z-50 w-[400px] max-w-[calc(100vw-3rem)] h-[560px] max-h-[calc(100vh-8rem)] rounded-2xl bg-[#0A0A14] border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden ${
-          (panel === "buyer" || panel === "seller") ? "bottom-[12rem]" : "bottom-24"
+          stacked ? "bottom-[13.5rem] max-md:bottom-[15rem]" : (panel === "buyer" || panel === "seller") ? "bottom-[12rem]" : "bottom-24"
         }`}>
           {/* Header */}
           <div className="px-4 py-3 bg-gradient-to-r from-nx-cyan/10 to-nx-violet/10 border-b border-white/5 shrink-0">
@@ -281,6 +316,16 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                {/* Voice language toggle (#54): English ⇄ Kiswahili */}
+                {speechSupported && (
+                  <button
+                    onClick={() => setVoiceLang((l) => (l === "en-KE" ? "sw-KE" : "en-KE"))}
+                    className="px-1.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/10 text-[9px] font-bold tracking-wide transition-colors"
+                    title="Voice input language: English ⇄ Kiswahili"
+                  >
+                    {voiceLang === "en-KE" ? "🇰🇪 SW" : "🇬🇧 EN"}
+                  </button>
+                )}
                 <button onClick={clearChat} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors" title="Clear chat">
                   <RotateCcw className="w-4 h-4 text-white/30 hover:text-white/60" />
                 </button>
@@ -402,7 +447,7 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isListening ? "Listening..." : "Ask NexoraAI anything..."}
+                placeholder={isListening ? "Listening..." : "Ask NexoraAI anything... (Kiswahili/Sheng/English)"}
                 disabled={isLoading}
                 className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/5 text-[13px] text-white placeholder:text-white/20 focus:outline-none focus:border-nx-cyan/30 disabled:opacity-40 transition-colors"
               />
@@ -420,7 +465,7 @@ export default function AIChat({ panel }: { panel?: "buyer" | "seller" | "admin"
               </button>
             </div>
             <p className="text-[9px] text-white/15 mt-2 text-center">
-              NexoraAI may make mistakes. Verify important details. 🇰🇪
+              NexoraAI may make mistakes. Verify important details. 🇰🇪 · Uliza kwa Kiswahili, Sheng au English
             </p>
           </div>
         </div>

@@ -18,6 +18,7 @@ import NavigationBar from "@/components/layout/NavigationBar";
 import { TrustBanner } from "@/components/layout/TrustBadges";
 import SocialLinks from "@/components/layout/SocialLinks";
 import ServicesNearYou from "@/components/home/ServicesNearYou";
+import SupportDock from "@/components/SupportDock";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
 
@@ -933,6 +934,8 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+      {/* Help icons on every surface: WhatsApp + NexoraAI */}
+      <SupportDock panel="market" message="Hello Nexora Support 👋 I have a question about Nexora Market." />
     </div>
   );
 }

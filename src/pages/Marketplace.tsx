@@ -5,6 +5,7 @@ import { api } from "../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 
 import { Search, ArrowLeft, X, MapPin, Shield, Truck, Heart, ChevronRight, Wrench, ArrowUpRight } from "lucide-react";
+import SupportDock from "@/components/SupportDock";
 import { CATEGORIES } from "@/lib/categories";
 import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
 
@@ -336,6 +337,8 @@ export default function Marketplace() {
           )}
         </main>
       </div>
+      {/* Help icons on every surface: WhatsApp + NexoraAI */}
+      <SupportDock panel="market" message="Hello Nexora Support 👋 I need help with the marketplace." />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import NavigationBar from "@/components/layout/NavigationBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import SupportDock from "@/components/SupportDock";
 import { ArrowLeft, Loader2, Phone, Star, Lock } from "lucide-react";
 
 /** Customer's local-service bookings: request → funded → accepted → done. */
@@ -156,6 +157,8 @@ export default function MyBookings() {
         )}
       </div>
       <MobileBottomNav />
+      {/* Help icons on every surface: WhatsApp + NexoraAI */}
+      <SupportDock panel="services" stacked message="Hello Nexora Support 👋 I need help with my bookings." />
     </div>
   );
 }

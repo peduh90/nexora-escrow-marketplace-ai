@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import NavigationBar from "@/components/layout/NavigationBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import SupportDock from "@/components/SupportDock";
 import {
   Megaphone, Loader2, MapPin, Clock, Handshake, MessageSquare, X, Plus, BadgeCheck, Package, Wrench, Building2,
 } from "lucide-react";
@@ -290,6 +291,8 @@ export default function CommunityRequests() {
       </div>
 
       <MobileBottomNav />
+      {/* Help icons on every surface: WhatsApp + NexoraAI */}
+      <SupportDock panel="market" stacked message="Hello Nexora Support 👋 I need help posting a request." />
     </div>
   );
 }
