@@ -1,15 +1,17 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
 import {
-  Users, Search, CheckCircle2, Ban, RotateCcw, Loader2, ShieldAlert,
+  Users, Search, CheckCircle2, Ban, RotateCcw, Loader2, ShieldAlert, MapPin,
 } from "lucide-react";
 
 const OWNER_EMAIL = "murimiedwin227@gmail.com";
 
 export default function AdminUsers() {
+  const navigate = useNavigate();
   const allUsers = useQuery(api.admin.getAllUsers);
   const counts = useQuery(api.admin.getUserCounts);
   const setUserSuspended = useMutation(api.admin.setUserSuspended);
@@ -40,6 +42,7 @@ export default function AdminUsers() {
     if (filter === "Employers" && role !== "employer") return false;
     if (filter === "Suspended" && u.accountStatus !== "suspended") return false;
     if (filter === "Admins" && role !== "admin") return false;
+    if (filter === "Service Providers" && !(u.serviceType || u.transportType)) return false;
     if (search && !(u.name || "").toLowerCase().includes(search.toLowerCase()) && !(u.email || "").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -49,6 +52,9 @@ export default function AdminUsers() {
   const freelancerCount = counts?.freelancers ?? users.filter((u: any) => effectiveRole(u) === "freelancer").length;
   const employerCount = counts?.employers ?? users.filter((u: any) => effectiveRole(u) === "employer").length;
   const suspendedCount = users.filter((u: any) => u.accountStatus === "suspended").length;
+  // Service/transport providers (any marketplace role — provider is a layer,
+  // not a separate account type).
+  const providerCount = counts?.serviceProviders ?? users.filter((u: any) => u.serviceType || u.transportType).length;
 
   const handleSuspend = async () => {
     if (!suspending) return;
@@ -84,13 +90,14 @@ export default function AdminUsers() {
         <p className="text-sm text-white/40 mt-1">Manage all platform users — {counts?.total ?? users.length} total</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
         {[
           { label: "Total Users", value: (counts?.total ?? users.length).toString(), color: "#8B5CF6" },
           { label: "Buyers", value: buyerCount.toString(), color: "#06B6D4" },
           { label: "Sellers", value: sellerCount.toString(), color: "#10B981" },
           { label: "Freelancers", value: freelancerCount.toString(), color: "#34D399" },
           { label: "Employers", value: employerCount.toString(), color: "#F59E0B" },
+          { label: "Service Providers", value: providerCount.toString(), color: "#22D3EE" },
           { label: "Suspended", value: suspendedCount.toString(), color: "#EF4444" },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-white/5 bg-[#0A0A12]">
@@ -107,7 +114,7 @@ export default function AdminUsers() {
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0A12] border border-white/5 text-sm text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none" />
         </div>
         <div className="flex gap-1 flex-wrap">
-          {["All", "Buyers", "Sellers", "Freelancers", "Employers", "Suspended", "Admins"].map(f => (
+          {["All", "Buyers", "Sellers", "Freelancers", "Employers", "Service Providers", "Suspended", "Admins"].map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${filter === f ? "bg-nx-violet/10 text-nx-violet" : "text-white/30 hover:text-white/50 bg-[#0A0A12] border border-white/5"}`}>{f}</button>
           ))}
         </div>
@@ -128,6 +135,7 @@ export default function AdminUsers() {
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">User</th>
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden md:table-cell">Role</th>
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden lg:table-cell">Location</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden xl:table-cell">Service</th>
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">KYC</th>
                   <th className="text-right px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Actions</th>
                 </tr>
@@ -177,6 +185,20 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-4 py-3.5 hidden lg:table-cell">
                       <p className="text-[10px] text-white/25">{[user.county, user.town].filter(Boolean).join(", ") || "—"}</p>
+                    </td>
+                    <td className="px-4 py-3.5 hidden xl:table-cell">
+                      {user.serviceType || user.transportType ? (
+                        <button
+                          onClick={() => navigate("/admin/services")}
+                          title="Open Services & Transport management"
+                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-medium bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20 transition-colors"
+                        >
+                          <MapPin className="w-3 h-3" />
+                          {user.serviceType ? `${user.serviceType}${user.serviceVerified ? " ✓" : " ·"}` : `${user.transportType}${user.transportVerified ? " ✓" : " ·"}`}
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-white/20">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3.5">
                       <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${user.kycStatus === "verified" ? "bg-nx-emerald/10 text-nx-emerald" : user.kycStatus === "pending" ? "bg-nx-gold/10 text-nx-gold" : "bg-white/5 text-white/30"}`}>

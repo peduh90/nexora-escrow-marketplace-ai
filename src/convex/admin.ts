@@ -247,12 +247,17 @@ export const getAllUsers = query({
     const users = (await ctx.db.query("users").collect()).filter(isRealUser);
     const listings = await ctx.db.query("listings").collect();
     const escrows = await ctx.db.query("escrows").collect();
+    // Phase 2/3: surface service & transport provider status in User Management.
+    const serviceProfiles = await ctx.db.query("serviceProfiles").collect();
+    const transportProfiles = await ctx.db.query("transportProfiles").collect();
 
     return users.map((u) => {
       const userListings = listings.filter((l) => l.sellerId === u._id);
       const userEscrows = escrows.filter(
         (e) => e.buyerId === u._id || e.sellerId === u._id
       );
+      const svcProfile = serviceProfiles.find((p: any) => (p as any).userId === u._id);
+      const trpProfile = transportProfiles.find((p: any) => (p as any).userId === u._id);
       const {
         passwordHash: _ph,
         tokenIdentifier: _ti,
@@ -271,6 +276,12 @@ export const getAllUsers = query({
         totalEarned: escrows
           .filter((e) => e.sellerId === u._id && ["released", "completed"].includes(e.status))
           .reduce((sum, e) => sum + e.amount, 0),
+        // Service/transport provider info for the admin users table.
+        serviceType: (svcProfile as any)?.serviceType,
+        serviceCategory: (svcProfile as any)?.category,
+        serviceVerified: !!(svcProfile as any)?.adminVerified,
+        transportType: (trpProfile as any)?.serviceType,
+        transportVerified: (trpProfile as any)?.verificationStatus === "verified",
       };
     });
   },
@@ -301,6 +312,14 @@ export const getUserCounts = query({
     // job yet (task-based counting would hide them).
     const employers = realUsers.filter((u: any) => u.role === "employer");
 
+    // Service & transport provider count for the User Management stat card.
+    const serviceProfiles = await ctx.db.query("serviceProfiles").collect();
+    const transportProfiles = await ctx.db.query("transportProfiles").collect();
+    const providerUserIds = new Set<string>([
+      ...serviceProfiles.map((p: any) => (p as any).userId),
+      ...transportProfiles.map((p: any) => (p as any).userId),
+    ]);
+
     return {
       total: realUsers.length,
       buyers: buyers.length,
@@ -308,6 +327,7 @@ export const getUserCounts = query({
       freelancers: freelanceProfiles.length,
       employers: employers.length,
       admins: admins.length,
+      serviceProviders: realUsers.filter((u: any) => providerUserIds.has(u._id as any)).length,
       verified: realUsers.filter((u: any) => u.kycStatus === "verified").length,
       pendingKyc: realUsers.filter((u: any) => u.kycStatus === "pending").length,
       recent: realUsers.filter((u: any) => (u._creationTime || 0) > Date.now() - 86400000).length,
