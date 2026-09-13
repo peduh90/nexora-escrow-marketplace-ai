@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
 import { CATEGORIES as FALLBACK_CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
 import { CATEGORY_BANNERS } from "@/lib/category-images";
-import { FREELANCE_CATEGORIES, getFreelanceCategory } from "@/lib/freelance-marketplace";
+import { FREELANCE_CATEGORIES, getFreelanceCategory, getFreelanceCategoryIcon } from "@/lib/freelance-marketplace";
 import { publishFeeSummary, rateLabel } from "@/lib/fees";
 import DocumentUpload, { type PickedFile } from "@/components/DocumentUpload";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
@@ -487,7 +487,14 @@ function PublishWizard({
                     </div>
                   ) : (
                     <div className="p-4">
-                      <p className="text-2xl mb-2">{cat.icon}</p>
+                      {isFreelanceMode ? (
+                        (() => {
+                          const I = getFreelanceCategoryIcon(cat.slug);
+                          return <I className="w-7 h-7 text-nx-cyan mb-2" />;
+                        })()
+                      ) : (
+                        <p className="text-2xl mb-2">{cat.icon}</p>
+                      )}
                       <p className="text-sm font-semibold text-white mb-0.5">{cat.name}</p>
                       <p className="text-[11px] text-white/30 leading-relaxed">{cat.description}</p>
                     </div>

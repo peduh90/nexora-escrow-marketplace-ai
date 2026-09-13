@@ -693,7 +693,7 @@ export default function Landing() {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => navigate('/auth?returnTo=/freelance/dashboard')}
+                <button onClick={() => navigate('/freelance/join?returnTo=%2Ffreelance%2Ffind-work')}
                   className="w-full py-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 font-medium text-xs hover:bg-emerald-500/20 transition-colors border border-emerald-500/20">
                   Find Work
                 </button>
@@ -718,7 +718,7 @@ export default function Landing() {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => navigate('/auth?returnTo=/freelance/dashboard')}
+                <button onClick={() => navigate('/freelance/join?returnTo=%2Ffreelance%2Fjobs%3Fpost%3D1')}
                   className="w-full py-2.5 rounded-xl bg-amber-500/10 text-amber-400 font-medium text-xs hover:bg-amber-500/20 transition-colors border border-amber-500/20">
                   Post a Job
                 </button>

@@ -9,6 +9,9 @@ import {
 import {
   FREELANCE_CATEGORY_GRADIENTS,
   getFreelanceCategory,
+  getFreelanceCategoryIcon,
+  normalizeFreelanceCategory,
+  freelanceCategoryName,
 } from "@/lib/freelance-marketplace";
 import { shortKES } from "@/lib/fees";
 
@@ -125,7 +128,7 @@ export default function FreelanceServices() {
                       {svc.images?.[0] ? (
                         <img src={svc.images[0]} alt={svc.title} className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-5xl drop-shadow-lg">{cat?.icon || "💼"}</span>
+                        <CategoryIcon slug={svc.category} className="w-14 h-14 text-white/30" />
                       )}
                       <span className={`absolute top-2 left-2 text-[9px] px-2 py-0.5 rounded-full font-medium ${
                         svc.status === "active" ? "bg-nx-emerald/15 text-nx-emerald" : "bg-white/10 text-white/50"
@@ -135,7 +138,7 @@ export default function FreelanceServices() {
                     </div>
                     <div className="p-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] text-white/40 truncate">{cat?.icon} {cat?.name || svc.category}</span>
+                        <span className="text-[10px] text-white/40 truncate flex items-center gap-1"><CategoryIcon slug={svc.category} /> {cat?.name || freelanceCategoryName(svc.category)}</span>
                         <div className="flex items-center gap-0.5 ml-auto">
                           <Eye className="w-3 h-3 text-white/20" />
                           <span className="text-[10px] text-white/40">{svc.views || 0}</span>
@@ -174,4 +177,10 @@ export default function FreelanceServices() {
       </div>
     </div>
   );
+}
+
+/** Lucide category icon resolved through the shared taxonomy (legacy-safe). */
+function CategoryIcon({ slug, className = "w-4 h-4" }: { slug: string; className?: string }) {
+  const Icon = getFreelanceCategoryIcon(normalizeFreelanceCategory(slug));
+  return <Icon className={className} />;
 }

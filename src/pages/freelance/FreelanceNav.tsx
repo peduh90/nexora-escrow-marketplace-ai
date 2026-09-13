@@ -83,10 +83,10 @@ export default function FreelanceNav({
           </button>
         ) : (
           <button
-            onClick={() => navigate("/auth?returnTo=/freelance")}
+            onClick={() => navigate("/freelance/join?returnTo=%2Ffreelance")}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-nx-violet text-white text-xs font-semibold hover:bg-nx-violet/80 transition-colors shrink-0"
           >
-            <Briefcase className="w-3.5 h-3.5" /> Join Freelance
+            <Briefcase className="w-3.5 h-3.5" /> Get Started Free
           </button>
         )}
       </div>

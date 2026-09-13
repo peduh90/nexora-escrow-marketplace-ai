@@ -23,16 +23,49 @@ export const MARKETPLACE = {
 } as const;
 export type MarketplaceValue = (typeof MARKETPLACE)[keyof typeof MARKETPLACE];
 
-/** Server-side list of allowed freelance categories (mirrors src/lib/freelance-marketplace.ts). */
+/**
+ * Server-side list of allowed freelance categories (mirrors
+ * src/lib/freelance-marketplace.ts). "bots" is kept so legacy rows keep
+ * validating; new publishes use the current taxonomy.
+ */
 const FREELANCE_MARKETPLACE_CATEGORY_SLUGS = [
-  "ai-accounts-tools",
   "writing",
   "design",
-  "development",
+  "video-photo",
   "marketing",
-  "bots",
+  "development",
+  "data-research",
+  "virtual-assistance",
+  "education",
+  "business-professional",
+  "ai-accounts-tools",
+  "digital-products",
   "other-services",
+  // legacy slugs still stored on old rows
+  "bots",
 ];
+
+/**
+ * Illegal-service guard for the freelance marketplace. Titles/descriptions
+ * matching these patterns describe stolen accounts, cracked software,
+ * credential sharing, exam fraud or fake credentials and are rejected at
+ * publish time — the platform must never reward them.
+ */
+const ILLEGAL_SERVICE_PATTERNS = [
+  "cracked", "crack", "patched", "keygen", "nulled", "torrent",
+  "shared account", "account sharing", "shared login", "stolen account",
+  "hacked account", "bypass", "activated free", "free activation",
+  "assign my exam", "write my exam", "sit my exam", "exam impersonation",
+  "impersonate", "fake certificate", "forged certificate", "fake degree",
+  "fake transcripts", "buy followers", "buy likes", "bot followers",
+  "buy subscribers", "fake reviews",
+];
+
+function findIllegalServiceText(text: string | undefined): string | null {
+  if (!text) return null;
+  const t = text.toLowerCase();
+  return ILLEGAL_SERVICE_PATTERNS.find((k) => t.includes(k)) ?? null;
+}
 
 const marketplaceValidator = v.optional(
   v.union(v.literal("product"), v.literal("freelance"))
@@ -129,7 +162,20 @@ export const createListing = mutation({
     // A freelance listing must use a freelance category so it is guaranteed to
     // show up only inside the Freelance Marketplace.
     if (marketplace === MARKETPLACE.FREELANCE && !FREELANCE_MARKETPLACE_CATEGORY_SLUGS.includes(args.category)) {
-      throw new Error("Freelance listings must use a Freelance Marketplace category (AI tools, writing, design, development, marketing, bots or other services).");
+      throw new Error("Freelance listings must use a Freelance Marketplace category (writing, design, video, marketing, web/software, data, virtual assistance, education, business, AI & digital tools, digital products or other services).");
+    }
+
+    // Illegal-service guard: never publish stolen accounts, cracked software,
+    // credential sharing, exam fraud or fake credentials to the marketplace.
+    if (marketplace === MARKETPLACE.FREELANCE) {
+      const illegal =
+        findIllegalServiceText(args.title) ??
+        findIllegalServiceText(args.description);
+      if (illegal) {
+        throw new Error(
+          `This listing was rejected: "${illegal}" is not allowed on Nexora. Nexora only allows legitimate services and authorized software/tool subscriptions.`
+        );
+      }
     }
 
     const now = Date.now();

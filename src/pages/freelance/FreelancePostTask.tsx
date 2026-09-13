@@ -4,7 +4,12 @@ import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import DocumentUpload, { type PickedFile } from "@/components/DocumentUpload";
-import { FREELANCE_CATEGORIES, freelanceCategoryName } from "@/lib/freelance-marketplace";
+import {
+  FREELANCE_CATEGORIES,
+  freelanceCategoryName,
+  getFreelanceCategoryIcon,
+  normalizeFreelanceCategory,
+} from "@/lib/freelance-marketplace";
 import {
   ArrowLeft, Briefcase, X, Plus, Loader2, CheckCircle2,
 } from "lucide-react";
@@ -130,8 +135,8 @@ export default function FreelancePostTask() {
             <div className="flex flex-wrap gap-2">
               {FREELANCE_CATEGORIES.map((c) => (
                 <button key={c.slug} onClick={() => setCategory(c.slug)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${category === c.slug ? "bg-nx-violet/20 text-nx-violet border border-nx-violet/30" : "bg-white/[0.03] text-white/40 border border-white/5 hover:border-white/10"}`}>
-                  {c.icon} {freelanceCategoryName(c.slug)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${category === c.slug ? "bg-nx-violet/20 text-nx-violet border border-nx-violet/30" : "bg-white/[0.03] text-white/40 border border-white/5 hover:border-white/10"}`}>
+                  <CategoryIcon slug={c.slug} className="w-3.5 h-3.5" /> {freelanceCategoryName(c.slug)}
                 </button>
               ))}
             </div>
@@ -228,4 +233,10 @@ export default function FreelancePostTask() {
       </div>
     </div>
   );
+}
+
+/** Lucide category icon resolved through the shared taxonomy (legacy-safe). */
+function CategoryIcon({ slug, className = "w-3 h-3" }: { slug: string; className?: string }) {
+  const Icon = getFreelanceCategoryIcon(normalizeFreelanceCategory(slug));
+  return <Icon className={className} />;
 }

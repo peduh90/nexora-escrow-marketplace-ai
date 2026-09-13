@@ -4,7 +4,11 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import FreelanceNav from "./FreelanceNav";
-import { FREELANCE_CATEGORIES, freelanceCategoryName } from "@/lib/freelance-marketplace";
+import {
+  getFreelanceCategoryIcon,
+  normalizeFreelanceCategory,
+  freelanceCategoryName,
+} from "@/lib/freelance-marketplace";
 import {
   Briefcase, Globe, Clock, Users, Shield, CheckCircle2, X, Loader2,
   Star, ArrowLeft, BadgeCheck, MapPin, FileText,
@@ -118,7 +122,7 @@ export default function FreelanceJobDetail() {
     );
   }
 
-  const catIcon = FREELANCE_CATEGORIES.find((c) => c.slug === t.category)?.icon || "💼";
+  const CatIcon = getFreelanceCategoryIcon(normalizeFreelanceCategory(t.category));
   const deadlineLabel = t.deadline ? new Date(t.deadline).toLocaleDateString() : "Flexible";
 
   return (
@@ -133,7 +137,7 @@ export default function FreelanceJobDetail() {
         {/* Job card */}
         <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-6 md:p-8">
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <span className="text-[11px] px-2.5 py-1 rounded bg-nx-violet/10 text-nx-violet font-medium">{catIcon} {freelanceCategoryName(t.category)}</span>
+            <span className="text-[11px] px-2.5 py-1 rounded bg-nx-violet/10 text-nx-violet font-medium flex items-center gap-1"><CatIcon className="w-3.5 h-3.5" /> {freelanceCategoryName(t.category)}</span>
             <span className="text-[11px] px-2.5 py-1 rounded bg-nx-emerald/10 text-nx-emerald font-medium flex items-center gap-1">
               <Shield className="w-3 h-3" /> Escrow protected
             </span>

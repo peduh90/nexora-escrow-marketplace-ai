@@ -3,22 +3,28 @@ import { useNavigate } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
-import { FREELANCE_CATEGORIES, FREELANCE_CATEGORY_GRADIENTS, getFreelanceCategory } from "@/lib/freelance-marketplace";
+import {
+  FREELANCE_CATEGORIES,
+  FREELANCE_CATEGORY_GRADIENTS,
+  AI_TOOL_TILES,
+  AI_TOOL_ICONS,
+  getFreelanceCategory,
+  getFreelanceCategoryIcon,
+  normalizeFreelanceCategory,
+  freelanceCategoryName,
+} from "@/lib/freelance-marketplace";
 import { shortKES } from "@/lib/fees";
 import FreelanceNav from "./FreelanceNav";
 import {
-  Search, ArrowRight, Shield, Globe, Zap, Star, Clock, Briefcase,
-  PenTool, FileText, Calculator, Receipt, CheckSquare, Sparkles, Wrench,
-  Bot, Users,
+  Search, ArrowRight, Shield, Zap, Star, Briefcase, Users, Wrench,
+  Sparkles, Bot, BadgeCheck, Code2, PenLine,
 } from "lucide-react";
 
 const TOOL_TILES = [
-  { icon: FileText, label: "Proposal Writer", desc: "Turn job posts into winning proposals", grad: "from-nx-violet/20 to-transparent", ring: "hover:ring-nx-violet/40" },
-  { icon: PenTool, label: "CV Builder", desc: "Professional resumes in minutes", grad: "from-emerald-500/20 to-transparent", ring: "hover:ring-emerald-500/40" },
-  { icon: Sparkles, label: "Writing Studio", desc: "Word counts & headline ideas", grad: "from-nx-cyan/20 to-transparent", ring: "hover:ring-nx-cyan/40" },
-  { icon: Calculator, label: "Pricing Calculator", desc: "Know your take-home after fees", grad: "from-amber-500/20 to-transparent", ring: "hover:ring-amber-500/40" },
-  { icon: Receipt, label: "Invoice Generator", desc: "Clean invoices that get you paid", grad: "from-rose-500/20 to-transparent", ring: "hover:ring-rose-500/40" },
-  { icon: CheckSquare, label: "Task Planner", desc: "Stay productive across clients", grad: "from-nx-violet/20 to-transparent", ring: "hover:ring-nx-violet/40" },
+  { icon: PenLine, label: "Proposal Writer", grad: "from-nx-violet/20 to-transparent" },
+  { icon: Code2, label: "Pricing Calculator", grad: "from-nx-cyan/20 to-transparent" },
+  { icon: Bot, label: "AI Writing Studio", grad: "from-emerald-500/20 to-transparent" },
+  { icon: Wrench, label: "Invoice Generator", grad: "from-amber-500/20 to-transparent" },
 ];
 
 export default function FreelanceLanding() {
@@ -28,6 +34,7 @@ export default function FreelanceLanding() {
   const [category, setCategory] = useState<string>("all");
   const [subcategory, setSubcategory] = useState<string>("all");
 
+  const role = user?.role as string | undefined;
   const services = useQuery(api.listings.searchFreelanceListings, {
     query: search.trim(),
     category: category === "all" ? undefined : category,
@@ -37,11 +44,11 @@ export default function FreelanceLanding() {
 
   const display = services ?? [];
   const activeCategory = category !== "all" ? getFreelanceCategory(category) : null;
+
   // Freelancers and sellers can publish services. Freelancers use the
   // standalone freelance publish flow (no store required); sellers use their
   // store's publish wizard.
-  const canPublish = isAuthenticated && (user?.role === "freelancer" || user?.role === "seller");
-  const publishTarget = user?.role === "seller" ? "/seller/add-product" : "/freelance/publish";
+  const canPublish = isAuthenticated && (role === "freelancer" || role === "seller");
 
   const scrollToListings = () => {
     document.getElementById("freelance-listings")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -59,16 +66,42 @@ export default function FreelanceLanding() {
     setSearch("");
   };
 
+  /** Join flow — a fresh visitor chooses Freelancer, Employer or Provider. */
+  const joinFreelance = (returnTo = "/freelance") => {
+    navigate(`/freelance/join?returnTo=${encodeURIComponent(returnTo)}`);
+  };
+
   const publishCta = () => {
     if (canPublish) {
-      navigate(publishTarget);
+      navigate(role === "seller" ? "/seller/add-product" : "/freelance/publish");
     } else if (isAuthenticated) {
       // Signed in as buyer/employer/admin — publishing needs a freelancer or
-      // seller account, so route through the freelance registration flow.
-      navigate("/auth/freelance?returnTo=%2Ffreelance%2Fpublish");
+      // provider account, so route through the freelance join flow.
+      joinFreelance("/freelance/publish");
     } else {
-      navigate("/auth?returnTo=%2Ffreelance%2Fpublish");
+      joinFreelance("/freelance/publish");
     }
+  };
+
+  /** The four big homepage actions. */
+  const goGetStarted = () => {
+    if (role === "freelancer") navigate("/freelance/dashboard");
+    else if (role === "employer") navigate("/employer");
+    else if (role === "seller") navigate("/seller");
+    else if (isAuthenticated) joinFreelance("/freelance");
+    else joinFreelance("/freelance");
+  };
+
+  const goFindWork = () => {
+    if (role === "freelancer") navigate("/freelance/find-work");
+    else navigate("/freelance/jobs");
+  };
+
+  const goHire = () => {
+    // Only employers can post jobs; everyone else sees the public jobs board.
+    if (role === "employer") navigate("/employer/post-job");
+    else if (isAuthenticated) navigate("/freelance/jobs");
+    else joinFreelance("/freelance/jobs?post=1");
   };
 
   return (
@@ -77,19 +110,21 @@ export default function FreelanceLanding() {
 
       {/* ───────── HERO ───────── */}
       <section className="px-4 md:px-6 pt-12 pb-8 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-nx-violet/5 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-nx-violet/8 via-transparent to-transparent pointer-events-none" />
         <div className="relative max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-nx-violet/10 border border-nx-violet/20 text-nx-violet text-[11px] font-semibold mb-4">
-            <Bot className="w-3.5 h-3.5" /> FREELANCE MARKETPLACE · SERVICES, ACCOUNTS & DIGITAL TOOLS
+            <BadgeCheck className="w-3.5 h-3.5" /> NEXORA FREELANCE · KENYA'S DIGITAL-WORK MARKETPLACE
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight tracking-tight">
-            Hire talent & <span className="bg-gradient-to-r from-nx-violet via-nx-cyan to-nx-violet bg-clip-text text-transparent">get hired</span> for
-            <br />
-            <span className="text-white">services, accounts & digital tools</span>
+            Work. Hire. Create.{" "}
+            <span className="bg-gradient-to-r from-nx-violet via-nx-cyan to-nx-violet bg-clip-text text-transparent">
+              Grow.
+            </span>
           </h1>
-          <p className="text-sm md:text-base text-white/40 max-w-2xl mx-auto mt-4 leading-relaxed">
-            AI accounts & tools, writing accounts, Grammarly-style bots, design, development, marketing and more —
-            posted by providers, hired by employers, escrow protected until the work is delivered.
+          <p className="text-sm md:text-base text-white/45 max-w-2xl mx-auto mt-4 leading-relaxed">
+            One trusted marketplace connecting Kenyan freelancers, creators and digital
+            professionals with employers and customers — escrow-protected payments,
+            AI-assisted disputes and M-Pesa withdrawals.
           </p>
 
           <div className="w-full max-w-2xl mx-auto mt-7">
@@ -98,7 +133,8 @@ export default function FreelanceLanding() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search accounts, AI tools, writers, developers, bots..."
+                onKeyDown={(e) => e.key === "Enter" && scrollToListings()}
+                placeholder="Search writers, designers, developers, video editors, AI setup..."
                 className="flex-1 px-4 py-3.5 bg-transparent text-sm text-white placeholder:text-white/25 focus:outline-none"
               />
               {search && (
@@ -107,66 +143,114 @@ export default function FreelanceLanding() {
             </div>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-3 mt-6">
-            <button
-              onClick={publishCta}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-nx-violet text-white text-sm font-semibold hover:bg-nx-violet/80 transition-colors"
-            >
-              <Wrench className="w-4 h-4" /> {canPublish ? "Offer a Service" : user ? "Register as a Freelancer to Offer Services" : "Become a Freelancer & Offer Services"}
-            </button>
-            <button
-              onClick={() => navigate("/freelance/jobs")}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-white/60 text-sm font-medium hover:border-nx-violet/30 hover:text-white transition-colors"
-            >
-              <Briefcase className="w-4 h-4" /> Post / Find Jobs
-            </button>
-            <button
-              onClick={() => navigate("/freelance/tools")}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-white/60 text-sm font-medium hover:border-nx-cyan/30 hover:text-white transition-colors"
-            >
-              <PenTool className="w-4 h-4" /> Freelancer Tools
-            </button>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-5 mt-7 text-xs text-white/35">
+          <div className="flex flex-wrap justify-center gap-5 mt-6 text-xs text-white/35">
             <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-nx-emerald/80" /> Escrow protected</span>
             <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-nx-gold/80" /> AI-assisted disputes</span>
-            <span className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-nx-cyan/80" /> M-Pesa & wallet payments</span>
+            <span className="flex items-center gap-1.5"><BadgeCheck className="w-3.5 h-3.5 text-nx-cyan/80" /> Verified freelancers</span>
           </div>
         </div>
       </section>
 
-      {/* ───────── ACCOUNT CATEGORIES ───────── */}
-      <section className="px-4 md:px-6 py-8 border-t border-white/5">
+      {/* ───────── BIG ACTIONS — the primary navigation ───────── */}
+      <section className="px-4 md:px-6 pb-10">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Get Started Free — the main onboarding CTA */}
+          <button
+            onClick={goGetStarted}
+            className="group relative overflow-hidden rounded-2xl border border-nx-violet/40 bg-gradient-to-br from-nx-violet/25 via-nx-violet/10 to-transparent p-6 text-left hover:border-nx-violet/70 hover:-translate-y-1 transition-all duration-300 sm:col-span-2 lg:col-span-1"
+          >
+            <Sparkles className="w-9 h-9 text-nx-violet mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="text-lg font-bold text-white leading-tight">GET STARTED FREE</h3>
+            <p className="text-xs text-white/50 mt-1.5 leading-relaxed">
+              Create your account — Freelancer, Employer or Digital Provider.
+            </p>
+            <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-nx-violet">
+              Join Nexora <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </span>
+          </button>
+
+          {/* Find Work */}
+          <button
+            onClick={goFindWork}
+            className="group rounded-2xl border border-white/8 bg-white/[0.03] p-6 text-left hover:border-nx-emerald/40 hover:bg-nx-emerald/[0.06] hover:-translate-y-1 transition-all duration-300"
+          >
+            <Briefcase className="w-9 h-9 text-nx-emerald mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="text-lg font-bold text-white leading-tight">FIND WORK</h3>
+            <p className="text-xs text-white/50 mt-1.5 leading-relaxed">
+              Browse jobs & apply — get paid in escrow, withdraw to M-Pesa.
+            </p>
+            <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-nx-emerald">
+              Browse jobs <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </span>
+          </button>
+
+          {/* Hire a Freelancer */}
+          <button
+            onClick={goHire}
+            className="group rounded-2xl border border-white/8 bg-white/[0.03] p-6 text-left hover:border-nx-gold/40 hover:bg-nx-gold/[0.06] hover:-translate-y-1 transition-all duration-300"
+          >
+            <Users className="w-9 h-9 text-nx-gold mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="text-lg font-bold text-white leading-tight">HIRE A FREELANCER</h3>
+            <p className="text-xs text-white/50 mt-1.5 leading-relaxed">
+              Post a job, review proposals, pay only when work is delivered.
+            </p>
+            <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-nx-gold">
+              Post a job <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </span>
+          </button>
+
+          {/* Find Digital Services */}
+          <button
+            onClick={scrollToListings}
+            className="group rounded-2xl border border-white/8 bg-white/[0.03] p-6 text-left hover:border-nx-cyan/40 hover:bg-nx-cyan/[0.06] hover:-translate-y-1 transition-all duration-300"
+          >
+            <Wrench className="w-9 h-9 text-nx-cyan mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="text-lg font-bold text-white leading-tight">FIND DIGITAL SERVICES</h3>
+            <p className="text-xs text-white/50 mt-1.5 leading-relaxed">
+              Ready-made services with clear prices — buy with escrow protection.
+            </p>
+            <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-nx-cyan">
+              See services <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </span>
+          </button>
+        </div>
+      </section>
+
+      {/* ───────── SERVICE CATEGORIES ───────── */}
+      <section className="px-4 md:px-6 py-10 border-t border-white/5">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-7">
+          <div className="text-center mb-8">
             <h2 className="text-xl md:text-3xl font-bold text-white">
-              Browse <span className="bg-gradient-to-r from-nx-violet to-nx-cyan bg-clip-text text-transparent">account categories</span>
+              What do you need{" "}
+              <span className="bg-gradient-to-r from-nx-violet to-nx-cyan bg-clip-text text-transparent">done today?</span>
             </h2>
             <p className="text-xs md:text-sm text-white/35 mt-2 max-w-xl mx-auto">
-              AI accounts, writing accounts, bots (Grammarly-style tools), design, development, marketing & other freelance services —
-              pick a category to see what providers offer.
+              Tap a category to see real services offered by verified providers —
+              from writing and design to AI setup and business support.
             </p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {FREELANCE_CATEGORIES.map((cat) => {
+              const Icon = getFreelanceCategoryIcon(cat.slug);
               const active = category === cat.slug;
               return (
                 <button
                   key={cat.slug}
                   onClick={() => pickCategory(cat.slug)}
-                  className={`relative overflow-hidden rounded-2xl border p-4 md:p-5 text-left transition-all bg-gradient-to-b ${FREELANCE_CATEGORY_GRADIENTS[cat.slug] || ""} ${
+                  className={`relative overflow-hidden rounded-2xl border p-4 md:p-5 text-left transition-all duration-300 bg-gradient-to-b ${FREELANCE_CATEGORY_GRADIENTS[cat.slug] || ""} ${
                     active
                       ? "border-nx-violet/50 ring-1 ring-nx-violet/30 bg-white/[0.04]"
-                      : "border-white/5 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.03]"
+                      : "border-white/5 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04] hover:-translate-y-0.5"
                   }`}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <span className="text-3xl">{cat.icon}</span>
+                    <span className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center">
+                      <Icon className="w-5 h-5 text-white/80" />
+                    </span>
                     {active && (
-                      <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white bg-nx-violet/30 px-2 py-0.5 rounded-full">
-                        <Search className="w-2.5 h-2.5" /> Viewing
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-white bg-nx-violet/30 px-2 py-0.5 rounded-full">
+                        Viewing
                       </span>
                     )}
                   </div>
@@ -175,23 +259,55 @@ export default function FreelanceLanding() {
                 </button>
               );
             })}
+          </div>
+        </div>
+      </section>
 
-            {/* Jobs category tile */}
-            <button
-              onClick={() => navigate("/freelance/jobs")}
-              className="relative overflow-hidden rounded-2xl border border-white/5 p-4 md:p-5 text-left transition-all bg-gradient-to-b from-nx-gold/15 to-transparent hover:border-nx-gold/30 hover:bg-white/[0.03]"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <Briefcase className="w-7 h-7 text-nx-gold" />
-                <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-nx-gold px-2 py-0.5 rounded-full bg-nx-gold/10">
-                  <Users className="w-2.5 h-2.5" /> Open jobs
-                </span>
+      {/* ───────── AI & DIGITAL TOOLS ───────── */}
+      <section className="px-4 md:px-6 py-10 border-t border-white/5">
+        <div className="max-w-6xl mx-auto">
+          <div className="rounded-3xl border border-nx-violet/20 bg-gradient-to-br from-nx-violet/[0.10] via-transparent to-nx-cyan/[0.06] p-6 md:p-8">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+              <div>
+                <div className="flex items-center gap-2 text-nx-violet text-[11px] font-semibold tracking-widest uppercase mb-2">
+                  <Bot className="w-4 h-4" /> AI & Digital Tools
+                </div>
+                <h2 className="text-xl md:text-2xl font-bold text-white">
+                  Authorized tools Kenyans already use
+                </h2>
+                <p className="text-sm text-white/45 mt-1.5 max-w-xl leading-relaxed">
+                  Buy legitimate AI &amp; productivity subscriptions and expert setup help —
+                  ChatGPT, Claude, Canva, Grammarly, Microsoft 365 and more. Only authorized
+                  accounts and official licenses are sold here.
+                </p>
               </div>
-              <h3 className="text-sm font-bold text-white leading-snug">Jobs</h3>
-              <p className="text-[11px] text-white/40 leading-relaxed mt-1 line-clamp-2">
-                Post a job as a client, or apply as a freelancer — paid securely in escrow.
-              </p>
-            </button>
+              <button
+                onClick={() => pickCategory("ai-accounts-tools")}
+                className="shrink-0 px-4 py-2.5 rounded-xl bg-nx-violet text-white text-xs font-semibold hover:bg-nx-violet/85 transition-colors"
+              >
+                Explore AI &amp; Tools
+              </button>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2.5">
+              {AI_TOOL_TILES.map((tool) => {
+                const Icon = AI_TOOL_ICONS[tool.icon] ?? Bot;
+                return (
+                  <button
+                    key={tool.name}
+                    onClick={() => pickCategory("ai-accounts-tools")}
+                    className="rounded-xl bg-white/[0.04] border border-white/8 p-3 text-center hover:border-nx-violet/40 hover:bg-nx-violet/[0.08] transition-all group"
+                  >
+                    <Icon className="w-5 h-5 text-white/70 mx-auto mb-1.5 group-hover:text-nx-violet transition-colors" />
+                    <p className="text-[10px] font-medium text-white/60 leading-tight">{tool.name}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-white/25 mt-4 leading-relaxed">
+              Tool names are examples of supported software — Nexora is not affiliated with
+              these brands. Stolen accounts, cracked software, shared credentials and
+              unauthorized reselling are banned and removed on sight.
+            </p>
           </div>
         </div>
       </section>
@@ -202,11 +318,11 @@ export default function FreelanceLanding() {
           <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
             <div>
               <h2 className="text-lg md:text-2xl font-bold text-white">
-                {category === "all" ? "Freelance services & digital tools" : `${activeCategory?.icon || ""} ${activeCategory?.name}`}
-                {search.trim() && <span className="text-white/40"> · “{search.trim()}”</span>}
+                {category === "all" ? "Digital services marketplace" : activeCategory?.name}
+                {search.trim() && <span className="text-white/40"> · "{search.trim()}"</span>}
               </h2>
               <p className="text-xs text-white/30 mt-1">
-                {display.length} freelance listing{display.length === 1 ? "" : "s"} · only listings published to the Freelance Marketplace appear here
+                {display.length} service{display.length === 1 ? "" : "s"} · only listings published to Nexora Freelance appear here
               </p>
             </div>
             {(category !== "all" || search.trim()) && (
@@ -239,7 +355,9 @@ export default function FreelanceLanding() {
           {display.length === 0 ? (
             <div className="text-center py-20 rounded-2xl bg-white/[0.02] border border-white/5">
               <div className="w-16 h-16 rounded-2xl bg-nx-violet/10 flex items-center justify-center mx-auto mb-4">
-                {activeCategory ? <span className="text-3xl">{activeCategory.icon}</span> : <Search className="w-8 h-8 text-white/15" />}
+                {activeCategory
+                  ? (() => { const I = getFreelanceCategoryIcon(activeCategory.slug); return <I className="w-8 h-8 text-white/40" />; })()
+                  : <Search className="w-8 h-8 text-white/15" />}
               </div>
               <p className="text-sm text-white/50 font-medium">
                 {activeCategory ? `No ${activeCategory.name.toLowerCase()} offered yet` : "No freelance services found"}
@@ -251,37 +369,37 @@ export default function FreelanceLanding() {
               </p>
               <button
                 onClick={publishCta}
-                className="mt-5 px-5 py-2.5 rounded-xl bg-nx-violet text-white text-sm font-semibold hover:bg-nx-violet/80 transition-colors"
+                className="mt-5 px-5 py-2.5 rounded-xl bg-nx-violet text-white text-sm font-semibold hover:bg-nx-violet/85 transition-colors"
               >
-                {canPublish ? "Offer the first service" : "Become a Freelancer to Offer Services"}
+                {canPublish ? "Offer the first service" : "Become a Service Provider"}
               </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {display.map((svc: any) => {
-                const cat = getFreelanceCategory(svc.category);
+                const catSlug = normalizeFreelanceCategory(svc.category);
+                const CatIcon = getFreelanceCategoryIcon(catSlug);
+                const catName = freelanceCategoryName(svc.category);
                 return (
                   <button
                     key={svc._id}
                     onClick={() => navigate(`/freelance/service/${svc._id}`)}
                     className="text-left rounded-2xl bg-white/[0.02] border border-white/5 overflow-hidden hover:border-nx-violet/25 hover:bg-white/[0.035] hover:-translate-y-0.5 transition-all group flex flex-col"
                   >
-                    <div className={`aspect-[16/10] bg-gradient-to-br ${FREELANCE_CATEGORY_GRADIENTS[svc.category] || FREELANCE_CATEGORY_GRADIENTS["other-services"]} overflow-hidden relative flex items-center justify-center`}>
+                    <div className={`aspect-[16/10] bg-gradient-to-br ${FREELANCE_CATEGORY_GRADIENTS[catSlug] || FREELANCE_CATEGORY_GRADIENTS["other-services"]} overflow-hidden relative flex items-center justify-center`}>
                       {svc.images?.[0] ? (
                         <img src={svc.images[0]} alt={svc.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       ) : (
-                        <span className="text-6xl drop-shadow-lg">{cat?.icon || "💼"}</span>
+                        <CatIcon className="w-14 h-14 text-white/30" />
                       )}
-                      <span className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 text-white/90">
-                        {cat?.icon} {cat?.name || svc.category}
+                      <span className="absolute top-2 left-2 flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 text-white/90">
+                        <CatIcon className="w-3 h-3" /> {catName}
+                      </span>
+                      <span className="absolute top-2 right-2 flex items-center gap-1 text-[10px] px-2 py-1 rounded-full bg-nx-emerald/15 backdrop-blur-sm border border-nx-emerald/25 text-nx-emerald">
+                        <Shield className="w-2.5 h-2.5" /> Escrow
                       </span>
                     </div>
                     <div className="p-4 flex flex-col flex-1">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-nx-emerald/10 text-nx-emerald font-medium flex items-center gap-1">
-                          <Shield className="w-2.5 h-2.5" /> Escrow
-                        </span>
-                      </div>
                       <h3 className="text-sm font-semibold text-white leading-snug group-hover:text-nx-violet transition-colors line-clamp-2 mb-2">
                         {svc.title}
                       </h3>
@@ -309,11 +427,11 @@ export default function FreelanceLanding() {
         </div>
       </section>
 
-      {/* ───────── JOBS + TOOLS ───────── */}
+      {/* ───────── JOBS + PROVIDER CTA ───────── */}
       <section className="px-4 md:px-6 py-10 border-t border-white/5">
         <div className="max-w-6xl mx-auto space-y-4">
-          {/* Jobs band */}
           <div className="grid lg:grid-cols-2 gap-4">
+            {/* Jobs band */}
             <div className="relative overflow-hidden rounded-2xl border border-white/5 p-6 md:p-8 bg-gradient-to-br from-nx-violet/10 via-transparent to-transparent">
               <div className="flex items-center gap-2 text-nx-violet text-[11px] font-semibold tracking-widest uppercase mb-2">
                 <Briefcase className="w-4 h-4" /> Jobs Board
@@ -322,45 +440,52 @@ export default function FreelanceLanding() {
                 Post a job — or apply to one
               </h2>
               <p className="text-sm text-white/40 leading-relaxed">
-                Clients post projects with a budget. Freelancers apply in minutes.
+                Employers post projects with a budget. Freelancers apply in minutes.
                 Accept a proposal and the funds are held in escrow until delivery.
               </p>
               <div className="flex flex-wrap gap-3 mt-5">
                 <button onClick={() => navigate("/freelance/jobs")}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-nx-violet text-white text-xs font-semibold hover:bg-nx-violet/80 transition-colors">
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-nx-violet text-white text-xs font-semibold hover:bg-nx-violet/85 transition-colors">
                   Browse Jobs <ArrowRight className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => navigate(isAuthenticated ? "/freelance/jobs?post=1" : "/auth?returnTo=%2Ffreelance%2Fjobs%3Fpost%3D1")}
+                <button onClick={goHire}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-white/60 text-xs font-medium hover:border-nx-violet/30 hover:text-white transition-colors">
                   Post a Job
                 </button>
               </div>
             </div>
 
-            {/* Tools band */}
+            {/* Become a provider band */}
             <div className="relative overflow-hidden rounded-2xl border border-white/5 p-6 md:p-8 bg-gradient-to-br from-nx-cyan/10 via-transparent to-transparent">
               <div className="flex items-center gap-2 text-nx-cyan text-[11px] font-semibold tracking-widest uppercase mb-2">
-                <PenTool className="w-4 h-4" /> Freelancer Tools
+                <Sparkles className="w-4 h-4" /> Become a Service Provider
               </div>
               <h2 className="text-xl md:text-2xl font-bold text-white mb-2">
-                Win work, price it & get paid
+                Sell your skills on Nexora
               </h2>
               <p className="text-sm text-white/40 leading-relaxed">
-                Proposal writer, CV builder, writing studio, pricing calculator, invoice generator and task planner — free in your browser.
+                Writers, designers, developers, video editors, tutors and AI-setup experts:
+                publish services, set your prices, and get paid through escrow on delivery.
               </p>
-              <button onClick={() => navigate("/freelance/tools")}
-                className="mt-5 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-nx-cyan text-black text-xs font-semibold hover:bg-nx-cyan/80 transition-colors">
-                Open Freelancer Tools <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex flex-wrap gap-3 mt-5">
+                <button onClick={() => (canPublish ? navigate("/freelance/publish") : joinFreelance("/freelance/publish"))}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-nx-cyan text-black text-xs font-semibold hover:bg-nx-cyan/85 transition-colors">
+                  {canPublish ? "Publish a Service" : "Start Selling"} <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => navigate("/freelance/tools")}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-white/60 text-xs font-medium hover:border-nx-cyan/30 hover:text-white transition-colors">
+                  Freelancer Tools
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Compact tools icons */}
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          {/* Freelancer tools strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {TOOL_TILES.map((tool) => (
               <button key={tool.label} onClick={() => navigate("/freelance/tools")}
-                className={`rounded-xl bg-gradient-to-b ${tool.grad} border border-white/5 p-4 text-left hover:border-white/15 transition-colors ${tool.ring} group`}>
-                <tool.icon className="w-5 h-5 text-white/70 mb-2" />
+                className={`rounded-xl bg-gradient-to-b ${tool.grad} border border-white/5 p-4 text-left hover:border-white/15 transition-colors group`}>
+                <tool.icon className="w-5 h-5 text-white/70 mb-2 group-hover:text-white transition-colors" />
                 <p className="text-xs font-semibold text-white leading-tight">{tool.label}</p>
               </button>
             ))}
@@ -377,6 +502,7 @@ export default function FreelanceLanding() {
           </div>
           <div className="flex items-center gap-4 text-[11px] text-white/25">
             <button onClick={() => navigate("/marketplace")} className="hover:text-white/50 transition-colors">Main Marketplace</button>
+            <button onClick={() => navigate("/services")} className="hover:text-white/50 transition-colors">Local Services</button>
             <button onClick={() => navigate("/privacy")} className="hover:text-white/50 transition-colors">Privacy</button>
             <button onClick={() => navigate("/terms")} className="hover:text-white/50 transition-colors">Terms</button>
           </div>

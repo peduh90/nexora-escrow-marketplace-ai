@@ -4,7 +4,12 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import FreelanceNav from "./FreelanceNav";
-import { FREELANCE_CATEGORIES, freelanceCategoryName } from "@/lib/freelance-marketplace";
+import {
+  FREELANCE_CATEGORIES,
+  freelanceCategoryName,
+  getFreelanceCategoryIcon,
+  normalizeFreelanceCategory,
+} from "@/lib/freelance-marketplace";
 import { shortKES } from "@/lib/fees";
 import {
   Search, Briefcase, MapPin, Clock, Users, Globe, X, Plus, Loader2,
@@ -178,8 +183,8 @@ export default function FreelanceJobs() {
                 </button>
                 {FREELANCE_CATEGORIES.map((c) => (
                   <button key={c.slug} onClick={() => setCategory(c.slug)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${category === c.slug ? "bg-nx-violet/15 text-nx-violet border-nx-violet/25" : "bg-white/[0.03] text-white/40 border-white/5 hover:border-white/15"}`}>
-                    {c.icon} {c.name}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border flex items-center gap-1.5 ${category === c.slug ? "bg-nx-violet/15 text-nx-violet border-nx-violet/25" : "bg-white/[0.03] text-white/40 border-white/5 hover:border-white/15"}`}>
+                    <CategoryIcon slug={c.slug} className="w-3.5 h-3.5" /> {c.name}
                   </button>
                 ))}
               </div>
@@ -229,8 +234,8 @@ export default function FreelanceJobs() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-nx-violet/10 text-nx-violet font-medium">
-                        {getFreelanceCategoryIcon(task.category)} {freelanceCategoryName(task.category)}
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-nx-violet/10 text-nx-violet font-medium flex items-center gap-1">
+                        <CategoryIcon slug={task.category} /> {freelanceCategoryName(task.category)}
                       </span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${priorityColors[task.priority] || priorityColors.medium}`}>
                         {String(task.priority || "medium").toUpperCase()}
@@ -297,8 +302,8 @@ export default function FreelanceJobs() {
                 <div className="flex flex-wrap gap-2">
                   {FREELANCE_CATEGORIES.map((c) => (
                     <button key={c.slug} onClick={() => setPCat(c.slug)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${pCat === c.slug ? "bg-nx-violet/15 text-nx-violet border-nx-violet/25" : "bg-white/[0.03] text-white/40 border-white/5 hover:border-white/15"}`}>
-                      {c.icon} {c.name}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border flex items-center gap-1.5 ${pCat === c.slug ? "bg-nx-violet/15 text-nx-violet border-nx-violet/25" : "bg-white/[0.03] text-white/40 border-white/5 hover:border-white/15"}`}>
+                      <CategoryIcon slug={c.slug} className="w-3.5 h-3.5" /> {c.name}
                     </button>
                   ))}
                 </div>
@@ -380,8 +385,10 @@ export default function FreelanceJobs() {
   );
 }
 
-function getFreelanceCategoryIcon(slug: string): string {
-  return FREELANCE_CATEGORIES.find((c) => c.slug === slug)?.icon || "💼";
+/** Lucide category icon resolved through the shared taxonomy (legacy-safe). */
+function CategoryIcon({ slug, className = "w-3 h-3" }: { slug: string; className?: string }) {
+  const Icon = getFreelanceCategoryIcon(normalizeFreelanceCategory(slug));
+  return <Icon className={className} />;
 }
 
 function timeAgo(ts: number): string {

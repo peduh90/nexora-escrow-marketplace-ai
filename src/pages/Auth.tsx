@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   ArrowRight, Loader2, Shield, ShoppingBag, Store, ChevronRight, Check,
   Lock, Globe, Zap, Phone, User, ArrowLeft, KeyRound, Mail, PenLine,
+  Wrench, MonitorSmartphone, Briefcase,
 } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -189,15 +190,20 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
     // Use the persistent role to decide where an authenticated user belongs.
     // Do NOT assume /buyer while the profile is still loading: if the role is
     // not known yet we stay here until the Convex profile query resolves.
+    // Exception: on the freelance join flow, an already-registered user who
+    // picked a card goes straight to the card's destination (e.g. an existing
+    // freelancer clicking "Find Work" lands in Find Work, not the dashboard).
+    const freelanceJoinReturn =
+      isFreelanceJoin && role && redirect.startsWith("/freelance") ? redirect : null;
     const roleTarget =
       role === "admin"
         ? "/admin"
         : role === "seller" || role === "driver"
         ? "/seller"
         : role === "freelancer"
-        ? "/freelance/dashboard"
+        ? freelanceJoinReturn ?? "/freelance/dashboard"
         : role === "employer"
-        ? "/employer"
+        ? freelanceJoinReturn ?? "/employer"
         : role === "buyer"
         ? "/buyer"
         : null;
@@ -249,14 +255,26 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   };
 
   const isFreelanceRoute = redirect.startsWith("/freelance") || isFreelanceRegister;
+  // The /freelance/join flow (returnTo points inside freelance) — drives the
+  // card-specific redirect for already-registered users.
+  const isFreelanceJoin = redirect.startsWith("/freelance") && !isFreelanceRegister;
 
   // The dedicated freelance panel toggles between register and sign-in, like
   // the seller panel does.
   const [freelanceMode, setFreelanceMode] = useState<"register" | "login">("register");
   const freelancePanelLogin = isFreelanceRegister && freelanceMode === "login";
 
-  const handleRoleSelect = (role: "buyer" | "seller" | "freelancer" | "employer") => {
+  // "Become a Service Provider" intent from the freelance join cards: after a
+  // successful registration the new freelancer is routed straight into the
+  // publish wizard instead of the generic dashboard.
+  const [publishIntent, setPublishIntent] = useState(false);
+
+  const handleRoleSelect = (
+    role: "buyer" | "seller" | "freelancer" | "employer",
+    opts?: { publishIntent?: boolean },
+  ) => {
     setSelectedRole(role);
+    setPublishIntent(!!opts?.publishIntent && role === "freelancer");
     setStep("signIn");
   };
 
@@ -389,11 +407,15 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       // that matches the role the user chose during signup. This is the direct
       // fix for the seller -> buyer regression on the OTP path.
       if (selectedRole) {
+        // "Become a Service Provider" — send the brand-new freelancer straight
+        // into the publish wizard to create their first service.
         const target =
           selectedRole === "seller"
             ? "/seller"
             : selectedRole === "freelancer"
-            ? "/freelance/dashboard"
+            ? publishIntent
+              ? "/freelance/publish"
+              : "/freelance/dashboard"
             : selectedRole === "employer"
             ? "/employer"
             : "/buyer";
@@ -825,63 +847,89 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
                   </button>
                 )}
 
-                <button onClick={() => handleRoleSelect("seller")} className="group relative p-6 rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-sm hover:border-nx-violet/30 hover:bg-nx-violet/5 transition-all duration-300 text-left">
-                  <div className="w-14 h-14 rounded-xl bg-nx-violet/10 flex items-center justify-center mb-4 group-hover:bg-nx-violet/20 transition-colors">
-                    <Store className="w-7 h-7 text-nx-violet" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-1">I'm a Seller</h3>
-                  <p className="text-white/40 text-sm leading-relaxed mb-4">List products, manage orders, withdraw earnings. KYC verification required.</p>
-                  <div className="flex flex-col gap-1.5">
-                    {["KYC business verification", "Product management", "Analytics & earnings"].map((f) => (
-                      <div key={f} className="flex items-center gap-2 text-xs text-white/30">
-                        <Check className="w-3 h-3 text-nx-violet/60" /><span>{f}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-nx-violet/50 transition-colors" />
-                </button>
+                {/* Marketplace Seller card: hidden on the freelance join flow —
+                    freelance roles stay separate from marketplace roles. */}
+                {!isFreelanceRoute && (
+                  <button onClick={() => handleRoleSelect("seller")} className="group relative p-6 rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-sm hover:border-nx-violet/30 hover:bg-nx-violet/5 transition-all duration-300 text-left">
+                    <div className="w-14 h-14 rounded-xl bg-nx-violet/10 flex items-center justify-center mb-4 group-hover:bg-nx-violet/20 transition-colors">
+                      <Store className="w-7 h-7 text-nx-violet" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-1">I'm a Seller</h3>
+                    <p className="text-white/40 text-sm leading-relaxed mb-4">List products, manage orders, withdraw earnings. KYC verification required.</p>
+                    <div className="flex flex-col gap-1.5">
+                      {["KYC business verification", "Product management", "Analytics & earnings"].map((f) => (
+                        <div key={f} className="flex items-center gap-2 text-xs text-white/30">
+                          <Check className="w-3 h-3 text-nx-violet/60" /><span>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-nx-violet/50 transition-colors" />
+                  </button>
+                )}
               </div>
 
-              {/* Freelance role options when coming from /freelance — these are
-                  the ONLY cards shown: Nexora Freelance is a separate system
-                  with its own Writer/Freelancer and Employer accounts, distinct
-                  from the Marketplace Buyer/Seller system. */}
+              {/* Freelance join flow — the ONLY cards shown on /freelance/join.
+                  Nexora Freelance is a separate system with its own roles,
+                  distinct from the Marketplace Buyer/Seller system. A person who
+                  wants to offer digital services takes the "Become a Service
+                  Provider" path — they are registered as a freelancer, never as
+                  a Buyer or Seller, and land straight in the publish wizard. */}
               {isFreelanceRoute && (
                 <>
-                  <p className="text-xs text-white/30 text-center mt-6 mb-2">Or choose a freelance role:</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* FIND WORK → distinct freelancer role */}
                     <button onClick={() => handleRoleSelect("freelancer")} className="group relative p-6 rounded-2xl border border-emerald-500/10 bg-emerald-500/[0.02] backdrop-blur-sm hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all duration-300 text-left">
-                      <div className="w-14 h-14 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
-                        <span className="text-2xl">✍️</span>
+                      <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
+                        <PenLine className="w-6 h-6 text-emerald-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-white mb-1">Writer / Freelancer</h3>
-                      <p className="text-white/40 text-sm leading-relaxed mb-4">Find work, submit proposals, get paid securely.</p>
-                      <div className="flex flex-col gap-1.5">
+                      <h3 className="text-base font-semibold text-white mb-1">Find Work</h3>
+                      <p className="text-white/40 text-xs leading-relaxed mb-3">Apply to jobs and projects. Get paid securely in escrow.</p>
+                      <div className="flex flex-col gap-1">
                         {["Browse & apply to jobs", "Escrow-protected earnings", "M-Pesa withdrawals"].map((f) => (
-                          <div key={f} className="flex items-center gap-2 text-xs text-white/30">
+                          <div key={f} className="flex items-center gap-1.5 text-[11px] text-white/30">
                             <Check className="w-3 h-3 text-emerald-500/60" /><span>{f}</span>
                           </div>
                         ))}
                       </div>
                     </button>
 
-                    {/* Employer selects the DISTINCT employer role — never the
-                        freelancer role. Fix for employer accounts being created
-                        as freelancers and landing in the writer dashboard. */}
+                    {/* HIRE → distinct employer role (never the freelancer role) */}
                     <button onClick={() => handleRoleSelect("employer")} className="group relative p-6 rounded-2xl border border-amber-500/10 bg-amber-500/[0.02] backdrop-blur-sm hover:border-amber-500/30 hover:bg-amber-500/5 transition-all duration-300 text-left">
-                      <div className="w-14 h-14 rounded-xl bg-amber-500/10 flex items-center justify-center mb-4 group-hover:bg-amber-500/20 transition-colors">
-                        <span className="text-2xl">💼</span>
+                      <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center mb-4 group-hover:bg-amber-500/20 transition-colors">
+                        <Briefcase className="w-6 h-6 text-amber-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-white mb-1">Employer</h3>
-                      <p className="text-white/40 text-sm leading-relaxed mb-4">Post jobs, hire freelancers, manage projects.</p>
-                      <div className="flex flex-col gap-1.5">
+                      <h3 className="text-base font-semibold text-white mb-1">Hire a Freelancer</h3>
+                      <p className="text-white/40 text-xs leading-relaxed mb-3">Post jobs, review proposals, pay only on delivery.</p>
+                      <div className="flex flex-col gap-1">
                         {["Post jobs & tasks", "Review proposals", "Escrow-protected payments"].map((f) => (
-                          <div key={f} className="flex items-center gap-2 text-xs text-white/30">
+                          <div key={f} className="flex items-center gap-1.5 text-[11px] text-white/30">
                             <Check className="w-3 h-3 text-amber-500/60" /><span>{f}</span>
                           </div>
                         ))}
                       </div>
                     </button>
+
+                    {/* BECOME A SERVICE PROVIDER → freelancer role with publish intent.
+                        Not a Buyer, not a Seller — a digital provider with a clear
+                        path: registration → profile → publish first service. */}
+                    <button onClick={() => handleRoleSelect("freelancer", { publishIntent: true })} className="group relative p-6 rounded-2xl border border-nx-cyan/20 bg-nx-cyan/[0.03] backdrop-blur-sm hover:border-nx-cyan/40 hover:bg-nx-cyan/[0.07] transition-all duration-300 text-left">
+                      <div className="w-12 h-12 rounded-xl bg-nx-cyan/10 flex items-center justify-center mb-4 group-hover:bg-nx-cyan/20 transition-colors">
+                        <Wrench className="w-6 h-6 text-nx-cyan" />
+                      </div>
+                      <h3 className="text-base font-semibold text-white mb-1">Become a Service Provider</h3>
+                      <p className="text-white/40 text-xs leading-relaxed mb-3">Offer digital services — writing, design, dev, video, AI setup.</p>
+                      <div className="flex flex-col gap-1">
+                        {["Publish services & set prices", "Escrow-protected orders", "No store needed"].map((f) => (
+                          <div key={f} className="flex items-center gap-1.5 text-[11px] text-white/30">
+                            <Check className="w-3 h-3 text-nx-cyan/60" /><span>{f}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </button>
+                  </div>
+                  <div className="mt-5 flex items-center justify-center gap-2 text-[11px] text-white/25">
+                    <MonitorSmartphone className="w-3.5 h-3.5" />
+                    <span>Digital providers keep separate roles from marketplace sellers — no store required.</span>
                   </div>
                 </>
               )}

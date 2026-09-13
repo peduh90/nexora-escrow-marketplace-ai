@@ -255,8 +255,11 @@ createRoot(document.getElementById("root")!).render(
               {/* Public freelance jobs board (legacy /jobs URL) */}
               <Route path="/jobs" element={<FreelanceJobs />} />
 
-              {/* Freelance Marketplace — services & digital tools, jobs, tools */}
+              {/* Freelance Marketplace — services & digital tools, jobs, tools.
+                  /freelance/join is the "Get Started Free" flow: new visitors
+                  choose Find Work, Hire, or Become a Service Provider. */}
               <Route path="/freelance" element={<FreelanceLanding />} />
+              <Route path="/freelance/join" element={<AuthPage redirectAfterAuth="/freelance/dashboard" />} />
               <Route path="/freelance/service/:id" element={<FreelanceServiceDetail />} />
               <Route path="/freelance/jobs" element={<FreelanceJobs />} />
               <Route path="/freelance/jobs/:id" element={<FreelanceJobDetail />} />

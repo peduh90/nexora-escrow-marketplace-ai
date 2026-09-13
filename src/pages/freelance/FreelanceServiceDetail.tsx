@@ -6,7 +6,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { getWhatsAppSupportUrl, getWhatsAppSellerUrl, openWhatsApp } from "@/lib/whatsapp";
 import { getViewerKey } from "@/lib/viewer";
 import { buyerProtectionFee, rateLabel } from "@/lib/fees";
-import { FREELANCE_CATEGORY_GRADIENTS, freelanceCategoryName, getFreelanceCategory, formatSlug } from "@/lib/freelance-marketplace";
+import {
+  FREELANCE_CATEGORY_GRADIENTS,
+  freelanceCategoryName,
+  getFreelanceCategory,
+  getFreelanceCategoryIcon,
+  normalizeFreelanceCategory,
+  formatSlug,
+} from "@/lib/freelance-marketplace";
 import { shortKES } from "@/lib/fees";
 import FreelanceNav from "./FreelanceNav";
 import {
@@ -304,13 +311,13 @@ export default function FreelanceServiceDetail() {
                 <img src={fl.images[selectedImage]} alt={fl.title} className="w-full h-full object-cover" />
               ) : (
                 <div className="flex flex-col items-center justify-center text-white/20">
-                  <span className="text-7xl mb-3">{category?.icon || "💼"}</span>
-                  <span className="text-xs font-medium uppercase tracking-widest">{fl.category}</span>
+                  <CategoryBadge slug={fl.category} className="w-16 h-16 text-white/25 mb-3" />
+                  <span className="text-xs font-medium uppercase tracking-widest">{freelanceCategoryName(fl.category)}</span>
                 </div>
               )}
               <div className="absolute top-3 left-3 flex items-center gap-2">
-                <span className="text-[11px] px-3 py-1 rounded-full font-semibold bg-black/50 backdrop-blur-sm border border-white/10 text-white">
-                  {category?.icon} {freelanceCategoryName(fl.category)}
+                <span className="text-[11px] px-3 py-1 rounded-full font-semibold bg-black/50 backdrop-blur-sm border border-white/10 text-white flex items-center gap-1.5">
+                  <CategoryBadge slug={fl.category} /> {freelanceCategoryName(fl.category)}
                 </span>
               </div>
               <div className="absolute top-3 right-3">
@@ -471,7 +478,7 @@ export default function FreelanceServiceDetail() {
               <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
                 <p className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Category</p>
                 <p className="text-sm font-medium text-white flex items-center gap-1.5">
-                  <span>{category?.icon || "💼"}</span> {freelanceCategoryName(fl.category)}
+                  <CategoryBadge slug={fl.category} /> {freelanceCategoryName(fl.category)}
                 </p>
               </div>
             </div>
@@ -547,7 +554,7 @@ export default function FreelanceServiceDetail() {
                     {svc.images?.[0] ? (
                       <img src={svc.images[0]} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-4xl">{getFreelanceCategory(svc.category)?.icon || "💼"}</span>
+                      <CategoryBadge slug={svc.category} className="w-10 h-10 text-white/25" />
                     )}
                   </div>
                   <div className="p-3">
@@ -575,7 +582,7 @@ export default function FreelanceServiceDetail() {
 
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 mb-4">
               <div className="w-12 h-12 rounded-lg bg-nx-violet/10 flex items-center justify-center text-2xl shrink-0">
-                {category?.icon || "💼"}
+                <CategoryBadge slug={fl.category} className="w-6 h-6 text-nx-violet" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">{fl.title}</p>
@@ -658,4 +665,10 @@ export default function FreelanceServiceDetail() {
       )}
     </div>
   );
+}
+
+/** Lucide category icon resolved through the shared taxonomy (legacy-safe). */
+function CategoryBadge({ slug, className = "w-4 h-4" }: { slug: string; className?: string }) {
+  const Icon = getFreelanceCategoryIcon(normalizeFreelanceCategory(slug));
+  return <Icon className={className} />;
 }
