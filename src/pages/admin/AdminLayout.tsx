@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
 import { useQuery } from "convex/react";
@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import AIChat from "@/components/AIChat";
 import {
   Shield, LayoutDashboard, Users, ShoppingCart, Scale,
-  Brain, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
+  Brain, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, ChevronDown,
   User, Truck, Briefcase, Activity, Wallet, Bell,
   Search, Package, CreditCard, MessageSquare, AlertTriangle,
   Receipt, TrendingUp, X, Menu, Eye, Crown, Home, Share2, MapPin,
@@ -63,8 +63,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [adminSearch, setAdminSearch] = useState("");
+  const profileRef = useRef<HTMLDivElement | null>(null);
   // REAL unread platform notifications for the admin — powers the bell badge.
   const unreadNotifications = useQuery(api.reviews.getUnreadCount);
+
+  // Close the profile dropdown on outside click / Escape.
+  useEffect(() => {
+    if (!profileOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setProfileOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [profileOpen]);
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = adminSearch.trim();
+    navigate(q ? `/admin/users?q=${encodeURIComponent(q)}` : "/admin/users");
+    setAdminSearch("");
+  };
 
   return (
     <div className="flex min-h-screen bg-[#050508]">
@@ -159,13 +186,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <button onClick={() => setMobileOpen(true)} className="lg:hidden text-white/30 hover:text-white"><Menu className="w-5 h-5" /></button>
             <h2 className="text-sm font-semibold text-white hidden sm:block">Admin Control Center</h2>
           </div>
-          <div className="flex-1 max-w-md hidden md:block">
+          <form onSubmit={submitSearch} className="flex-1 max-w-md hidden md:block">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
-              <input placeholder="Search users, products, orders..."
+              <input value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} placeholder="Search users, products, orders..."
                 className="w-full pl-9 pr-4 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none transition-colors" />
             </div>
-          </div>
+          </form>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-nx-emerald bg-nx-emerald/10 px-2 py-0.5 rounded-full font-medium hidden sm:inline">● System Healthy</span>
             <button
@@ -182,14 +209,59 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </span>
               )}
             </button>
-            <div className="flex items-center gap-2 pl-2 border-l border-white/5">
-              <div className="w-7 h-7 rounded-full bg-nx-gold/15 flex items-center justify-center">
-                <span className="text-[10px] font-bold text-nx-gold">{(user?.name || user?.email || "A").slice(0, 2).toUpperCase()}</span>
-              </div>
-              <div className="hidden md:block">
-                <p className="text-[11px] font-medium text-white/70">{user?.name || "Admin"}</p>
-                <p className="text-[9px] text-white/25">{user?.email || ""}</p>
-              </div>
+            {/* Admin profile — a real, pressable dropdown (account, shortcuts, sign out). */}
+            <div className="relative pl-2 border-l border-white/5" ref={profileRef}>
+              <button
+                onClick={() => setProfileOpen((o) => !o)}
+                aria-haspopup="menu"
+                aria-expanded={profileOpen}
+                title="Account"
+                className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-lg hover:bg-white/[0.04] transition-colors"
+              >
+                <div className="w-7 h-7 rounded-full bg-nx-gold/15 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-nx-gold">{(user?.name || user?.email || "A").slice(0, 2).toUpperCase()}</span>
+                </div>
+                <div className="hidden md:block text-left">
+                  <p className="text-[11px] font-medium text-white/70">{user?.name || "Admin"}</p>
+                  <p className="text-[9px] text-white/25">{user?.email || ""}</p>
+                </div>
+                <ChevronDown className={`w-3 h-3 text-white/20 transition-transform ${profileOpen ? "rotate-180" : ""}`} />
+              </button>
+              <AnimatePresence>
+                {profileOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                    transition={{ duration: 0.15 }}
+                    role="menu"
+                    className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-white/10 bg-[#0C0C14] shadow-2xl shadow-black/50 p-1.5 z-50"
+                  >
+                    <div className="px-3 py-2 border-b border-white/5">
+                      <p className="text-xs font-semibold text-white truncate">{user?.name || "Admin"}</p>
+                      <p className="text-[10px] text-white/35 truncate">{user?.email || ""}</p>
+                    </div>
+                    <button
+                      onClick={() => { setProfileOpen(false); navigate("/admin/users"); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors"
+                    >
+                      <Users className="w-3.5 h-3.5" /> My Account
+                    </button>
+                    <button
+                      onClick={() => { setProfileOpen(false); navigate("/admin/settings"); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors"
+                    >
+                      <Settings className="w-3.5 h-3.5" /> Settings
+                    </button>
+                    <button
+                      onClick={async () => { setProfileOpen(false); await signOut(); navigate("/"); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-red-400 hover:bg-red-400/5 transition-colors"
+                    >
+                      <LogOut className="w-3.5 h-3.5" /> Sign Out
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
@@ -15,8 +15,10 @@ export default function AdminUsers() {
   const allUsers = useQuery(api.admin.getAllUsers);
   const counts = useQuery(api.admin.getUserCounts);
   const setUserSuspended = useMutation(api.admin.setUserSuspended);
+  // ?q= deep-link support — the AdminLayout topbar search navigates here.
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState("All");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [suspending, setSuspending] = useState<{ id: string; name: string } | null>(null);
   const [reason, setReason] = useState("");
@@ -110,7 +112,7 @@ export default function AdminUsers() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or email..."
+          <input value={search} onChange={e => { setSearch(e.target.value); setSearchParams(e.target.value ? { q: e.target.value } : {}); }} placeholder="Search by name or email..."
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0A12] border border-white/5 text-sm text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none" />
         </div>
         <div className="flex gap-1 flex-wrap">
