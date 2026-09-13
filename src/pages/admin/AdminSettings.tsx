@@ -1,6 +1,74 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Settings, Shield, Bell, Globe, CreditCard, Info } from "lucide-react";
+import { Settings, Shield, Bell, Globe, CreditCard, Info, Flag, Loader2 } from "lucide-react";
+
+/**
+ * Feature Flags tab (#166–168): every major feature ships dark behind a flag
+ * and rolls out per environment (development → pilot county → production)
+ * without code deploys. Toggles write to the featureFlags table and every
+ * change is audit-logged server-side.
+ */
+function FeatureFlagsTab() {
+  const flags = useQuery(api.flags.getFlags, {});
+  const setFlag = useMutation(api.flags.setFlag);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  if (flags === undefined) {
+    return (
+      <div className="p-10 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-nx-violet animate-spin" />
+      </div>
+    );
+  }
+
+  const toggle = async (key: string, enabled: boolean) => {
+    setBusy(key);
+    try {
+      await setFlag({ key, enabled });
+    } catch (err: any) {
+      alert(err.message || "Failed to update flag");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="p-5 rounded-xl border border-white/5 bg-[#0A0A12]">
+      <h3 className="text-sm font-semibold text-white mb-1">Feature Flags</h3>
+      <p className="text-[11px] text-white/30 mb-4">
+        Roll out major features gradually — development → pilot county → full production — without code deploys. Every change is audit-logged.
+      </p>
+      <div className="space-y-2">
+        {flags.map((f) => (
+          <div key={f.key} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/5">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-white font-medium">{f.label}</p>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                  f.rollout === "production" ? "bg-emerald-400/10 text-emerald-400" :
+                  f.rollout === "pilot" ? "bg-amber-400/10 text-amber-400" :
+                  "bg-white/5 text-white/30"
+                }`}>{f.rollout}</span>
+              </div>
+              <p className="text-[11px] text-white/30 mt-0.5">{f.description}</p>
+            </div>
+            <button
+              onClick={() => toggle(f.key, !f.enabled)}
+              disabled={busy === f.key}
+              className={`relative w-10 h-5 rounded-full transition-colors shrink-0 disabled:opacity-40 ${f.enabled ? "bg-emerald-500/80" : "bg-white/10"}`}
+              aria-label={`${f.enabled ? "Disable" : "Enable"} ${f.label}`}
+            >
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${f.enabled ? "left-[22px]" : "left-0.5"}`} />
+            </button>
+          </div>
+        ))
+        }
+      </div>
+    </div>
+  );
+}
 
 /**
  * Platform settings are read-only here by design: the live values come from
@@ -26,6 +94,7 @@ export default function AdminSettings() {
           { id: "delivery", label: "Delivery Zones", icon: Globe },
           { id: "security", label: "Security", icon: Shield },
           { id: "notifications", label: "Notifications", icon: Bell },
+          { id: "flags", label: "Feature Flags", icon: Flag },
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${activeTab === tab.id ? "bg-nx-violet/10 text-nx-violet" : "text-white/30 hover:text-white/50 bg-[#0A0A12] border border-white/5"}`}>
             <tab.icon className="w-3.5 h-3.5" />{tab.label}
@@ -120,6 +189,8 @@ export default function AdminSettings() {
           </div>
         </div>
       )}
+
+      {activeTab === "flags" && <FeatureFlagsTab />}
 
       {(activeTab === "security" || activeTab === "notifications") && (
         <div className="p-5 rounded-xl border border-white/5 bg-[#0A0A12]">

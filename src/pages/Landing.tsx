@@ -538,6 +538,35 @@ export default function Landing() {
         </FadeIn>
       </section>
 
+      {/* ══════ BRING YOUR BUSINESS (#51–#53: formal · informal · social commerce) ══════ */}
+      <section className="relative z-10 py-10 px-6">
+        <FadeIn>
+          <div className="max-w-6xl mx-auto">
+            <div className="p-8 md:p-10 rounded-2xl border border-nx-cyan/15 bg-gradient-to-br from-nx-cyan/[0.04] via-transparent to-nx-violet/[0.04]">
+              <div className="flex flex-col md:flex-row md:items-center gap-6">
+                <div className="flex-1">
+                  <p className="text-nx-cyan text-xs font-medium tracking-widest uppercase mb-2">Already selling somewhere else?</p>
+                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Bring your business to Nexora</h2>
+                  <p className="text-white/40 text-sm max-w-xl">
+                    Duka, market stall, WhatsApp shop, Instagram store or registered business — Nexora structures it into a proper marketplace profile with escrow-protected payments. You confirm everything; nothing is copied without your OK.
+                  </p>
+                </div>
+                <div className="shrink-0 w-full md:w-auto">
+                  <button onClick={() => navigate("/auth?returnTo=%2Fseller%2Fdashboard")}
+                    className="group w-full md:w-auto px-8 py-3.5 rounded-xl text-white font-medium text-sm relative overflow-hidden transition-all hover:scale-[1.02]"
+                    style={{ background: "linear-gradient(135deg, #06B6D4, #0E7490)" }}>
+                    <span className="relative z-10 flex items-center gap-2 justify-center">
+                      <Store className="w-4 h-4" /> Bring Your Business <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </button>
+                  <p className="text-[11px] text-white/25 text-center md:text-right mt-2">Duka · WhatsApp · Instagram · TikTok · Registered business</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </FadeIn>
+      </section>
+
       {/* ══════ FOUR PANELS ══════ */}
       <section className="relative z-10 py-10 px-6 border-y border-white/5">
         <div className="max-w-6xl mx-auto">

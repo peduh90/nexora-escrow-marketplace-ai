@@ -4,7 +4,6 @@ import { api } from "../convex/_generated/api";
 import { getDeliveryFee } from "@/lib/delivery-config";
 import { useAuth } from "@/hooks/use-auth"
 import { useEffect, useState } from "react";
-import { useLowData } from "@/hooks/use-low-data";
 import { shareListing } from "@/lib/share";
 import {
   Shield, Heart, Share2, MessageSquare, ShoppingCart, ArrowLeft, Star, MapPin, Clock,
@@ -104,15 +103,15 @@ export default function ProductDetails() {
   const [shareNote, setShareNote] = useState("");
   const savedAddresses = useQuery(api.addresses.listAddresses, user ? {} : "skip");
   const saveAddress = useMutation(api.addresses.saveAddress);
-  const { lowData } = useLowData();
 
   const handleShare = async () => {
+    if (!listing) return;
     const result = await shareListing({
       title: listing.title,
       price: listing.price,
       sellerName: listing.sellerName,
       listingId: id as string,
-      location: [listing.town, listing.county].filter(Boolean).join(", "),
+      location: [listing.originTown, listing.originCounty].filter(Boolean).join(", "),
     });
     if (result === "copied") {
       setShareNote("Link copied — share on WhatsApp, SMS or anywhere");
@@ -139,6 +138,34 @@ export default function ProductDetails() {
     setDeliveryCounty(""); setDeliveryTown(""); setDeliveryAddress("");
     setDeliveryArea(""); setDeliveryLandmark(""); setDeliveryBuilding("");
     setDeliveryFloorUnit(""); setDeliveryInstructions(""); setDeliveryPin("");
+  };
+
+  /**
+   * Save the entered address to the user's private address book (#73).
+   * Best-effort: a failed save must never block a paid order.
+   */
+  const persistAddressIfRequested = async () => {
+    if (!saveThisAddress || selectedAddressId || !user) return;
+    if (!deliveryCounty.trim() || !deliveryTown.trim()) return;
+    try {
+      const res = await saveAddress({
+        label: addressLabel,
+        county: deliveryCounty.trim(),
+        town: deliveryTown.trim(),
+        area: deliveryArea.trim() || undefined,
+        landmark: deliveryLandmark.trim() || undefined,
+        direction: deliveryInstructions.trim() || undefined,
+        building: deliveryBuilding.trim() || undefined,
+        floorUnit: deliveryFloorUnit.trim() || undefined,
+        instructions: deliveryInstructions.trim() || undefined,
+        pin: deliveryPin.trim() || undefined,
+        isDefault: false,
+      });
+      setSelectedAddressId(res.addressId as unknown as string);
+      setSaveThisAddress(false);
+    } catch {
+      // Non-fatal — the order itself already succeeded.
+    }
   };
 
   // Freelance (digital service) listings live on the Freelance Marketplace
@@ -244,7 +271,15 @@ export default function ProductDetails() {
                 deliveryAddress,
                 paymentMethod: "mpesa",
                 deliveryFee,
+                deliveryArea: deliveryArea || undefined,
+                deliveryLandmark: deliveryLandmark || undefined,
+                deliveryBuilding: deliveryBuilding || undefined,
+                deliveryFloorUnit: deliveryFloorUnit || undefined,
+                deliveryInstructions: deliveryInstructions || undefined,
+                deliveryPin: deliveryPin || undefined,
+                deliveryAddressId: selectedAddressId ?? undefined,
               });
+              await persistAddressIfRequested();
               setMpesaStep("done");
               setOrderSuccess(true);
               setShowCheckout(false);

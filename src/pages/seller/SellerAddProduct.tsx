@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useDraftAutosave } from "@/hooks/use-draft-autosave";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -164,6 +165,32 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
     documents: [] as PickedFile[],
   });
 
+  // ── Offline-aware draft autosave (#57): never silently lose seller work ──
+  const draft = useDraftAutosave("nexora:draft:listing");
+  const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null);
+  const draftRestoredRef = useRef(false);
+  useEffect(() => {
+    if (draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+    const d = draft.loadDraft();
+    if (d?.data && ((d.data as any).title || (d.data as any).category)) {
+      setForm((prev) => ({
+        ...prev,
+        ...(d.data as object),
+        // File objects can't be persisted — images must be re-picked.
+        images: [],
+        documents: [],
+      } as any));
+      setDraftRestoredAt(d.savedAt);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Debounced draft write on every form change.
+  useEffect(() => {
+    draft.saveDraft(form);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form]);
+
   const dbCategories = useQuery(api.adminCategories.getActiveCategories);
   const productCategories = dbCategories && dbCategories.length > 0
     ? dbCategories.map(c => ({
@@ -304,6 +331,8 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
       });
 
       // Return to the panel that owns the listing.
+      draft.clearDraft();
+      setDraftRestoredAt(null);
       navigate(forcedFreelance ? "/freelance/services" : "/seller");
     } catch (err: any) {
       setError(err.message || "Failed to publish. Please try again.");
@@ -337,6 +366,14 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
             onPublish={handlePublish}
             onBack={() => (step > 0 ? setStep(step - 1) : navigate("/freelance/services"))}
           />
+          <DraftStatusBanner
+            status={draft.status}
+            savedAt={draft.savedAt}
+            online={draft.online}
+            imageCount={draft.imageCount}
+            restoredAt={draftRestoredAt}
+            onDismiss={() => setDraftRestoredAt(null)}
+          />
         </div>
       </div>
     );
@@ -345,6 +382,14 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
   return (
     <SellerLayout>
       <div className="max-w-4xl mx-auto">
+        <DraftStatusBanner
+          status={draft.status}
+          savedAt={draft.savedAt}
+          online={draft.online}
+          imageCount={draft.imageCount}
+          restoredAt={draftRestoredAt}
+          onDismiss={() => setDraftRestoredAt(null)}
+        />
         <PublishWizard
           step={step}
           setStep={setStep}
@@ -365,6 +410,50 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
         />
       </div>
     </SellerLayout>
+  );
+}
+
+/**
+ * Offline-aware draft status (#57): explicit "Saved locally / Syncing / Synced
+ * / Failed to save" plus a restore notice. Never silently loses seller work.
+ */
+function DraftStatusBanner({
+  status,
+  savedAt,
+  online,
+  imageCount,
+  restoredAt,
+  onDismiss,
+}: {
+  status: "idle" | "saving" | "saved" | "failed";
+  savedAt: number | null;
+  online: boolean;
+  imageCount: number;
+  restoredAt: number | null;
+  onDismiss: () => void;
+}) {
+  if (status === "idle" && !restoredAt && online) return null;
+  const timeLabel = (ts: number) =>
+    new Date(ts).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
+  return (
+    <div className="mb-4 space-y-2">
+      {restoredAt && (
+        <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-nx-cyan/[0.04] border border-nx-cyan/15">
+          <p className="text-xs text-white/60">
+            <span className="text-nx-cyan font-medium">Draft restored</span> — saved locally at {timeLabel(restoredAt)}.
+            {imageCount > 0 && <> {imageCount} photo{imageCount > 1 ? "s" : ""} must be re-picked (photos are never stored on the phone).</>}
+          </p>
+          <button onClick={onDismiss} className="text-[11px] text-white/30 hover:text-white/70 shrink-0">Dismiss</button>
+        </div>
+      )}
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5">
+        {!online && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />}
+        {!online && <span className="text-[11px] text-amber-400">You're offline — your work is saved on this phone and will publish when connectivity returns.</span>}
+        {online && status === "saving" && <span className="text-[11px] text-white/30">Saving draft…</span>}
+        {online && status === "saved" && savedAt && <span className="text-[11px] text-white/25">Draft saved locally · {timeLabel(savedAt)}</span>}
+        {online && status === "failed" && <span className="text-[11px] text-red-400">Couldn't save draft (storage full?) — copy your text somewhere safe.</span>}
+      </div>
+    </div>
   );
 }
 
