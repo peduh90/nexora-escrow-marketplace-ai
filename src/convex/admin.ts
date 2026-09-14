@@ -151,6 +151,7 @@ export const getDashboardStats = query({
 
     // Freelance marketplace stats
     const freelanceProfiles = await ctx.db.query("freelanceProfiles").collect();
+    const flProfileUserIds = new Set<string>(freelanceProfiles.map((p: any) => (p as any).userId));
     const freelanceTasks = await ctx.db.query("freelanceTasks").collect();
     const freelanceProjects = await ctx.db.query("freelanceProjects").collect();
     const freelanceApplications = await ctx.db.query("freelanceApplications").collect();
@@ -165,7 +166,9 @@ export const getDashboardStats = query({
         buyers: buyers.length,
         sellers: sellers.length,
         admins: realUsers.filter((u) => u.role === "admin").length,
-        freelancers: freelanceProfiles.length,
+        // Freelancers counted by role OR profile — the join flow assigns the
+        // role at signup, profiles only appear once completed.
+        freelancers: realUsers.filter((u: any) => u.role === "freelancer" || flProfileUserIds.has(u._id as any)).length,
         // Counted by role, not by who has posted a task — an employer with no
         // job posts yet is still an employer account.
         employers: realUsers.filter((u) => u.role === "employer").length,
@@ -250,6 +253,9 @@ export const getAllUsers = query({
     // Phase 2/3: surface service & transport provider status in User Management.
     const serviceProfiles = await ctx.db.query("serviceProfiles").collect();
     const transportProfiles = await ctx.db.query("transportProfiles").collect();
+    // Freelance layer: skills/title/rating from freelanceProfiles so the admin
+    // users table can show what a freelancer actually does.
+    const freelanceProfiles = await ctx.db.query("freelanceProfiles").collect();
 
     return users.map((u) => {
       const userListings = listings.filter((l) => l.sellerId === u._id);
@@ -258,6 +264,7 @@ export const getAllUsers = query({
       );
       const svcProfile = serviceProfiles.find((p: any) => (p as any).userId === u._id);
       const trpProfile = transportProfiles.find((p: any) => (p as any).userId === u._id);
+      const flProfile = freelanceProfiles.find((p: any) => (p as any).userId === u._id);
       const {
         passwordHash: _ph,
         tokenIdentifier: _ti,
@@ -282,6 +289,11 @@ export const getAllUsers = query({
         serviceVerified: !!(svcProfile as any)?.adminVerified,
         transportType: (trpProfile as any)?.serviceType,
         transportVerified: (trpProfile as any)?.verificationStatus === "verified",
+        // Freelance info for the admin users table.
+        freelanceTitle: (flProfile as any)?.title,
+        freelanceSkills: (flProfile as any)?.skills,
+        freelanceStatus: (flProfile as any)?.status,
+        freelanceVerified: !!(flProfile as any)?.isVerified,
       };
     });
   },
@@ -297,6 +309,11 @@ export const getUserCounts = query({
     const all = await ctx.db.query("users").collect();
     const realUsers = all.filter(isRealUser);
     const freelanceProfiles = await ctx.db.query("freelanceProfiles").collect();
+    // A freelancer is a PERSON, not just a completed profile: count every
+    // account with the freelancer role (the freelance join flow assigns it
+    // at signup) plus anyone with a freelance profile.
+    const flProfileUserIds = new Set<string>(freelanceProfiles.map((p: any) => (p as any).userId));
+    const isFreelancerAccount = (u: any) => u.role === "freelancer" || flProfileUserIds.has(u._id as any);
 
     // Sellers include still-verifying accounts (pendingRole === "seller") so
     // new seller registrations are counted the moment they sign up.
@@ -324,7 +341,8 @@ export const getUserCounts = query({
       total: realUsers.length,
       buyers: buyers.length,
       sellers: sellers.length,
-      freelancers: freelanceProfiles.length,
+      freelancers: realUsers.filter(isFreelancerAccount).length,
+      freelanceProfiles: freelanceProfiles.length,
       employers: employers.length,
       admins: admins.length,
       serviceProviders: realUsers.filter((u: any) => providerUserIds.has(u._id as any)).length,

@@ -31,7 +31,9 @@ export default function AdminUsers() {
   const effectiveRole = (u: any) => {
     if (u.role === "admin") return "admin";
     if (u.role === "seller" || u.businessName || u.pendingRole === "seller") return "seller";
-    if (u.role === "freelancer") return "freelancer";
+    // A freelancer is a person: role assigned by the freelance join flow OR a
+    // completed freelance profile. The two must agree with the stat card.
+    if (u.role === "freelancer" || u.freelanceTitle) return "freelancer";
     if (u.role === "employer") return "employer";
     if (u.role === "driver") return "driver";
     return "buyer";
@@ -137,6 +139,7 @@ export default function AdminUsers() {
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">User</th>
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden md:table-cell">Role</th>
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden lg:table-cell">Location</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden lg:table-cell">Freelance</th>
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden xl:table-cell">Service</th>
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">KYC</th>
                   <th className="text-right px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Actions</th>
@@ -187,6 +190,19 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-4 py-3.5 hidden lg:table-cell">
                       <p className="text-[10px] text-white/25">{[user.county, user.town].filter(Boolean).join(", ") || "—"}</p>
+                    </td>
+                    <td className="px-4 py-3.5 hidden lg:table-cell">
+                      {user.freelanceTitle ? (
+                        <button
+                          onClick={() => navigate("/admin/freelancers")}
+                          title={`Freelance profile — ${user.freelanceTitle} · ${(user.freelanceSkills || []).slice(0, 3).join(", ")}`}
+                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-medium bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20 transition-colors"
+                        >
+                          {user.freelanceTitle}{user.freelanceVerified ? " ✓" : ""}
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-white/15">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3.5 hidden xl:table-cell">
                       {user.serviceType || user.transportType ? (

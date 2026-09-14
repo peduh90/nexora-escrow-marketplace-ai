@@ -94,6 +94,7 @@ const TermsPage = lazy(() => import("./pages/Terms.tsx"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers.tsx"));
 const AdminSellers = lazy(() => import("./pages/admin/AdminSellers.tsx"));
+const AdminFreelancers = lazy(() => import("./pages/admin/AdminFreelancers.tsx"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders.tsx"));
 const AdminPayments = lazy(() => import("./pages/admin/AdminPayments.tsx"));
@@ -313,6 +314,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/creator/agreement" element={<CreatorAgreement />} />
               <Route path="/admin/referrals" element={<RequireAdmin><AdminReferrals /></RequireAdmin>} />
               <Route path="/admin/services" element={<RequireAdmin><AdminServices /></RequireAdmin>} />
+              <Route path="/admin/freelancers" element={<RequireAdmin><AdminFreelancers /></RequireAdmin>} />
 
               {/* ── Local Services & Transport (Kenya-first) ── */}
               <Route path="/services" element={<ServicesHub />} />

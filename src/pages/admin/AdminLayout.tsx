@@ -22,13 +22,19 @@ const navSections = [
     { icon: Users, label: "All Users", path: "/admin/users" },
     { icon: Eye, label: "Verification", path: "/admin/kyc" },
     { icon: Share2, label: "Creator Program", path: "/admin/referrals" },
-    { icon: MapPin, label: "Services & Transport", path: "/admin/services" },
   ]},
-  { label: "MARKETPLACE", items: [
+  { label: "MARKETPLACE · PRODUCTS", items: [
     { icon: Package, label: "Products", path: "/admin/products" },
     { icon: ShoppingCart, label: "Orders", path: "/admin/orders" },
     { icon: MessageSquare, label: "Messages", path: "/admin/messages" },
     { icon: Scale, label: "Reviews", path: "/admin/reviews" },
+  ]},
+  { label: "FREELANCE", items: [
+    { icon: Briefcase, label: "Freelancers", path: "/admin/freelancers" },
+    { icon: Briefcase, label: "Job Board", path: "/admin/jobs" },
+  ]},
+  { label: "SERVICES & TRANSPORT", items: [
+    { icon: MapPin, label: "Local Services", path: "/admin/services" },
   ]},
   { label: "FINANCES", items: [
     { icon: CreditCard, label: "Payments", path: "/admin/payments" },
@@ -46,7 +52,6 @@ const navSections = [
     { icon: AlertTriangle, label: "Reports", path: "/admin/reports" },
   ]},
   { label: "PLATFORM", items: [
-    { icon: Briefcase, label: "Job Board", path: "/admin/jobs" },
     { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
     { icon: Activity, label: "System Health", path: "/admin/system" },
     { icon: Bell, label: "Notifications", path: "/admin/notifications" },
