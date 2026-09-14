@@ -41,6 +41,40 @@ interface AuthProps {
   freelanceFirst?: boolean;
 }
 
+/**
+ * Map any auth-stack error to a short, human message. Convex auth surfaces
+ * expired codes / rate limits as opaque "[CONVEX ...] Server Error" strings,
+ * and provider failures as ConvexError with structured `data` — users should
+ * see neither raw.
+ */
+function friendlyAuthError(err: unknown, fallback = "Something went wrong. Please try again."): string {
+  const raw =
+    err instanceof Error
+      ? err.message
+      : typeof (err as any)?.data === "object" && (err as any)?.data?.message
+      ? String((err as any).data.message)
+      : typeof err === "string"
+      ? err
+      : "";
+  if ((err as any)?.data?.code === "email_delivery_failed") {
+    return (err as any).data.message as string;
+  }
+  if (raw.includes("Could not verify code") || raw.includes("Invalid verification code")) {
+    return "That code is invalid or has expired. Tap \"Resend code\" for a fresh one.";
+  }
+  if (raw.includes("Too many failed attempts") || raw.includes("rate limit")) {
+    return "Too many attempts — please wait a few minutes, then tap \"Resend code\".";
+  }
+  if (raw.includes("Server Error") || raw.includes("Request ID")) {
+    return "That code didn't work — it may have expired. Tap \"Resend code\" for a fresh one.";
+  }
+  if (raw.includes("Not configured") || raw.includes("not configured")) {
+    return "This sign-in method isn't configured yet. Please use email sign-in.";
+  }
+  const clean = raw.split("\n")[0].replace(/\[CONVEX[^\]]*\]\s*/g, "").trim();
+  return clean || fallback;
+}
+
 function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/buyer") {
   if (returnTo?.startsWith("/") && !returnTo.startsWith("//")) {
     return returnTo;
@@ -104,6 +138,15 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   // creation) whenever it is switched to login mode.
   const sellerPanelLogin = sellerFirst === true && !isAdminLogin && sellerMode === "login";
   const [otp, setOtp] = useState("");
+  // Resend cooldown + busy flag for the email-OTP card (real resend action).
+  const [resendIn, setResendIn] = useState(0);
+  const [resendBusy, setResendBusy] = useState(false);
+  // Tick the resend countdown down once per second while it is active.
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -390,7 +433,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       setStep({ email: formData.get("email") as string });
       setIsLoading(false);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to send verification code.");
+      setError(friendlyAuthError(error, "Failed to send the verification code. Please try again."));
       setIsLoading(false);
     }
   };
@@ -516,12 +559,15 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
 
       setIsLoading(false);
     } catch (error: any) {
-      const msg = error?.message ?? "";
-      if (msg.includes("Could not verify code") || msg.includes("Invalid verification code")) {
-        setError("That code is invalid or has expired. Please request a new one.");
-      } else {
-        setError(error instanceof Error ? error.message : "Failed to send verification code.");
-      }
+      // One mapper for everything: invalid/expired codes, the hourly
+      // failed-attempt limiter (10/hour per email), and provider delivery
+      // failures all previously leaked as raw Convex "Server Error" text.
+      const msg = friendlyAuthError(error, "Couldn't verify the code. Tap \"Resend code\" for a fresh one.");
+      setError(msg);
+      // Clear the stale entry so the same dead code can never be resubmitted
+      // (repeated resubmits trip Convex's rate limiter, which reads as the
+      // generic "Server Error" users were seeing).
+      setOtp("");
       setIsLoading(false);
     }
   };
@@ -536,7 +582,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       console.error("Google sign-in error:", error);
       setError(error?.message?.includes("not configured")
         ? "Google sign-in is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in API Keys."
-        : "Google sign-in failed. " + (error?.message || "Please try again or use email sign-in."));
+        : friendlyAuthError(error, "Google sign-in failed. Please try again or use email sign-in."));
       setIsLoading(false);
     }
   };
@@ -548,7 +594,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       await signIn("anonymous");
       navigate(isFreelanceRoute ? redirect : "/buyer");
     } catch (error) {
-      setError(`Failed to sign in as guest: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setError(friendlyAuthError(error, "Couldn't start guest mode. Please try again."));
       setIsLoading(false);
     }
   };
@@ -588,7 +634,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       setResetMessage(`If an account exists for ${resetEmail}, a 6-digit reset code is on its way.`);
       setStep("forgotCode");
     } catch (err: any) {
-      setError(err.message || "Failed to send reset code. Please try again.");
+      setError(friendlyAuthError(err, "Failed to send the reset code. Please try again."));
     } finally {
       setIsLoading(false);
     }
@@ -618,7 +664,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       setShowLogin(true);
       setStep(isSellerRegister ? "signIn" : "roleSelect");
     } catch (err: any) {
-      setError(err.message || "Failed to reset password. Please try again.");
+      setError(friendlyAuthError(err, "Failed to reset the password. Please try again."));
     } finally {
       setIsLoading(false);
     }
@@ -673,7 +719,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       setError("Invalid email or password. Please check your details.");
       setLoginPassword("");
     } catch (err: any) {
-      setError(err.message || "Login failed. Please try again.");
+      setError(friendlyAuthError(err, "Login failed. Please check your details and try again."));
     } finally {
       setIsLoading(false);
     }
@@ -1242,8 +1288,8 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
                       try {
                         await requestPasswordReset({ email: resetEmail });
                         setResetMessage("A new code has been sent.");
-                      } catch {
-                        setError("Failed to resend. Please try again.");
+                      } catch (e) {
+                        setError(friendlyAuthError(e, "Failed to resend. Please try again."));
                       } finally {
                         setIsLoading(false);
                       }
@@ -1398,7 +1444,25 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
                     </InputOTP>
                   </div>
                   {error && <p className="text-sm text-red-400 text-center">{error}</p>}
-                  <p className="text-sm text-white/30 text-center">Didn't receive a code?{" "}<Button variant="link" className="p-0 h-auto text-nx-violet hover:text-nx-violet/80" onClick={() => setStep("signIn")}>Try again</Button></p>
+                  <p className="text-sm text-white/30 text-center">Didn't receive a code?{" "}<Button variant="link" className="p-0 h-auto text-nx-violet hover:text-nx-violet/80" disabled={resendIn > 0 || resendBusy} onClick={async () => {
+                      // REAL resend: calls signIn again with just the email,
+                      // generating + emailing a fresh 6-digit code. The old
+                      // "Try again" just bounced back to the email form and
+                      // left users with no working way to get another code.
+                      setResendBusy(true);
+                      setError(null);
+                      try {
+                        const fd = new FormData();
+                        fd.set("email", (step as { email: string }).email);
+                        await signIn("email-otp", fd);
+                        setOtp("");
+                        setResendIn(60);
+                      } catch (err: any) {
+                        setError(friendlyAuthError(err, "Couldn't resend right now — wait a moment and try again."));
+                      } finally {
+                        setResendBusy(false);
+                      }
+                    }}>{resendBusy ? "Sending…" : resendIn > 0 ? `Resend code (${resendIn}s)` : "Resend code"}</Button></p>
                 </CardContent>
                 <CardFooter className="flex-col gap-2 pb-6">
                   <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white" disabled={isLoading || otp.length !== 6}>

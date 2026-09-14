@@ -1,5 +1,6 @@
 import { Email } from "@convex-dev/auth/providers/Email";
 import axios from "axios";
+import { ConvexError } from "convex/values";
 import { RandomReader, generateRandomString } from "@oslojs/crypto/random";
 
 export const emailOtp = Email({
@@ -30,8 +31,19 @@ export const emailOtp = Email({
           },
         },
       );
-    } catch (error) {
-      throw new Error(JSON.stringify(error));
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const detail = error?.response?.data ? JSON.stringify(error.response.data).slice(0, 200) : error?.message;
+      console.error("[emailOtp] Failed to send verification email:", status, detail);
+      // Throw a ConvexError so the structured data reaches the client as
+      // error.data — a plain Error here is masked into the opaque
+      // "[CONVEX A(auth:signIn)] Server Error" banner users saw before.
+      throw new ConvexError({
+        code: "email_delivery_failed",
+        message:
+          "We couldn't email your verification code right now. Check your connection, then tap \"Resend code\" — it usually works on the next try.",
+        detail,
+      });
     }
   },
 });
