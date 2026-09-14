@@ -141,7 +141,7 @@ export const adminReviewAgreement = mutation({
         ? "Your Creator Referral Agreement was approved. Your referral link is now active in the Creator Program."
         : `Your Creator Referral Agreement was not approved.${args.note ? ` Note: ${args.note}` : ""}`,
       read: false,
-      link: "/freelance/dashboard",
+      link: "/creator",
       createdAt: Date.now(),
     });
     return { success: true };

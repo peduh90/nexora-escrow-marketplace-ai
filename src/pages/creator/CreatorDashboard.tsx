@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import {
   Shield, Copy, Check, Loader2, Users, UserCheck, Store, PenLine,
   TrendingUp, Wallet, Clock, Sparkles, ArrowLeft, ExternalLink, Share2,
-  AlertTriangle, Ban, Send, Link2,
+  AlertTriangle, Ban, Send, Link2, FileText, Lock,
 } from "lucide-react";
+import { CreatorAgreementFlow } from "./CreatorAgreement";
 
 const PLATFORMS = [
   { value: "tiktok", label: "TikTok" },
@@ -100,6 +101,10 @@ function CreatorDashboardInner() {
   const navigate = useNavigate();
   const data = useQuery(api.referral.getMyDashboard);
   const applyToBeCreator = useMutation(api.referral.applyToBeCreator);
+  // Hard gate: the signed Creator Referral Agreement must be approved by an
+  // admin before ANY dashboard content (link, code, stats) is shown.
+  const myAgreement = useQuery(api.referralAgreement.getMyAgreement);
+  const agreementApproved = (myAgreement as any)?.status === "approved";
 
   const [form, setForm] = useState({
     displayName: "",
@@ -148,8 +153,8 @@ function CreatorDashboardInner() {
     }
   };
 
-  const submitApplication = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitApplication = async (e?: { preventDefault?: () => void }) => {
+    e?.preventDefault?.();
     setSubmitting(true);
     try {
       await applyToBeCreator({
@@ -167,10 +172,52 @@ function CreatorDashboardInner() {
     }
   };
 
-  if (data === undefined) {
+  if (data === undefined || myAgreement === undefined) {
     return (
       <div className="min-h-screen bg-[#07070c] flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+      </div>
+    );
+  }
+
+  // ─── Agreement gate (after applying): no dashboard, no referral link
+  //  until the signed Creator Referral Agreement is admin-approved. ───
+  if (creator && !agreementApproved) {
+    return (
+      <div className="min-h-screen bg-[#07070c] text-white">
+        <nav className="border-b border-white/5">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+            <button onClick={() => navigate("/")} className="flex items-center gap-2 text-sm text-white/60 hover:text-white">
+              <ArrowLeft className="w-4 h-4" /> Back to Nexora
+            </button>
+            <div className="flex items-center gap-2 text-sm font-semibold tracking-wide text-white/50">
+              <Sparkles className="w-4 h-4 text-violet-400" /> CREATOR PROGRAM
+            </div>
+          </div>
+        </nav>
+
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-10">
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] p-5 md:p-6 flex items-start gap-3">
+            <Lock className="w-5 h-5 text-amber-300 mt-0.5 shrink-0" />
+            <div>
+              <h1 className="text-lg md:text-xl font-bold">Before your dashboard unlocks</h1>
+              <p className="mt-1.5 text-sm text-white/60 leading-relaxed">
+                Every creator must fill and sign the Nexora Creator Referral Declaration &amp; Agreement
+                — it is reviewed by the Nexora team before your referral link goes live. Nothing is lost:
+                your application and any referrals already track behind the scenes.
+              </p>
+              <ol className="mt-3 space-y-1.5 text-sm text-white/50 list-decimal list-inside">
+                <li><span className="text-white/80">Fill &amp; sign the agreement</span> — right here, in the document below.</li>
+                <li><span className="text-white/80">Nexora reviews it</span> — usually quick; you'll get a notification.</li>
+                <li><span className="text-white/80">Dashboard + referral link unlock</span> — share and start earning.</li>
+              </ol>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <CreatorAgreementFlow />
+          </div>
+        </div>
       </div>
     );
   }
@@ -198,7 +245,15 @@ function CreatorDashboardInner() {
             changes your marketplace role.
           </p>
 
-          <form onSubmit={submitApplication} className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 md:p-7 space-y-5">
+          <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 md:p-7 space-y-5">
+            <div className="flex items-start gap-3 rounded-xl border border-violet-400/20 bg-violet-500/[0.06] p-4">
+              <FileText className="w-5 h-5 text-violet-300 mt-0.5 shrink-0" />
+              <p className="text-sm text-white/60 leading-relaxed">
+                <span className="text-white font-semibold">Two steps to go live:</span> ① submit this
+                application, ② fill &amp; sign the Creator Referral Agreement (opens right after). Your
+                referral link activates once Nexora approves your signed agreement.
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-white/80 mb-1.5">Creator / brand name *</label>
               <input
@@ -264,14 +319,15 @@ function CreatorDashboardInner() {
             </div>
 
             <button
-              type="submit"
+              type="button"
+              onClick={submitApplication}
               disabled={submitting}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-violet-500 hover:bg-violet-400 disabled:opacity-50 px-6 py-3.5 font-semibold transition-colors"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               {submitting ? "Submitting…" : "Submit application"}
             </button>
-          </form>
+          </div>
         </div>
       </div>
     );
