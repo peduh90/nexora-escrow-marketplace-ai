@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { useMutation } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { isPasswordValid } from "@/lib/password-strength";
@@ -121,7 +121,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   const [smsPhone, setSmsPhone] = useState("");
   const [smsCode, setSmsCode] = useState("");
   const [smsNote, setSmsNote] = useState<string | null>(null);
-  const deliverPhoneCode = useMutation(api.phoneVerification.deliverPhoneCode);
+  const deliverPhoneCode = useAction(api.phoneVerification.deliverPhoneCode);
   const verifyPhoneCode = useMutation(api.phoneVerification.verifyPhoneCode);
 
   const sendSmsCode = async () => {
@@ -1305,6 +1305,52 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
             </Card>
           )}
 
+          {/* SMS phone verification (post-signup, skippable) */}
+          {smsStage !== "idle" && (
+            <Card className="w-full max-w-[420px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
+              <CardHeader className="text-center pt-6">
+                <div className="w-12 h-12 rounded-full bg-emerald-400/10 flex items-center justify-center mx-auto mb-3 text-xl">📱</div>
+                <CardTitle className="text-xl text-white">
+                  {smsStage === "awaiting" ? "Enter the SMS code" : "Verify your phone"}
+                </CardTitle>
+                <CardDescription className="text-white/40">
+                  {smsStage === "awaiting"
+                    ? <>We sent a 6-digit code by SMS to <span className="text-white/60 font-medium">{smsPhone}</span></>
+                    : "Get a code on your phone too (the email code is already confirmed). Optional — skip anytime."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pb-4 space-y-3">
+                {smsStage === "offer" && (
+                  <div className="flex items-center gap-2">
+                    <Input value={smsPhone} onChange={(e) => setSmsPhone(e.target.value)} placeholder="0712 345 678" type="tel" className="bg-white/[0.03] border-white/10 text-white placeholder:text-white/20" />
+                    <Button onClick={sendSmsCode} disabled={smsPhone.replace(/[^0-9]/g, "").length < 9} className="bg-nx-emerald hover:bg-nx-emerald/80 text-black shrink-0">
+                      Send SMS code
+                    </Button>
+                  </div>
+                )}
+                {smsStage === "awaiting" && (
+                  <>
+                    <Input value={smsCode} onChange={(e) => setSmsCode(e.target.value)} placeholder="6-digit code from the SMS" inputMode="numeric" maxLength={6} className="bg-white/[0.03] border-white/10 text-white text-center tracking-[0.4em] placeholder:text-white/20 placeholder:tracking-normal" />
+                    <Button onClick={confirmSmsCode} disabled={smsCode.length < 4} className="w-full bg-nx-emerald hover:bg-nx-emerald/80 text-black">Verify phone</Button>
+                    <button onClick={sendSmsCode} className="w-full text-center text-xs text-white/35 hover:text-white/60">Resend code</button>
+                  </>
+                )}
+                {smsNote && smsNote !== "verified" && <p className="text-xs text-amber-300">{smsNote}</p>}
+                {smsNote === "verified" && <p className="text-xs text-nx-emerald">Phone verified ✓ — continue to your panel.</p>}
+              </CardContent>
+              <CardFooter className="pb-6">
+                <Button
+                  variant="ghost"
+                  onClick={() => { setSmsStage("idle"); if (pendingTarget) { try { navigate(pendingTarget); } catch {} setPendingTarget(null); } }}
+                  className="w-full text-white/40 hover:text-white hover:bg-white/[0.02]"
+                >
+                  {smsNote === "verified" ? "Continue to my panel →" : "Skip for now →"}
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
+
+          {/* email OTP card */}
           {typeof step === "object" && (
             <Card className="w-full max-w-[420px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
