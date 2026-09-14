@@ -927,3 +927,326 @@ export const updatePlatformSetting = mutation({
     return { success: true };
   },
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMMAND CENTER — one query powering the upgraded admin dashboard:
+// actionable alerts, money-movement reconciliation, 7-day trends, and
+// cross-panel deep links. Every number comes from real tables.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const getCommandCenter = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const [
+      users, listings, escrows, walletTx, disputes, deliveries, reviews,
+      conversations, serviceProfiles, transportProfiles, freelanceProfiles,
+      supportTickets, kycApps,
+    ] = await Promise.all([
+      ctx.db.query("users").collect(),
+      ctx.db.query("listings").collect(),
+      ctx.db.query("escrows").collect(),
+      ctx.db.query("walletTransactions").collect(),
+      ctx.db.query("disputes").collect(),
+      ctx.db.query("deliveries").collect(),
+      ctx.db.query("reviews").collect(),
+      ctx.db.query("conversations").collect(),
+      ctx.db.query("serviceProfiles").collect(),
+      ctx.db.query("transportProfiles").collect(),
+      ctx.db.query("freelanceProfiles").collect(),
+      ctx.db.query("supportTickets").collect(),
+      ctx.db.query("kycApplications").collect(),
+    ]);
+
+    const now = Date.now();
+    const DAY = 86400000;
+    const realUsers = users.filter(isRealUser);
+    const flProfileUserIds = new Set<string>(
+      freelanceProfiles.map((p: any) => (p as any).userId)
+    );
+
+    // ── Money movement (reconciliation) ──
+    const completedEscrows = escrows.filter((e: any) => ["released", "completed"].includes((e as any).status));
+    const pendingEscrows = escrows.filter((e: any) => ["funded", "active", "delivery", "inspection"].includes((e as any).status));
+    const deposits = walletTx.filter((t: any) => (t as any).type === "deposit" && (t as any).status === "completed");
+    const withdrawals = walletTx.filter((t: any) => (t as any).type === "withdrawal");
+    const pendingWithdrawals = withdrawals.filter((t: any) => (t as any).status === "pending");
+    const refunds = walletTx.filter((t: any) => (t as any).type === "refund");
+
+    // ── 7-day trend (real daily buckets) ──
+    const trend: Array<{ day: string; orders: number; revenue: number; users: number }> = [];
+    for (let i = 6; i >= 0; i--) {
+      const start = now - (i + 1) * DAY;
+      const end = now - i * DAY;
+      trend.push({
+        day: new Date(end).toLocaleDateString("en-GB", { weekday: "short" }),
+        orders: escrows.filter((e: any) => (e as any).createdAt >= start && (e as any).createdAt < end).length,
+        revenue: completedEscrows
+          .filter((e: any) => ((e as any).releasedAt || (e as any).createdAt) >= start && ((e as any).releasedAt || (e as any).createdAt) < end)
+          .reduce((s: number, e: any) => s + ((e as any).platformFee || 0), 0),
+        users: realUsers.filter((u: any) => (u as any)._creationTime >= start && (u as any)._creationTime < end).length,
+      });
+    }
+
+    // ── Actionable alerts (every one is a real condition + deep link) ──
+    const alerts: Array<{ severity: "critical" | "warning" | "info"; title: string; detail: string; link: string }> = [];
+    const openDisputes = disputes.filter((d: any) => ["open", "under_review", "escalated"].includes((d as any).status));
+    for (const d of openDisputes) {
+      const ageDays = Math.floor((now - ((d as any).createdAt || now)) / DAY);
+      if (ageDays >= 3) {
+        alerts.push({
+          severity: "critical",
+          title: `Dispute aging ${ageDays} days`,
+          detail: (d as any).title || (d as any).reason || "Dispute needs resolution",
+          link: "/admin/disputes",
+        });
+      }
+    }
+    if (pendingWithdrawals.length > 0) {
+      alerts.push({
+        severity: "warning",
+        title: `${pendingWithdrawals.length} withdrawal${pendingWithdrawals.length === 1 ? "" : "s"} awaiting payout`,
+        detail: `KES ${pendingWithdrawals.reduce((s: number, w: any) => s + (w as any).amount, 0).toLocaleString()} owed to users`,
+        link: "/admin/withdrawals",
+      });
+    }
+    const pendingKyc = kycApps.filter((k: any) => (k as any).status === "pending");
+    if (pendingKyc.length > 0) {
+      alerts.push({
+        severity: "info",
+        title: `${pendingKyc.length} KYC application${pendingKyc.length === 1 ? "" : "s"} to review`,
+        detail: "Sellers waiting for verification",
+        link: "/admin/kyc",
+      });
+    }
+    const suspendedUsers = realUsers.filter((u: any) => (u as any).accountStatus === "suspended");
+    const fraudReports = supportTickets.filter((r: any) =>
+      ["open", "ai_handling", "escalated", "human_review"].includes((r as any).status)
+    );
+    if (fraudReports.length > 0) {
+      alerts.push({
+        severity: "warning",
+        title: `${fraudReports.length} open report${fraudReports.length === 1 ? "" : "s"}`,
+        detail: "User reports need triage",
+        link: "/admin/reports",
+      });
+    }
+    const unverifiedProviders = serviceProfiles.filter((p: any) => !(p as any).adminVerified).length +
+      transportProfiles.filter((p: any) => (p as any).verificationStatus !== "verified").length;
+    if (unverifiedProviders > 0) {
+      alerts.push({
+        severity: "info",
+        title: `${unverifiedProviders} service/transport provider${unverifiedProviders === 1 ? "" : "s"} pending verification`,
+        detail: "Providers cannot accept jobs until verified",
+        link: "/admin/services",
+      });
+    }
+    const staleEscrows = pendingEscrows.filter(
+      (e: any) => now - ((e as any).createdAt || now) > 14 * DAY
+    );
+    if (staleEscrows.length > 0) {
+      alerts.push({
+        severity: "warning",
+        title: `${staleEscrows.length} order${staleEscrows.length === 1 ? "" : "s"} stuck 14+ days`,
+        detail: "Funds still in escrow with no movement",
+        link: "/admin/escrow",
+      });
+    }
+    const recentLowReviews = reviews.filter(
+      (r: any) => (r as any).rating <= 2 && (now - ((r as any).createdAt || 0)) < 7 * DAY
+    );
+    if (recentLowReviews.length >= 3) {
+      alerts.push({
+        severity: "warning",
+        title: `${recentLowReviews.length} low ratings this week`,
+        detail: "Possible quality or fraud signal",
+        link: "/admin/reviews",
+      });
+    }
+    const severityRank = { critical: 0, warning: 1, info: 2 } as const;
+    alerts.sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
+
+    // ── Users needing attention (finite actionable lists) ──
+    const pendingProviderList = [
+      ...serviceProfiles.filter((p: any) => !(p as any).adminVerified).map((p: any) => ({
+        id: p._id as string,
+        name: (p as any).displayName,
+        kind: (p as any).serviceType,
+        createdAt: (p as any).createdAt,
+      })),
+      ...transportProfiles.filter((p: any) => (p as any).verificationStatus !== "verified").map((p: any) => ({
+        id: p._id as string,
+        name: (p as any).displayName,
+        kind: (p as any).serviceType,
+        createdAt: (p as any).createdAt,
+      })),
+    ].slice(0, 8);
+
+    return {
+      counts: {
+        users: realUsers.length,
+        buyers: realUsers.filter((u: any) => (u as any).role === "buyer").length,
+        sellers: realUsers.filter((u: any) => (u as any).role === "seller" || !!(u as any).businessName).length,
+        freelancers: realUsers.filter((u: any) => (u as any).role === "freelancer" || flProfileUserIds.has(u._id as any)).length,
+        employers: realUsers.filter((u: any) => (u as any).role === "employer").length,
+        suspended: suspendedUsers.length,
+        providers: new Set<string>([
+          ...serviceProfiles.map((p: any) => (p as any).userId),
+          ...transportProfiles.map((p: any) => (p as any).userId),
+        ]).size,
+        listings: listings.length,
+        activeListings: listings.filter((l: any) => (l as any).status === "active").length,
+        orders: escrows.length,
+        activeOrders: pendingEscrows.length,
+        disputes: openDisputes.length,
+        inTransit: deliveries.filter((d: any) => (d as any).status === "in_transit").length,
+        conversations: conversations.length,
+      },
+      finance: {
+        gmv: escrows.reduce((s: number, e: any) => s + ((e as any).amount || 0), 0),
+        revenue: completedEscrows.reduce((s: number, e: any) => s + ((e as any).platformFee || 0), 0),
+        buyerFees: completedEscrows.reduce((s: number, e: any) => s + ((e as any).buyerFee || 0), 0),
+        heldInEscrow: pendingEscrows.reduce((s: number, e: any) => s + ((e as any).amount || 0), 0),
+        deposits: deposits.reduce((s: number, t: any) => s + ((t as any).amount || 0), 0),
+        withdrawalsPaid: withdrawals.filter((t: any) => (t as any).status === "completed").reduce((s: number, t: any) => s + ((t as any).amount || 0), 0),
+        withdrawalsPending: pendingWithdrawals.reduce((s: number, t: any) => s + ((t as any).amount || 0), 0),
+        refunded: refunds.reduce((s: number, t: any) => s + ((t as any).amount || 0), 0),
+        pendingWithdrawalCount: pendingWithdrawals.length,
+      },
+      trend,
+      alerts,
+      pendingProviders: pendingProviderList,
+      recentOrders: escrows
+        .slice()
+        .sort((a: any, b: any) => ((b as any).createdAt || 0) - ((a as any).createdAt || 0))
+        .slice(0, 8)
+        .map((e: any) => ({
+          id: e._id as string,
+          title: (e as any).title || "Order",
+          amount: (e as any).amount || 0,
+          status: (e as any).status,
+          marketplace: (e as any).marketplace,
+          createdAt: (e as any).createdAt,
+        })),
+    };
+  },
+});
+
+// ─── WITHDRAWAL APPROVALS ───────────────────────────────────────────────────
+// Admin marks a pending withdrawal paid (M-Pesa sent the money) or rejects it
+// (auto-refund back to the user's wallet). Every action is audit-logged.
+
+export const reviewWithdrawal = mutation({
+  args: {
+    transactionId: v.string(),
+    approve: v.boolean(),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await requireAdmin(ctx);
+    const tx = (await ctx.db.get(args.transactionId as any)) as any;
+    if (!tx) throw new Error("Withdrawal not found");
+    if (tx.type !== "withdrawal") throw new Error("Not a withdrawal transaction");
+    if (tx.status !== "pending" && tx.status !== "processing") {
+      throw new Error(`This withdrawal is already ${tx.status}`);
+    }
+
+    if (args.approve) {
+      await ctx.db.patch(tx._id, { status: "completed" });
+      await auditLog(
+        ctx as any, user._id, user.name || user.email || "Admin",
+        "WITHDRAWAL_APPROVED", "walletTransaction", tx._id,
+        `KES ${tx.amount} paid out. ${args.note || ""}`
+      );
+      await ctx.db.insert("notifications", {
+        userId: tx.userId,
+        type: "payment",
+        title: "Withdrawal paid ✓",
+        message: `KES ${tx.amount.toLocaleString()} has been sent to your M-Pesa. ${args.note || ""}`.trim(),
+        read: false,
+        link: "/buyer/wallet",
+        createdAt: Date.now(),
+      });
+      return { success: true, status: "completed" as const };
+    }
+
+    // Reject → auto-refund the money back to the wallet.
+    const u = (await ctx.db.get(tx.userId as any)) as any;
+    await ctx.db.patch(tx._id, { status: "failed" });
+    if (u) {
+      await ctx.db.patch(u._id, { walletBalance: (u.walletBalance || 0) + tx.amount });
+      await ctx.db.insert("walletTransactions", {
+        userId: u._id,
+        type: "refund",
+        amount: tx.amount,
+        currency: "KES",
+        status: "completed",
+        reference: `NX-WDREF-${Date.now()}`,
+        description: `Withdrawal ${tx.reference} rejected — amount returned to wallet`,
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("notifications", {
+        userId: u._id,
+        type: "payment",
+        title: "Withdrawal returned to wallet",
+        message: `Your withdrawal of KES ${tx.amount.toLocaleString()} could not be processed and the amount is back in your wallet. ${args.note || ""}`.trim(),
+        read: false,
+        link: "/buyer/wallet",
+        createdAt: Date.now(),
+      });
+    }
+    await auditLog(
+      ctx as any, user._id, user.name || user.email || "Admin",
+      "WITHDRAWAL_REJECTED", "walletTransaction", tx._id,
+      `KES ${tx.amount} refunded to wallet. ${args.note || ""}`
+    );
+    return { success: true, status: "failed" as const };
+  },
+});
+
+// ─── WALLET ADJUSTMENT (manual correction, fully audited) ───────────────────
+// For support cases: correct a wallet by ±amount with a mandatory reason.
+
+export const adjustWallet = mutation({
+  args: {
+    userId: v.string(),
+    amount: v.number(), // positive = credit, negative = debit
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { user: admin } = await requireAdmin(ctx);
+    if (!args.reason.trim()) throw new Error("A reason is required for any wallet adjustment");
+    if (args.amount === 0) throw new Error("Adjustment amount cannot be zero");
+    const target = (await ctx.db.get(args.userId as any)) as any;
+    if (!target) throw new Error("User not found");
+
+    const newBalance = Math.max(0, (target.walletBalance || 0) + args.amount);
+    await ctx.db.patch(target._id, { walletBalance: newBalance });
+    await ctx.db.insert("walletTransactions", {
+      userId: target._id,
+      type: args.amount > 0 ? "deposit" : "withdrawal",
+      amount: Math.abs(args.amount),
+      currency: "KES",
+      status: "completed",
+      reference: `NX-ADJ-${Date.now()}`,
+      description: `Admin adjustment (${args.amount > 0 ? "+" : "-"}KES ${Math.abs(args.amount).toLocaleString()}): ${args.reason.trim()}`,
+      createdAt: Date.now(),
+    });
+    await ctx.db.insert("notifications", {
+      userId: target._id,
+      type: "payment",
+      title: args.amount > 0 ? "Wallet credited" : "Wallet adjusted",
+      message: `${args.amount > 0 ? "KES " + args.amount.toLocaleString() + " was added to" : "KES " + Math.abs(args.amount).toLocaleString() + " was deducted from"} your wallet. Reason: ${args.reason.trim()}`,
+      read: false,
+      link: "/buyer/wallet",
+      createdAt: Date.now(),
+    });
+    await auditLog(
+      ctx as any, admin._id, admin.name || admin.email || "Admin",
+      "WALLET_ADJUSTMENT", "user", target._id,
+      `${args.amount > 0 ? "+" : "-"}KES ${Math.abs(args.amount).toLocaleString()} — ${args.reason.trim()}`
+    );
+    return { success: true, newBalance };
+  },
+});

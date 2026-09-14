@@ -1,15 +1,22 @@
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Wallet, Search, Eye, ChevronUp } from "lucide-react";
+import { Wallet, Search, Eye, ChevronUp, SlidersHorizontal, Loader2 } from "lucide-react";
 
 export default function AdminWallets() {
   const allUsers = useQuery(api.admin.getAllUsers);
   const allEscrows = useQuery(api.admin.getAllEscrows);
   const allTransactions = useQuery(api.wallet.getWalletTransactions);
+  const adjustWallet = useMutation(api.admin.adjustWallet);
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Support correction: credit/debit a wallet with a mandatory reason.
+  const [adjustTarget, setAdjustTarget] = useState<{ id: string; name: string; balance: number } | null>(null);
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [adjusting, setAdjusting] = useState(false);
 
   const users = allUsers ?? [];
   const escrows = allEscrows ?? [];
@@ -145,6 +152,13 @@ export default function AdminWallets() {
                     <td className="px-4 py-3.5 text-xs text-white/40 hidden md:table-cell">KES {w.totalWithdrawn.toLocaleString()}</td>
                     <td className="px-4 py-3.5 text-right">
                       <button
+                        onClick={() => setAdjustTarget({ id: w.id, name: w.name, balance: user?.walletBalance ?? 0 })}
+                        className="p-1.5 rounded text-white/20 hover:text-nx-gold hover:bg-nx-gold/10 transition-colors"
+                        title="Adjust wallet (support correction — audited)"
+                      >
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                      </button>
+                      <button
                         onClick={() => setExpandedId(isExpanded ? null : w.id)}
                         className="p-1.5 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
                         title={isExpanded ? "Hide wallet details" : "View wallet details"}
@@ -157,6 +171,60 @@ export default function AdminWallets() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Wallet adjustment modal — audited support correction */}
+      {adjustTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setAdjustTarget(null)}>
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0A0A12] p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <SlidersHorizontal className="w-5 h-5 text-nx-gold" /> Adjust wallet — {adjustTarget.name}
+            </h3>
+            <p className="text-xs text-white/40 mt-2">
+              Current balance: <span className="text-white/80 font-semibold">KES {adjustTarget.balance.toLocaleString()}</span>. Use a positive
+              number to credit, negative to debit. The user is notified and every adjustment is audit-logged.
+            </p>
+            <input
+              type="number"
+              value={adjustAmount}
+              onChange={(e) => setAdjustAmount(e.target.value)}
+              placeholder="Amount, e.g. 500 or -250"
+              className="mt-3 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2.5 text-sm text-white outline-none focus:border-nx-gold/40 placeholder:text-white/20"
+            />
+            <textarea
+              value={adjustReason}
+              onChange={(e) => setAdjustReason(e.target.value)}
+              placeholder="Reason (required — shared with the user)..."
+              rows={3}
+              className="mt-2 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2.5 text-sm text-white outline-none focus:border-nx-gold/40 placeholder:text-white/20"
+            />
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setAdjustTarget(null)} className="flex-1 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-white/60 text-sm hover:text-white transition-colors">Cancel</button>
+              <button
+                onClick={async () => {
+                  const amt = Number(adjustAmount);
+                    if (!amt || isNaN(amt)) { toast.error("Enter a non-zero amount"); return; }
+                  if (!adjustReason.trim()) { toast.error("A reason is required"); return; }
+                  setAdjusting(true);
+                  try {
+                    const res = await adjustWallet({ userId: adjustTarget.id, amount: Math.round(amt), reason: adjustReason });
+                    toast.success(`Wallet adjusted — new balance KES ${res.newBalance.toLocaleString()}`);
+                    setAdjustTarget(null); setAdjustAmount(""); setAdjustReason("");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Adjustment failed");
+                  } finally {
+                    setAdjusting(false);
+                  }
+                }}
+                disabled={adjusting}
+                className="flex-1 py-2.5 rounded-xl bg-nx-gold text-black text-sm font-semibold hover:bg-nx-gold/85 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                {adjusting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Apply adjustment
+              </button>
+            </div>
           </div>
         </div>
       )}
