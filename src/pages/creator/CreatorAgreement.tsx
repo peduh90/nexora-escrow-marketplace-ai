@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -23,13 +23,13 @@ import {
  */
 
 const COMMISSION_ROWS = [
-  { label: "Verified user signup", placeholder: "KSh", kind: "money" },
-  { label: "Seller activation (fully active)", placeholder: "KSh", kind: "money" },
-  { label: "Freelancer activation", placeholder: "KSh", kind: "money" },
-  { label: "Employer activation (fully active)", placeholder: "KSh", kind: "money" },
-  { label: "First completed transaction", placeholder: "KSh", kind: "money" },
-  { label: "Transaction revenue share", placeholder: "%", kind: "percent" },
-  { label: "Maximum revenue share per transaction", placeholder: "KSh", kind: "money" },
+  { milestone: "Verified user signup", payout: "KSh 10" },
+  { milestone: "Seller fully activated", payout: "KSh 20" },
+  { milestone: "Freelancer fully activated", payout: "KSh 20" },
+  { milestone: "Employer fully activated", payout: "KSh 25" },
+  { milestone: "First completed transaction", payout: "KSh 30" },
+  { milestone: "Referral commission on subsequent transactions", payout: "5%" },
+  { milestone: "Maximum referral commission per transaction", payout: "KSh 50" },
 ];
 
 function Section({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
@@ -52,23 +52,13 @@ function CreatorAgreementDocument({ reviewNote }: { reviewNote?: string }) {
   const [phone, setPhone] = useState((user as any)?.phone || "");
   const [email, setEmail] = useState((user as any)?.email || "");
   const [creatorCode, setCreatorCode] = useState("");
-  const [schedule, setSchedule] = useState<Record<string, string>>({});
   const [agreed, setAgreed] = useState(false);
   const [signature, setSignature] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const allRowsFilled = useMemo(
-    () => COMMISSION_ROWS.every((r) => (schedule[r.label] || "").trim().length > 0),
-    [schedule],
-  );
-
   const handleSubmit = async () => {
     if (!agreed) {
       toast.error("Tick the agreement checkbox to continue");
-      return;
-    }
-    if (!allRowsFilled) {
-      toast.error("Fill in every commission row (or write 0 / TBC)");
       return;
     }
     setBusy(true);
@@ -80,7 +70,11 @@ function CreatorAgreementDocument({ reviewNote }: { reviewNote?: string }) {
         creatorCode: creatorCode || undefined,
         signature,
         agreedTerms: true,
-        commissionScheduleJson: JSON.stringify(schedule),
+        // The commission structure is fixed by Nexora — record the official
+        // schedule in effect at signing time for the admin's copy.
+        commissionScheduleJson: JSON.stringify(
+          Object.fromEntries(COMMISSION_ROWS.map((r) => [r.milestone, r.payout])),
+        ),
       });
       toast.success("Agreement signed — sent to the Nexora team for review");
     } catch (err: any) {
@@ -124,35 +118,30 @@ function CreatorAgreementDocument({ reviewNote }: { reviewNote?: string }) {
 
       <Section n={1} title="Creator Referral Earnings">
         <p>I understand that I may earn commissions for genuine users referred through my unique referral
-          link or code, according to the schedule below:</p>
+          link or code, according to the official Nexora commission structure below — fixed by Nexora
+          and non-negotiable:</p>
         <div className="mt-2.5 overflow-hidden rounded-lg border border-black/15">
           <table className="w-full text-xs text-[#0A0A12]">
             <thead>
               <tr className="bg-[#0A0A12] text-white">
-                <th className="text-left px-3 py-2 font-semibold">Referral / Milestone</th>
-                <th className="text-left px-3 py-2 font-semibold w-48">Commission</th>
+                <th className="text-left px-3 py-2 font-semibold">Milestone</th>
+                <th className="text-right px-3 py-2 font-semibold w-40">Payout</th>
               </tr>
             </thead>
             <tbody>
               {COMMISSION_ROWS.map((r, i) => (
-                <tr key={r.label} className={i % 2 ? "bg-black/[0.03]" : ""}>
-                  <td className="px-3 py-1.5 font-medium text-black/85">{r.label}</td>
-                  <td className="px-3 py-1">
-                    <div className="flex items-center gap-1">
-                      <span className="text-black/40 italic">{r.placeholder}</span>
-                      <input
-                        value={schedule[r.label] || ""}
-                        onChange={(e) => setSchedule((s) => ({ ...s, [r.label]: e.target.value }))}
-                        className="w-24 border-b border-black/30 bg-transparent px-1 py-0.5 outline-none focus:border-violet-500"
-                        placeholder=""
-                      />
-                    </div>
-                  </td>
+                <tr key={r.milestone} className={i % 2 ? "bg-black/[0.03]" : ""}>
+                  <td className="px-3 py-1.5 font-medium text-black/85">{r.milestone}</td>
+                  <td className="px-3 py-1.5 text-right font-bold text-black/90">{r.payout}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <p className="text-[11px] italic text-black/45">
+          Commission amounts are set solely by Nexora and may be reviewed for future referrals; they are
+          not negotiated with creators. The structure above was in effect when this agreement was signed.
+        </p>
       </Section>
 
       <Section n={2} title="Genuine Referrals">

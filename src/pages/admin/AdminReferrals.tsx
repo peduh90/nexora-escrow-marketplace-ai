@@ -759,8 +759,8 @@ function AdminReferralsInner() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-[#0A0A12] text-white">
-                      <th className="text-left px-3 py-2 font-semibold">Referral / Milestone</th>
-                      <th className="text-left px-3 py-2 font-semibold w-40">Commission</th>
+                      <th className="text-left px-3 py-2 font-semibold">Milestone</th>
+                      <th className="text-right px-3 py-2 font-semibold w-40">Payout</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -768,14 +768,14 @@ function AdminReferralsInner() {
                       let schedule: Record<string, string> = {};
                       try { schedule = openAgreement.commissionScheduleJson ? JSON.parse(openAgreement.commissionScheduleJson) : {}; } catch {}
                       const rows = [
-                        "Verified user signup", "Seller activation (fully active)", "Freelancer activation",
-                        "Employer activation (fully active)", "First completed transaction",
-                        "Transaction revenue share", "Maximum revenue share per transaction",
+                        "Verified user signup", "Seller fully activated", "Freelancer fully activated",
+                        "Employer fully activated", "First completed transaction",
+                        "Referral commission on subsequent transactions", "Maximum referral commission per transaction",
                       ];
                       return rows.map((r, i) => (
                         <tr key={r} className={i % 2 ? "bg-black/[0.03]" : ""}>
-                          <td className="px-3 py-2">{r}</td>
-                          <td className="px-3 py-2 font-medium">{schedule[r] || "—"}</td>
+                          <td className="px-3 py-2 font-medium text-black/85">{r}</td>
+                          <td className="px-3 py-2 text-right font-bold">{schedule[r] || "—"}</td>
                         </tr>
                       ));
                     })()}
