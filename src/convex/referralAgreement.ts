@@ -96,11 +96,22 @@ export const getMyAgreement = query({
   },
 });
 
-/** Admin: all agreements. */
+/** Admin: all agreements. Degrades gracefully — returns an empty list for
+ *  non-admins or mid-sync deployments instead of throwing, so the Creator
+ *  Program page never crashes on this query. */
 export const adminListAgreements = query({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity?.email) return [];
+    let role: string | null = null;
+    try {
+      const user: any = await getSessionUser(ctx);
+      role = (user?.role as string) ?? null;
+    } catch {
+      role = null;
+    }
+    if (role !== "admin" && identity.email !== ADMIN_EMAIL) return [];
     return await ctx.db.query("referralAgreements").order("desc").take(500);
   },
 });

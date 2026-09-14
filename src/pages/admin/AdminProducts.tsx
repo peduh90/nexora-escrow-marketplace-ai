@@ -10,6 +10,7 @@ export default function AdminProducts() {
   const allUsers = useQuery(api.admin.getAllUsers);
   const updateListingStatus = useMutation(api.admin.updateListingStatus);
   const [filter, setFilter] = useState("All");
+  const [world, setWorld] = useState<"all" | "product" | "freelance">("all");
   const [search, setSearch] = useState("");
   const [acting, setActing] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -23,7 +24,16 @@ export default function AdminProducts() {
     sellerName: getUser(l.sellerId)?.name || getUser(l.sellerId)?.businessName || "Unknown",
   }));
 
-  const filtered = products.filter((p: any) => {
+  // Marketplace vs Freelance: two separate worlds (per the Nexora structure).
+  // "product" = marketplace listings bought as products; "freelance" =
+  // ready-made services published to Nexora Freelance.
+  const worldFiltered = products.filter((p: any) => {
+    if (world === "product") return p.marketplace !== "freelance";
+    if (world === "freelance") return p.marketplace === "freelance";
+    return true;
+  });
+
+  const filtered = worldFiltered.filter((p: any) => {
     if (filter === "Published" && p.status !== "active") return false;
     if (filter === "Paused" && p.status !== "paused") return false;
     if (filter === "Sold" && p.status !== "sold") return false;
@@ -58,15 +68,36 @@ export default function AdminProducts() {
     <AdminLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Product Moderation</h1>
-        <p className="text-sm text-white/40 mt-1">Review, approve, pause, and remove marketplace listings</p>
+        <p className="text-sm text-white/40 mt-1">Review, approve, pause, and remove listings — Marketplace products and Freelance services separated</p>
+      </div>
+
+      {/* World switch: Marketplace vs Freelance */}
+      <div className="flex gap-2 mb-4">
+        {([
+          ["all", `All listings (${products.length})`],
+          ["product", `🛒 Marketplace products (${products.filter((p: any) => p.marketplace !== "freelance").length})`],
+          ["freelance", `💼 Freelance services (${products.filter((p: any) => p.marketplace === "freelance").length})`],
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setWorld(key as any)}
+            className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
+              world === key
+                ? "bg-nx-violet text-white"
+                : "bg-[#0A0A12] border border-white/5 text-white/45 hover:text-white/80"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Total Products", value: products.length.toString() },
-          { label: "Active", value: products.filter((p: any) => p.status === "active").length.toString() },
-          { label: "Paused", value: products.filter((p: any) => p.status === "paused").length.toString() },
-          { label: "Sold", value: products.filter((p: any) => p.status === "sold").length.toString() },
+          { label: "Total in view", value: worldFiltered.length.toString() },
+          { label: "Active", value: worldFiltered.filter((p: any) => p.status === "active").length.toString() },
+          { label: "Paused", value: worldFiltered.filter((p: any) => p.status === "paused").length.toString() },
+          { label: "Sold", value: worldFiltered.filter((p: any) => p.status === "sold").length.toString() },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-white/5 bg-[#0A0A12]">
             <p className="text-[10px] text-white/30 uppercase">{s.label}</p>

@@ -97,6 +97,7 @@ function AdminReferralsInner() {
   const convexClient = useConvex();
   const agreements = useQuery(api.referralAgreement.adminListAgreements);
   const reviewAgreement = useMutation(api.referralAgreement.adminReviewAgreement);
+  const [openAgreement, setOpenAgreement] = useState<any>(null);
   const reviewCreator = useMutation(api.referral.reviewCreator);
   const reviewReferral = useMutation(api.referral.reviewReferral);
   const reviewEarning = useMutation(api.referral.reviewEarning);
@@ -494,11 +495,12 @@ function AdminReferralsInner() {
                         {a.email} · {a.phone}{a.creatorCode ? ` · code ${a.creatorCode}` : ""} ·{" "}
                         signed {new Date(a.createdAt).toLocaleDateString()} as "{a.signature}"
                       </p>
-                      {a.commissionScheduleJson && (
-                        <p className="text-[10px] text-white/30 mt-1">
-                          Schedule: {(() => { try { return Object.entries(JSON.parse(a.commissionScheduleJson)).map(([k, v]) => `${k}: ${v}`).join(" · "); } catch { return "—"; } })()}
-                        </p>
-                      )}
+                      <button
+                        onClick={() => setOpenAgreement(a)}
+                        className="mt-2 inline-flex items-center gap-1 text-[11px] text-nx-violet hover:text-nx-violet/80 font-medium"
+                      >
+                        📄 View full signed agreement
+                      </button>
                       {a.reviewNote && <p className="text-[10px] text-white/40 mt-1">Note: {a.reviewNote}{a.reviewedBy ? ` — ${a.reviewedBy}` : ""}</p>}
                     </div>
                     {a.status === "pending" && (
@@ -721,6 +723,147 @@ function AdminReferralsInner() {
           </div>
         )}
       </div>
+
+      {/* ─── FULL SIGNED AGREEMENT VIEWER — the exact document the creator filled ─── */}
+      {openAgreement && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 p-4 md:p-10" onClick={() => setOpenAgreement(null)}>
+          <div
+            className="max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Document body — rendered like the original agreement (white paper) */}
+            <div className="bg-white text-[#0A0A12] p-6 md:p-10">
+              <div className="flex items-center gap-3 border-b-2 border-[#0A0A12] pb-3">
+                <div className="w-9 h-9 rounded bg-[#0A0A12] text-white flex items-center justify-center font-black">N</div>
+                <p className="font-bold tracking-wide">NEXORA MARKET</p>
+                <span className="text-xs text-black/40">| Creator Referral Program</span>
+              </div>
+              <h2 className="text-center text-xl md:text-2xl font-black mt-5 leading-tight">
+                NEXORA CREATOR REFERRAL<br />
+                <span className="text-violet-600">DECLARATION &amp; AGREEMENT</span>
+              </h2>
+              <p className="text-center text-[11px] text-black/40 mt-2">
+                Signed copy — submitted {new Date(openAgreement.createdAt).toLocaleString()}
+              </p>
+
+              <p className="mt-6 text-sm">
+                I, <span className="font-semibold border-b border-black/40 px-2">{openAgreement.fullName}</span>, hereby
+                confirm that I wish to participate as a Nexora Creator / Referral Partner and to promote Nexora
+                Marketplace and its services. By signing this agreement, I confirm that the information I provide is
+                accurate, and that I understand and agree to the following terms.
+              </p>
+
+              {/* 1 — the commission schedule as the creator filled it */}
+              <h3 className="text-sm font-bold mt-6"><span className="text-violet-600 mr-2">1.</span>Creator Referral Earnings</h3>
+              <div className="mt-2 overflow-hidden rounded-lg border border-black/15">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-[#0A0A12] text-white">
+                      <th className="text-left px-3 py-2 font-semibold">Referral / Milestone</th>
+                      <th className="text-left px-3 py-2 font-semibold w-40">Commission</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      let schedule: Record<string, string> = {};
+                      try { schedule = openAgreement.commissionScheduleJson ? JSON.parse(openAgreement.commissionScheduleJson) : {}; } catch {}
+                      const rows = [
+                        "Verified user signup", "Seller activation (fully active)", "Freelancer activation",
+                        "Employer activation (fully active)", "First completed transaction",
+                        "Transaction revenue share", "Maximum revenue share per transaction",
+                      ];
+                      return rows.map((r, i) => (
+                        <tr key={r} className={i % 2 ? "bg-black/[0.03]" : ""}>
+                          <td className="px-3 py-2">{r}</td>
+                          <td className="px-3 py-2 font-medium">{schedule[r] || "—"}</td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+
+              <h3 className="text-sm font-bold mt-6"><span className="text-violet-600 mr-2">2.</span>Genuine Referrals</h3>
+              <p className="mt-2 text-xs text-black/60 leading-relaxed">I agree that I will only refer genuine users. I will not create fake accounts, duplicate accounts, use bots, automated registrations, or otherwise manipulate the referral system. Nexora may review, reject, or reverse commissions associated with fraudulent, duplicate, misleading, or invalid referrals.</p>
+
+              <h3 className="text-sm font-bold mt-6"><span className="text-violet-600 mr-2">3.</span>Creator Responsibilities</h3>
+              <ul className="mt-2 list-disc pl-5 text-xs text-black/60 space-y-1">
+                <li>Promote Nexora honestly and professionally.</li>
+                <li>Provide accurate information when registering as a creator.</li>
+                <li>Use only my assigned referral link / code.</li>
+                <li>Avoid misleading customers or making false promises.</li>
+                <li>Respect Nexora's brand, users, and platform rules.</li>
+                <li>Notify Nexora if I identify suspicious referral activity.</li>
+              </ul>
+
+              <h3 className="text-sm font-bold mt-6"><span className="text-violet-600 mr-2">4.</span>Verification &amp; Payment</h3>
+              <p className="mt-2 text-xs text-black/60 leading-relaxed">I understand that commissions may only become payable after the required verification or activation conditions have been completed. I agree to provide the necessary information for creator verification and payment processing.</p>
+              <p className="mt-1 text-xs font-bold">I understand that Nexora will never require me to provide passwords, OTP codes, PINs, or other private account credentials.</p>
+
+              <h3 className="text-sm font-bold mt-6"><span className="text-violet-600 mr-2">5.</span>Commission Review</h3>
+              <p className="mt-2 text-xs text-black/60 leading-relaxed">Nexora reserves the right to review referral activity before releasing commissions. Invalid, fraudulent, duplicated, or manipulated referrals may be excluded from commission calculations. Commission rules may be updated for future referrals, while already-approved earnings will be handled according to the applicable terms at the time they were approved.</p>
+
+              <h3 className="text-sm font-bold mt-6"><span className="text-violet-600 mr-2">6.</span>Declaration</h3>
+              <blockquote className="mt-2 border-l-4 border-violet-500 pl-3 italic text-xs text-black/60">
+                "I have read, understood, and voluntarily agree to the Nexora Creator Referral Terms. I confirm that the information I have provided is accurate, and I agree to promote Nexora honestly and follow the referral rules."
+              </blockquote>
+
+              {/* Creator declaration — the filled form */}
+              <div className="mt-6 rounded-xl border border-black/15 bg-black/[0.02] p-5 text-sm space-y-2">
+                <p className="text-violet-700 font-bold">Creator Declaration — as filled &amp; signed</p>
+                <p><span className="font-semibold">Creator Full Name:</span> {openAgreement.fullName}</p>
+                <p><span className="font-semibold">Phone Number:</span> {openAgreement.phone}</p>
+                <p><span className="font-semibold">Email:</span> {openAgreement.email}</p>
+                <p><span className="font-semibold">Creator / Referral Code:</span> {openAgreement.creatorCode || "—"}</p>
+                <p><span className="font-semibold">Agreed to terms:</span> {openAgreement.agreedTerms ? "☑ Yes — checkbox ticked at signing" : "No"}</p>
+                <p><span className="font-semibold">Signature:</span> <span className="italic border-b-2 border-black/60 px-3">{openAgreement.signature}</span></p>
+                <p><span className="font-semibold">Date:</span> {new Date(openAgreement.createdAt).toLocaleDateString()}</p>
+              </div>
+
+              <p className="text-center text-[10px] text-black/40 mt-6">
+                Nexora Creator Referral Declaration &amp; Agreement • digitally signed copy for admin review
+              </p>
+            </div>
+
+            {/* Footer actions */}
+            <div className="bg-[#0A0A12] border-t border-white/10 p-4 flex flex-wrap items-center justify-between gap-3">
+              <span className={`text-xs font-semibold px-3 py-1.5 rounded-lg ${
+                openAgreement.status === "pending" ? "bg-amber-400/10 text-amber-300" :
+                openAgreement.status === "approved" ? "bg-emerald-400/10 text-emerald-300" :
+                "bg-red-400/10 text-red-300"}`}>
+                Status: {openAgreement.status}
+              </span>
+              <div className="flex items-center gap-2">
+                {openAgreement.status === "pending" && (
+                  <>
+                    <button
+                      onClick={async () => {
+                        setBusy(`agree-${openAgreement._id}`);
+                        try { await reviewAgreement({ id: openAgreement._id, approve: true }); toast.success("Agreement approved"); setOpenAgreement(null); }
+                        catch (e: any) { toast.error(e?.message || "Failed"); }
+                        finally { setBusy(null); }
+                      }}
+                      disabled={busy === `agree-${openAgreement._id}`}
+                      className="px-4 py-2 rounded-lg bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 disabled:opacity-50"
+                    >Approve agreement</button>
+                    <button
+                      onClick={async () => {
+                        setBusy(`agree-${openAgreement._id}`);
+                        try { await reviewAgreement({ id: openAgreement._id, approve: false, note: "Rejected after document review" }); toast.success("Agreement rejected"); setOpenAgreement(null); }
+                        catch (e: any) { toast.error(e?.message || "Failed"); }
+                        finally { setBusy(null); }
+                      }}
+                      disabled={busy === `agree-${openAgreement._id}`}
+                      className="px-4 py-2 rounded-lg bg-white/[0.04] border border-red-400/25 text-red-300 text-xs font-medium hover:bg-red-400/10 disabled:opacity-50"
+                    >Reject</button>
+                  </>
+                )}
+                <button onClick={() => setOpenAgreement(null)} className="px-4 py-2 rounded-lg bg-white/[0.04] border border-white/10 text-white/60 text-xs hover:text-white transition-colors">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
