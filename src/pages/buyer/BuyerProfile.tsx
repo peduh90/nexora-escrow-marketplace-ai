@@ -13,6 +13,7 @@ export default function BuyerProfile() {
 
   const [name, setName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone || "");
+  const [whatsapp, setWhatsapp] = useState((user as any)?.whatsapp || "");
   const [county, setCounty] = useState(user?.county || "");
   const [town, setTown] = useState(user?.town || "");
   const [saving, setSaving] = useState(false);
@@ -24,7 +25,7 @@ export default function BuyerProfile() {
     setError("");
     setSaved(false);
     try {
-      await updateUser({ name, phone, county, town });
+      await updateUser({ name, phone, whatsapp, county, town });
       setSaved(true);
     } catch (err: any) {
       setError(err.message || "Failed to update profile");
@@ -37,8 +38,8 @@ export default function BuyerProfile() {
     <BuyerLayout>
       <div className="max-w-2xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">My Profile</h1>
-          <p className="text-sm text-white/40 mt-1">Manage your account settings</p>
+          <h1 className="text-2xl font-bold text-white">My Account</h1>
+          <p className="text-sm text-white/40 mt-1">Edit your details — name, phone, WhatsApp and location</p>
         </div>
 
         {/* Profile Header */}
@@ -90,6 +91,14 @@ export default function BuyerProfile() {
               <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/30 focus:outline-none"
                 placeholder="0712 345 678" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-white/50 mb-1.5">WhatsApp Number</label>
+              <input type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/30 focus:outline-none"
+                placeholder="Same as phone? Just repeat it" />
+              <p className="text-[10px] text-white/20 mt-1">Customers and providers can reach you on WhatsApp directly.</p>
             </div>
           </div>
         </div>

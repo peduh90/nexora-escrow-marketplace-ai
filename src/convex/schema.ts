@@ -1238,6 +1238,8 @@ const schema = defineSchema(
       basePrice: v.optional(v.number()),
       phone: v.optional(v.string()),
       whatsapp: v.optional(v.string()),
+      // Provider profile image (storage ID or URL) shown on their profile card.
+      image: v.optional(v.string()),
       availability: v.union(
         v.literal("available_now"),
         v.literal("busy"),
@@ -1326,6 +1328,8 @@ const schema = defineSchema(
         v.literal("off"),
       ),
       phone: v.optional(v.string()),
+      // Provider profile image (storage ID or URL) shown on their profile card.
+      image: v.optional(v.string()),
       idDocumentUrl: v.optional(v.string()),
       vehicleDocumentUrl: v.optional(v.string()),
       // Verification: identity + vehicle + regulatory — reviewed by admin.
@@ -1476,6 +1480,41 @@ const schema = defineSchema(
     // One opt-in record per product per buyer. Reminder ticks are computed
     // from nextOrderAt; reordering creates a REAL escrow order through the
     // existing wallet engine — never a fake statistic.
+    // ─── Creator Referral Agreement (embedded at registration) ───
+    // The user reads the agreement inside the signup flow, fills their
+    // declaration, signs and ticks "I agree". Stored for admin review; the
+    // creator program activates only after an admin approves.
+    referralAgreements: defineTable({
+      userId: v.string(),
+      fullName: v.string(),
+      phone: v.string(),
+      email: v.string(),
+      creatorCode: v.optional(v.string()),
+      signature: v.string(), // typed signature
+      agreedTerms: v.boolean(),
+      commissionScheduleJson: v.optional(v.string()), // the filled KSh amounts
+      status: v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("rejected"),
+      ),
+      reviewNote: v.optional(v.string()),
+      reviewedBy: v.optional(v.string()),
+      reviewedAt: v.optional(v.number()),
+      createdAt: v.number(),
+    }).index("by_user", ["userId"]).index("by_status", ["status"]),
+
+    // ─── Phone verification codes (SMS OTP via Africa's Talking) ───
+    phoneOtps: defineTable({
+      phone: v.string(), // normalized 2547XXXXXXXX
+      userId: v.string(),
+      codeHash: v.string(), // sha256 of the 6-digit code
+      expiresAt: v.number(),
+      attempts: v.optional(v.number()),
+      consumed: v.optional(v.boolean()),
+      createdAt: v.number(),
+    }).index("by_phone", ["phone"]),
+
     recurringOrders: defineTable({
       userId: v.string(),
       listingId: v.string(),

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getSessionUser } from "./users";
 
 // ─── Phase 2: Recurring Orders (#65) ────────────────────────────────────────
 // Many purchases repeat: restaurant → vegetables, office → water, salon →
@@ -15,14 +16,14 @@ const FREQ_DAYS: Record<"weekly" | "monthly", number> = {
 
 const MAX_ACTIVE_PER_USER = 12;
 
+// Resolve the SAME canonical account the rest of the app uses — auth user ID
+// first, then the canonical email match. Resolving by `.first()` on the email
+// index desynced from `getSessionUser` and crashed the buyer dashboard with
+// "Account profile not found" for users whose session row differs from the
+// first email row.
 async function requireUser(ctx: any) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity?.email) throw new Error("Not authenticated");
-  const user = await ctx.db
-    .query("users")
-    .withIndex("email", (q: any) => q.eq("email", identity.email))
-    .first();
-  if (!user) throw new Error("Account profile not found");
+  const user = await getSessionUser(ctx);
+  if (!user) throw new Error("Not authenticated");
   return user;
 }
 

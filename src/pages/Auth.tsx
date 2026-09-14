@@ -22,6 +22,7 @@ import {
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useMutation } from "convex/react";
+import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { isPasswordValid } from "@/lib/password-strength";
 import { PasswordField } from "@/components/ui/password-field";
@@ -111,6 +112,40 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   const checkAndPromoteAdmin = useMutation(api.users.checkAndPromoteAdmin);
   const ensureUserProfile = useMutation(api.users.ensureUserProfile);
   const attributeReferral = useMutation(api.referral.onUserRegistered);
+  // ── Phone (SMS) verification — the code arrives on the handset ──
+  // Offered right after the email OTP activates the account. Optional:
+  // registration completes even if the SMS gateway is not configured yet or
+  // the user taps "Skip".
+  const [smsStage, setSmsStage] = useState<"idle" | "offer" | "sending" | "awaiting">("idle");
+  const [pendingTarget, setPendingTarget] = useState<string | null>(null);
+  const [smsPhone, setSmsPhone] = useState("");
+  const [smsCode, setSmsCode] = useState("");
+  const [smsNote, setSmsNote] = useState<string | null>(null);
+  const deliverPhoneCode = useMutation(api.phoneVerification.deliverPhoneCode);
+  const verifyPhoneCode = useMutation(api.phoneVerification.verifyPhoneCode);
+
+  const sendSmsCode = async () => {
+    setSmsStage("sending");
+    setSmsNote(null);
+    try {
+      await deliverPhoneCode({ phone: smsPhone });
+      setSmsStage("awaiting");
+    } catch (err: any) {
+      setSmsNote(err?.message || "Could not send the SMS code");
+      setSmsStage("idle");
+    }
+  };
+
+  const confirmSmsCode = async () => {
+    try {
+      await verifyPhoneCode({ phone: smsPhone, code: smsCode });
+      toast.success("Phone verified ✓");
+      setSmsStage("idle");
+      setSmsNote("verified");
+    } catch (err: any) {
+      setSmsNote(err?.message || "Wrong code");
+    }
+  };
 
   // ── Referral memory: /join clicks land on /auth?ref=CODE (possibly long ──
   // before the visitor registers). Remember the code briefly and surface it so
@@ -419,9 +454,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
         }
       }
 
-      // After creating/syncing the persistent profile, navigate to the panel
-      // that matches the role the user chose during signup. This is the direct
-      // fix for the seller -> buyer regression on the OTP path.
+      // After creating/syncing the persistent profile, offer the SMS phone
+      // code first (one extra tap), then navigate to the panel that matches
+      // the role the user chose during signup. "Skip" continues immediately —
+      // registration is complete either way.
       if (selectedRole) {
         // "Become a Service Provider" — send the brand-new freelancer straight
         // into the publish wizard to create their first service. "Offer a
@@ -438,6 +474,13 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
             : providerIntent || providerReturn
             ? providerReturn ?? "/services/dashboard?register=1"
             : "/buyer";
+        setPendingTarget(target);
+        if (phoneNumber.trim()) {
+          setSmsPhone(phoneNumber.trim());
+          setSmsStage("offer");
+          setIsLoading(false);
+          return;
+        }
         try { navigate(target); } catch {}
       }
 

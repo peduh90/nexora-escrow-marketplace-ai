@@ -8,13 +8,9 @@ import { mutation, query } from "./_generated/server";
 // with verification visible and picks — demand converts into supply.
 
 async function requireUser(ctx: any) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity?.email) throw new Error("Not authenticated");
-  const user = await ctx.db
-    .query("users")
-    .withIndex("email", (q: any) => q.eq("email", identity.email))
-    .first();
-  if (!user) throw new Error("Account profile not found");
+  const { getSessionUser } = await import("./users");
+  const user = await getSessionUser(ctx);
+  if (!user) throw new Error("Not authenticated");
   if ((user as any).accountStatus === "suspended") {
     throw new Error("Your account is suspended — request features are disabled.");
   }

@@ -259,7 +259,13 @@ async function toPublicProvider(ctx: any, p: any) {
     ratingCount: p.ratingCount || 0,
     completedJobs: p.completedJobs || 0,
     verified: !!p.adminVerified || (user as any)?.verificationLevel === "business",
-    image: (user as any)?.image ?? undefined,
+    image: p.image ?? (user as any)?.image ?? undefined,
+    // Direct WhatsApp contact — customers can chat with the provider outside
+    // the escrow flow if they prefer. Only shared when the provider listed a
+    // number.
+    whatsapp: p.whatsapp ?? (user as any)?.whatsapp ?? undefined,
+    phone: p.phone ?? undefined,
+    description: p.description,
     createdAt: p.createdAt,
   };
 }
@@ -460,6 +466,7 @@ export const upsertMyService = mutation({
     basePrice: v.optional(v.number()),
     phone: v.optional(v.string()),
     whatsapp: v.optional(v.string()),
+    image: v.optional(v.string()),
     workingHours: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -491,6 +498,7 @@ export const upsertMyService = mutation({
       basePrice: args.pricingMode === "quote" ? undefined : Math.round(args.basePrice!),
       phone: args.phone,
       whatsapp: args.whatsapp,
+      image: args.image,
       workingHours: args.workingHours,
       updatedAt: now,
     };

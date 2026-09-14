@@ -1278,6 +1278,7 @@ export const updateProfile = mutation({
   args: {
     name: v.optional(v.string()),
     phone: v.optional(v.string()),
+    whatsapp: v.optional(v.string()),
     county: v.optional(v.string()),
     town: v.optional(v.string()),
     storeDescription: v.optional(v.string()),
@@ -1294,6 +1295,7 @@ export const updateProfile = mutation({
     const updates: Record<string, any> = {};
     if (args.name !== undefined) updates.name = args.name;
     if (args.phone !== undefined) updates.phone = args.phone;
+    if (args.whatsapp !== undefined) updates.whatsapp = args.whatsapp;
     if (args.county !== undefined) updates.county = args.county;
     if (args.town !== undefined) updates.town = args.town;
     if (args.storeDescription !== undefined) updates.storeDescription = args.storeDescription;

@@ -18,6 +18,7 @@ const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 // Creator / Referral program
 const JoinCreator = lazy(() => import("./pages/creator/JoinCreator.tsx"));
+const CreatorAgreement = lazy(() => import("./pages/creator/CreatorAgreement.tsx"));
 const CreatorDashboard = lazy(() => import("./pages/creator/CreatorDashboard.tsx"));
 const AdminReferrals = lazy(() => import("./pages/admin/AdminReferrals.tsx"));
 
@@ -308,6 +309,8 @@ createRoot(document.getElementById("root")!).render(
                   admin management */}
               <Route path="/join" element={<JoinCreator />} />
               <Route path="/creator" element={<RequireAuth><CreatorDashboard /></RequireAuth>} />
+              {/* Embedded Creator Referral Agreement: sign + agree → admin review. */}
+              <Route path="/creator/agreement" element={<CreatorAgreement />} />
               <Route path="/admin/referrals" element={<RequireAdmin><AdminReferrals /></RequireAdmin>} />
               <Route path="/admin/services" element={<RequireAdmin><AdminServices /></RequireAdmin>} />
 
@@ -333,7 +336,9 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/buyer/orders" element={<RoleRouter allowedRoles={["buyer"]}><BuyerOrders /></RoleRouter>} />
               <Route path="/buyer/wallet" element={<RoleRouter allowedRoles={["buyer"]}><BuyerWallet /></RoleRouter>} />
               <Route path="/buyer/disputes" element={<RoleRouter allowedRoles={["buyer"]}><BuyerDisputes /></RoleRouter>} />
-              <Route path="/buyer/profile" element={<RoleRouter allowedRoles={["buyer"]}><BuyerProfile /></RoleRouter>} />
+              {/* Account editing is for EVERY signed-in role — buyers, sellers,
+                  freelancers, employers, transport & service providers. */}
+              <Route path="/buyer/profile" element={<RoleRouter allowedRoles={["buyer", "seller", "freelancer", "employer"]}><BuyerProfile /></RoleRouter>} />
               <Route path="/buyer/notifications" element={<RoleRouter allowedRoles={["buyer"]}><BuyerNotifications /></RoleRouter>} />
               <Route path="/buyer/marketplace" element={<RoleRouter allowedRoles={["buyer"]}><Marketplace /></RoleRouter>} />
               <Route path="/buyer/jobs" element={<RoleRouter allowedRoles={["buyer"]}><FreelanceJobs /></RoleRouter>} />

@@ -96,6 +96,8 @@ export default function ServiceProviderDashboard() {
       pricingMode: svc?.pricingMode || "fixed",
       basePrice: svc?.basePrice ?? "",
       phone: svc?.phone || (user as any)?.phone || "",
+      whatsapp: svc?.whatsapp || (user as any)?.whatsapp || "",
+      image: svc?.image || "",
       workingHours: svc?.workingHours || "",
       description: svc?.description || "",
     });
@@ -127,6 +129,8 @@ export default function ServiceProviderDashboard() {
         pricingMode: form.pricingMode,
         basePrice: form.pricingMode !== "quote" ? Number(form.basePrice) || 0 : undefined,
         phone: form.phone || undefined,
+        whatsapp: form.whatsapp || undefined,
+        image: form.image || undefined,
         workingHours: form.workingHours || undefined,
       });
       toast.success("Service saved");
@@ -265,6 +269,11 @@ export default function ServiceProviderDashboard() {
                 <input value={form.town} onChange={(e) => setForm({ ...form, town: e.target.value })} placeholder="Town e.g. Kawangware" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none" />
                 <input value={form.county} onChange={(e) => setForm({ ...form, county: e.target.value })} placeholder="County" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none" />
                 <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Phone (optional)" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none" />
+                <input value={form.whatsapp || ""} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder="WhatsApp number — customers can chat you direct (optional)" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none" />
+                <input value={form.image || ""} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="Profile photo link (URL) — shown on your profile (optional)" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none sm:col-span-2" />
+                {form.image ? (
+                  <img src={form.image} alt="Preview" className="w-16 h-16 rounded-xl object-cover border border-white/10 sm:col-span-2" />
+                ) : null}
                 <select value={form.pricingMode} onChange={(e) => setForm({ ...form, pricingMode: e.target.value })} className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none">
                   <option value="fixed">Fixed price</option>
                   <option value="starting_from">Starting from…</option>

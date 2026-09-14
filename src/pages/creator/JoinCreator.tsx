@@ -255,15 +255,23 @@ export default function JoinCreator() {
             Ready to turn your audience into income?
           </h2>
           <p className="mt-4 text-white/55 max-w-xl mx-auto">
-            Apply in two minutes. Once Nexora approves your profile, your referral link goes live and
-            every verified signup starts earning for you.
+            Apply in two minutes: sign the Creator Referral Agreement, then Nexora reviews it — once
+            approved your referral link goes live and every verified signup starts earning for you.
           </p>
-          <button
-            onClick={() => navigate(registerUrl("/auth"))}
-            className="mt-8 inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-violet-500 hover:bg-violet-400 font-semibold transition-colors shadow-lg shadow-violet-500/25"
-          >
-            Join the Creator Program <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={() => navigate("/creator/agreement")}
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-violet-500 hover:bg-violet-400 font-semibold transition-colors shadow-lg shadow-violet-500/25"
+            >
+              Sign the Creator Agreement <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => navigate(registerUrl("/auth"))}
+              className="inline-flex items-center gap-2 px-6 py-4 rounded-xl bg-white/[0.04] border border-white/10 text-white/70 font-medium hover:text-white transition-colors"
+            >
+              Create an account first
+            </button>
+          </div>
           <p className="mt-6 text-xs text-white/35 max-w-md mx-auto">
             Creator accounts are separate from buyer, seller, employer and freelancer accounts — joining
             the program never changes your marketplace role. Clicks are tracked anonymously for fraud

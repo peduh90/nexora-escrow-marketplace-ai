@@ -327,6 +327,7 @@ export const upsertTransportProfile = mutation({
     routeCodes: v.optional(v.array(v.string())),
     schedule: v.optional(v.string()),
     phone: v.optional(v.string()),
+    image: v.optional(v.string()),
     idDocumentUrl: v.optional(v.string()),
     vehicleDocumentUrl: v.optional(v.string()),
   },
@@ -360,6 +361,7 @@ export const upsertTransportProfile = mutation({
       routeCodes: args.routeCodes,
       schedule: args.schedule,
       phone: args.phone,
+      image: args.image,
       idDocumentUrl: args.idDocumentUrl,
       vehicleDocumentUrl: args.vehicleDocumentUrl,
       // Registration completeness marker: documents can be added later, but a

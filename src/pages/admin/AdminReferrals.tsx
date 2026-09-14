@@ -95,6 +95,8 @@ function AdminReferralsInner() {
   const overview = useQuery(api.referral.adminOverview);
   const settingsRow = useQuery(api.referral.getProgramSettings);
   const convexClient = useConvex();
+  const agreements = useQuery(api.referralAgreement.adminListAgreements);
+  const reviewAgreement = useMutation(api.referralAgreement.adminReviewAgreement);
   const reviewCreator = useMutation(api.referral.reviewCreator);
   const reviewReferral = useMutation(api.referral.reviewReferral);
   const reviewEarning = useMutation(api.referral.reviewEarning);
@@ -102,7 +104,7 @@ function AdminReferralsInner() {
   const payoutCreator = useMutation(api.referral.payoutCreator);
   const updateProgramSettings = useMutation(api.referral.updateProgramSettings);
 
-  const [tab, setTab] = useState<"creators" | "fraud" | "earnings" | "settings">("creators");
+  const [tab, setTab] = useState<"creators" | "fraud" | "earnings" | "agreements" | "settings">("creators");
   const [search, setSearch] = useState("");
   const [expandedCreator, setExpandedCreator] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -262,6 +264,7 @@ function AdminReferralsInner() {
         <div className="flex items-center gap-1 border-b border-white/8">
           {([
             ["creators", `Creators (${overview.creators.length})`],
+            ["agreements", `Agreements (${(agreements ?? []).filter((a: any) => a.status === "pending").length})`],
             ["fraud", `Fraud queue (${overview.flagged.length})`],
             ["earnings", `Pending earnings (${overview.pendingEarnings.length})`],
             ["settings", "Commission rules"],
@@ -460,6 +463,69 @@ function AdminReferralsInner() {
                       )}
                     </div>
                   )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ─── AGREEMENTS TAB — signed creator referral agreements ─── */}
+        {tab === "agreements" && (
+          <div className="space-y-3">
+            {(agreements ?? []).length === 0 ? (
+              <div className="rounded-xl border border-white/8 bg-white/[0.02] p-10 text-center text-sm text-white/40">
+                No signed agreements yet. Creators sign the embedded agreement at /creator/agreement.
+              </div>
+            ) : (
+              (agreements ?? []).map((a: any) => (
+                <div key={a._id} className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white">
+                        {a.fullName}
+                        <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${
+                          a.status === "pending" ? "bg-amber-400/10 text-amber-300" :
+                          a.status === "approved" ? "bg-emerald-400/10 text-emerald-300" :
+                          "bg-red-400/10 text-red-300"}`}>
+                          {a.status}
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-white/35 mt-0.5">
+                        {a.email} · {a.phone}{a.creatorCode ? ` · code ${a.creatorCode}` : ""} ·{" "}
+                        signed {new Date(a.createdAt).toLocaleDateString()} as "{a.signature}"
+                      </p>
+                      {a.commissionScheduleJson && (
+                        <p className="text-[10px] text-white/30 mt-1">
+                          Schedule: {(() => { try { return Object.entries(JSON.parse(a.commissionScheduleJson)).map(([k, v]) => `${k}: ${v}`).join(" · "); } catch { return "—"; } })()}
+                        </p>
+                      )}
+                      {a.reviewNote && <p className="text-[10px] text-white/40 mt-1">Note: {a.reviewNote}{a.reviewedBy ? ` — ${a.reviewedBy}` : ""}</p>}
+                    </div>
+                    {a.status === "pending" && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={async () => {
+                            setBusy(`agree-${a._id}`);
+                            try { await reviewAgreement({ id: a._id, approve: true }); toast.success("Agreement approved"); }
+                            catch (e: any) { toast.error(e?.message || "Failed"); }
+                            finally { setBusy(null); }
+                          }}
+                          disabled={busy === `agree-${a._id}`}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 disabled:opacity-50"
+                        >Approve</button>
+                        <button
+                          onClick={async () => {
+                            setBusy(`agree-${a._id}`);
+                            try { await reviewAgreement({ id: a._id, approve: false, note: "Rejected by admin" }); toast.success("Agreement rejected"); }
+                            catch (e: any) { toast.error(e?.message || "Failed"); }
+                            finally { setBusy(null); }
+                          }}
+                          disabled={busy === `agree-${a._id}`}
+                          className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-red-400/25 text-red-300 text-xs font-medium hover:bg-red-400/10 disabled:opacity-50"
+                        >Reject</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))
             )}

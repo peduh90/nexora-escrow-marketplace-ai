@@ -13,13 +13,10 @@ const ADMIN_EMAIL = "murimiedwin227@gmail.com";
 async function requireAdmin(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity?.email) throw new Error("Not authenticated");
-  const user = await ctx.db
-    .query("users")
-    .withIndex("email", (q: any) => q.eq("email", identity.email))
-    .first();
-  if (!user || ((user as any).role !== "admin" && identity.email !== ADMIN_EMAIL)) {
-    throw new Error("Admin access required");
-  }
+  const { getSessionUser } = await import("./users");
+  const user: any = await getSessionUser(ctx);
+  const role = user?.role ?? (identity.email === ADMIN_EMAIL ? "admin" : null);
+  if (role !== "admin") throw new Error("Admin access required");
   return user;
 }
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { toast } from "sonner";
 import AdminLayout from "./AdminLayout";
 import { Package, Search, CheckCircle2, XCircle, Trash2, Shield, Loader2, Eye, ChevronUp, ExternalLink as ExternalLinkIcon } from "lucide-react";
 
@@ -26,19 +27,31 @@ export default function AdminProducts() {
     if (filter === "Published" && p.status !== "active") return false;
     if (filter === "Paused" && p.status !== "paused") return false;
     if (filter === "Sold" && p.status !== "sold") return false;
+    if (filter === "Removed" && p.status !== "removed") return false;
     if (search && !p.title.toLowerCase().includes(search.toLowerCase()) && !p.sellerName.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const setStatus = async (listingId: string, status: "active" | "paused" | "sold" | "removed") => {
+  const setStatus = async (listingId: string, status: "active" | "paused" | "sold" | "removed", reason?: string) => {
     setActing(listingId);
     try {
-      await updateListingStatus({ listingId, status });
+      await updateListingStatus({ listingId, status, reason });
+      toast.success(status === "removed" ? "Listing removed from the site" : `Listing ${status}`);
     } catch (err: any) {
+      toast.error(err?.message || "Failed to update listing");
       console.error("Failed to update listing status:", err);
     } finally {
       setActing(null);
     }
+  };
+
+  const removeListing = (listingId: string) => {
+    const reason = window.prompt(
+      "Remove this item from the site? Describe the reason (shared with the seller):",
+      "Violates marketplace rules",
+    );
+    if (reason === null) return;
+    void setStatus(listingId, "removed", reason || undefined);
   };
 
   return (
@@ -73,7 +86,7 @@ export default function AdminProducts() {
           />
         </div>
         <div className="flex gap-1 flex-wrap">
-          {["All", "Published", "Paused", "Sold"].map(f => (
+          {["All", "Published", "Paused", "Sold", "Removed"].map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -189,7 +202,7 @@ export default function AdminProducts() {
                                 disabled={acting === product._id}
                                 className="p-1.5 rounded text-white/20 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
                                 title="Remove listing"
-                                onClick={() => setStatus(product._id, "removed")}
+                                onClick={() => removeListing(product._id)}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>

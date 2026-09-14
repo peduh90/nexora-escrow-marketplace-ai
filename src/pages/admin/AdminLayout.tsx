@@ -20,7 +20,6 @@ const navSections = [
   ]},
   { label: "USERS", items: [
     { icon: Users, label: "All Users", path: "/admin/users" },
-    { icon: Briefcase, label: "Sellers", path: "/admin/sellers" },
     { icon: Eye, label: "Verification", path: "/admin/kyc" },
     { icon: Share2, label: "Creator Program", path: "/admin/referrals" },
     { icon: MapPin, label: "Services & Transport", path: "/admin/services" },
