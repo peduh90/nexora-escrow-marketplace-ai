@@ -34,11 +34,11 @@ const COMMISSION_ROWS = [
 
 function Section({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
-    <div className="mt-6">
-      <h3 className="text-sm font-bold text-white">
-        <span className="text-nx-violet mr-2">{n}.</span>{title}
+    <div className="mt-5">
+      <h3 className="text-sm font-bold text-[#0A0A12]">
+        <span className="text-violet-600 mr-2">{n}.</span>{title}
       </h3>
-      <div className="mt-2 space-y-2 text-xs text-white/55 leading-relaxed">{children}</div>
+      <div className="mt-1.5 space-y-1.5 text-[13px] text-black/65 leading-relaxed">{children}</div>
     </div>
   );
 }
@@ -115,7 +115,7 @@ function CreatorAgreementDocument({ reviewNote }: { reviewNote?: string }) {
         promotes Nexora Marketplace and earns referral commissions.
       </p>
 
-      <p className="mt-8 text-sm">
+      <p className="mt-6 text-sm">
         I, <span className="border-b border-black/40 px-6">{fullName || "____________________"}</span>, hereby
         confirm that I wish to participate as a Nexora Creator / Referral Partner and to promote Nexora
         Marketplace and its services. By signing this agreement, I confirm that the information I provide is
@@ -125,8 +125,8 @@ function CreatorAgreementDocument({ reviewNote }: { reviewNote?: string }) {
       <Section n={1} title="Creator Referral Earnings">
         <p>I understand that I may earn commissions for genuine users referred through my unique referral
           link or code, according to the schedule below:</p>
-        <div className="mt-3 overflow-hidden rounded-lg border border-black/15">
-          <table className="w-full text-xs">
+        <div className="mt-2.5 overflow-hidden rounded-lg border border-black/15">
+          <table className="w-full text-xs text-[#0A0A12]">
             <thead>
               <tr className="bg-[#0A0A12] text-white">
                 <th className="text-left px-3 py-2 font-semibold">Referral / Milestone</th>
@@ -136,8 +136,8 @@ function CreatorAgreementDocument({ reviewNote }: { reviewNote?: string }) {
             <tbody>
               {COMMISSION_ROWS.map((r, i) => (
                 <tr key={r.label} className={i % 2 ? "bg-black/[0.03]" : ""}>
-                  <td className="px-3 py-2">{r.label}</td>
-                  <td className="px-3 py-1.5">
+                  <td className="px-3 py-1.5">{r.label}</td>
+                  <td className="px-3 py-1">
                     <div className="flex items-center gap-1">
                       <span className="text-black/40 italic">{r.placeholder}</span>
                       <input
@@ -202,7 +202,7 @@ function CreatorAgreementDocument({ reviewNote }: { reviewNote?: string }) {
       </Section>
 
       {/* Creator declaration form */}
-      <div className="mt-8 rounded-xl border border-black/15 bg-black/[0.02] p-5 space-y-4">
+      <div className="mt-6 rounded-xl border border-black/15 bg-black/[0.02] p-5 space-y-4">
         <p className="text-sm font-bold text-violet-700">Creator Declaration</p>
         <div className="grid sm:grid-cols-2 gap-3 text-xs">
           <label className="space-y-1">
@@ -252,7 +252,7 @@ function CreatorAgreementDocument({ reviewNote }: { reviewNote?: string }) {
         )}
       </div>
 
-      <p className="text-center text-[10px] text-black/40 mt-6">
+      <p className="text-center text-[10px] text-black/40 mt-5">
         Nexora Creator Referral Declaration &amp; Agreement • submitted digitally for admin review
       </p>
     </div>
