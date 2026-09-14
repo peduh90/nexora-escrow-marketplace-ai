@@ -136,7 +136,7 @@ function CreatorAgreementDocument({ reviewNote }: { reviewNote?: string }) {
             <tbody>
               {COMMISSION_ROWS.map((r, i) => (
                 <tr key={r.label} className={i % 2 ? "bg-black/[0.03]" : ""}>
-                  <td className="px-3 py-1.5">{r.label}</td>
+                  <td className="px-3 py-1.5 font-medium text-black/85">{r.label}</td>
                   <td className="px-3 py-1">
                     <div className="flex items-center gap-1">
                       <span className="text-black/40 italic">{r.placeholder}</span>
