@@ -45,6 +45,14 @@ export default function FreelanceLanding() {
   const display = services ?? [];
   const activeCategory = category !== "all" ? getFreelanceCategory(category) : null;
 
+  // Digital Services Marketplace showcase (horizontal rail above the category
+  // grid). Newest freelance listings first; academic-shortcut, shared-login
+  // and account-resale categories are never surfaced here — only legitimate
+  // freelance work (writing, design, video, AI/business setup, etc.).
+  const showcase = display
+    .filter((s: any) => normalizeFreelanceCategory(s.category) !== "ai-accounts-tools")
+    .slice(0, 10);
+
   // Freelancers and sellers can publish services. Freelancers use the
   // standalone freelance publish flow (no store required); sellers use their
   // store's publish wizard.
@@ -213,6 +221,93 @@ export default function FreelanceLanding() {
               See services <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </span>
           </button>
+        </div>
+      </section>
+
+      {/* ───────── DIGITAL SERVICES MARKETPLACE (horizontal rail) ───────── */}
+      <section className="px-4 md:px-6 py-10 border-t border-white/5">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
+            <div>
+              <h2 className="text-xl md:text-3xl font-bold text-white tracking-tight">
+                Digital services <span className="bg-gradient-to-r from-nx-violet to-nx-cyan bg-clip-text text-transparent">marketplace</span>
+              </h2>
+              <p className="text-xs md:text-sm text-white/35 mt-1.5 flex items-center gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-nx-emerald animate-pulse" />
+                {showcase.length} service{showcase.length === 1 ? "" : "s"} · only listings published to Nexora Freelance appear here
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/freelance/services")}
+              className="text-xs text-white/40 hover:text-nx-violet transition-colors flex items-center gap-1"
+            >
+              View all <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {showcase.length === 0 ? (
+            <div className="rounded-2xl bg-white/[0.02] border border-white/5 px-6 py-10 text-center">
+              <p className="text-sm text-white/50 font-medium">No services published yet</p>
+              <p className="text-xs text-white/25 mt-1.5">When a freelancer publishes a service, it appears here instantly.</p>
+              <button
+                onClick={publishCta}
+                className="mt-4 px-5 py-2.5 rounded-xl bg-nx-violet text-white text-sm font-semibold hover:bg-nx-violet/85 transition-colors"
+              >
+                {canPublish ? "Publish the first service" : "Become a Service Provider"}
+              </button>
+            </div>
+          ) : (
+            <div className="-mx-4 md:-mx-6 px-4 md:px-6 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
+              <div className="flex gap-4 w-max">
+                {showcase.map((svc: any) => {
+                  const catSlug = normalizeFreelanceCategory(svc.category);
+                  const CatIcon = getFreelanceCategoryIcon(catSlug);
+                  const catName = freelanceCategoryName(svc.category);
+                  return (
+                    <button
+                      key={svc._id}
+                      onClick={() => navigate(`/freelance/service/${svc._id}`)}
+                      className="snap-start shrink-0 w-[260px] sm:w-[280px] text-left rounded-2xl bg-white/[0.02] border border-white/5 overflow-hidden hover:border-nx-violet/40 hover:bg-white/[0.04] hover:shadow-lg hover:shadow-nx-violet/10 hover:-translate-y-1 transition-all duration-300 group flex flex-col"
+                    >
+                      <div className={`aspect-[16/10] bg-gradient-to-br ${FREELANCE_CATEGORY_GRADIENTS[catSlug] || FREELANCE_CATEGORY_GRADIENTS["other-services"]} overflow-hidden relative flex items-center justify-center`}>
+                        {svc.images?.[0] ? (
+                          <img src={svc.images[0]} alt={svc.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        ) : (
+                          <CatIcon className="w-12 h-12 text-white/30" />
+                        )}
+                        <span className="absolute top-2 left-2 text-[9px] font-medium px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 text-white/90">
+                          {catName}
+                        </span>
+                        <span className="absolute top-2 right-2 flex items-center gap-1 text-[9px] font-medium px-2 py-1 rounded-full bg-nx-emerald/15 backdrop-blur-sm border border-nx-emerald/25 text-nx-emerald">
+                          <Shield className="w-2.5 h-2.5" /> Escrow
+                        </span>
+                      </div>
+                      <div className="p-4 flex flex-col flex-1">
+                        <h3 className="text-sm font-bold text-white leading-snug group-hover:text-nx-violet transition-colors line-clamp-2">
+                          {svc.title}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-3">
+                          <div className="w-5 h-5 rounded-full bg-nx-violet/15 flex items-center justify-center text-nx-violet text-[9px] font-bold shrink-0">
+                            {(svc.sellerName || "S").charAt(0)}
+                          </div>
+                          <span className="text-[10px] text-white/40 truncate">{svc.sellerName}</span>
+                          {svc.sellerReputation > 0 && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-amber-400 ml-auto shrink-0">
+                              <Star className="w-2.5 h-2.5 fill-amber-400" /> {svc.sellerReputation.toFixed(1)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-baseline justify-end gap-1 mt-3 pt-3 border-t border-white/5">
+                          <span className="text-[10px] text-white/30">from</span>
+                          <span className="text-sm font-bold text-white">KES {Number(svc.price).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
