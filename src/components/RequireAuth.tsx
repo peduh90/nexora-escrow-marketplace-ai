@@ -21,12 +21,13 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        <span className="sr-only">Loading authentication...</span>
-      </main>
-    );
+    // Not signed in (and loading has settled) — never spin forever: send the
+    // user to auth PRESERVING the path they wanted, so signing in with EXISTING
+    // credentials returns straight here. Previously this showed an eternal
+    // spinner, which made people believe their account was gone and
+    // "re-register with the same credentials".
+    const returnTo = location.pathname + location.search;
+    return <Navigate to={`/auth?returnTo=${encodeURIComponent(returnTo)}`} replace />;
   }
 
   if (!user) {

@@ -303,10 +303,15 @@ export function CreatorAgreementFlow() {
           approved — you'll get a notification with the decision.
         </p>
         <button
-          onClick={() => navigate("/creator")}
+          onClick={() => {
+            // The dashboard is gated above this document — scroll the signed
+            // state's context into view instead of re-rendering the same page.
+            navigate("/creator");
+            setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 80);
+          }}
           className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white/[0.06] border border-white/10 px-5 py-2.5 text-sm font-semibold text-white/80 hover:text-white transition-colors"
         >
-          Go to Creator dashboard <ArrowRight className="w-4 h-4" />
+          Back to top <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     );

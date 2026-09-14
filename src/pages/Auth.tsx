@@ -48,6 +48,17 @@ function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/buyer") 
   return fallback;
 }
 
+/** True when the redirect target is a role's default dashboard. Anything else
+ *  (e.g. /creator, /creator/agreement, /buyer/profile) is a caller-intent
+ *  destination that must be honoured for EVERY role after auth. */
+function isRoleDashboardPath(p: string | null | undefined): boolean {
+  if (!p) return false;
+  return (
+    p === "/admin" || p === "/seller" || p === "/employer" || p === "/buyer" ||
+    p.startsWith("/freelance")
+  );
+}
+
 type AuthStep =
   | "roleSelect"
   | "signIn"
@@ -235,13 +246,24 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
     // Use the persistent role to decide where an authenticated user belongs.
     // Do NOT assume /buyer while the profile is still loading: if the role is
     // not known yet we stay here until the Convex profile query resolves.
-    // Exception: on the freelance join flow, an already-registered user who
+    // Exception 1: on the freelance join flow, an already-registered user who
     // picked a card goes straight to the card's destination (e.g. an existing
     // freelancer clicking "Find Work" lands in Find Work, not the dashboard).
+    // Exception 2: a caller-supplied returnTo that is NOT a role dashboard
+    // (e.g. /creator, /creator/agreement, /buyer/profile) must be honoured for
+    // EVERY role — it is where the user was heading before auth interrupted.
+    const isRoleDashboard = isRoleDashboardPath(redirect);
+    // "/auth" is the "no returnTo requested" fallback — never an override.
+    const returnToOverride =
+      redirect !== "/auth" && !isRoleDashboard && redirect.startsWith("/") && !redirect.startsWith("//")
+        ? redirect
+        : null;
     const freelanceJoinReturn =
       isFreelanceJoin && role && redirect.startsWith("/freelance") ? redirect : null;
     const roleTarget =
-      role === "admin"
+      returnToOverride
+        ? returnToOverride
+        : role === "admin"
         ? "/admin"
         : role === "seller" || role === "driver"
         ? "/seller"
@@ -459,11 +481,19 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       // the role the user chose during signup. "Skip" continues immediately —
       // registration is complete either way.
       if (selectedRole) {
+        // A caller-supplied returnTo that is not a role dashboard (e.g.
+        // /creator from the Creator Program join page) wins — that is where
+        // the user was heading before auth interrupted them.
+        const returnToOverride =
+          redirect !== "/auth" && !isRoleDashboardPath(redirect) && redirect.startsWith("/") && !redirect.startsWith("//")
+            ? redirect
+            : null;
         // "Become a Service Provider" — send the brand-new freelancer straight
         // into the publish wizard to create their first service. "Offer a
         // Service" — send the new provider into local-service registration.
         const target =
-          selectedRole === "seller"
+          returnToOverride ??
+          (selectedRole === "seller"
             ? "/seller"
             : selectedRole === "freelancer"
             ? publishIntent
@@ -473,7 +503,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
             ? "/employer"
             : providerIntent || providerReturn
             ? providerReturn ?? "/services/dashboard?register=1"
-            : "/buyer";
+            : "/buyer");
         setPendingTarget(target);
         if (phoneNumber.trim()) {
           setSmsPhone(phoneNumber.trim());
