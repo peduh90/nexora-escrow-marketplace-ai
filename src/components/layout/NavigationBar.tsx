@@ -179,6 +179,20 @@ export default function NavigationBar() {
               >
                 Services & Transport
               </button>
+              <button
+                onClick={() => { navigate("/creator"); setMobileOpen(false); }}
+                className="text-white/70 hover:text-white text-sm py-2 text-left"
+              >
+                Creator Program
+              </button>
+              {!user && (
+                <button
+                  onClick={() => { navigate("/auth"); setMobileOpen(false); }}
+                  className="mt-2 w-full py-3 rounded-xl bg-nx-violet text-white text-sm font-semibold text-center hover:bg-nx-violet/85 transition-colors"
+                >
+                  Get Started — Create Free Account
+                </button>
+              )}
               {user && (
                 <button
                   onClick={() => { navigate(getDashboardPath()); setMobileOpen(false); }}
