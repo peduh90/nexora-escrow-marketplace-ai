@@ -104,7 +104,6 @@ function CreatorDashboardInner() {
   // Hard gate: the signed Creator Referral Agreement must be approved by an
   // admin before ANY dashboard content (link, code, stats) is shown.
   const myAgreement = useQuery(api.referralAgreement.getMyAgreement);
-  const agreementApproved = (myAgreement as any)?.status === "approved";
 
   const [form, setForm] = useState({
     displayName: "",
@@ -315,8 +314,10 @@ function CreatorDashboardInner() {
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-10 space-y-8">
         {/* Agreement status lives INSIDE the open panel: pending = banner;
-            missing/rejected = the document itself, embedded right here. */}
-        {myAgreement && (myAgreement as any).status === "pending" && (
+            missing/rejected = the document itself, embedded right here.
+            None of this blocks the panel — approving the creator unlocks the
+            link immediately, whatever the agreement record says. */}
+        {creator.status !== "approved" && myAgreement && (myAgreement as any).status === "pending" && (
           <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] p-5 flex items-start gap-3">
             <Clock className="w-5 h-5 text-amber-300 mt-0.5 shrink-0" />
             <div>
@@ -329,7 +330,7 @@ function CreatorDashboardInner() {
             </div>
           </div>
         )}
-        {(!myAgreement || (myAgreement as any).status === "rejected") && (
+        {creator.status !== "approved" && (!myAgreement || (myAgreement as any).status === "rejected") && (
           <div className="rounded-2xl border border-violet-400/25 bg-violet-500/[0.06] p-5 md:p-7">
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-violet-300" />
@@ -399,18 +400,6 @@ function CreatorDashboardInner() {
                 </div>
               </div>
             </div>
-          </div>
-        ) : !agreementApproved ? (
-          <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] p-6 md:p-8">
-            <div className="flex items-center gap-3">
-              <Lock className="w-6 h-6 text-amber-300" />
-              <h1 className="text-xl md:text-2xl font-bold">Referral link unlocks on agreement approval</h1>
-            </div>
-            <p className="mt-3 text-white/55 max-w-2xl">
-              Your signed Creator Referral Agreement is with the Nexora team for review. The moment it
-              is approved, your referral link and code appear right here — you'll get a notification
-              with the decision. Everything else in your panel is live now.
-            </p>
           </div>
         ) : (
           <>

@@ -993,6 +993,28 @@ export const reviewCreator = mutation({
       reviewNotes: args.notes?.trim() || c.reviewNotes,
     });
 
+    // ONE approval unlocks everything: approving (or re-activating) a creator
+    // here also approves their pending signed agreement, so the creator panel
+    // opens immediately no matter which admin surface was used. (The reverse
+    // direction — agreement approval activating the creator — lives in
+    // referralAgreement.adminReviewAgreement.)
+    if (status === "approved") {
+      const agreements = (await ctx.db
+        .query("referralAgreements")
+        .withIndex("by_user" as any, (q: any) => q.eq("userId", c.userId))
+        .collect()) as any[];
+      for (const a of agreements) {
+        if (a.status === "pending") {
+          await ctx.db.patch(a._id, {
+            status: "approved" as any,
+            reviewNote: a.reviewNote || "Approved together with creator approval",
+            reviewedBy: admin.name || admin.email || "Admin",
+            reviewedAt: Date.now(),
+          });
+        }
+      }
+    }
+
     const titles: Record<string, string> = {
       approved: "Creator application approved 🎉",
       rejected: "Creator application declined",
