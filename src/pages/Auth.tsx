@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { isPasswordValid } from "@/lib/password-strength";
@@ -138,6 +138,20 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   // creation) whenever it is switched to login mode.
   const sellerPanelLogin = sellerFirst === true && !isAdminLogin && sellerMode === "login";
   const [otp, setOtp] = useState("");
+
+  // ─── Duplicate-credential restriction ───
+  // While someone is on a registration form, we check whether the email they
+  // type already belongs to an account. If it does we block "create account"
+  // and route them to sign in instead — no second account can be created
+  // with the same credential. The check is debounced via emailDupCheck.
+  const [emailDupCheck, setEmailDupCheck] = useState<string | null>(null);
+  const dupInfo = useQuery(
+    api.users.checkDuplicateUser,
+    emailDupCheck && emailDupCheck.includes("@")
+      ? { email: emailDupCheck }
+      : "skip",
+  );
+
   // Resend cooldown + busy flag for the email-OTP card (real resend action).
   const [resendIn, setResendIn] = useState(0);
   const [resendBusy, setResendBusy] = useState(false);
@@ -378,6 +392,36 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   // the seller panel does.
   const [freelanceMode, setFreelanceMode] = useState<"register" | "login">("register");
   const freelancePanelLogin = isFreelanceRegister && freelanceMode === "login";
+  // Register-vs-login context: the dedicated seller/freelance panels and any
+  // selected role are all "creating an account" surfaces.
+  const isRegisterSurface =
+    !sellerPanelLogin && !freelancePanelLogin && (selectedRole !== null || isSellerRegister || isFreelanceRegister);
+
+  // Does the typed email already belong to an existing account?
+  const emailTaken =
+    isRegisterSurface && dupInfo?.emailExists === true && !!emailDupCheck;
+
+  // Keep the live-check value in sync with what the user is typing (debounced).
+  const typedEmailRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    const el = typedEmailRef.current;
+    if (!el) return;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const onInput = () => {
+      const v = el.value.trim().toLowerCase();
+      if (t) clearTimeout(t);
+      t = setTimeout(() => {
+        setEmailDupCheck(v.includes("@") ? v : null);
+      }, 450);
+    };
+    el.addEventListener("input", onInput);
+    return () => {
+      el.removeEventListener("input", onInput);
+      if (t) clearTimeout(t);
+    };
+    // Re-attach whenever the form surface changes — the email input mounts
+    // only after a role is selected (or a dedicated panel opens).
+  }, [step, sellerPanelLogin, freelancePanelLogin]);
 
   // "Become a Service Provider" intent from the freelance join cards: after a
   // successful registration the new freelancer is routed straight into the
@@ -427,6 +471,14 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       }
     }
 
+    // Restrict duplicate credentials: an email that already belongs to an
+    // account can NEVER create a second account. The OTP flow signs the
+    // person into their existing account instead — same credentials, same
+    // account, no duplicates. The card's wording switches to sign-in mode so
+    // nothing is surprising.
+    if (emailTaken) {
+      toast.info("Account found — we'll email you a sign-in code. No new account is created.");
+    }
     try {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
@@ -1123,6 +1175,11 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
                         <div className="relative"><Lock className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="password" placeholder="Password" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" required /></div>
                         {error && <p className="text-sm text-red-400">{error}</p>}
                         <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>
+                  {emailTaken ? (
+                    <>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Sign In to Existing Account <ArrowRight className="ml-2 h-4 w-4" /></>
+                  ) : (
+                    <>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create"} {selectedRole === "seller" ? "Seller Account" : selectedRole === "freelancer" ? "Freelancer Account" : selectedRole === "employer" ? "Employer Account" : "Account"} {isLoading ? null : <ArrowRight className="ml-2 h-4 w-4" />}</>
+                  )}
                           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign In <ArrowRight className="ml-2 h-4 w-4" /></>}
                         </Button>
                         <button type="button" onClick={startForgotPassword} className="w-full text-center text-xs text-white/40 hover:text-nx-violet transition-colors">
@@ -1143,7 +1200,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
             </div>
           )}
 
-          {step === "signIn" && !sellerPanelLogin && (
+          {step === "signIn" && !sellerPanelLogin && !freelancePanelLogin && (
             <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
@@ -1204,7 +1261,12 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
                   {selectedRole !== "seller" && (
                     <div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="name" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
                   )}
-                  <div className="relative"><Mail className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="email" placeholder="Email address" type="email" className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
+                  <div className="relative"><Mail className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input ref={typedEmailRef as any} name="email" placeholder="Email address" type="email" className={`pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50 ${emailTaken ? "border-amber-400/50" : ""}`} disabled={isLoading} required /></div>
+                  {emailTaken && (
+                    <p className="text-xs text-amber-300/90 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
+                      ⚠️ An account with this email already exists. Continuing will sign you in to it — the same email can't create a second account.
+                    </p>
+                  )}
                   <div className="relative"><Phone className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="phone" placeholder="Phone number (e.g. 0712 345 678)" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
                   {error && <p className="text-sm text-red-400">{error}</p>}
                   <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>

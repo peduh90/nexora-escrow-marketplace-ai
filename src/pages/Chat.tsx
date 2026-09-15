@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowLeft, Send, Paperclip, Image, Shield, Star, MoreVertical, Phone, Video, Info, MapPin, Clock, CheckCheck, MessageCircle } from "lucide-react";
+import { ArrowLeft, Send, Shield, Star, MoreVertical, Phone, Video, Info, MapPin, Clock, CheckCheck, MessageCircle } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
 import { getWhatsAppSupportUrl, getWhatsAppSellerUrl, openWhatsApp, WHATSAPP_CONFIG } from "@/lib/whatsapp";
 
@@ -15,6 +15,7 @@ export default function Chat() {
   const [showProductCard, setShowProductCard] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [showConvoInfo, setShowConvoInfo] = useState(false);
 
   const conversations = useQuery(api.messages.getConversations);
 
@@ -49,6 +50,15 @@ export default function Chat() {
   }, [conversationId, user]);
 
   const sendMessageMutation = useMutation(api.messages.sendMessage);
+  const messageInputRef = useRef<HTMLInputElement | null>(null);
+
+  // "Make Offer" prefills a structured offer message the buyer can edit and
+  // send — it flows through the SAME real message pipeline as any other text.
+  const startOffer = () => {
+    const price = (product as any)?.price;
+    setMessage(price ? `💰 Offer: KSh ${Math.round(price * 0.9).toLocaleString()} — I can pay this for "${(product as any).title}". Can you accept?` : "💰 Offer: KSh ");
+    setTimeout(() => messageInputRef.current?.focus(), 50);
+  };
   const markReadMutation = useMutation(api.messages.markRead);
   const [sending, setSending] = useState(false);
 
@@ -126,7 +136,11 @@ export default function Chat() {
               <MessageCircle className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Support</span>
             </button>
-            <button className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-nx-blue transition-colors">
+            <button
+              onClick={() => setShowConvoInfo((v) => !v)}
+              className={`p-2 rounded-lg bg-white/[0.03] border border-white/5 transition-colors ${showConvoInfo ? "text-nx-blue" : "text-white/40 hover:text-nx-blue"}`}
+              title="Conversation details"
+            >
               <Info className="w-4 h-4" />
             </button>
           </div>
@@ -348,6 +362,28 @@ export default function Chat() {
                 <div ref={messagesEndRef} />
               </div>
 
+              {showConvoInfo && (
+                <div className="mx-4 mb-2 rounded-xl border border-white/8 bg-white/[0.03] p-4 space-y-2 text-xs">
+                  <p className="text-white/70 font-semibold text-sm">Conversation details</p>
+                  <p className="text-white/45">
+                    Talking with <span className="text-white/80">{otherUserName}</span>
+                    {activeConvo?.listingTitle ? <> about <span className="text-white/80">{activeConvo.listingTitle}</span></> : null}.
+                  </p>
+                  <p className="text-white/45 flex items-start gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-nx-emerald shrink-0 mt-0.5" />
+                    Every payment made through the Buy Now button is held in Nexora escrow until you confirm delivery. Never pay outside the platform — chat offers are agreed here, then paid in-app.
+                  </p>
+                  {product && (
+                    <button
+                      onClick={() => navigate(listingHref)}
+                      className="text-nx-cyan hover:underline"
+                    >
+                      View listing: {product.title} — KSh {Number(product.price).toLocaleString()}
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="px-4 py-2 border-t border-nx-border/30">
                 <div className="flex items-center gap-2 mb-2">
@@ -360,7 +396,10 @@ export default function Chat() {
                         {isFreelanceListing ? "💼 View Service" : "🛒 Buy Now"}
                       </button>
                       {!isFreelanceListing && (
-                        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-nx-blue/10 text-nx-blue text-xs font-semibold hover:bg-nx-blue/20 transition-colors border border-nx-blue/20">
+                        <button
+                          onClick={startOffer}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-nx-blue/10 text-nx-blue text-xs font-semibold hover:bg-nx-blue/20 transition-colors border border-nx-blue/20"
+                        >
                           💰 Make Offer
                         </button>
                       )}
@@ -372,13 +411,9 @@ export default function Chat() {
               {/* Message Input */}
               <div className="px-4 pb-4">
                 <div className="flex items-center gap-2 bg-nx-card border border-nx-border rounded-xl p-2">
-                  <button className="p-2 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/[0.03] transition-colors">
-                    <Paperclip className="w-5 h-5" />
-                  </button>
-                  <button className="p-2 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/[0.03] transition-colors">
-                    <Image className="w-5 h-5" />
-                  </button>
+
                   <input
+                    ref={messageInputRef}
                     type="text"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
