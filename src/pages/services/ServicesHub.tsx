@@ -9,7 +9,6 @@ import {
   ArrowLeft, MapPin, Search, Star, Navigation, Loader2,
 } from "lucide-react";
 import { KENYA_COUNTIES } from "@/lib/kenya-locations";
-import { serviceImage } from "@/lib/service-images";
 
 /**
  * Local Services hub + category browser. Extremely simple:
@@ -82,16 +81,7 @@ export default function ServicesHub() {
                 onClick={() => navigate(`/services/category/${c.slug}`)}
                 className="shrink-0 flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] pl-1.5 pr-3.5 py-1.5 text-xs font-medium text-white/75 hover:border-nx-cyan/40 hover:text-white transition-colors"
               >
-                {serviceImage(c.slug) ? (
-                  <img
-                    src={serviceImage(c.slug)}
-                    alt=""
-                    loading="lazy"
-                    className="w-7 h-7 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="ml-1.5">{c.emoji}</span>
-                )}
+                <span className="ml-1.5">{c.emoji}</span>
                 {c.name}
               </button>
             ))}
@@ -137,25 +127,67 @@ export default function ServicesHub() {
           </button>
         </div>
 
-        {/* Available-now strip on the hub */}
+        {/* Available right now — BIG cards. Providers who uploaded a profile
+            or shop photo are showcased here exactly as customers see them on
+            their profile: photo, skill, location, price, one tap to book. */}
         {!category && !q && availableNow && availableNow.length > 0 && (
-          <div className="mt-5">
-            <h2 className="text-sm font-bold text-white/85 flex items-center gap-2 mb-2">
-              <span className="relative flex h-2 w-2">
+          <div className="mt-6">
+            <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2 mb-3">
+              <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
               </span>
               Available right now
+              <span className="text-xs font-normal text-white/35">— tap a provider to book</span>
             </h2>
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {availableNow.map((p: any) => (
                 <button
                   key={p._id}
                   onClick={() => navigate(`/services/provider/${p._id}`)}
-                  className="shrink-0 rounded-xl border border-emerald-400/20 bg-emerald-500/[0.05] hover:bg-emerald-500/[0.1] transition-colors px-3.5 py-2 text-left"
+                  className="group rounded-2xl border border-emerald-400/20 bg-emerald-500/[0.04] overflow-hidden text-left hover:border-emerald-400/50 hover:bg-emerald-500/[0.08] hover:-translate-y-1 transition-all duration-300 flex flex-col"
                 >
-                  <p className="text-xs font-semibold text-white">{p.displayName}</p>
-                  <p className="text-[10px] text-white/45">{p.serviceType} · {p.town}</p>
+                  {/* The provider's own photo — the main visual, not a strip.
+                      No fake stock images: uploaders get showcased, everyone
+                      else gets a clean initial avatar. */}
+                  <div className="aspect-[4/3] bg-white/[0.03] relative flex items-center justify-center overflow-hidden">
+                    {p.image ? (
+                      <img
+                        src={p.image}
+                        alt={p.displayName}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <span className="w-14 h-14 rounded-full bg-nx-cyan/15 border border-nx-cyan/25 flex items-center justify-center text-xl font-bold text-nx-cyan">
+                        {p.displayName?.charAt(0)?.toUpperCase() || "•"}
+                      </span>
+                    )}
+                    <span className="absolute top-2 right-2 flex items-center gap-1 text-[9px] font-semibold text-emerald-300 bg-black/55 backdrop-blur-sm border border-emerald-400/25 rounded-full px-2 py-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> NOW
+                    </span>
+                  </div>
+                  <div className="p-3 flex flex-col flex-1">
+                    <p className="text-sm font-bold text-white truncate group-hover:text-emerald-300 transition-colors">{p.displayName}</p>
+                    <p className="text-xs text-white/50 mt-0.5 truncate">{p.serviceType}</p>
+                    <p className="text-[11px] text-white/35 mt-1 flex items-center gap-1 truncate">
+                      <MapPin className="w-3 h-3 shrink-0" /> {p.town}, {p.county}
+                    </p>
+                    <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between">
+                      {p.pricingMode !== "quote" && p.basePrice ? (
+                        <span className="text-xs font-bold text-emerald-300">
+                          {p.pricingMode === "starting_from" ? "from " : ""}KES {p.basePrice.toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-white/35">Ask price</span>
+                      )}
+                      {!!p.rating && (
+                        <span className="text-[10px] text-amber-300 flex items-center gap-0.5">
+                          <Star className="w-3 h-3 fill-amber-300" /> {p.rating}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
@@ -186,7 +218,7 @@ export default function ServicesHub() {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {providers.map((p) => {
-                const cover = p.image || serviceImage(p.category);
+                const cover = p.image;
                 return (
                   <button
                     key={p._id}
@@ -205,7 +237,9 @@ export default function ServicesHub() {
                           className="w-full h-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
                         />
                       ) : (
-                        <span className="text-4xl">🧑‍🔧</span>
+                        <span className="w-16 h-16 rounded-full bg-nx-cyan/15 border border-nx-cyan/25 flex items-center justify-center text-2xl font-bold text-nx-cyan">
+                          {p.displayName?.charAt(0)?.toUpperCase() || "•"}
+                        </span>
                       )}
                       {p.availability === "available_now" ? (
                         <span className="absolute top-2 right-2 flex items-center gap-1 text-[9px] font-semibold text-emerald-300 bg-black/50 backdrop-blur-sm border border-emerald-400/25 rounded-full px-2 py-1">

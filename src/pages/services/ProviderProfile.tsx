@@ -4,7 +4,6 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
-import { serviceImage } from "@/lib/service-images";
 import NavigationBar from "@/components/layout/NavigationBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import {
@@ -142,19 +141,25 @@ export default function ProviderProfile() {
           <ArrowLeft className="w-4 h-4" />
         </button>
 
-        {/* Provider header — big shop/profile cover first, then identity.
-            The provider's uploaded photo IS the storefront visual (the same
-            weight as a freelance service card), with the category photo as
-            fallback so a profile never looks empty. */}
+        {/* Provider header — big shop/profile cover, then identity.
+            Only the provider's OWN uploaded photo is shown as the storefront
+            visual; without one we render a clean branded gradient instead of
+            stock imagery. */}
         <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden">
-          <div className="aspect-[21/8] bg-gradient-to-br from-nx-cyan/10 via-nx-violet/10 to-transparent relative">
-            {(p.image || serviceImage(p.category)) ? (
+          <div className="aspect-[21/8] bg-gradient-to-br from-nx-cyan/12 via-nx-violet/12 to-transparent relative">
+            {p.image ? (
               <img
-                src={p.image || serviceImage(p.category)}
+                src={p.image}
                 alt=""
                 className="w-full h-full object-cover opacity-80"
               />
-            ) : null}
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-5xl font-black text-white/[0.07] tracking-widest uppercase">
+                  {p.serviceType}
+                </span>
+              </div>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           </div>
           <div className="p-5 -mt-8 relative">

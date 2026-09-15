@@ -55,6 +55,12 @@ export default function FreelanceNav({
             Freelancer Tools
           </button>
           <button
+            onClick={() => navigate("/")}
+            className="text-xs font-medium text-white/45 hover:text-white/80 transition-colors"
+          >
+            Home
+          </button>
+          <button
             onClick={() => navigate("/marketplace")}
             className="text-xs font-medium text-white/45 hover:text-white/80 transition-colors"
           >
