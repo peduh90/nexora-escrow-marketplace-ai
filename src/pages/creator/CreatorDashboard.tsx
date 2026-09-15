@@ -180,47 +180,10 @@ function CreatorDashboardInner() {
     );
   }
 
-  // ─── Agreement gate (after applying): no dashboard, no referral link
-  //  until the signed Creator Referral Agreement is admin-approved. ───
-  if (creator && !agreementApproved) {
-    return (
-      <div className="min-h-screen bg-[#07070c] text-white">
-        <nav className="border-b border-white/5">
-          <div className="max-w-3xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-            <button onClick={() => navigate("/")} className="flex items-center gap-2 text-sm text-white/60 hover:text-white">
-              <ArrowLeft className="w-4 h-4" /> Back to Nexora
-            </button>
-            <div className="flex items-center gap-2 text-sm font-semibold tracking-wide text-white/50">
-              <Sparkles className="w-4 h-4 text-violet-400" /> CREATOR PROGRAM
-            </div>
-          </div>
-        </nav>
-
-        <div className="max-w-3xl mx-auto px-4 md:px-6 py-10">
-          <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] p-5 md:p-6 flex items-start gap-3">
-            <Lock className="w-5 h-5 text-amber-300 mt-0.5 shrink-0" />
-            <div>
-              <h1 className="text-lg md:text-xl font-bold">Before your dashboard unlocks</h1>
-              <p className="mt-1.5 text-sm text-white/60 leading-relaxed">
-                Every creator must fill and sign the Nexora Creator Referral Declaration &amp; Agreement
-                — it is reviewed by the Nexora team before your referral link goes live. Nothing is lost:
-                your application and any referrals already track behind the scenes.
-              </p>
-              <ol className="mt-3 space-y-1.5 text-sm text-white/50 list-decimal list-inside">
-                <li><span className="text-white/80">Fill &amp; sign the agreement</span> — right here, in the document below.</li>
-                <li><span className="text-white/80">Nexora reviews it</span> — usually quick; you'll get a notification.</li>
-                <li><span className="text-white/80">Dashboard + referral link unlock</span> — share and start earning.</li>
-              </ol>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <CreatorAgreementFlow />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // NOTE: the dashboard always renders once a creator has applied — the
+  // agreement state is surfaced as banners inside the panel instead of a
+  // dead-end gate page. Only the referral link stays locked until admin
+  // approval (enforced in the link-card condition below).
 
   // ─── Not applied yet: the application flow ───
   if (!creator) {
@@ -351,6 +314,40 @@ function CreatorDashboardInner() {
       </nav>
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-10 space-y-8">
+        {/* Agreement status lives INSIDE the open panel: pending = banner;
+            missing/rejected = the document itself, embedded right here. */}
+        {myAgreement && (myAgreement as any).status === "pending" && (
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] p-5 flex items-start gap-3">
+            <Clock className="w-5 h-5 text-amber-300 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-white">Agreement signed — under review</p>
+              <p className="mt-1 text-sm text-white/55">
+                Signed on{" "}
+                {new Date((myAgreement as any).createdAt).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" })}
+                . Your panel is open below — the referral link and code activate the moment Nexora approves the agreement.
+              </p>
+            </div>
+          </div>
+        )}
+        {(!myAgreement || (myAgreement as any).status === "rejected") && (
+          <div className="rounded-2xl border border-violet-400/25 bg-violet-500/[0.06] p-5 md:p-7">
+            <div className="flex items-center gap-3">
+              <FileText className="w-5 h-5 text-violet-300" />
+              <div>
+                <p className="font-semibold text-white">
+                  {(myAgreement as any)?.status === "rejected" ? "Your agreement needs changes — update and resubmit" : "One step left: sign your Creator Agreement"}
+                </p>
+                <p className="text-sm text-white/55 mt-0.5">
+                  Fill and sign the document below — the Nexora team reviews it quickly, and your referral link activates on approval.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5">
+              <CreatorAgreementFlow />
+            </div>
+          </div>
+        )}
+
         {/* Pending / suspended / rejected state */}
         {creator.status !== "approved" ? (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
@@ -402,6 +399,18 @@ function CreatorDashboardInner() {
                 </div>
               </div>
             </div>
+          </div>
+        ) : !agreementApproved ? (
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] p-6 md:p-8">
+            <div className="flex items-center gap-3">
+              <Lock className="w-6 h-6 text-amber-300" />
+              <h1 className="text-xl md:text-2xl font-bold">Referral link unlocks on agreement approval</h1>
+            </div>
+            <p className="mt-3 text-white/55 max-w-2xl">
+              Your signed Creator Referral Agreement is with the Nexora team for review. The moment it
+              is approved, your referral link and code appear right here — you'll get a notification
+              with the decision. Everything else in your panel is live now.
+            </p>
           </div>
         ) : (
           <>

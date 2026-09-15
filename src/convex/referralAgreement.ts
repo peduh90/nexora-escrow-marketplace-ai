@@ -137,6 +137,25 @@ export const adminReviewAgreement = mutation({
       reviewedBy: user.name || user.email || "Admin",
       reviewedAt: Date.now(),
     });
+
+    // ONE approval unlocks everything: approving the signed agreement also
+    // activates the creator's application record. Without this, the creator
+    // could be stuck between two separate review queues (application pending
+    // + agreement approved) with no dashboard and no link.
+    if (args.approve) {
+      const creatorRow = (await ctx.db
+        .query("referralCreators")
+        .withIndex("by_user" as any, (q: any) => q.eq("userId", rec.userId))
+        .first()) as any;
+      if (creatorRow && creatorRow.status !== "approved") {
+        await ctx.db.patch(creatorRow._id, {
+          status: "approved" as any,
+          reviewedAt: Date.now(),
+          reviewNotes: creatorRow.reviewNotes || "Activated with agreement approval",
+        });
+      }
+    }
+
     await ctx.db.insert("notifications", {
       userId: rec.userId,
       type: "account",
