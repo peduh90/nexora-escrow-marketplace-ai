@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { getSessionUser } from "./users";
@@ -143,7 +143,7 @@ export const createListing = mutation({
     // Always bind the listing to the session's OWN user — never an email
     // lookup that could resolve to an arbitrary (e.g. oldest anonymous) record.
     const user = await getSessionUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     const marketplace = normalizeMarketplace(args.marketplace);
 
@@ -158,13 +158,13 @@ export const createListing = mutation({
       // admins are allowed in both marketplaces (moderation/testing)
     } else if (marketplace === MARKETPLACE.FREELANCE) {
       if (role !== "freelancer" && role !== "seller") {
-        throw new Error(
+        throw new ConvexError(
           "Only Writer/Freelancer (or Seller) accounts can publish services to Nexora Freelance. Register as a Writer/Freelancer first."
         );
       }
     } else {
       if (role !== "seller") {
-        throw new Error(
+        throw new ConvexError(
           "Only Seller accounts can publish products in the Normal Marketplace."
         );
       }
@@ -173,7 +173,7 @@ export const createListing = mutation({
     // A freelance listing must use a freelance category so it is guaranteed to
     // show up only inside the Freelance Marketplace.
     if (marketplace === MARKETPLACE.FREELANCE && !FREELANCE_MARKETPLACE_CATEGORY_SLUGS.includes(args.category)) {
-      throw new Error("Freelance listings must use a Freelance Marketplace category (writing, design, video, marketing, web/software, data, virtual assistance, education, business, AI & digital tools, digital products or other services).");
+      throw new ConvexError("Freelance listings must use a Freelance Marketplace category (writing, design, video, marketing, web/software, data, virtual assistance, education, business, AI & digital tools, digital products or other services).");
     }
 
     // Illegal-service guard: never publish stolen accounts, cracked software,
@@ -183,7 +183,7 @@ export const createListing = mutation({
         findIllegalServiceText(args.title) ??
         findIllegalServiceText(args.description);
       if (illegal) {
-        throw new Error(
+        throw new ConvexError(
           `This listing was rejected: "${illegal}" is not allowed on Nexora. Nexora only allows legitimate services and authorized software/tool subscriptions.`
         );
       }
@@ -303,11 +303,11 @@ export const updateListing = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     const listing = await ctx.db.get(args.listingId);
-    if (!listing) throw new Error("Listing not found");
-    if (listing.sellerId !== user._id) throw new Error("Not authorized");
+    if (!listing) throw new ConvexError("Listing not found");
+    if (listing.sellerId !== user._id) throw new ConvexError("Not authorized");
 
     const updates: Record<string, unknown> = {};
     if (args.title !== undefined) updates.title = args.title;
@@ -330,11 +330,11 @@ export const deleteListing = mutation({
   args: { listingId: v.id("listings") },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     const listing = await ctx.db.get(args.listingId);
-    if (!listing) throw new Error("Listing not found");
-    if (listing.sellerId !== user._id) throw new Error("Not authorized");
+    if (!listing) throw new ConvexError("Listing not found");
+    if (listing.sellerId !== user._id) throw new ConvexError("Not authorized");
 
     await ctx.db.patch(args.listingId, { status: "removed" });
     return { success: true };
@@ -788,7 +788,7 @@ export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
     return await ctx.storage.generateUploadUrl();
   },
 });

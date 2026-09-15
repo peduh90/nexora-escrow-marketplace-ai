@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { sellerCommission, buyerProtectionFee } from "./fees";
@@ -87,13 +87,13 @@ async function getSessionUser(ctx: any): Promise<any | null> {
 
 async function requireUser(ctx: any): Promise<any> {
   const user = await getSessionUser(ctx);
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new ConvexError("Not authenticated");
   return user;
 }
 
 async function requireAdmin(ctx: any): Promise<any> {
   const user = await requireUser(ctx);
-  if (user.role !== "admin") throw new Error("Unauthorized: admin only");
+  if (user.role !== "admin") throw new ConvexError("Unauthorized: admin only");
   return user;
 }
 
@@ -198,7 +198,7 @@ export const quoteFare = query({
     const rules = await getFareRules(ctx);
     const from = resolvePlace(args.fromPlace);
     const to = resolvePlace(args.toPlace);
-    if (!from || !to) throw new Error("Unknown location — pick pickup and destination from the list");
+    if (!from || !to) throw new ConvexError("Unknown location — pick pickup and destination from the list");
     const typeFactor =
       args.serviceType === "boda" ? 0.8 : args.serviceType === "tuktuk" ? 0.9 : args.serviceType === "delivery" ? 1.0 : 1.4;
     const adjusted = {
@@ -288,13 +288,13 @@ export const quoteMatatuFare = query({
       .query("transportRoutes")
       .withIndex("by_code" as any, (q: any) => q.eq("code", args.routeCode))
       .first();
-    if (!route) throw new Error("Route not found");
+    if (!route) throw new ConvexError("Route not found");
     const r = route as any;
     if (
       args.fromStageIndex < 0 || args.toStageIndex < 0 ||
       args.fromStageIndex >= r.stages.length || args.toStageIndex >= r.stages.length
     ) {
-      throw new Error("Invalid stage");
+      throw new ConvexError("Invalid stage");
     }
     const fare = Math.abs(r.fares[args.toStageIndex] - r.fares[args.fromStageIndex]);
     const protection = buyerProtectionFee("product", fare);
@@ -339,10 +339,10 @@ export const upsertTransportProfile = mutation({
     // logbook upload wall. Admin verification is still mandatory before the
     // provider can accept trips — that gate is enforced below, not here.
     if (isMatatu && (!args.routeCodes || args.routeCodes.length === 0)) {
-      throw new Error("Matatu operators must list at least one route code");
+      throw new ConvexError("Matatu operators must list at least one route code");
     }
     if (!isMatatu && !args.plateNumber) {
-      throw new Error("Plate number is required");
+      throw new ConvexError("Plate number is required");
     }
     const now = Date.now();
     const existing = await ctx.db
@@ -431,9 +431,9 @@ export const setTransportAvailability = mutation({
       .query("transportProfiles")
       .withIndex("by_user" as any, (q: any) => q.eq("userId", user._id))
       .first();
-    if (!profile) throw new Error("Register as a transport provider first");
+    if (!profile) throw new ConvexError("Register as a transport provider first");
     if ((profile as any).verificationStatus !== "verified") {
-      throw new Error("Your documents must be verified by Nexora before you can accept trips");
+      throw new ConvexError("Your documents must be verified by Nexora before you can accept trips");
     }
     await ctx.db.patch((profile as any)._id, { availability: args.availability, updatedAt: Date.now() });
     return { success: true };
@@ -461,15 +461,15 @@ export const requestTrip = mutation({
     const rules = await getFareRules(ctx);
     const from = resolvePlace(args.fromPlace);
     const to = resolvePlace(args.toPlace);
-    if (!from || !to) throw new Error("Unknown location — choose from the list");
-    if (args.fromPlace === args.toPlace) throw new Error("Pickup and destination must differ");
+    if (!from || !to) throw new ConvexError("Unknown location — choose from the list");
+    if (args.fromPlace === args.toPlace) throw new ConvexError("Pickup and destination must differ");
 
     let providerUserId: string | undefined;
     if (args.providerId) {
       const p = await ctx.db.get(args.providerId);
-      if (!p || (p as any).serviceType !== args.serviceType) throw new Error("Provider not found for this service");
-      if ((p as any).verificationStatus !== "verified") throw new Error("This provider is not verified yet");
-      if ((p as any).userId === user._id) throw new Error("You cannot request your own trip");
+      if (!p || (p as any).serviceType !== args.serviceType) throw new ConvexError("Provider not found for this service");
+      if ((p as any).verificationStatus !== "verified") throw new ConvexError("This provider is not verified yet");
+      if ((p as any).userId === user._id) throw new ConvexError("You cannot request your own trip");
       providerUserId = (p as any).userId;
     }
 
@@ -521,16 +521,16 @@ export const fundTrip = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const trip = await ctx.db.get(args.tripId);
-    if (!trip) throw new Error("Trip not found");
+    if (!trip) throw new ConvexError("Trip not found");
     const t = trip as any;
-    if (t.customerId !== user._id) throw new Error("Not authorized");
-    if (t.status !== "requested") throw new Error("This trip is no longer awaiting payment");
+    if (t.customerId !== user._id) throw new ConvexError("Not authorized");
+    if (t.status !== "requested") throw new ConvexError("This trip is no longer awaiting payment");
 
     const protection = buyerProtectionFee("product", t.fare);
     const total = t.fare + protection.fee;
     const walletBalance = (user as any).walletBalance || 0;
     if (walletBalance < total) {
-      throw new Error(
+      throw new ConvexError(
         `You need KES ${total.toLocaleString()} in your wallet (fare KES ${t.fare.toLocaleString()} + protection KES ${protection.fee.toLocaleString()}). Deposit with M-Pesa first.`,
       );
     }
@@ -567,18 +567,18 @@ export const acceptTrip = mutation({
       .query("transportProfiles")
       .withIndex("by_user" as any, (q: any) => q.eq("userId", user._id))
       .first();
-    if (!profile) throw new Error("Register as a transport provider first");
+    if (!profile) throw new ConvexError("Register as a transport provider first");
     const p = profile as any;
-    if (p.verificationStatus !== "verified") throw new Error("Your documents must be verified first");
-    if (p.availability !== "available_now") throw new Error("Go 'Available Now' before accepting trips");
+    if (p.verificationStatus !== "verified") throw new ConvexError("Your documents must be verified first");
+    if (p.availability !== "available_now") throw new ConvexError("Go 'Available Now' before accepting trips");
 
     const trip = await ctx.db.get(args.tripId);
-    if (!trip) throw new Error("Trip not found");
+    if (!trip) throw new ConvexError("Trip not found");
     const t = trip as any;
-    if (t.providerUserId && t.providerUserId !== user._id) throw new Error("Already assigned to another provider");
-    if (!["requested", "funded"].includes(t.status)) throw new Error("Trip is closed");
-    if (t.customerId === user._id) throw new Error("You cannot accept your own trip");
-    if (p.serviceType !== t.serviceType) throw new Error("This trip needs a different vehicle type");
+    if (t.providerUserId && t.providerUserId !== user._id) throw new ConvexError("Already assigned to another provider");
+    if (!["requested", "funded"].includes(t.status)) throw new ConvexError("Trip is closed");
+    if (t.customerId === user._id) throw new ConvexError("You cannot accept your own trip");
+    if (p.serviceType !== t.serviceType) throw new ConvexError("This trip needs a different vehicle type");
 
     const now = Date.now();
     await ctx.db.patch(args.tripId, {
@@ -606,10 +606,10 @@ export const markArriving = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const trip = await ctx.db.get(args.tripId);
-    if (!trip) throw new Error("Trip not found");
+    if (!trip) throw new ConvexError("Trip not found");
     const t = trip as any;
-    if (t.providerUserId !== user._id) throw new Error("Not authorized");
-    if (t.status !== "accepted") throw new Error("Accept the trip first");
+    if (t.providerUserId !== user._id) throw new ConvexError("Not authorized");
+    if (t.status !== "accepted") throw new ConvexError("Accept the trip first");
     const now = Date.now();
     await ctx.db.patch(args.tripId, { status: "arriving" as any, updatedAt: now });
     await notify(ctx, t.customerId, "Your ride is arriving", `${t.serviceType === "boda" ? "Your rider" : "Your driver"} is on the way to ${t.pickup}.`, "/transport/trips");
@@ -623,11 +623,11 @@ export const startTrip = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const trip = await ctx.db.get(args.tripId);
-    if (!trip) throw new Error("Trip not found");
+    if (!trip) throw new ConvexError("Trip not found");
     const t = trip as any;
-    if (t.providerUserId !== user._id) throw new Error("Not authorized");
-    if (!["accepted", "arriving"].includes(t.status)) throw new Error("Wrong trip state");
-    if (!t.customerFunded) throw new Error("The customer must fund the fare first");
+    if (t.providerUserId !== user._id) throw new ConvexError("Not authorized");
+    if (!["accepted", "arriving"].includes(t.status)) throw new ConvexError("Wrong trip state");
+    if (!t.customerFunded) throw new ConvexError("The customer must fund the fare first");
     const now = Date.now();
     await ctx.db.patch(args.tripId, { status: "in_progress" as any, startedAt: now, updatedAt: now });
     await notify(ctx, t.customerId, "Trip started", `Your trip to ${t.destination} has started. Confirm arrival when you get there.`, "/transport/trips");
@@ -641,11 +641,11 @@ export const completeTrip = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const trip = await ctx.db.get(args.tripId);
-    if (!trip) throw new Error("Trip not found");
+    if (!trip) throw new ConvexError("Trip not found");
     const t = trip as any;
-    if (t.customerId !== user._id) throw new Error("Only the customer can confirm arrival");
-    if (t.status !== "in_progress") throw new Error("Trip is not in progress");
-    if (!t.customerFunded || !t.providerUserId) throw new Error("Trip is not ready to complete");
+    if (t.customerId !== user._id) throw new ConvexError("Only the customer can confirm arrival");
+    if (t.status !== "in_progress") throw new ConvexError("Trip is not in progress");
+    if (!t.customerFunded || !t.providerUserId) throw new ConvexError("Trip is not ready to complete");
 
     const now = Date.now();
     const amount = t.fare;
@@ -708,13 +708,13 @@ export const cancelTrip = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const trip = await ctx.db.get(args.tripId);
-    if (!trip) throw new Error("Trip not found");
+    if (!trip) throw new ConvexError("Trip not found");
     const t = trip as any;
     const isCustomer = t.customerId === user._id;
     const isProvider = t.providerUserId === user._id;
-    if (!isCustomer && !isProvider) throw new Error("Not authorized");
+    if (!isCustomer && !isProvider) throw new ConvexError("Not authorized");
     if (!["requested", "funded", "accepted", "arriving"].includes(t.status)) {
-      throw new Error("Trip already started — use support");
+      throw new ConvexError("Trip already started — use support");
     }
     const now = Date.now();
     if (t.customerFunded) {
@@ -761,9 +761,9 @@ export const raiseEmergency = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const trip = await ctx.db.get(args.tripId);
-    if (!trip) throw new Error("Trip not found");
+    if (!trip) throw new ConvexError("Trip not found");
     const t = trip as any;
-    if (t.customerId !== user._id && t.providerUserId !== user._id) throw new Error("Not authorized");
+    if (t.customerId !== user._id && t.providerUserId !== user._id) throw new ConvexError("Not authorized");
     const now = Date.now();
     await ctx.db.patch(args.tripId, { emergencyAt: now, updatedAt: now });
     const admins = await ctx.db
@@ -782,13 +782,13 @@ export const rateTrip = mutation({
   args: { tripId: v.id("trips"), rating: v.number(), comment: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    if (args.rating < 1 || args.rating > 5) throw new Error("Rating must be 1–5");
+    if (args.rating < 1 || args.rating > 5) throw new ConvexError("Rating must be 1–5");
     const trip = await ctx.db.get(args.tripId);
-    if (!trip) throw new Error("Trip not found");
+    if (!trip) throw new ConvexError("Trip not found");
     const t = trip as any;
-    if (t.customerId !== user._id) throw new Error("Not authorized");
-    if (t.status !== "completed") throw new Error("You can only rate completed trips");
-    if (t.rating) throw new Error("You already rated this trip");
+    if (t.customerId !== user._id) throw new ConvexError("Not authorized");
+    if (t.status !== "completed") throw new ConvexError("You can only rate completed trips");
+    if (t.rating) throw new ConvexError("You already rated this trip");
     const now = Date.now();
     await ctx.db.patch(args.tripId, { rating: args.rating, ratedAt: now });
     if (t.providerId) {
@@ -901,7 +901,7 @@ export const adminUpdateFareRules = mutation({
       args.minimumFare < 20 || args.routeFactor < 1 || args.routeFactor > 2.5 ||
       args.maxSurgeMultiplier < 1 || args.maxSurgeMultiplier > 3
     ) {
-      throw new Error("Invalid fare rules — check the ranges");
+      throw new ConvexError("Invalid fare rules — check the ranges");
     }
     const row = await ctx.db.query("transportSettings").first();
     const patch = { ...args, updatedAt: Date.now(), updatedBy: admin._id };
@@ -924,11 +924,11 @@ export const adminUpsertRoute = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    if (args.stages.length < 2) throw new Error("A route needs at least 2 stages");
-    if (args.stages.length !== args.fares.length) throw new Error("Each stage needs one cumulative fare");
-    if (args.fares.some((f) => f < 0)) throw new Error("Fares must be ≥ 0");
+    if (args.stages.length < 2) throw new ConvexError("A route needs at least 2 stages");
+    if (args.stages.length !== args.fares.length) throw new ConvexError("Each stage needs one cumulative fare");
+    if (args.fares.some((f) => f < 0)) throw new ConvexError("Fares must be ≥ 0");
     for (let i = 1; i < args.fares.length; i++) {
-      if (args.fares[i] < args.fares[i - 1]) throw new Error("Cumulative fares must be non-decreasing along the route");
+      if (args.fares[i] < args.fares[i - 1]) throw new ConvexError("Cumulative fares must be non-decreasing along the route");
     }
     const now = Date.now();
     const payload = {
@@ -960,7 +960,7 @@ export const adminVerifyTransportProvider = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const p = await ctx.db.get(args.providerId);
-    if (!p) throw new Error("Provider not found");
+    if (!p) throw new ConvexError("Provider not found");
     await ctx.db.patch(args.providerId, {
       verificationStatus: args.decision,
       verificationNote: args.note,

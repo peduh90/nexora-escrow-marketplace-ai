@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 // ─── Kenya-first delivery addresses (#72/#73) ────────────────────────────────
@@ -15,12 +15,12 @@ const MAX_ADDRESSES = 20;
 
 async function requireUser(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity?.email) throw new Error("Not authenticated");
+  if (!identity?.email) throw new ConvexError("Not authenticated");
   const user = await ctx.db
     .query("users")
     .withIndex("email", (q: any) => q.eq("email", identity.email))
     .first();
-  if (!user) throw new Error("Account profile not found");
+  if (!user) throw new ConvexError("Account profile not found");
   return user;
 }
 
@@ -87,14 +87,14 @@ export const saveAddress = mutation({
     const label = args.label.trim() || "Other";
     const county = args.county.trim();
     const town = args.town.trim();
-    if (!county || !town) throw new Error("County and town are required");
+    if (!county || !town) throw new ConvexError("County and town are required");
 
     const now = Date.now();
     const existing = args.addressId
       ? await ctx.db.get(args.addressId)
       : undefined;
     if (existing && (existing as any).userId !== user._id) {
-      throw new Error("Not authorized");
+      throw new ConvexError("Not authorized");
     }
 
     // Enforce a sane cap so address books stay light on low-data devices.
@@ -103,7 +103,7 @@ export const saveAddress = mutation({
       .withIndex("by_user" as any, (q: any) => q.eq("userId", user._id))
       .collect();
     if (!existing && mine.length >= MAX_ADDRESSES) {
-      throw new Error(`You can save up to ${MAX_ADDRESSES} addresses`);
+      throw new ConvexError(`You can save up to ${MAX_ADDRESSES} addresses`);
     }
 
     // Only one default at a time.
@@ -149,7 +149,7 @@ export const deleteAddress = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const row = await ctx.db.get(args.addressId);
-    if (!row || (row as any).userId !== user._id) throw new Error("Not authorized");
+    if (!row || (row as any).userId !== user._id) throw new ConvexError("Not authorized");
     await ctx.db.delete(args.addressId);
     return { success: true };
   },

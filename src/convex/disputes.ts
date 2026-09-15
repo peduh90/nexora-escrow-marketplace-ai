@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
 
@@ -12,21 +12,21 @@ export const fileDispute = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
 
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     // Verify escrow exists and belongs to this user
     const allEscrows = await ctx.db.query("escrows").collect();
     const escrow = allEscrows.find((e) => e._id === args.escrowId);
-    if (!escrow) throw new Error("Escrow not found");
+    if (!escrow) throw new ConvexError("Escrow not found");
     if (escrow.buyerId !== user._id && escrow.sellerId !== user._id) {
-      throw new Error("Not authorized");
+      throw new ConvexError("Not authorized");
     }
 
     // Create dispute
@@ -96,14 +96,14 @@ export const updateDisputeStatus = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
 
-    if (!user || user.role !== "admin") throw new Error("Admin only");
+    if (!user || user.role !== "admin") throw new ConvexError("Admin only");
 
     const updates: Record<string, any> = {
       status: args.status,

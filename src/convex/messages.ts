@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query, QueryCtx } from "./_generated/server";
 import { getSessionUser } from "./users";
 
@@ -29,11 +29,11 @@ export const startConversation = mutation({
   },
   handler: async (ctx, args) => {
     const buyer = await getMessagingUser(ctx);
-    if (!buyer) throw new Error("Not authenticated");
+    if (!buyer) throw new ConvexError("Not authenticated");
 
     // Verify the listing actually exists so the chat always has a real product.
     const listing = await ctx.db.get(args.listingId as any);
-    if (!listing) throw new Error("Listing not found");
+    if (!listing) throw new ConvexError("Listing not found");
     const listingTitle =
       "title" in listing && typeof listing.title === "string"
         ? listing.title
@@ -118,14 +118,14 @@ export const sendMessage = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getMessagingUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     const convo = await ctx.db.get(args.conversationId);
-    if (!convo) throw new Error("Conversation not found");
+    if (!convo) throw new ConvexError("Conversation not found");
 
     const isBuyer = convo.buyerId === user._id;
     const isSeller = convo.sellerId === user._id;
-    if (!isBuyer && !isSeller) throw new Error("Not authorized");
+    if (!isBuyer && !isSeller) throw new ConvexError("Not authorized");
 
     const receiverId = isBuyer ? convo.sellerId : convo.buyerId;
 
@@ -252,7 +252,7 @@ export const markRead = mutation({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
     const user = await getMessagingUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     const convo = await ctx.db.get(args.conversationId);
     if (!convo) return;
@@ -310,7 +310,7 @@ export const sendSupportMessage = mutation({
   args: { content: v.string() },
   handler: async (ctx, args) => {
     const user = await getMessagingUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     // Find or create admin user
     const adminUser = await ctx.db

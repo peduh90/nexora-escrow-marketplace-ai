@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { sellerCommission, buyerProtectionFee } from "./fees";
@@ -8,12 +8,12 @@ import { sellerCommission, buyerProtectionFee } from "./fees";
 /** Resolve the session's user record (auth-session-bound, email fallback). */
 async function requireUser(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Not authenticated");
+  if (!identity) throw new ConvexError("Not authenticated");
   const user = await ctx.db
     .query("users")
     .withIndex("email", (q: any) => q.eq("email", identity.email))
     .first();
-  if (!user) throw new Error("User not found");
+  if (!user) throw new ConvexError("User not found");
   return user;
 }
 
@@ -69,13 +69,13 @@ export const upsertProfile = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     const existing = await ctx.db
       .query("freelanceProfiles")
@@ -288,7 +288,7 @@ export const createTask = mutation({
     // sellers are also blocked — Freelance is a separate system with its own
     // verified roles.
     if (user.role !== "employer") {
-      throw new Error(
+      throw new ConvexError(
         "Only Employer accounts can post jobs. Register as an Employer at Nexora Freelance to hire."
       );
     }
@@ -430,14 +430,14 @@ export const applyToTask = mutation({
     // a marketplace Buyer or Seller never automatically gains a freelance
     // role.
     if (user.role !== "freelancer") {
-      throw new Error(
+      throw new ConvexError(
         "Only Writer/Freelancer accounts can apply to jobs. Employers post and manage jobs instead."
       );
     }
 
     const task = await ctx.db.get(args.taskId);
-    if (!task) throw new Error("Task not found");
-    if (task.status !== "open") throw new Error("Task is not accepting applications");
+    if (!task) throw new ConvexError("Task not found");
+    if (task.status !== "open") throw new ConvexError("Task is not accepting applications");
 
     // Check if already applied
     const existing = await ctx.db
@@ -445,7 +445,7 @@ export const applyToTask = mutation({
       .withIndex("by_task", (q) => q.eq("taskId", args.taskId))
       .collect();
     if (existing.some((a) => a.freelancerId === user._id)) {
-      throw new Error("You have already applied to this task");
+      throw new ConvexError("You have already applied to this task");
     }
 
     const profile = await ctx.db
@@ -527,19 +527,19 @@ export const acceptApplication = mutation({
   args: { applicationId: v.id("freelanceApplications") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const application = await ctx.db.get(args.applicationId);
-    if (!application) throw new Error("Application not found");
+    if (!application) throw new ConvexError("Application not found");
 
     const task = await ctx.db.get(application.taskId as any);
-    if (!task || !("employerId" in task)) throw new Error("Task not found");
+    if (!task || !("employerId" in task)) throw new ConvexError("Task not found");
 
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
-    if (!user || (task as any).employerId !== user._id) throw new Error("Not authorized");
+    if (!user || (task as any).employerId !== user._id) throw new ConvexError("Not authorized");
 
     // Accept this application
     await ctx.db.patch(args.applicationId, { status: "accepted" });
@@ -673,7 +673,7 @@ export const updateProjectProgress = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     await ctx.db.patch(args.projectId, {
       progress: args.progress,
@@ -692,13 +692,13 @@ export const sendProjectMessage = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     const msgId = await ctx.db.insert("freelanceMessages", {
       projectId: args.projectId,
@@ -764,7 +764,7 @@ export const generateFileUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -785,12 +785,12 @@ export const fundProjectEscrow = mutation({
     const user = await requireUser(ctx);
 
     const project = await ctx.db.get(args.projectId);
-    if (!project) throw new Error("Project not found");
+    if (!project) throw new ConvexError("Project not found");
     if (project.employerId !== user._id) {
-      throw new Error("Not authorized: only the employer on this project can fund it");
+      throw new ConvexError("Not authorized: only the employer on this project can fund it");
     }
-    if (project.employerFunded) throw new Error("Escrow is already funded for this project");
-    if (project.status !== "active") throw new Error("Project is not active");
+    if (project.employerFunded) throw new ConvexError("Escrow is already funded for this project");
+    if (project.status !== "active") throw new ConvexError("Project is not active");
 
     const amount = project.budget;
     const protection = buyerProtectionFee("freelance", amount);
@@ -798,7 +798,7 @@ export const fundProjectEscrow = mutation({
 
     const walletBalance = user.walletBalance || 0;
     if (walletBalance < total) {
-      throw new Error(
+      throw new ConvexError(
         `Insufficient wallet balance. You need KES ${total.toLocaleString()} (project KES ${amount.toLocaleString()} + protection fee KES ${protection.fee.toLocaleString()}). Deposit via M-Pesa on the Earnings page first.`
       );
     }
@@ -853,12 +853,12 @@ export const submitWork = mutation({
     const user = await requireUser(ctx);
 
     const project = await ctx.db.get(args.projectId);
-    if (!project) throw new Error("Project not found");
-    if (project.freelancerId !== user._id) throw new Error("Not authorized: only the hired freelancer can submit work");
+    if (!project) throw new ConvexError("Project not found");
+    if (project.freelancerId !== user._id) throw new ConvexError("Not authorized: only the hired freelancer can submit work");
     if (project.status !== "active" && project.status !== "revision_requested") {
-      throw new Error(`Work cannot be submitted while the project is ${project.status.replace("_", " ")}`);
+      throw new ConvexError(`Work cannot be submitted while the project is ${project.status.replace("_", " ")}`);
     }
-    if (!args.message.trim()) throw new Error("Describe what you delivered");
+    if (!args.message.trim()) throw new ConvexError("Describe what you delivered");
 
     const now = Date.now();
     const existingSubmissions = project.files || [];
@@ -921,10 +921,10 @@ export const requestRevision = mutation({
     const user = await requireUser(ctx);
 
     const project = await ctx.db.get(args.projectId);
-    if (!project) throw new Error("Project not found");
-    if (project.employerId !== user._id) throw new Error("Not authorized: only the employer can request revisions");
-    if (project.status !== "submitted") throw new Error("There is no new submission to review");
-    if (!args.note.trim()) throw new Error("Describe what needs to change");
+    if (!project) throw new ConvexError("Project not found");
+    if (project.employerId !== user._id) throw new ConvexError("Not authorized: only the employer can request revisions");
+    if (project.status !== "submitted") throw new ConvexError("There is no new submission to review");
+    if (!args.note.trim()) throw new ConvexError("Describe what needs to change");
 
     const now = Date.now();
     const nextRound = (project.revisionCount || 0) + 1;
@@ -980,14 +980,14 @@ export const approveWork = mutation({
     const user = await requireUser(ctx);
 
     const project = await ctx.db.get(args.projectId);
-    if (!project) throw new Error("Project not found");
-    if (project.employerId !== user._id) throw new Error("Not authorized: only the employer can approve work");
-    if (project.status === "completed") throw new Error("Project is already completed");
+    if (!project) throw new ConvexError("Project not found");
+    if (project.employerId !== user._id) throw new ConvexError("Not authorized: only the employer can approve work");
+    if (project.status === "completed") throw new ConvexError("Project is already completed");
     if (project.status !== "submitted") {
-      throw new Error("Wait for the freelancer's submission before approving");
+      throw new ConvexError("Wait for the freelancer's submission before approving");
     }
     if (!project.employerFunded) {
-      throw new Error("Escrow was never funded for this project — approve only funded projects");
+      throw new ConvexError("Escrow was never funded for this project — approve only funded projects");
     }
 
     const now = Date.now();
@@ -997,7 +997,7 @@ export const approveWork = mutation({
     const protection = buyerProtectionFee("freelance", amount);
 
     const employer: any = await ctx.db.get(user._id);
-    if (!employer) throw new Error("Employer account not found");
+    if (!employer) throw new ConvexError("Employer account not found");
     const freelancer: any = project.freelancerId ? await ctx.db.get(project.freelancerId as any) : null;
 
     // Release from employer escrow balance.

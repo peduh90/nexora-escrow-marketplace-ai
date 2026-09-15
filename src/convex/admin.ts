@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { getSessionUser } from "./users";
@@ -29,13 +29,13 @@ function isRealUser(u: any): boolean {
  */
 async function requireAdmin(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Not authenticated");
+  if (!identity) throw new ConvexError("Not authenticated");
 
   const user = await getSessionUser(ctx);
-  if (!user) throw new Error("User not found");
+  if (!user) throw new ConvexError("User not found");
 
   const fresh = await ctx.db.get(user._id);
-  if (!fresh) throw new Error("Unauthorized: admin only");
+  if (!fresh) throw new ConvexError("Unauthorized: admin only");
 
   // Owner fallback: the platform owner email is always authorized, even while
   // the stored role is still being repaired by the mutations above.
@@ -52,7 +52,7 @@ async function requireAdmin(ctx: any) {
       (fresh as any).email === ADMIN_EMAIL);
 
   if (fresh.role !== "admin" && !isOwner) {
-    throw new Error("Unauthorized: admin only");
+    throw new ConvexError("Unauthorized: admin only");
   }
 
   return { user: fresh, identity };
@@ -366,9 +366,9 @@ export const setUserSuspended = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireAdmin(ctx);
     const target = (await ctx.db.get(args.userId as any)) as any;
-    if (!target) throw new Error("User not found");
+    if (!target) throw new ConvexError("User not found");
     if (target.email === ADMIN_EMAIL) {
-      throw new Error("The platform owner account cannot be suspended");
+      throw new ConvexError("The platform owner account cannot be suspended");
     }
 
     if (args.suspended) {
@@ -424,7 +424,7 @@ export const suspendUser = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireAdmin(ctx);
     const target = await ctx.db.get(args.userId as any);
-    if (!target) throw new Error("User not found");
+    if (!target) throw new ConvexError("User not found");
 
     await ctx.db.patch(args.userId as any, { role: undefined });
     await auditLog(
@@ -517,7 +517,7 @@ export const resolveDispute = mutation({
     // wallet mutations (the old behaviour) targeted a non-existent escrow and
     // silently did nothing.
     const dispute: any = await ctx.db.get(args.disputeId as any);
-    if (!dispute) throw new Error("Dispute not found");
+    if (!dispute) throw new ConvexError("Dispute not found");
     const escrowId = dispute.escrowId as string | undefined;
 
     await ctx.db.patch(args.disputeId as any, {
@@ -582,7 +582,7 @@ export const reviewKYC = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireAdmin(ctx);
     const app = await ctx.db.get(args.applicationId as any);
-    if (!app) throw new Error("KYC application not found");
+    if (!app) throw new ConvexError("KYC application not found");
 
     await ctx.db.patch(args.applicationId as any, {
       status: args.status,
@@ -644,7 +644,7 @@ export const submitKYC = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     const now = Date.now();
 
@@ -1146,10 +1146,10 @@ export const reviewWithdrawal = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireAdmin(ctx);
     const tx = (await ctx.db.get(args.transactionId as any)) as any;
-    if (!tx) throw new Error("Withdrawal not found");
-    if (tx.type !== "withdrawal") throw new Error("Not a withdrawal transaction");
+    if (!tx) throw new ConvexError("Withdrawal not found");
+    if (tx.type !== "withdrawal") throw new ConvexError("Not a withdrawal transaction");
     if (tx.status !== "pending" && tx.status !== "processing") {
-      throw new Error(`This withdrawal is already ${tx.status}`);
+      throw new ConvexError(`This withdrawal is already ${tx.status}`);
     }
 
     if (args.approve) {
@@ -1216,10 +1216,10 @@ export const adjustWallet = mutation({
   },
   handler: async (ctx, args) => {
     const { user: admin } = await requireAdmin(ctx);
-    if (!args.reason.trim()) throw new Error("A reason is required for any wallet adjustment");
-    if (args.amount === 0) throw new Error("Adjustment amount cannot be zero");
+    if (!args.reason.trim()) throw new ConvexError("A reason is required for any wallet adjustment");
+    if (args.amount === 0) throw new ConvexError("Adjustment amount cannot be zero");
     const target = (await ctx.db.get(args.userId as any)) as any;
-    if (!target) throw new Error("User not found");
+    if (!target) throw new ConvexError("User not found");
 
     const newBalance = Math.max(0, (target.walletBalance || 0) + args.amount);
     await ctx.db.patch(target._id, { walletBalance: newBalance });

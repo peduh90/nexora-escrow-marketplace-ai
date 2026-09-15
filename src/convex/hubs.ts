@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 // ─── Phase 2: Local Pickup Hubs (#71) ───────────────────────────────────────
@@ -12,11 +12,11 @@ const ADMIN_EMAIL = "murimiedwin227@gmail.com";
 
 async function requireAdmin(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity?.email) throw new Error("Not authenticated");
+  if (!identity?.email) throw new ConvexError("Not authenticated");
   const { getSessionUser } = await import("./users");
   const user: any = await getSessionUser(ctx);
   const role = user?.role ?? (identity.email === ADMIN_EMAIL ? "admin" : null);
-  if (role !== "admin") throw new Error("Admin access required");
+  if (role !== "admin") throw new ConvexError("Admin access required");
   return user;
 }
 
@@ -64,7 +64,7 @@ export const adminCreateHub = mutation({
     const name = args.name.trim();
     const county = args.county.trim();
     const town = args.town.trim();
-    if (!name || !county || !town) throw new Error("Name, county and town are required");
+    if (!name || !county || !town) throw new ConvexError("Name, county and town are required");
     const now = Date.now();
     const id = await ctx.db.insert("pickupHubs", {
       name,
@@ -108,7 +108,7 @@ export const adminUpdateHub = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const hub = await ctx.db.get(args.hubId);
-    if (!hub) throw new Error("Hub not found");
+    if (!hub) throw new ConvexError("Hub not found");
     await ctx.db.patch(args.hubId, {
       name: args.name.trim(),
       county: args.county.trim(),

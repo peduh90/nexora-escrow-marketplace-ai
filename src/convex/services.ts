@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { sellerCommission, buyerProtectionFee } from "./fees";
@@ -214,7 +214,7 @@ async function getSessionUser(ctx: any): Promise<any | null> {
 
 async function requireUser(ctx: any): Promise<any> {
   const user = await getSessionUser(ctx);
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new ConvexError("Not authenticated");
   return user;
 }
 
@@ -472,12 +472,12 @@ export const upsertMyService = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const category = SERVICE_CATEGORIES.find((c) => c.slug === args.category);
-    if (!category) throw new Error("Unknown service category");
+    if (!category) throw new ConvexError("Unknown service category");
     if (!(category.types as readonly string[]).includes(args.serviceType)) {
-      throw new Error(`"${args.serviceType}" is not in the ${category.name} list`);
+      throw new ConvexError(`"${args.serviceType}" is not in the ${category.name} list`);
     }
     if (args.pricingMode !== "quote" && (!args.basePrice || args.basePrice < 50)) {
-      throw new Error("Set a price of at least KES 50, or choose 'Customer asks first'");
+      throw new ConvexError("Set a price of at least KES 50, or choose 'Customer asks first'");
     }
     const now = Date.now();
     const existing = await ctx.db
@@ -546,7 +546,7 @@ export const setMyAvailability = mutation({
       .query("serviceProfiles")
       .withIndex("by_user" as any, (q: any) => q.eq("userId", user._id))
       .first();
-    if (!profile) throw new Error("Create your service profile first");
+    if (!profile) throw new ConvexError("Create your service profile first");
     await ctx.db.patch((profile as any)._id, { availability: args.availability, updatedAt: Date.now() });
     return { success: true };
   },
@@ -567,13 +567,13 @@ export const requestService = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const provider = await ctx.db.get(args.providerId);
-    if (!provider) throw new Error("Service not found");
+    if (!provider) throw new ConvexError("Service not found");
     const p = provider as any;
-    if (p.userId === user._id) throw new Error("You cannot book your own service");
-    if (p.availability === "off") throw new Error("This provider is not accepting requests right now");
+    if (p.userId === user._id) throw new ConvexError("You cannot book your own service");
+    if (p.availability === "off") throw new ConvexError("This provider is not accepting requests right now");
 
     if (p.pricingMode === "quote") {
-      throw new Error("This provider prices per job — use Chat to agree the price first.");
+      throw new ConvexError("This provider prices per job — use Chat to agree the price first.");
     }
     const amount = Math.round(p.basePrice as number);
     const now = Date.now();
@@ -616,17 +616,17 @@ export const fundServiceRequest = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const req = await ctx.db.get(args.requestId);
-    if (!req) throw new Error("Request not found");
+    if (!req) throw new ConvexError("Request not found");
     const r = req as any;
-    if (r.customerId !== user._id) throw new Error("Not authorized");
-    if (r.status !== "pending") throw new Error("This request is no longer awaiting payment");
+    if (r.customerId !== user._id) throw new ConvexError("Not authorized");
+    if (r.status !== "pending") throw new ConvexError("This request is no longer awaiting payment");
 
     const amount = r.amount;
     const protection = buyerProtectionFee("product", amount);
     const total = amount + protection.fee;
     const walletBalance = (user as any).walletBalance || 0;
     if (walletBalance < total) {
-      throw new Error(
+      throw new ConvexError(
         `You need KES ${total.toLocaleString()} in your wallet (service KES ${amount.toLocaleString()} + protection KES ${protection.fee.toLocaleString()}). Deposit with M-Pesa first.`,
       );
     }
@@ -664,10 +664,10 @@ export const acceptServiceRequest = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const req = await ctx.db.get(args.requestId);
-    if (!req) throw new Error("Request not found");
+    if (!req) throw new ConvexError("Request not found");
     const r = req as any;
-    if (r.providerUserId !== user._id) throw new Error("Not authorized");
-    if (r.status !== "funded") throw new Error("Wait for the customer's escrow payment first");
+    if (r.providerUserId !== user._id) throw new ConvexError("Not authorized");
+    if (r.status !== "funded") throw new ConvexError("Wait for the customer's escrow payment first");
     const now = Date.now();
     await ctx.db.patch(args.requestId, { status: "accepted" as any, providerAcceptedAt: now, updatedAt: now });
     await notify(ctx, r.customerId, "Provider accepted", `Your "${r.title}" request was accepted. Track it in Bookings.`, "/services/bookings");
@@ -681,10 +681,10 @@ export const declineServiceRequest = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const req = await ctx.db.get(args.requestId);
-    if (!req) throw new Error("Request not found");
+    if (!req) throw new ConvexError("Request not found");
     const r = req as any;
-    if (r.providerUserId !== user._id) throw new Error("Not authorized");
-    if (!["pending", "funded"].includes(r.status)) throw new Error("Only fresh requests can be declined");
+    if (r.providerUserId !== user._id) throw new ConvexError("Not authorized");
+    if (!["pending", "funded"].includes(r.status)) throw new ConvexError("Only fresh requests can be declined");
     const now = Date.now();
 
     if (r.status === "funded") {
@@ -721,10 +721,10 @@ export const cancelServiceRequest = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const req = await ctx.db.get(args.requestId);
-    if (!req) throw new Error("Request not found");
+    if (!req) throw new ConvexError("Request not found");
     const r = req as any;
-    if (r.customerId !== user._id) throw new Error("Not authorized");
-    if (!["pending", "funded", "accepted"].includes(r.status)) throw new Error("Work already started — use a dispute");
+    if (r.customerId !== user._id) throw new ConvexError("Not authorized");
+    if (!["pending", "funded", "accepted"].includes(r.status)) throw new ConvexError("Work already started — use a dispute");
     const now = Date.now();
     if (r.status !== "pending") {
       const customer = await ctx.db.get(r.customerId as any);
@@ -757,10 +757,10 @@ export const startServiceRequest = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const req = await ctx.db.get(args.requestId);
-    if (!req) throw new Error("Request not found");
+    if (!req) throw new ConvexError("Request not found");
     const r = req as any;
-    if (r.providerUserId !== user._id) throw new Error("Not authorized");
-    if (r.status !== "accepted") throw new Error("Accept the booking first");
+    if (r.providerUserId !== user._id) throw new ConvexError("Not authorized");
+    if (r.status !== "accepted") throw new ConvexError("Accept the booking first");
     const now = Date.now();
     await ctx.db.patch(args.requestId, { status: "in_progress" as any, startedAt: now, updatedAt: now });
     await notify(ctx, r.customerId, "Work started", `The provider started "${r.title}". You'll confirm when it's done.`, "/services/bookings");
@@ -778,13 +778,13 @@ export const completeServiceRequest = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const req = await ctx.db.get(args.requestId);
-    if (!req) throw new Error("Request not found");
+    if (!req) throw new ConvexError("Request not found");
     const r = req as any;
-    if (r.customerId !== user._id) throw new Error("Only the customer can confirm completion");
+    if (r.customerId !== user._id) throw new ConvexError("Only the customer can confirm completion");
     if (!["in_progress", "accepted", "funded"].includes(r.status)) {
-      throw new Error("This booking is not in an active state");
+      throw new ConvexError("This booking is not in an active state");
     }
-    if (!r.customerFunded) throw new Error("Escrow was never funded for this request");
+    if (!r.customerFunded) throw new ConvexError("Escrow was never funded for this request");
 
     const now = Date.now();
     const amount = r.amount;
@@ -859,13 +859,13 @@ export const rateServiceRequest = mutation({
   args: { requestId: v.id("serviceRequests"), rating: v.number(), comment: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    if (args.rating < 1 || args.rating > 5) throw new Error("Rating must be 1–5");
+    if (args.rating < 1 || args.rating > 5) throw new ConvexError("Rating must be 1–5");
     const req = await ctx.db.get(args.requestId);
-    if (!req) throw new Error("Request not found");
+    if (!req) throw new ConvexError("Request not found");
     const r = req as any;
-    if (r.customerId !== user._id) throw new Error("Not authorized");
-    if (r.status !== "completed") throw new Error("You can only rate completed services");
-    if (r.ratedAt) throw new Error("You already rated this service");
+    if (r.customerId !== user._id) throw new ConvexError("Not authorized");
+    if (r.status !== "completed") throw new ConvexError("You can only rate completed services");
+    if (r.ratedAt) throw new ConvexError("You already rated this service");
 
     const now = Date.now();
     await ctx.db.patch(args.requestId, { rating: args.rating, ratedAt: now });
@@ -885,7 +885,7 @@ export const rateServiceRequest = mutation({
 /** Admin guard. */
 async function requireAdmin(ctx: any): Promise<any> {
   const user = await requireUser(ctx);
-  if (user.role !== "admin") throw new Error("Unauthorized: admin only");
+  if (user.role !== "admin") throw new ConvexError("Unauthorized: admin only");
   return user;
 }
 
@@ -927,7 +927,7 @@ export const adminVerifyProvider = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const p = await ctx.db.get(args.providerId);
-    if (!p) throw new Error("Provider not found");
+    if (!p) throw new ConvexError("Provider not found");
     await ctx.db.patch(args.providerId, {
       adminVerified: args.verified,
       verificationNote: args.note,

@@ -1,5 +1,5 @@
 import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 
 // Get all categories (admin view - includes inactive)
 export const getAllCategories = query({
@@ -51,7 +51,7 @@ export const createCategory = mutation({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
     if (existing) {
-      throw new Error("A category with this slug already exists");
+      throw new ConvexError("A category with this slug already exists");
     }
 
     const maxOrder = await ctx.db.query("productCategories").collect();

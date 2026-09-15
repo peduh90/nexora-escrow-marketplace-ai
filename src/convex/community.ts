@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 // ─── Phase 2: Community Requests (#88/#89) ──────────────────────────────────
@@ -10,9 +10,9 @@ import { mutation, query } from "./_generated/server";
 async function requireUser(ctx: any) {
   const { getSessionUser } = await import("./users");
   const user = await getSessionUser(ctx);
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new ConvexError("Not authenticated");
   if ((user as any).accountStatus === "suspended") {
-    throw new Error("Your account is suspended — request features are disabled.");
+    throw new ConvexError("Your account is suspended — request features are disabled.");
   }
   return user;
 }
@@ -54,8 +54,8 @@ export const createRequest = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const title = args.title.trim();
-    if (title.length < 5) throw new Error("Describe what you need in at least 5 characters");
-    if (title.length > 120) throw new Error("Keep the title under 120 characters");
+    if (title.length < 5) throw new ConvexError("Describe what you need in at least 5 characters");
+    if (title.length > 120) throw new ConvexError("Keep the title under 120 characters");
 
     // Anti-spam: cap open requests per account (#81 fraud patterns).
     const mine = await ctx.db
@@ -64,7 +64,7 @@ export const createRequest = mutation({
       .collect();
     const open = mine.filter((r: any) => r.status === "open");
     if (open.length >= MAX_OPEN_PER_USER) {
-      throw new Error(`You have ${open.length} open requests — close one before posting another`);
+      throw new ConvexError(`You have ${open.length} open requests — close one before posting another`);
     }
 
     const now = Date.now();
@@ -148,7 +148,7 @@ export const listOffersForMyRequest = query({
     const user = await requireUser(ctx);
     const request = await ctx.db.get(args.requestId);
     if (!request || (request as any).customerId !== user._id) {
-      throw new Error("Not authorized");
+      throw new ConvexError("Not authorized");
     }
     const offers = await ctx.db
       .query("requestOffers")
@@ -167,12 +167,12 @@ export const submitOffer = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    if (args.amount <= 0) throw new Error("Enter a valid price");
+    if (args.amount <= 0) throw new ConvexError("Enter a valid price");
     const request = await ctx.db.get(args.requestId);
-    if (!request) throw new Error("Request not found");
+    if (!request) throw new ConvexError("Request not found");
     const r = request as any;
-    if (r.status !== "open") throw new Error("This request is no longer open");
-    if (r.customerId === user._id) throw new Error("You cannot offer on your own request");
+    if (r.status !== "open") throw new ConvexError("This request is no longer open");
+    if (r.customerId === user._id) throw new ConvexError("You cannot offer on your own request");
 
     // One offer per responder per request — edit yours instead of spamming.
     const existing = await ctx.db
@@ -180,7 +180,7 @@ export const submitOffer = mutation({
       .withIndex("by_request" as any, (q: any) => q.eq("requestId", args.requestId))
       .collect();
     if (existing.length >= MAX_OFFERS_PER_REQUEST) {
-      throw new Error("This request has enough offers for now");
+      throw new ConvexError("This request has enough offers for now");
     }
     const mine = existing.find((o: any) => o.responderId === user._id);
     const verified = !!(user as any).kycVerified || (user as any).verificationLevel === "business";
@@ -223,14 +223,14 @@ export const acceptOffer = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const offer = await ctx.db.get(args.offerId);
-    if (!offer) throw new Error("Offer not found");
+    if (!offer) throw new ConvexError("Offer not found");
     const o = offer as any;
     const request = await ctx.db.get(o.requestId);
-    if (!request) throw new Error("Request not found");
+    if (!request) throw new ConvexError("Request not found");
     const r = request as any;
-    if (r.customerId !== user._id) throw new Error("Not authorized");
-    if (r.status !== "open") throw new Error("This request is already closed");
-    if (o.status !== "pending") throw new Error("This offer is no longer available");
+    if (r.customerId !== user._id) throw new ConvexError("Not authorized");
+    if (r.status !== "open") throw new ConvexError("This request is already closed");
+    if (o.status !== "pending") throw new ConvexError("This offer is no longer available");
 
     await ctx.db.patch(o.requestId, { status: "awarded" as const, awardedOfferId: o._id, updatedAt: Date.now() });
     await ctx.db.patch(o._id, { status: "accepted" as const });
@@ -262,7 +262,7 @@ export const closeRequest = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const request = await ctx.db.get(args.requestId);
-    if (!request || (request as any).customerId !== user._id) throw new Error("Not authorized");
+    if (!request || (request as any).customerId !== user._id) throw new ConvexError("Not authorized");
     await ctx.db.patch(args.requestId, { status: "closed" as const, updatedAt: Date.now() });
     return { success: true };
   },

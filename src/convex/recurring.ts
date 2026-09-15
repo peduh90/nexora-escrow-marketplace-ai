@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getSessionUser } from "./users";
 
@@ -23,7 +23,7 @@ const MAX_ACTIVE_PER_USER = 12;
 // first email row.
 async function requireUser(ctx: any) {
   const user = await getSessionUser(ctx);
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new ConvexError("Not authenticated");
   return user;
 }
 
@@ -36,13 +36,13 @@ export const startRecurring = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    if (args.quantity < 1 || args.quantity > 99) throw new Error("Invalid quantity");
+    if (args.quantity < 1 || args.quantity > 99) throw new ConvexError("Invalid quantity");
 
     const listing = await ctx.db.get(args.listingId);
-    if (!listing) throw new Error("Product not found");
+    if (!listing) throw new ConvexError("Product not found");
     const l = listing as any;
-    if (l.status !== "active") throw new Error("This product is not currently available");
-    if (l.sellerId === user._id) throw new Error("You cannot subscribe to your own product");
+    if (l.status !== "active") throw new ConvexError("This product is not currently available");
+    if (l.sellerId === user._id) throw new ConvexError("You cannot subscribe to your own product");
 
     const mine = await ctx.db
       .query("recurringOrders")
@@ -64,7 +64,7 @@ export const startRecurring = mutation({
     }
     const activeCount = mine.filter((r: any) => r.active && !(r as any).paused).length;
     if (activeCount >= MAX_ACTIVE_PER_USER) {
-      throw new Error(`You already have ${activeCount} active subscriptions`);
+      throw new ConvexError(`You already have ${activeCount} active subscriptions`);
     }
 
     const id = await ctx.db.insert("recurringOrders", {
@@ -126,7 +126,7 @@ export const setRecurringPaused = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const plan = await ctx.db.get(args.planId);
-    if (!plan || (plan as any).userId !== user._id) throw new Error("Not authorized");
+    if (!plan || (plan as any).userId !== user._id) throw new ConvexError("Not authorized");
     await ctx.db.patch(args.planId, { paused: args.paused, updatedAt: Date.now() });
     return { success: true };
   },
@@ -138,7 +138,7 @@ export const cancelRecurring = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const plan = await ctx.db.get(args.planId);
-    if (!plan || (plan as any).userId !== user._id) throw new Error("Not authorized");
+    if (!plan || (plan as any).userId !== user._id) throw new ConvexError("Not authorized");
     await ctx.db.patch(args.planId, { active: false, updatedAt: Date.now() });
     return { success: true };
   },
@@ -154,18 +154,18 @@ export const reorderNow = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const plan = await ctx.db.get(args.planId);
-    if (!plan || (plan as any).userId !== user._id) throw new Error("Not authorized");
+    if (!plan || (plan as any).userId !== user._id) throw new ConvexError("Not authorized");
     const p = plan as any;
-    if (!p.active || p.paused) throw new Error("This subscription is paused or cancelled");
+    if (!p.active || p.paused) throw new ConvexError("This subscription is paused or cancelled");
 
     const listing = await ctx.db.get(p.listingId);
-    if (!listing) throw new Error("This product is no longer listed");
+    if (!listing) throw new ConvexError("This product is no longer listed");
     const l = listing as any;
-    if (l.status !== "active") throw new Error("The product is not currently available");
+    if (l.status !== "active") throw new ConvexError("The product is not currently available");
 
     const freshUnit = l.price as number;
     const total = Math.round(freshUnit * p.quantity);
-    if (total <= 0) throw new Error("Invalid price");
+    if (total <= 0) throw new ConvexError("Invalid price");
 
     // Go through the SAME createOrder logic family used by checkout: deduct
     // wallet, escrow funds, buyer+seller fees, delivery fields required.
@@ -177,7 +177,7 @@ export const reorderNow = mutation({
     const deliveryFee = 0; // hub pickup default; buyer can change delivery on the product page
     const grand = total + buyerFee + deliveryFee;
     if (walletBalance < grand) {
-      throw new Error(
+      throw new ConvexError(
         `Wallet balance too low for KES ${grand.toLocaleString()} — top up and try again`,
       );
     }

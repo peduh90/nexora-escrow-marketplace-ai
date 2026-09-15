@@ -184,46 +184,81 @@ export default function ServicesHub() {
               </button>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {providers.map((p) => (
-                <button
-                  key={p._id}
-                  onClick={() => navigate(`/services/provider/${p._id}`)}
-                  className="rounded-2xl border border-white/8 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/15 transition-all p-4 text-left"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-white truncate">{p.displayName}</p>
-                      <p className="text-xs text-white/45 mt-0.5">{p.serviceType}</p>
-                    </div>
-                    {p.availability === "available_now" && (
-                      <span className="shrink-0 flex items-center gap-1 text-[10px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-400/25 rounded-full px-2 py-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> NOW
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-white/40 mt-2 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> {p.town}, {p.county}
-                  </p>
-                  <div className="mt-3 flex items-center justify-between">
-                    {p.pricingMode !== "quote" && p.basePrice ? (
-                      <span className="text-sm font-bold text-emerald-300">
-                        {p.pricingMode === "starting_from" ? "from " : ""}KES {p.basePrice.toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-white/35">Ask price first</span>
-                    )}
-                    <span className="flex items-center gap-2 text-xs">
-                      {p.verified && <span className="text-[10px] text-nx-cyan font-semibold">✓ Verified</span>}
-                      {!!p.rating && (
-                        <span className="text-amber-300 flex items-center gap-0.5">
-                          <Star className="w-3 h-3" /> {p.rating}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {providers.map((p) => {
+                const cover = p.image || serviceImage(p.category);
+                return (
+                  <button
+                    key={p._id}
+                    onClick={() => navigate(`/services/provider/${p._id}`)}
+                    className="group rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden text-left hover:border-nx-cyan/40 hover:bg-white/[0.05] hover:shadow-lg hover:shadow-nx-cyan/5 hover:-translate-y-1 transition-all duration-300 flex flex-col"
+                  >
+                    {/* Cover — the provider's own shop/profile photo, or the
+                        category photo when they haven't added one yet. Same
+                        visual weight as the freelance service cards. */}
+                    <div className="aspect-[16/9] bg-gradient-to-br from-nx-cyan/10 to-nx-violet/10 overflow-hidden relative flex items-center justify-center">
+                      {cover ? (
+                        <img
+                          src={cover}
+                          alt={p.displayName}
+                          loading="lazy"
+                          className="w-full h-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                        />
+                      ) : (
+                        <span className="text-4xl">🧑‍🔧</span>
+                      )}
+                      {p.availability === "available_now" ? (
+                        <span className="absolute top-2 right-2 flex items-center gap-1 text-[9px] font-semibold text-emerald-300 bg-black/50 backdrop-blur-sm border border-emerald-400/25 rounded-full px-2 py-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> AVAILABLE NOW
+                        </span>
+                      ) : (
+                        <span className="absolute top-2 right-2 text-[9px] font-semibold text-white/60 bg-black/50 backdrop-blur-sm border border-white/10 rounded-full px-2 py-1">
+                          {p.availability === "busy" ? "Busy" : "Offline"}
                         </span>
                       )}
-                    </span>
-                  </div>
-                </button>
-              ))}
+                      {p.verified && (
+                        <span className="absolute top-2 left-2 flex items-center gap-1 text-[9px] font-semibold px-2 py-1 rounded-full bg-nx-cyan/20 backdrop-blur-sm border border-nx-cyan/30 text-nx-cyan">
+                          ✓ Verified
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="p-4 flex flex-col flex-1">
+                      <h3 className="text-sm font-bold text-white leading-snug truncate group-hover:text-nx-cyan transition-colors">
+                        {p.displayName}
+                      </h3>
+                      <p className="text-xs text-white/45 mt-0.5">{p.serviceType}</p>
+                      {!!p.tagline && (
+                        <p className="text-[11px] text-white/35 mt-1 line-clamp-1">{p.tagline}</p>
+                      )}
+                      <p className="text-[11px] text-white/40 mt-2 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 shrink-0" /> {p.town}, {p.county}
+                      </p>
+                      <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
+                        {p.pricingMode !== "quote" && p.basePrice ? (
+                          <span className="flex items-baseline gap-1">
+                            <span className="text-[10px] text-white/30">{p.pricingMode === "starting_from" ? "from" : ""}</span>
+                            <span className="text-sm font-bold text-emerald-300">KES {p.basePrice.toLocaleString()}</span>
+                          </span>
+                        ) : (
+                          <span className="text-xs text-white/35">Ask price first</span>
+                        )}
+                        <span className="flex items-center gap-2">
+                          {!!p.rating && (
+                            <span className="text-[10px] text-amber-300 flex items-center gap-0.5">
+                              <Star className="w-3 h-3 fill-amber-300" /> {p.rating}
+                            </span>
+                          )}
+                          {!!p.completedJobs && (
+                            <span className="text-[10px] text-white/30">{p.completedJobs} jobs</span>
+                          )}
+                          <span className="text-[10px] font-semibold text-nx-cyan group-hover:text-white transition-colors">Book →</span>
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

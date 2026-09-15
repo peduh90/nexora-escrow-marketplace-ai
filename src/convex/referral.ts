@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { query, mutation, internalMutation } from "./_generated/server";
 
 // ─── NEXORA CREATOR / REFERRAL PROGRAM ──────────────────────────────────────
@@ -49,14 +49,14 @@ async function getSessionUser(ctx: any): Promise<any | null> {
 
 async function requireUser(ctx: any): Promise<any> {
   const user = await getSessionUser(ctx);
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new ConvexError("Not authenticated");
   return user;
 }
 
 /** Admin guard — mirrors the platform's admin rule (role === "admin"). */
 async function requireAdmin(ctx: any): Promise<any> {
   const user = await requireUser(ctx);
-  if (user.role !== "admin") throw new Error("Unauthorized: admin only");
+  if (user.role !== "admin") throw new ConvexError("Unauthorized: admin only");
   return user;
 }
 
@@ -333,10 +333,10 @@ export const applyToBeCreator = mutation({
     const displayName = args.displayName.trim();
     const handle = args.platformHandle.trim();
     const plan = args.promoPlan.trim();
-    if (displayName.length < 2) throw new Error("Enter the name your audience knows you by.");
-    if (handle.length < 2) throw new Error("Enter your social media handle.");
+    if (displayName.length < 2) throw new ConvexError("Enter the name your audience knows you by.");
+    if (handle.length < 2) throw new ConvexError("Enter your social media handle.");
     if (plan.length < 20) {
-      throw new Error("Describe how you will promote Nexora in at least 20 characters.");
+      throw new ConvexError("Describe how you will promote Nexora in at least 20 characters.");
     }
 
     const existing = await ctx.db
@@ -347,10 +347,10 @@ export const applyToBeCreator = mutation({
       const e = existing as any;
       if (e.status === "pending") return { status: "pending", creatorId: e._id };
       if (e.status === "approved") return { status: "approved", creatorId: e._id };
-      if (e.status === "suspended") throw new Error("Your creator account is suspended. Contact support.");
+      if (e.status === "suspended") throw new ConvexError("Your creator account is suspended. Contact support.");
       // Rejected — allow one re-application per 24h.
       if (e.reviewedAt && Date.now() - e.reviewedAt < 24 * 60 * 60 * 1000) {
-        throw new Error("Your application was recently reviewed. You can re-apply after 24 hours.");
+        throw new ConvexError("Your application was recently reviewed. You can re-apply after 24 hours.");
       }
       await ctx.db.patch(e._id, {
         displayName,
@@ -380,7 +380,7 @@ export const applyToBeCreator = mutation({
         break;
       }
     }
-    if (!referralCode) throw new Error("Could not allocate a referral code. Please try again.");
+    if (!referralCode) throw new ConvexError("Could not allocate a referral code. Please try again.");
 
     const id = await ctx.db.insert("referralCreators", {
       userId: user._id,
@@ -907,7 +907,7 @@ export const creatorDetail = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const creator = await ctx.db.get(args.creatorId as any);
-    if (!creator) throw new Error("Creator not found");
+    if (!creator) throw new ConvexError("Creator not found");
     const c = creator as any;
 
     const referrals = await ctx.db
@@ -976,7 +976,7 @@ export const reviewCreator = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const creator = await ctx.db.get(args.creatorId as any);
-    if (!creator) throw new Error("Creator not found");
+    if (!creator) throw new ConvexError("Creator not found");
     const c = creator as any;
 
     const status =
@@ -1021,7 +1021,7 @@ export const reviewReferral = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const rec = await ctx.db.get(args.referralId as any);
-    if (!rec) throw new Error("Referral not found");
+    if (!rec) throw new ConvexError("Referral not found");
     const r = rec as any;
 
     if (args.decision === "reject") {
@@ -1045,7 +1045,7 @@ export const reviewReferral = mutation({
       }
       await recomputeCreatorMoney(ctx, r.creatorId);
     } else {
-      if (!r.verifiedAt) throw new Error("This referral has not completed verification yet.");
+      if (!r.verifiedAt) throw new ConvexError("This referral has not completed verification yet.");
       await ctx.db.patch(r._id, {
         status: "qualified" as any,
         qualified: true,
@@ -1070,9 +1070,9 @@ export const reviewEarning = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const earning = await ctx.db.get(args.earningId as any);
-    if (!earning) throw new Error("Earning not found");
+    if (!earning) throw new ConvexError("Earning not found");
     const e = earning as any;
-    if (e.status !== "pending") throw new Error("Only pending earnings can be reviewed");
+    if (e.status !== "pending") throw new ConvexError("Only pending earnings can be reviewed");
 
     if (args.decision === "approve") {
       await ctx.db.patch(e._id, { status: "approved" as any, approvedAt: Date.now() });
@@ -1093,12 +1093,12 @@ export const adjustEarning = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const earning = await ctx.db.get(args.earningId as any);
-    if (!earning) throw new Error("Earning not found");
+    if (!earning) throw new ConvexError("Earning not found");
     const e = earning as any;
     if (e.status !== "pending" && e.status !== "approved") {
-      throw new Error("Only unpaid earnings can be adjusted");
+      throw new ConvexError("Only unpaid earnings can be adjusted");
     }
-    if (!(args.newAmount >= 0)) throw new Error("Amount must be zero or more");
+    if (!(args.newAmount >= 0)) throw new ConvexError("Amount must be zero or more");
     await ctx.db.patch(e._id, {
       amount: Math.round(args.newAmount),
       adjustedBy: admin._id,
@@ -1115,7 +1115,7 @@ export const payoutCreator = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const creator = await ctx.db.get(args.creatorId as any);
-    if (!creator) throw new Error("Creator not found");
+    if (!creator) throw new ConvexError("Creator not found");
     const c = creator as any;
 
     const earnings = await ctx.db
@@ -1123,7 +1123,7 @@ export const payoutCreator = mutation({
       .withIndex("by_creator", (q: any) => q.eq("creatorId", args.creatorId))
       .collect();
     const payable = earnings.filter((e: any) => e.status === "approved");
-    if (payable.length === 0) throw new Error("No approved earnings ready for payout");
+    if (payable.length === 0) throw new ConvexError("No approved earnings ready for payout");
 
     const reference = `NX-CRP-${Date.now()}`;
     let total = 0;
@@ -1178,7 +1178,7 @@ export const updateProgramSettings = mutation({
       args.revenueShareCap < 0 ||
       args.maxReferralsPerHour < 1
     ) {
-      throw new Error("Invalid settings: amounts must be ≥ 0, revenue share ≤ 20%, hourly cap ≥ 1");
+      throw new ConvexError("Invalid settings: amounts must be ≥ 0, revenue share ≤ 20%, hourly cap ≥ 1");
     }
     const row = await ctx.db.query("referralSettings").first();
     const patch = { ...args, updatedBy: admin._id, updatedAt: Date.now() };

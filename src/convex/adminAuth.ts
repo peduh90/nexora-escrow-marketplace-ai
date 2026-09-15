@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
 const ADMIN_EMAIL = "murimiedwin227@gmail.com";
@@ -33,7 +33,7 @@ export const setupAdmin2FA = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await ctx.db
       .query("users")
@@ -41,7 +41,7 @@ export const setupAdmin2FA = mutation({
       .first();
 
     if (!user || user.role !== "admin") {
-      throw new Error("Unauthorized: admin only");
+      throw new ConvexError("Unauthorized: admin only");
     }
 
     // Generate TOTP secret using otpauth named exports
@@ -114,7 +114,7 @@ export const confirmAdmin2FA = mutation({
   args: { code: v.string() },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await ctx.db
       .query("users")
@@ -122,11 +122,11 @@ export const confirmAdmin2FA = mutation({
       .first();
 
     if (!user || user.role !== "admin") {
-      throw new Error("Unauthorized: admin only");
+      throw new ConvexError("Unauthorized: admin only");
     }
 
     if (!user.adminTotpSecret) {
-      throw new Error("2FA not initialized. Run setupAdmin2FA first.");
+      throw new ConvexError("2FA not initialized. Run setupAdmin2FA first.");
     }
 
     try {
@@ -142,7 +142,7 @@ export const confirmAdmin2FA = mutation({
 
       const delta = totp.validate({ token: args.code, window: 1 });
       if (delta === null) {
-        throw new Error("Invalid 2FA code. Please try again.");
+        throw new ConvexError("Invalid 2FA code. Please try again.");
       }
 
       // Enable 2FA
@@ -154,7 +154,7 @@ export const confirmAdmin2FA = mutation({
       return { success: true };
     } catch (err) {
       if (err instanceof Error) throw err;
-      throw new Error("Invalid 2FA code");
+      throw new ConvexError("Invalid 2FA code");
     }
   },
 });
@@ -190,7 +190,7 @@ export const validateAdmin2FA = mutation({
   args: { code: v.string() },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await ctx.db
       .query("users")
@@ -198,11 +198,11 @@ export const validateAdmin2FA = mutation({
       .first();
 
     if (!user || user.role !== "admin") {
-      throw new Error("Unauthorized: admin only");
+      throw new ConvexError("Unauthorized: admin only");
     }
 
     if (!user.adminTotpSecret) {
-      throw new Error("Admin 2FA not set up");
+      throw new ConvexError("Admin 2FA not set up");
     }
 
     try {
@@ -218,7 +218,7 @@ export const validateAdmin2FA = mutation({
 
       const delta = totp.validate({ token: args.code, window: 1 });
       if (delta === null) {
-        throw new Error("Invalid 2FA code. Please try again.");
+        throw new ConvexError("Invalid 2FA code. Please try again.");
       }
 
       // Update last login
@@ -229,7 +229,7 @@ export const validateAdmin2FA = mutation({
       return { success: true };
     } catch (err) {
       if (err instanceof Error) throw err;
-      throw new Error("Invalid 2FA code");
+      throw new ConvexError("Invalid 2FA code");
     }
   },
 });
@@ -241,7 +241,7 @@ export const setAdminPassword = mutation({
   args: { password: v.string() },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await ctx.db
       .query("users")
@@ -249,18 +249,18 @@ export const setAdminPassword = mutation({
       .first();
 
     // Auto-promote if email matches admin email
-    if (!user) throw new Error("No account found. Please sign up first.");
+    if (!user) throw new ConvexError("No account found. Please sign up first.");
     if (identity.email === ADMIN_EMAIL && user.role !== "admin") {
       await ctx.db.patch(user._id, { role: "admin" });
     }
     // Re-fetch to get updated role
     const freshUser = await ctx.db.get(user._id);
     if (!freshUser || freshUser.role !== "admin") {
-      throw new Error("Unauthorized: admin only");
+      throw new ConvexError("Unauthorized: admin only");
     }
 
     if (args.password.length < 8) {
-      throw new Error("Password must be at least 8 characters");
+      throw new ConvexError("Password must be at least 8 characters");
     }
 
     const salt = generateSalt();
@@ -290,7 +290,7 @@ export const verifyAdminPassword = mutation({
       .first();
 
     if (!user) {
-      throw new Error("No account found with this email");
+      throw new ConvexError("No account found with this email");
     }
 
     // Auto-promote if email matches admin email
@@ -301,16 +301,16 @@ export const verifyAdminPassword = mutation({
     // Re-fetch
     const updated = await ctx.db.get(user._id);
     if (!updated || updated.role !== "admin") {
-      throw new Error("This account does not have admin privileges");
+      throw new ConvexError("This account does not have admin privileges");
     }
 
     if (!updated.adminPasswordHash || !updated.adminPasswordSalt) {
-      throw new Error("No admin password set. Please contact support.");
+      throw new ConvexError("No admin password set. Please contact support.");
     }
 
     const valid = await verifyPassword(args.password, updated.adminPasswordHash, updated.adminPasswordSalt);
     if (!valid) {
-      throw new Error("Incorrect password");
+      throw new ConvexError("Incorrect password");
     }
 
     return { success: true };

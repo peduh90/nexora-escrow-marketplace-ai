@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { query, mutation, action } from "./_generated/server";
 
 // ═══════════════════════════════════════════════════════════════
@@ -36,12 +36,12 @@ export const upsertKnowledgeArticle = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
-    if (!user || user.role !== "admin") throw new Error("Admin only");
+    if (!user || user.role !== "admin") throw new ConvexError("Admin only");
 
     const now = Date.now();
     if (args.id) {
@@ -898,7 +898,7 @@ export const reviewFraudAlert = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
     await ctx.db.patch(args.alertId, {
       status: args.status,
       reviewedBy: identity.subject,

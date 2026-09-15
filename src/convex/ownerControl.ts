@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { query, mutation, action } from "./_generated/server";
 
 // ═══════════════════════════════════════════════════════════════
@@ -12,14 +12,14 @@ const OWNER_EMAIL = "murimiedwin227@gmail.com";
 
 async function requireOwner(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Not authenticated");
+  if (!identity) throw new ConvexError("Not authenticated");
 
   const user = await ctx.db
     .query("users")
     .withIndex("email", (q: any) => q.eq("email", identity.email))
     .first();
 
-  if (!user) throw new Error("User not found");
+  if (!user) throw new ConvexError("User not found");
 
   // Auto-promote owner email
   if (identity.email === OWNER_EMAIL) {
@@ -28,9 +28,9 @@ async function requireOwner(ctx: any) {
   }
 
   const fresh = await ctx.db.get(user._id);
-  if (!fresh || fresh.role !== "admin") throw new Error("Unauthorized");
+  if (!fresh || fresh.role !== "admin") throw new ConvexError("Unauthorized");
   if (fresh.adminRole !== "super_admin" && identity.email !== OWNER_EMAIL) {
-    throw new Error("Owner access only");
+    throw new ConvexError("Owner access only");
   }
 
   return { user: fresh, identity, isOwner: identity.email === OWNER_EMAIL };
@@ -38,12 +38,12 @@ async function requireOwner(ctx: any) {
 
 async function requireAdmin(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Not authenticated");
+  if (!identity) throw new ConvexError("Not authenticated");
   const user = await ctx.db
     .query("users")
     .withIndex("email", (q: any) => q.eq("email", identity.email))
     .first();
-  if (!user || user.role !== "admin") throw new Error("Unauthorized: admin only");
+  if (!user || user.role !== "admin") throw new ConvexError("Unauthorized: admin only");
   return { user, identity };
 }
 
@@ -227,11 +227,11 @@ export const updatePermission = mutation({
   handler: async (ctx, args) => {
     const { user, isOwner } = await requireOwner(ctx);
     const perm = await ctx.db.get(args.permissionId);
-    if (!perm) throw new Error("Permission not found");
+    if (!perm) throw new ConvexError("Permission not found");
 
     // Critical permissions can only be changed by owner
     if ((perm.riskLevel === "critical" || perm.riskLevel === "high") && !isOwner) {
-      throw new Error("Only the owner can modify high/critical risk permissions");
+      throw new ConvexError("Only the owner can modify high/critical risk permissions");
     }
 
     const updates: Record<string, unknown> = { updatedBy: user._id, updatedAt: Date.now() };
@@ -262,7 +262,7 @@ export const toggleAllPermissions = mutation({
   args: { enabled: v.boolean() },
   handler: async (ctx, args) => {
     const { user, isOwner } = await requireOwner(ctx);
-    if (!isOwner) throw new Error("Owner only");
+    if (!isOwner) throw new ConvexError("Owner only");
 
     const perms = await ctx.db.query("aiPermissions").collect();
     for (const perm of perms) {

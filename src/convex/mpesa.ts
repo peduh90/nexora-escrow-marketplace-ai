@@ -1,6 +1,6 @@
 "use node";
 
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { action } from "./_generated/server";
 
 const MPESA_CONSUMER_KEY = process.env.MPESA_CONSUMER_KEY || "";
@@ -31,7 +31,7 @@ async function getAccessToken(): Promise<string> {
 
   const data = (await res.json()) as { access_token?: string; error?: string; message?: string };
   if (!data.access_token) {
-    throw new Error(`M-Pesa OAuth failed: ${data.message || data.error || JSON.stringify(data)}. Check MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET in API Keys.`);
+    throw new ConvexError(`M-Pesa OAuth failed: ${data.message || data.error || JSON.stringify(data)}. Check MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET in API Keys.`);
   }
   return data.access_token;
 }
@@ -66,7 +66,7 @@ export const initiateStkPush = action({
   },
   handler: async (ctx, args) => {
     if (!MPESA_CONSUMER_KEY || !MPESA_CONSUMER_SECRET) {
-      throw new Error("M-Pesa credentials not configured. Add MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET in API Keys.");
+      throw new ConvexError("M-Pesa credentials not configured. Add MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET in API Keys.");
     }
 
     const accessToken = await getAccessToken();
@@ -116,7 +116,7 @@ export const initiateStkPush = action({
     };
 
     if (data.ResponseCode !== "0") {
-      throw new Error(
+      throw new ConvexError(
         `STK Push failed: ${data.errorMessage || data.ResponseDescription || "Unknown error"}`
       );
     }
@@ -137,7 +137,7 @@ export const checkTransactionStatus = action({
   },
   handler: async (ctx, args) => {
     if (!MPESA_CONSUMER_KEY || !MPESA_CONSUMER_SECRET) {
-      throw new Error("M-Pesa credentials not configured.");
+      throw new ConvexError("M-Pesa credentials not configured.");
     }
 
     const accessToken = await getAccessToken();

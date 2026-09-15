@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
 
@@ -114,13 +114,13 @@ const ADMIN_EMAIL = "murimiedwin227@gmail.com";
 
 async function requireAdmin(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity?.email) throw new Error("Not authenticated");
+  if (!identity?.email) throw new ConvexError("Not authenticated");
   const user = await ctx.db
     .query("users")
     .withIndex("email", (q: any) => q.eq("email", identity.email))
     .first();
   if (!user || ((user as any).role !== "admin" && identity.email !== ADMIN_EMAIL)) {
-    throw new Error("Admin access required");
+    throw new ConvexError("Admin access required");
   }
   return user;
 }
@@ -138,7 +138,7 @@ export const setFlag = mutation({
       .query("featureFlags")
       .withIndex("by_key", (q) => q.eq("key", args.key))
       .first();
-    if (!row) throw new Error("Unknown flag");
+    if (!row) throw new ConvexError("Unknown flag");
 
     await ctx.db.patch(row._id, {
       enabled: args.enabled,

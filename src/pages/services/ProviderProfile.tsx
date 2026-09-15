@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { serviceImage } from "@/lib/service-images";
 import NavigationBar from "@/components/layout/NavigationBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import {
@@ -141,18 +142,32 @@ export default function ProviderProfile() {
           <ArrowLeft className="w-4 h-4" />
         </button>
 
-        {/* Provider header */}
-        <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+        {/* Provider header — big shop/profile cover first, then identity.
+            The provider's uploaded photo IS the storefront visual (the same
+            weight as a freelance service card), with the category photo as
+            fallback so a profile never looks empty. */}
+        <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden">
+          <div className="aspect-[21/8] bg-gradient-to-br from-nx-cyan/10 via-nx-violet/10 to-transparent relative">
+            {(p.image || serviceImage(p.category)) ? (
+              <img
+                src={p.image || serviceImage(p.category)}
+                alt=""
+                className="w-full h-full object-cover opacity-80"
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          </div>
+          <div className="p-5 -mt-8 relative">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {p.image ? (
                 <img
                   src={p.image}
                   alt={p.displayName}
-                  className="w-14 h-14 rounded-2xl object-cover border border-nx-violet/25 shrink-0"
+                  className="w-16 h-16 rounded-2xl object-cover border-2 border-nx-violet/40 shadow-xl shadow-black/50 shrink-0"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-2xl bg-nx-violet/15 border border-nx-violet/25 flex items-center justify-center text-2xl shrink-0">
+                <div className="w-16 h-16 rounded-2xl bg-nx-violet/15 border-2 border-nx-violet/40 flex items-center justify-center text-3xl shrink-0">
                   🧑‍🔧
                 </div>
               )}
@@ -193,6 +208,7 @@ export default function ProviderProfile() {
             )}
           </div>
           {p.tagline && <p className="mt-3 text-sm text-white/70">{p.tagline}</p>}
+          </div>
         </div>
 
         {/* Price + booking */}

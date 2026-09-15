@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { query, mutation, internalMutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { ALLOWED_ROLES, resolveRole, resolveRoleForAdminFlow, ADMIN_EMAIL } from "./roles";
@@ -549,7 +549,7 @@ export const ensureUserProfile = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     // Merge duplicate rows for this identity email first so the profile sync
     // lands on the canonical account, not an empty duplicate.
@@ -791,10 +791,10 @@ export const completeVerification = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await getSessionUser(ctx);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     const u = user as any;
 
@@ -821,13 +821,13 @@ export const completeVerification = mutation({
           : "buyer";
 
     if (!hasEmail) {
-      throw new Error("Verify your email before completing registration.");
+      throw new ConvexError("Verify your email before completing registration.");
     }
     if (!hasName) {
-      throw new Error("Add your full name to complete registration.");
+      throw new ConvexError("Add your full name to complete registration.");
     }
     if (!hasPhone) {
-      throw new Error("Add your phone number to complete registration.");
+      throw new ConvexError("Add your phone number to complete registration.");
     }
 
     // Admin role is never self-assigned here; the admin email path handles it.
@@ -953,7 +953,7 @@ export const resetPassword = mutation({
     const email = args.email.trim().toLowerCase();
 
     if (!isStrongPassword(args.newPassword)) {
-      throw new Error(
+      throw new ConvexError(
         "Password must be at least 8 characters and include an uppercase letter, lowercase letter, number, and symbol."
       );
     }
@@ -964,21 +964,21 @@ export const resetPassword = mutation({
       .first();
 
     if (!record) {
-      throw new Error("Invalid or expired code. Please request a new one.");
+      throw new ConvexError("Invalid or expired code. Please request a new one.");
     }
     if (record.expiresAt < Date.now()) {
       await ctx.db.delete(record._id);
-      throw new Error("This code has expired. Please request a new one.");
+      throw new ConvexError("This code has expired. Please request a new one.");
     }
     if (record.attempts >= 5) {
       await ctx.db.delete(record._id);
-      throw new Error("Too many attempts. Please request a new code.");
+      throw new ConvexError("Too many attempts. Please request a new code.");
     }
 
     const valid = await verifyStoredPasswordHash(record.codeHash, args.code.trim());
     if (!valid) {
       await ctx.db.patch(record._id, { attempts: record.attempts + 1 });
-      throw new Error("Invalid code. Please check and try again.");
+      throw new ConvexError("Invalid code. Please check and try again.");
     }
 
     const user = await ctx.db
@@ -987,7 +987,7 @@ export const resetPassword = mutation({
       .first();
     if (!user) {
       await ctx.db.delete(record._id);
-      throw new Error("Account not found.");
+      throw new ConvexError("Account not found.");
     }
 
     await ctx.db.patch(user._id, {
@@ -1023,21 +1023,21 @@ export const updatePassword = mutation({
   },
   handler: async (ctx, args) => {
     if (!isStrongPassword(args.newPassword)) {
-      throw new Error(
+      throw new ConvexError(
         "Password must be at least 8 characters and include an uppercase letter, lowercase letter, number, and symbol."
       );
     }
 
     if (args.confirmPassword !== args.newPassword) {
-      throw new Error("Passwords do not match.");
+      throw new ConvexError("Passwords do not match.");
     }
 
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await getSessionUser(ctx);
 
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     const u = user as any;
 
@@ -1046,7 +1046,7 @@ export const updatePassword = mutation({
       typeof u.passwordHash === "string" &&
       !(await verifyStoredPasswordHash(u.passwordHash, args.currentPassword))
     ) {
-      throw new Error("Current password is incorrect.");
+      throw new ConvexError("Current password is incorrect.");
     }
 
     await ctx.db.patch(u._id, { passwordHash: await hashStoredPassword(args.newPassword) });
@@ -1103,7 +1103,7 @@ export const checkAndPromoteAdmin = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     let user = await getSessionUser(ctx);
 
@@ -1176,18 +1176,18 @@ export const promoteToAdmin = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     // Resolve the caller's user record from the session itself
     const caller = await getSessionUser(ctx);
 
-    if (!caller) throw new Error("User not found");
+    if (!caller) throw new ConvexError("User not found");
 
     // Allow if the caller is already an admin, or if it's the hardcoded admin email
     // (the email itself is the ultimate authority — even if DB role is missing)
     const callerIsAdmin = caller.role === "admin" || identity.email === ADMIN_EMAIL;
     if (!callerIsAdmin) {
-      throw new Error("Unauthorized: only admins can promote users");
+      throw new ConvexError("Unauthorized: only admins can promote users");
     }
 
     const callerRole = (caller as any).role as string | undefined;
@@ -1287,10 +1287,10 @@ export const updateProfile = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await getSessionUser(ctx);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     const updates: Record<string, any> = {};
     if (args.name !== undefined) updates.name = args.name;

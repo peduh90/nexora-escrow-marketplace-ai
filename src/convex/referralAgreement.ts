@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getSessionUser } from "./users";
 
@@ -6,10 +6,10 @@ const ADMIN_EMAIL = "murimiedwin227@gmail.com";
 
 async function requireAdmin(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity?.email) throw new Error("Not authenticated");
+  if (!identity?.email) throw new ConvexError("Not authenticated");
   const user: any = await getSessionUser(ctx);
   const role = user?.role ?? (identity.email === ADMIN_EMAIL ? "admin" : null);
-  if (role !== "admin") throw new Error("Admin access required");
+  if (role !== "admin") throw new ConvexError("Admin access required");
   return { user };
 }
 
@@ -31,13 +31,17 @@ export const submitAgreement = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx);
-    if (!user) throw new Error("Sign in before submitting the agreement");
-    if (!args.agreedTerms) throw new Error("You must tick the agreement checkbox");
+    // ConvexError (not plain Error) so the message reaches the client — plain
+    // errors are masked as "Server Error" which tells the user nothing.
+    if (!user) throw new ConvexError("Sign in before submitting the agreement");
+    if (!args.agreedTerms) throw new ConvexError("You must tick the agreement checkbox");
     if (!args.fullName.trim() || !args.phone.trim() || !args.signature.trim()) {
-      throw new Error("Fill your name, phone and signature");
+      throw new ConvexError("Fill your name, phone and signature");
     }
-    if ((args.signature.trim().toLowerCase() !== args.fullName.trim().toLowerCase())) {
-      throw new Error("Your signature must match your full name");
+    if (args.signature.trim().toLowerCase() !== args.fullName.trim().toLowerCase()) {
+      throw new ConvexError(
+        `Your signature must exactly match your full name — you signed "${args.signature.trim()}" but your full name is "${args.fullName.trim()}".`,
+      );
     }
     const existing = await ctx.db
       .query("referralAgreements")
@@ -56,7 +60,7 @@ export const submitAgreement = mutation({
     };
     if (existing) {
       if ((existing as any).status === "pending") {
-        throw new Error("Your agreement is already with the admin for review");
+        throw new ConvexError("Your agreement is already with the admin for review");
       }
       await ctx.db.patch((existing as any)._id, { ...payload, reviewNote: undefined, reviewedBy: undefined, reviewedAt: undefined });
       return { id: (existing as any)._id, status: "pending" as const };
@@ -126,7 +130,7 @@ export const adminReviewAgreement = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireAdmin(ctx);
     const rec = (await ctx.db.get(args.id)) as any;
-    if (!rec) throw new Error("Agreement not found");
+    if (!rec) throw new ConvexError("Agreement not found");
     await ctx.db.patch(args.id, {
       status: args.approve ? "approved" : "rejected",
       reviewNote: args.note,

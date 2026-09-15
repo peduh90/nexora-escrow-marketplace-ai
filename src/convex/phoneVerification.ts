@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { action, mutation, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getSessionUser } from "./users";
@@ -60,16 +60,16 @@ export const sendPhoneCode = mutation({
   args: { phone: v.string() },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
     const phone = normalizeKePhone(args.phone);
-    if (!phone) throw new Error("Enter a valid Kenyan number, e.g. 0712 345 678");
+    if (!phone) throw new ConvexError("Enter a valid Kenyan number, e.g. 0712 345 678");
     // Rate limit: one code per number per minute.
     const recent = await ctx.db
       .query("phoneOtps")
       .withIndex("by_phone", (q) => q.eq("phone", phone))
       .first();
     if (recent && Date.now() - (recent as any).createdAt < 60 * 1000) {
-      throw new Error("Wait a minute before requesting another code");
+      throw new ConvexError("Wait a minute before requesting another code");
     }
     return { ok: true as const, phone };
   },
@@ -81,13 +81,13 @@ export const deliverPhoneCode = action({
   args: { phone: v.string() },
   handler: async (ctx, args) => {
     const phone = normalizeKePhone(args.phone);
-    if (!phone) throw new Error("Invalid phone number");
+    if (!phone) throw new ConvexError("Invalid phone number");
     const user: any = await getSessionUser(ctx as unknown as Parameters<typeof getSessionUser>[0]);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     const apiKey = process.env.AFRICASTALKING_API_KEY;
     if (!apiKey) {
-      throw new Error(
+      throw new ConvexError(
         "SMS is not configured yet — add your Africa's Talking API key (AFRICASTALKING_API_KEY) in the Keys tab.",
       );
     }
@@ -113,7 +113,7 @@ export const deliverPhoneCode = action({
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`Could not send the SMS (${res.status}). ${text.slice(0, 120)}`);
+      throw new ConvexError(`Could not send the SMS (${res.status}). ${text.slice(0, 120)}`);
     }
     return { sent: true as const };
   },
@@ -124,23 +124,23 @@ export const verifyPhoneCode = mutation({
   args: { phone: v.string(), code: v.string() },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
     const phone = normalizeKePhone(args.phone);
-    if (!phone) throw new Error("Invalid phone number");
+    if (!phone) throw new ConvexError("Invalid phone number");
 
     const rec = (await ctx.db
       .query("phoneOtps")
       .withIndex("by_phone", (q) => q.eq("phone", phone))
       .first()) as any;
-    if (!rec || rec.userId !== user._id) throw new Error("Request a code first");
-    if (rec.consumed) throw new Error("This code was already used — request a new one");
-    if (Date.now() > rec.expiresAt) throw new Error("Code expired — request a new one");
-    if ((rec.attempts ?? 0) >= MAX_ATTEMPTS) throw new Error("Too many attempts — request a new code");
+    if (!rec || rec.userId !== user._id) throw new ConvexError("Request a code first");
+    if (rec.consumed) throw new ConvexError("This code was already used — request a new one");
+    if (Date.now() > rec.expiresAt) throw new ConvexError("Code expired — request a new one");
+    if ((rec.attempts ?? 0) >= MAX_ATTEMPTS) throw new ConvexError("Too many attempts — request a new code");
 
     const ok = (await hashCode(args.code)) === rec.codeHash;
     if (!ok) {
       await ctx.db.patch(rec._id, { attempts: (rec.attempts ?? 0) + 1 });
-      throw new Error("Wrong code — check the SMS and try again");
+      throw new ConvexError("Wrong code — check the SMS and try again");
     }
     await ctx.db.patch(rec._id, { consumed: true });
     await ctx.db.patch(user._id as any, { phone, phoneVerified: true });

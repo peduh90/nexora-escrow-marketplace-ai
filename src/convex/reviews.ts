@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getSessionUser } from "./users";
 /** Create a review after a completed transaction */
@@ -12,22 +12,22 @@ export const createReview = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     // Check if already reviewed this order
     const existing = await ctx.db
       .query("reviews")
       .filter((q) => q.eq(q.field("orderId"), args.orderId))
       .first();
-    if (existing) throw new Error("You have already reviewed this order");
+    if (existing) throw new ConvexError("You have already reviewed this order");
 
-    if (args.rating < 1 || args.rating > 5) throw new Error("Rating must be 1-5");
+    if (args.rating < 1 || args.rating > 5) throw new ConvexError("Rating must be 1-5");
 
     const reviewId = await ctx.db.insert("reviews", {
       orderId: args.orderId,
@@ -110,12 +110,12 @@ export const replyToReview = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     const review = (await ctx.db.get(args.reviewId as any)) as any;
-    if (!review) throw new Error("Review not found");
+    if (!review) throw new ConvexError("Review not found");
     if (review.sellerId !== (user as any)._id) {
-      throw new Error("You can only reply to reviews of your own store");
+      throw new ConvexError("You can only reply to reviews of your own store");
     }
 
     await ctx.db.patch(review._id, { sellerReply: args.reply });
@@ -129,13 +129,13 @@ export const deleteReview = mutation({
   args: { reviewId: v.string() },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
     if ((user as any).role !== "admin") {
-      throw new Error("Unauthorized: admin only");
+      throw new ConvexError("Unauthorized: admin only");
     }
 
     const review = (await ctx.db.get(args.reviewId as any)) as any;
-    if (!review) throw new Error("Review not found");
+    if (!review) throw new ConvexError("Review not found");
 
     await ctx.db.delete(review._id);
     return { success: true };

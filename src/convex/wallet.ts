@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import {
@@ -49,11 +49,11 @@ export const initiateDeposit = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await getUserByEmail(ctx, identity.email);
-    if (!user) throw new Error("User not found");
-    if (args.amount < 10) throw new Error("Minimum deposit is KES 10");
+    if (!user) throw new ConvexError("User not found");
+    if (args.amount < 10) throw new ConvexError("Minimum deposit is KES 10");
 
     const reference = `NX-DEP-${Date.now()}`;
 
@@ -84,17 +84,17 @@ export const attachCheckoutRequest = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const tx = await ctx.db
       .query("walletTransactions")
       .filter((q: any) => q.eq(q.field("reference"), args.reference))
       .first();
-    if (!tx) throw new Error("Transaction not found");
+    if (!tx) throw new ConvexError("Transaction not found");
 
     const owner = await getUserByEmail(ctx, identity.email);
     if (!owner || owner._id !== tx.userId) {
-      throw new Error("Unauthorized: you can only attach to your own deposits");
+      throw new ConvexError("Unauthorized: you can only attach to your own deposits");
     }
 
     await ctx.db.patch(tx._id as any, { checkoutRequestId: args.checkoutRequestId });
@@ -124,7 +124,7 @@ export const completeDepositFromCallback = internalMutation({
         .query("walletTransactions")
         .filter((q: any) => q.eq(q.field("reference"), args.checkoutRequestId))
         .first();
-      if (!byRef) throw new Error("Transaction not found");
+      if (!byRef) throw new ConvexError("Transaction not found");
       await ctx.db.patch(byRef._id as any, {
         status: "completed",
         reference: `${byRef.reference}|${args.mpesaReceipt}`,
@@ -176,19 +176,19 @@ export const confirmDeposit = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const tx = await ctx.db
       .query("walletTransactions")
       .filter((q: any) => q.eq(q.field("reference"), args.reference))
       .first();
 
-    if (!tx) throw new Error("Transaction not found");
+    if (!tx) throw new ConvexError("Transaction not found");
     if (tx.status === "completed") return { alreadyCompleted: true };
 
     const ownerUser = await getUserByEmail(ctx, identity.email);
     if (!ownerUser || ownerUser._id !== tx.userId) {
-      throw new Error("Unauthorized: you can only confirm your own deposits");
+      throw new ConvexError("Unauthorized: you can only confirm your own deposits");
     }
 
     await ctx.db.patch(tx._id as any, {
@@ -219,15 +219,15 @@ export const requestWithdrawal = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await getUserByEmail(ctx, identity.email);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
-    if (args.amount < 50) throw new Error("Minimum withdrawal is KES 50");
+    if (args.amount < 50) throw new ConvexError("Minimum withdrawal is KES 50");
     const balance = userHasWallet(user) ? user.walletBalance || 0 : 0;
     if (args.amount > balance) {
-      throw new Error("Insufficient wallet balance");
+      throw new ConvexError("Insufficient wallet balance");
     }
 
     // Validate the M-Pesa number (Kenyan format)
@@ -238,7 +238,7 @@ export const requestWithdrawal = mutation({
         ? digits
         : "254" + digits;
     if (!/^254[0-9]{9}$/.test(normalized)) {
-      throw new Error("Enter a valid M-Pesa phone number (e.g. 0712 345 678)");
+      throw new ConvexError("Enter a valid M-Pesa phone number (e.g. 0712 345 678)");
     }
 
     const reference = `NX-WD-${Date.now()}`;
@@ -352,23 +352,23 @@ export const createOrder = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const buyer = await getUserByEmail(ctx, identity.email);
-    if (!buyer) throw new Error("Buyer not found");
+    if (!buyer) throw new ConvexError("Buyer not found");
 
     // Suspended accounts cannot place orders (admin enforcement).
     if ((buyer as any).accountStatus === "suspended") {
-      throw new Error("Your account is suspended — orders are disabled. Contact support.");
+      throw new ConvexError("Your account is suspended — orders are disabled. Contact support.");
     }
 
     const listing = await getRecord<ListingRecord>(ctx, args.listingId as string, "listings");
-    if (!listing) throw new Error("Product not found");
+    if (!listing) throw new ConvexError("Product not found");
 
     // Suspended sellers cannot receive new orders (admin enforcement).
     const seller = (await ctx.db.get(args.sellerId as any)) as any;
     if (seller && seller.accountStatus === "suspended") {
-      throw new Error("This store is currently unavailable — please contact support.");
+      throw new ConvexError("This store is currently unavailable — please contact support.");
     }
 
     // ── Nexora fee engine (src/convex/fees.ts) ──
@@ -390,7 +390,7 @@ export const createOrder = mutation({
 
     if (args.paymentMethod === "wallet") {
       if ((userHasWallet(buyer) ? buyer.walletBalance || 0 : 0) < totalAmount) {
-        throw new Error("Insufficient wallet balance");
+        throw new ConvexError("Insufficient wallet balance");
       }
       await ctx.db.patch(buyer._id as any, {
         walletBalance: (buyer.walletBalance || 0) - totalAmount,
@@ -533,16 +533,16 @@ export const confirmDelivery = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await getUserByEmail(ctx, identity.email);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     const escrow = await getRecord<EscrowRecord>(ctx, args.escrowId, "escrows");
-    if (!escrow) throw new Error("Escrow not found");
-    if (escrow.buyerId !== user._id) throw new Error("Only the buyer can confirm delivery");
+    if (!escrow) throw new ConvexError("Escrow not found");
+    if (escrow.buyerId !== user._id) throw new ConvexError("Only the buyer can confirm delivery");
     if (!["active", "delivery", "inspection"].includes(escrow.status)) {
-      throw new Error(`Cannot confirm delivery for escrow in status "${escrow.status}"`);
+      throw new ConvexError(`Cannot confirm delivery for escrow in status "${escrow.status}"`);
     }
 
     const releasedAt = Date.now();
@@ -621,16 +621,16 @@ export const markDelivered = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await getUserByEmail(ctx, identity.email);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     const escrow = await getRecord<EscrowRecord>(ctx, args.escrowId, "escrows");
-    if (!escrow) throw new Error("Escrow not found");
-    if (escrow.sellerId !== user._id) throw new Error("Only the seller can mark as delivered");
+    if (!escrow) throw new ConvexError("Escrow not found");
+    if (escrow.sellerId !== user._id) throw new ConvexError("Only the seller can mark as delivered");
     if (escrow.status !== "active") {
-      throw new Error(`Cannot mark as delivered for escrow in status "${escrow.status}"`);
+      throw new ConvexError(`Cannot mark as delivered for escrow in status "${escrow.status}"`);
     }
 
     await ctx.db.patch(escrow._id as any, {
@@ -655,22 +655,22 @@ export const refundEscrow = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new ConvexError("Not authenticated");
 
     const user = await getUserByEmail(ctx, identity.email);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     const escrow = await getRecord<EscrowRecord>(ctx, args.escrowId, "escrows");
-    if (!escrow) throw new Error("Escrow not found");
+    if (!escrow) throw new ConvexError("Escrow not found");
 
     const isSeller = escrow.sellerId === user._id;
     const isBuyer = escrow.buyerId === user._id;
     if (!isSeller && !isBuyer) {
-      throw new Error("Unauthorized: only the buyer or seller can request a refund");
+      throw new ConvexError("Unauthorized: only the buyer or seller can request a refund");
     }
 
     if (!["released", "active", "delivery", "inspection", "funded"].includes(escrow.status)) {
-      throw new Error(`Cannot refund escrow in status "${escrow.status}"`);
+      throw new ConvexError(`Cannot refund escrow in status "${escrow.status}"`);
     }
 
     const refundedAt = Date.now();

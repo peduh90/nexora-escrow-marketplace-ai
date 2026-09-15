@@ -61,6 +61,21 @@ function CreatorAgreementDocument({ reviewNote }: { reviewNote?: string }) {
       toast.error("Tick the agreement checkbox to continue");
       return;
     }
+    if (!fullName.trim() || !phone.trim() || !signature.trim()) {
+      toast.error("Fill your full name, phone and signature");
+      return;
+    }
+    // Validate locally first so the user gets instant, specific feedback —
+    // e.g. signed "Naomi Karubiu" but typed "Naomi Tools" as the full name.
+    const nameMatch =
+      signature.trim().toLowerCase() === fullName.trim().toLowerCase() ||
+      signature.trim().toLowerCase().includes(fullName.trim().toLowerCase());
+    if (!nameMatch) {
+      toast.error(
+        `Your signature must match your full name — type "${fullName.trim()}" exactly as written above.`,
+      );
+      return;
+    }
     setBusy(true);
     try {
       await submit({
@@ -78,7 +93,9 @@ function CreatorAgreementDocument({ reviewNote }: { reviewNote?: string }) {
       });
       toast.success("Agreement signed — sent to the Nexora team for review");
     } catch (err: any) {
-      toast.error(err?.message || "Could not submit the agreement");
+      const msg: string =
+        err?.data ?? err?.message ?? "Could not submit the agreement";
+      toast.error(typeof msg === "string" ? msg : "Could not submit the agreement");
     } finally {
       setBusy(false);
     }

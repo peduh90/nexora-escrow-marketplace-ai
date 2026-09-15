@@ -18,6 +18,7 @@ import NavigationBar from "@/components/layout/NavigationBar";
 import { TrustBanner } from "@/components/layout/TrustBadges";
 import SocialLinks from "@/components/layout/SocialLinks";
 import ServicesNearYou from "@/components/home/ServicesNearYou";
+import DigitalServicesRail from "@/components/home/DigitalServicesRail";
 import SupportDock from "@/components/SupportDock";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
@@ -87,6 +88,90 @@ function ProductCard({ listing }: { listing: any }) {
   );
 }
 
+/* Latest Products — the marketplace goods rail. Self-contained so the three
+   marketplace rails (products · digital services · local services) all sit
+   directly under the hero, each with its own live query. */
+function LatestProductsSection() {
+  const navigate = useNavigate();
+  const latestListings = useQuery(api.listings.getActiveListings, { limit: 8 });
+  return (
+      <section className="relative z-10 py-8 px-6">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn className="text-center mb-6">
+            <div className="inline-flex items-center gap-2 text-nx-cyan text-xs font-medium tracking-widest uppercase mb-3">
+              <Package className="w-3.5 h-3.5" />
+              Live Marketplace
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+              Latest <span className="nx-gradient-text">Products</span>
+            </h2>
+            <p className="text-white/40 max-w-lg mx-auto text-sm">
+              Real products from verified sellers. Every listing protected by Nexora escrow.
+            </p>
+          </FadeIn>
+
+          {(!latestListings || latestListings.length === 0) ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {[
+                { img: "https://images.pexels.com/photos/18105/pexels-photo.jpg?w=600&h=400&fit=crop", title: "MacBook Pro 14\" M3", price: "KSh 185,000", loc: "Westlands, Nairobi", seller: "TechZone KE", verified: true, cond: "Brand New" },
+                { img: "https://images.pexels.com/photos/1092671/pexels-photo-1092671.jpeg?w=600&h=400&fit=crop", title: "iPhone 15 Pro Max 256GB", price: "KSh 142,000", loc: "CBD, Nairobi", seller: "AppleStore KE", verified: true, cond: "Brand New" },
+                { img: "https://images.pexels.com/photos/116675/pexels-photo-116675.jpeg?w=600&h=400&fit=crop", title: "Toyota Axio 2019 Low Milleage", price: "KSh 1,450,000", loc: "Kiambu Road", seller: "AutoHub KE", verified: true, cond: "Used" },
+                { img: "https://images.pexels.com/photos/1648776/pexels-photo-1648776.jpeg?w=600&h=400&fit=crop", title: "Modern 3-Seater Leather Sofa", price: "KSh 35,000", loc: "Karen, Nairobi", seller: "HomeStyle KE", verified: false, cond: "Brand New" },
+                { img: "https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg?w=600&h=400&fit=crop", title: "Nike Air Max 270 Triple Black", price: "KSh 12,500", loc: "CBD, Nairobi", seller: "SneakerBox KE", verified: true, cond: "Brand New" },
+                { img: "https://images.pexels.com/photos/2294361/pexels-photo-2294361.jpeg?w=600&h=400&fit=crop", title: "Commercial Blender Pro 2000W", price: "KSh 8,900", loc: "Industrial Area", seller: "ChefPro KE", verified: false, cond: "Brand New" },
+                { img: "https://images.pexels.com/photos/1229861/pexels-photo-1229861.jpeg?w=600&h=400&fit=crop", title: "Samsung 55\" 4K Smart TV 2024", price: "KSh 62,000", loc: "Mombasa Road", seller: "ElectroHub KE", verified: true, cond: "Brand New" },
+                { img: "https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?w=600&h=400&fit=crop", title: "Golden Retriever Puppy Male", price: "KSh 25,000", loc: "Runda, Nairobi", seller: "PetZone KE", verified: true, cond: "Brand New" },
+              ].map((item, i) => (
+                <FadeIn key={i} delay={i * 0.06}>
+                  <div onClick={() => navigate("/marketplace")} className="group cursor-pointer rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden hover:border-white/15 hover:bg-white/[0.04] transition-all duration-300">
+                    <div className="relative h-44 overflow-hidden">
+                      <img src={item.img} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                      <div className="absolute top-2 left-2 flex gap-1.5">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-nx-emerald/90 text-white">Escrow</span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/20 text-white backdrop-blur-sm">{item.cond}</span>
+                      </div>
+                      <div className="absolute bottom-2 left-2 right-2">
+                        <p className="text-white font-bold text-lg drop-shadow-lg">{item.price}</p>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <h3 className="text-white text-sm font-semibold truncate">{item.title}</h3>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] text-white/15">{item.seller}</span>
+                          {item.verified && <span className="text-nx-emerald text-[10px]">✓</span>}
+                        </div>
+                        <span className="text-[10px] text-white/10 flex items-center gap-1"><MapPin className="w-2.5 h-2.5" />{item.loc.split(",")[0]}</span>
+                      </div>
+                    </div>
+                  </div>
+                </FadeIn>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {latestListings.map((listing, i) => (
+                <FadeIn key={listing._id} delay={i * 0.06}>
+                  <ProductCard listing={listing} />
+                </FadeIn>
+              ))}
+            </div>
+          )}
+
+          <FadeIn delay={0.3}>
+            <div className="text-center mt-8">
+              <button onClick={() => navigate("/marketplace")}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 text-white/60 text-sm font-medium hover:border-nx-cyan/30 hover:text-white transition-all">
+                Browse All Products <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+  );
+}
+
 /* ═══════════════════ HOMEPAGE ═══════════════════ */
 export default function Landing() {
   const navigate = useNavigate();
@@ -107,7 +192,6 @@ export default function Landing() {
   // Universal search scope — results stay inside ONE marketplace.
   const [searchScope, setSearchScope] = useState<"products" | "services" | "freelance">("products");
   // Real products from database
-  const latestListings = useQuery(api.listings.getActiveListings, { limit: 8 });
   const featuredListings = useQuery(api.listings.getActiveListings, { limit: 4 });
   // Phase 2: honest local deals (#85 groundwork) — sellers' real "was" prices.
   const dealsListings = useQuery(api.listings.getDealsListings, { limit: 4 });
@@ -267,7 +351,16 @@ export default function Landing() {
         </motion.div>
       </section>
 
-      {/* ══════ SERVICES & TRANSPORT NEAR YOU (Kenya-first local services) ══════ */}
+      {/* ══════ THE THREE WORLDS — products, digital services, local services.
+           All three marketplaces surface right after the hero so a first-time
+           visitor sees everything Nexora sells in one scroll. ══════ */}
+      {/* FEATURED / LATEST PRODUCTS — physical & digital goods via escrow */}
+      <LatestProductsSection />
+
+      {/* DIGITAL SERVICES MARKETPLACE — ready-made freelance services */}
+      <DigitalServicesRail />
+
+      {/* SERVICES & TRANSPORT NEAR YOU — local fundis + boda/transport */}
       <ServicesNearYou />
 
       {/* ══════ DEALS NEAR YOU — real listings, honest "was" prices (#85) ══════ */}
@@ -456,82 +549,6 @@ export default function Landing() {
               <button onClick={() => navigate("/marketplace")}
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-white/10 text-white/60 text-sm font-medium hover:border-cyan-300/30 hover:text-white transition-all">
                 Shop All Products <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ══════ FEATURED / LATEST PRODUCTS ══════ */}
-      <section className="relative z-10 py-8 px-6">
-        <div className="max-w-6xl mx-auto">
-          <FadeIn className="text-center mb-6">
-            <div className="inline-flex items-center gap-2 text-nx-cyan text-xs font-medium tracking-widest uppercase mb-3">
-              <Package className="w-3.5 h-3.5" />
-              Live Marketplace
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-              Latest <span className="nx-gradient-text">Products</span>
-            </h2>
-            <p className="text-white/40 max-w-lg mx-auto text-sm">
-              Real products from verified sellers. Every listing protected by Nexora escrow.
-            </p>
-          </FadeIn>
-
-          {(!latestListings || latestListings.length === 0) ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[
-                { img: "https://images.pexels.com/photos/18105/pexels-photo.jpg?w=600&h=400&fit=crop", title: "MacBook Pro 14\" M3", price: "KSh 185,000", loc: "Westlands, Nairobi", seller: "TechZone KE", verified: true, cond: "Brand New" },
-                { img: "https://images.pexels.com/photos/1092671/pexels-photo-1092671.jpeg?w=600&h=400&fit=crop", title: "iPhone 15 Pro Max 256GB", price: "KSh 142,000", loc: "CBD, Nairobi", seller: "AppleStore KE", verified: true, cond: "Brand New" },
-                { img: "https://images.pexels.com/photos/116675/pexels-photo-116675.jpeg?w=600&h=400&fit=crop", title: "Toyota Axio 2019 Low Milleage", price: "KSh 1,450,000", loc: "Kiambu Road", seller: "AutoHub KE", verified: true, cond: "Used" },
-                { img: "https://images.pexels.com/photos/1648776/pexels-photo-1648776.jpeg?w=600&h=400&fit=crop", title: "Modern 3-Seater Leather Sofa", price: "KSh 35,000", loc: "Karen, Nairobi", seller: "HomeStyle KE", verified: false, cond: "Brand New" },
-                { img: "https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg?w=600&h=400&fit=crop", title: "Nike Air Max 270 Triple Black", price: "KSh 12,500", loc: "CBD, Nairobi", seller: "SneakerBox KE", verified: true, cond: "Brand New" },
-                { img: "https://images.pexels.com/photos/2294361/pexels-photo-2294361.jpeg?w=600&h=400&fit=crop", title: "Commercial Blender Pro 2000W", price: "KSh 8,900", loc: "Industrial Area", seller: "ChefPro KE", verified: false, cond: "Brand New" },
-                { img: "https://images.pexels.com/photos/1229861/pexels-photo-1229861.jpeg?w=600&h=400&fit=crop", title: "Samsung 55\" 4K Smart TV 2024", price: "KSh 62,000", loc: "Mombasa Road", seller: "ElectroHub KE", verified: true, cond: "Brand New" },
-                { img: "https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?w=600&h=400&fit=crop", title: "Golden Retriever Puppy Male", price: "KSh 25,000", loc: "Runda, Nairobi", seller: "PetZone KE", verified: true, cond: "Brand New" },
-              ].map((item, i) => (
-                <FadeIn key={i} delay={i * 0.06}>
-                  <div onClick={() => navigate("/marketplace")} className="group cursor-pointer rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden hover:border-white/15 hover:bg-white/[0.04] transition-all duration-300">
-                    <div className="relative h-44 overflow-hidden">
-                      <img src={item.img} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                      <div className="absolute top-2 left-2 flex gap-1.5">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-nx-emerald/90 text-white">Escrow</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/20 text-white backdrop-blur-sm">{item.cond}</span>
-                      </div>
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <p className="text-white font-bold text-lg drop-shadow-lg">{item.price}</p>
-                      </div>
-                    </div>
-                    <div className="p-3">
-                      <h3 className="text-white text-sm font-semibold truncate">{item.title}</h3>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[11px] text-white/15">{item.seller}</span>
-                          {item.verified && <span className="text-nx-emerald text-[10px]">✓</span>}
-                        </div>
-                        <span className="text-[10px] text-white/10 flex items-center gap-1"><MapPin className="w-2.5 h-2.5" />{item.loc.split(",")[0]}</span>
-                      </div>
-                    </div>
-                  </div>
-                </FadeIn>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {latestListings.map((listing, i) => (
-                <FadeIn key={listing._id} delay={i * 0.06}>
-                  <ProductCard listing={listing} />
-                </FadeIn>
-              ))}
-            </div>
-          )}
-
-          <FadeIn delay={0.3}>
-            <div className="text-center mt-8">
-              <button onClick={() => navigate("/marketplace")}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 text-white/60 text-sm font-medium hover:border-nx-cyan/30 hover:text-white transition-all">
-                Browse All Products <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </FadeIn>
