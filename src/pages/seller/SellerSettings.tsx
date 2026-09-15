@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { useMutation } from "convex/react";
+import { toast } from "sonner";
 import SellerLayout from "./SellerLayout";
 import { api } from "../../convex/_generated/api";
 import { Settings, Shield, Bell, CreditCard, User, Lock, Globe, Palette, Phone } from "lucide-react";
@@ -197,7 +198,14 @@ export default function SellerSettings() {
                   </div>
                   <span className="text-[10px] text-emerald-400">Active</span>
                 </div>
-                <button className="w-full p-3 rounded-lg border border-dashed border-white/10 text-sm text-white/40 hover:text-white/60 hover:border-white/20 transition-colors">+ Add Bank Account</button>
+                <a
+                  href={`https://wa.me/254769739216?text=${encodeURIComponent("Hello Nexora Admin, I would like to add a bank account for payouts to my seller account.")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full p-3 rounded-lg border border-dashed border-white/10 text-sm text-white/40 hover:text-white/60 hover:border-white/20 transition-colors inline-block text-center"
+                >
+                  + Add Bank Account (verified with Nexora via WhatsApp)
+                </a>
                 <div className="pt-4 border-t border-white/5 mt-4">
                   <button
                     onClick={() => window.open(`https://wa.me/254769739216?text=Hello%20Nexora%20Admin%2C%20I%20need%20help%20with%20my%20seller%20account`, '_blank')}
@@ -254,7 +262,16 @@ export default function SellerSettings() {
                 <p className="text-sm text-white/40 mb-3">Choose your preferred language.</p>
                 <div className="flex flex-wrap gap-2">
                   {["English (default)", "Swahili", "French", "Arabic"].map(lang => (
-                    <button key={lang} className="px-4 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white hover:bg-white/[0.06] hover:border-white/20 transition-colors">{lang}</button>
+                    <button
+                      key={lang}
+                      onClick={() => {
+                        localStorage.setItem("nx_language", lang);
+                        toast.success(`Language set to ${lang}`);
+                      }}
+                      className={`px-4 py-2.5 rounded-lg border text-sm transition-colors ${localStorage.getItem("nx_language") === lang || (!localStorage.getItem("nx_language") && lang === "English (default)") ? "bg-nx-violet/15 border-nx-violet/40 text-white" : "bg-white/[0.03] border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20"}`}
+                    >
+                      {lang}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -264,7 +281,16 @@ export default function SellerSettings() {
                 <p className="text-sm text-white/40 mb-3">Theme preferences.</p>
                 <div className="flex flex-wrap gap-2">
                   {["Dark (active)", "Light", "System"].map(theme => (
-                    <button key={theme} className="px-4 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white hover:bg-white/[0.06] hover:border-white/20 transition-colors">{theme}</button>
+                    <button
+                      key={theme}
+                      onClick={() => {
+                        localStorage.setItem("nx_theme", theme);
+                        toast.success(`${theme} theme selected`);
+                      }}
+                      className={`px-4 py-2.5 rounded-lg border text-sm transition-colors ${localStorage.getItem("nx_theme") === theme || (!localStorage.getItem("nx_theme") && theme === "Dark (active)") ? "bg-nx-violet/15 border-nx-violet/40 text-white" : "bg-white/[0.03] border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20"}`}
+                    >
+                      {theme}
+                    </button>
                   ))}
                 </div>
               </div>
