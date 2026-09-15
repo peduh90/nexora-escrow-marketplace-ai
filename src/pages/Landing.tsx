@@ -185,6 +185,8 @@ export default function Landing() {
       case "seller": return "/seller";
       case "freelancer": return "/freelance/dashboard";
       case "employer": return "/employer";
+      case "creator": return "/creator";
+      case "driver": return "/seller";
       default: return "/buyer";
     }
   };

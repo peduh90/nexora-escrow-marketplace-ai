@@ -284,6 +284,8 @@ export function getDashboardPath(role?: string | null): string {
       return "/freelance/dashboard";
     case "employer":
       return "/employer";
+    case "creator":
+      return "/creator";
     default:
       return "/auth?returnTo=/";
   }

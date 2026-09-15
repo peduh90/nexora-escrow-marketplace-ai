@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   ArrowRight, Loader2, Shield, ShoppingBag, Store, ChevronRight, Check,
   Lock, Globe, Zap, Phone, User, ArrowLeft, KeyRound, Mail, PenLine,
-  Wrench, MonitorSmartphone, Briefcase,
+  Wrench, MonitorSmartphone, Briefcase, Users,
 } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -127,7 +127,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
       : "roleSelect",
   );
   const [selectedRole, setSelectedRole] = useState<
-    "buyer" | "seller" | "freelancer" | "employer" | null
+    "buyer" | "seller" | "freelancer" | "employer" | "creator" | null
   >(
     isFreelanceRegister ? "freelancer" : isSellerRegister ? "seller" : null,
   );
@@ -326,16 +326,18 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
         ? "/seller"
         : role === "freelancer"
         ? freelanceJoinReturn ?? "/freelance/dashboard"
-        : role === "employer"
-        ? freelanceJoinReturn ?? "/employer"
-        : role === "buyer"
-        ? // "Offer a Service" intent: a buyer-role account that came to register
-          // as a LOCAL SERVICE PROVIDER must land in the provider panel — not
-          // the buyer dashboard. ?register=1 opens the service chooser form.
-          (providerIntent || providerReturn
-            ? providerReturn ?? "/services/dashboard?register=1"
-            : "/buyer")
-        : null;
+        :      role === "employer"
+      ? freelanceJoinReturn ?? "/employer"
+      : role === "creator"
+      ? "/creator"
+      : role === "buyer"
+      ? // "Offer a Service" intent: a buyer-role account that came to register
+        // as a LOCAL SERVICE PROVIDER must land in the provider panel — not
+        // the buyer dashboard. ?register=1 opens the service chooser form.
+        (providerIntent || providerReturn
+          ? providerReturn ?? "/services/dashboard?register=1"
+          : "/buyer")
+      : null;
     if (roleTarget) {
       navigate(roleTarget);
       return;
@@ -429,7 +431,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   const [publishIntent, setPublishIntent] = useState(false);
 
   const handleRoleSelect = (
-    role: "buyer" | "seller" | "freelancer" | "employer",
+    role: "buyer" | "seller" | "freelancer" | "employer" | "creator",
     opts?: { publishIntent?: boolean; providerIntent?: boolean },
   ) => {
     setSelectedRole(role);
@@ -596,6 +598,8 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
               : "/freelance/dashboard"
             : selectedRole === "employer"
             ? "/employer"
+            : selectedRole === "creator"
+            ? "/creator"
             : providerIntent || providerReturn
             ? providerReturn ?? "/services/dashboard?register=1"
             : "/buyer");
@@ -759,6 +763,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
         else if (r === "freelancer") target = "/freelance/dashboard";
         else if (r === "buyer") target = "/buyer";
         else if (r === "employer") target = "/employer";
+        else if (r === "creator") target = "/creator";
         else {
           setError("Your account role is not recognised. Please contact support.");
           setLoginPassword("");
@@ -1075,6 +1080,27 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
                       ))}
                     </div>
                     <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-nx-cyan/50 transition-colors" />
+                  </button>
+                )}
+
+                {/* Creator Program — a first-class role with its own panel and
+                    dashboard. Registering here routes the account straight to
+                    /creator after verification (never the buyer dashboard). */}
+                {!isFreelanceRoute && (
+                  <button onClick={() => handleRoleSelect("creator")} className="group relative p-6 rounded-2xl border border-amber-400/15 bg-amber-400/[0.03] backdrop-blur-sm hover:border-amber-400/40 hover:bg-amber-400/[0.07] transition-all duration-300 text-left">
+                    <div className="w-14 h-14 rounded-xl bg-amber-400/10 flex items-center justify-center mb-4 group-hover:bg-amber-400/20 transition-colors">
+                      <Users className="w-7 h-7 text-amber-300" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-1">Become a Creator</h3>
+                    <p className="text-white/40 text-sm leading-relaxed mb-4">Grow with your content — earn commissions for every user you bring to Nexora.</p>
+                    <div className="flex flex-col gap-1.5">
+                      {["Unique referral link & code", "Earn on every milestone", "Your own creator dashboard"].map((f) => (
+                        <div key={f} className="flex items-center gap-2 text-xs text-white/30">
+                          <Check className="w-3 h-3 text-amber-300/60" /><span>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-amber-300/50 transition-colors" />
                   </button>
                 )}
               </div>

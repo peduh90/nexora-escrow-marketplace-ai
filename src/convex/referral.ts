@@ -1029,6 +1029,22 @@ export const reviewCreator = mutation({
     };
     await insertNotification(ctx, c.userId, titles[args.decision], messages[args.decision], "/creator");
 
+    // Creator is a first-class user ROLE: approval activates it so every
+    // routing surface (password login, OTP effect, nav "Dashboard") sends the
+    // user to the Creator panel — never a buyer dashboard. Rejection or
+    // suspension reverts the role to "buyer" so they keep a working panel.
+    if (args.decision === "approve" || args.decision === "reactivate") {
+      const creatorUser = await ctx.db.get(c.userId);
+      if (creatorUser && (creatorUser as any).role !== "creator") {
+        await ctx.db.patch(c.userId, { role: "creator" as any });
+      }
+    } else if (args.decision === "reject" || args.decision === "suspend") {
+      const creatorUser = await ctx.db.get(c.userId);
+      if (creatorUser && (creatorUser as any).role === "creator") {
+        await ctx.db.patch(c.userId, { role: "buyer" as any });
+      }
+    }
+
     return { status };
   },
 });
@@ -1173,6 +1189,29 @@ export const getProgramSettings = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
     return await getSettingsRowReadOnly(ctx);
+  },
+});
+
+/**
+ * Self-sync: an approved creator's user record always carries role "creator"
+ * (the account's default panel is the Creator dashboard). Repairs accounts
+ * approved before "creator" became a first-class role — safe to call on every
+ * panel load; writes only when the role is actually wrong.
+ */
+export const syncMyCreatorRole = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getSessionUser(ctx);
+    if (!user) return { synced: false };
+    const u = user as any;
+    if (u.role === "creator" || u.role === "admin") return { synced: false };
+    const creator = await ctx.db
+      .query("referralCreators")
+      .withIndex("by_user", (q: any) => q.eq("userId", u._id))
+      .first();
+    if (!creator || (creator as any).status !== "approved") return { synced: false };
+    await ctx.db.patch(u._id, { role: "creator" as any });
+    return { synced: true };
   },
 });
 

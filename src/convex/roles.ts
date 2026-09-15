@@ -8,6 +8,7 @@ export const ALLOWED_ROLES = [
   "driver",
   "freelancer",
   "employer",
+  "creator",
 ] as const;
 
 export type AllowedRole = (typeof ALLOWED_ROLES)[number];
@@ -23,6 +24,10 @@ export const ADMIN_EMAIL = "murimiedwin227@gmail.com";
  *  3. A seller, identified by a non-empty business name.
  *  4. For an existing user, keep the existing role.
  *  5. Otherwise, default to "buyer".
+ *
+ * "creator" is a first-class role: it routes to the Creator referral panel
+ * (the user is simultaneously a buyer — the role only controls which panel
+ * opens by default, and the Creator panel links back to the marketplace).
  *
  * This is intentionally NOT open-ended: arbitrary client-supplied roles are
  * ignored unless they are in the allowed list. This prevents a malicious client

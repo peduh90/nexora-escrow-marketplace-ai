@@ -5,6 +5,7 @@ import { useNavigate } from "react-router";
 import { useLowData } from "@/hooks/use-low-data";
 import { SignalLow } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { getDashboardPath as sharedGetDashboardPath } from "@/components/RoleRouter";
 
 function scrollToSection(hash: string) {
   const id = hash.replace("#", "");
@@ -28,13 +29,13 @@ export default function NavigationBar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // One shared role→panel map (see RoleRouter.getDashboardPath): every role
+  // lands on its own dashboard — buyers /buyer, sellers /seller, freelancers
+  // /freelance/dashboard, employers /employer, creators /creator. Never
+  // default an authenticated user to /buyer.
   const getDashboardPath = () => {
     if (!user) return "/auth";
-    switch (user.role) {
-      case "admin": return "/admin";
-      case "seller": return "/seller";
-      default: return "/buyer";
-    }
+    return sharedGetDashboardPath((user as any)?.role);
   };
 
   return (

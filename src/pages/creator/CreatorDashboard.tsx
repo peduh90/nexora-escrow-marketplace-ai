@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -101,6 +101,10 @@ function CreatorDashboardInner() {
   const navigate = useNavigate();
   const data = useQuery(api.referral.getMyDashboard);
   const applyToBeCreator = useMutation(api.referral.applyToBeCreator);
+  // Keep the account's user role in lockstep with creator approval: an
+  // approved creator's account role is "creator", so every auth/routing
+  // surface (login, OTP, nav Dashboard) opens the Creator panel directly.
+  const syncMyCreatorRole = useMutation(api.referral.syncMyCreatorRole);
   // Hard gate: the signed Creator Referral Agreement must be approved by an
   // admin before ANY dashboard content (link, code, stats) is shown.
   const myAgreement = useQuery(api.referralAgreement.getMyAgreement);
@@ -115,6 +119,14 @@ function CreatorDashboardInner() {
   const [submitting, setSubmitting] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // Repair pre-existing approved accounts whose stored role is still
+  // "buyer" — runs once per load, writes only when out of sync.
+  useEffect(() => {
+    if (data?.creator && (data.creator as any).status === "approved") {
+      syncMyCreatorRole().catch(() => {});
+    }
+  }, [data?.creator, syncMyCreatorRole]);
 
   const creator = data?.creator ?? null;
   const referrals = data?.referrals ?? [];

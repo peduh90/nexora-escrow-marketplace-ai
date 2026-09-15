@@ -435,7 +435,7 @@ export const verifyLogin = mutation({
         accountStatus: "active" as any,
         pendingRole: undefined,
       });
-    } else if (hasBusinessName && role !== "seller" && role !== "admin") {
+    } else if (hasBusinessName && role !== "seller" && role !== "admin" && role !== "creator") {
       role = "seller";
       await ctx.db.patch(u._id, { role: "seller" as any });
     } else if (!role) {
