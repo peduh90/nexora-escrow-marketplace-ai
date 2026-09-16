@@ -67,8 +67,8 @@ function AccountSection({ user }: { user: any }) {
         <span className={saved ? "text-emerald-400" : ""}>{saved ? "✓ Saved" : "Save Changes"}</span>
       </button>
       {user?.role === "seller" && user?.kycStatus !== "verified" && (
-        <div className="p-4 rounded-lg bg-amber-400/5 border border-amber-400/10">
-          <p className="text-sm text-white/40">Complete <a href="/seller/kyc" className="text-nx-violet hover:underline">business verification</a> to unlock full seller features.</p>
+        <div className="p-4 rounded-lg bg-nx-violet/5 border border-nx-violet/10">
+          <p className="text-sm text-white/40">Optional: add a <a href="/seller/kyc" className="text-nx-violet hover:underline">verified badge</a> to build buyer trust. Selling works fully without it.</p>
         </div>
       )}
     </div>
@@ -252,7 +252,7 @@ export default function SellerSettings() {
                 </div>
                 {user?.kycStatus !== "verified" && (
                   <a href="/seller/kyc" className="w-full p-4 rounded-lg bg-nx-violet/5 border border-nx-violet/10 text-center text-sm text-nx-violet hover:bg-nx-violet/10 transition-colors font-medium">
-                    Start Business Verification
+                    Get the Verified Badge (Optional)
                   </a>
                 )}
               </div>

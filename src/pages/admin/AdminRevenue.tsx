@@ -6,6 +6,9 @@ import { TrendingUp, BarChart3 } from "lucide-react";
 export default function AdminRevenue() {
   const escrows = useQuery(api.admin.getAllEscrows);
   const transactions = useQuery(api.wallet.getWalletTransactions);
+  // REAL accumulated fee revenue from every marketplace (products, freelance,
+  // services, transport) — the ledger written at charge time by the engines.
+  const feeSummary = useQuery(api.feeRules.earningsSummary, {});
 
   const allEscrows = escrows ?? [];
   const allTxs = transactions ?? [];
@@ -13,7 +16,9 @@ export default function AdminRevenue() {
   // Calculate real revenue from escrow commission
   const completedEscrows = allEscrows.filter((e: any) => ["released", "completed"].includes(e.status));
   const totalGMV = allEscrows.reduce((sum: number, e: any) => sum + e.amount, 0);
-  const totalRevenue = completedEscrows.reduce((sum: number, e: any) => sum + (e.platformFee || 0), 0);
+  const escrowCommission = completedEscrows.reduce((sum: number, e: any) => sum + (e.platformFee || 0), 0);
+  // The authoritative revenue number: every fee actually collected.
+  const totalRevenue = (feeSummary as any)?.total ?? escrowCommission;
   const pendingEscrow = allEscrows
     .filter((e: any) => ["funded", "active", "delivery", "inspection"].includes(e.status))
     .reduce((sum: number, e: any) => sum + e.amount, 0);
@@ -41,10 +46,11 @@ export default function AdminRevenue() {
         <h1 className="text-2xl font-bold text-white">Revenue Analytics</h1>
         <p className="text-sm text-white/40 mt-1">Platform revenue, commissions, and financial metrics</p>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         {[
           { label: "Total GMV", value: `KES ${totalGMV.toLocaleString()}` },
-          { label: "Platform Revenue", value: `KES ${totalRevenue.toLocaleString()}` },
+          { label: "Fee Revenue (all marketplaces)", value: `KES ${totalRevenue.toLocaleString()}` },
+          { label: "Escrow Commissions", value: `KES ${escrowCommission.toLocaleString()}` },
           { label: "Pending Escrow", value: `KES ${pendingEscrow.toLocaleString()}` },
           { label: "Completed Orders", value: completedEscrows.length.toString() },
         ].map((s) => (

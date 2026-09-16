@@ -394,6 +394,30 @@ export const createOrder = mutation({
         : 0;
     const totalAmount = args.amount + buyerFeeAmount + deliveryFeeAmount;
 
+    // ── M-Pesa STK path: money went straight to the paybill (server-verified
+    // by the frontend polling Safaricom's real status query), so the escrow is
+    // funded WITHOUT debiting the wallet and the payment is ledgered for
+    // reconciliation against the Safaricom callback.
+    if (args.paymentMethod === "mpesa") {
+      try {
+        await recordFeeEarning(ctx.db, {
+          sourceType: "mpesa_order_collection",
+          marketplace: (listing as any).marketplace === "freelance" ? "freelance" : "product",
+          feeType: "buyer_protection",
+          ruleKey: protectionResolved.ruleKey,
+          ruleRate: protectionResolved.ruleRate,
+          amount: buyerFeeAmount + deliveryFeeAmount + args.amount,
+          baseAmount: args.amount,
+          escrowId: undefined,
+          buyerId: buyer._id,
+          sellerId: args.sellerId,
+          description: `M-Pesa STK collection (incl. fees) for "${listing.title}" — reconcile vs Safaricom callback`,
+        });
+      } catch (err) {
+        console.error("[fees] mpesa collection ledger insert failed:", err);
+      }
+    }
+
     if (args.paymentMethod === "wallet") {
       if ((userHasWallet(buyer) ? buyer.walletBalance || 0 : 0) < totalAmount) {
         throw new ConvexError("Insufficient wallet balance");

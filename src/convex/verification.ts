@@ -145,20 +145,9 @@ async function buildChecklist(ctx: any, user: any) {
         action: listings.hasAny ? undefined : "/seller/add-product",
       },
     );
-    // KYC applies ONLY to the Normal Marketplace (products). Freelance
-    // services & digital tools never require it.
-    if (listings.hasProduct && !kycVerified) {
-      requirements.push({
-        key: "kyc",
-        label: "KYC business verification (product sellers)",
-        done: false,
-        detail:
-          kycStatus === "pending"
-            ? "Under review by the Nexora team."
-            : "Required to sell physical products in the Normal Marketplace. Freelance services don't need it.",
-        action: "/seller/kyc",
-      });
-    }
+    // KYC is now OPTIONAL for every seller — registration and publishing are
+    // intentionally friction-free. A genuine listing is the real qualification;
+    // KYC remains available as an optional trust badge ("Verified Seller").
   }
 
   if (role === "employer") {
@@ -236,10 +225,10 @@ async function reevaluateBusinessVerification(ctx: any, user: any) {
 
   let qualified = false;
   if (role === "seller") {
-    // Freelance sellers are fully verified with a genuine service listing —
-    // no KYC. Product (Normal Marketplace) sellers additionally need KYC.
+    // Every seller (products AND freelance) qualifies with a genuine listing —
+    // no KYC gate. Simple registration, instant publishing.
     const l = await sellerGenuineListings(ctx, u._id);
-    qualified = profileOk && l.hasAny && (l.hasProduct ? kycVerified : true);
+    qualified = profileOk && l.hasAny;
   } else {
     qualified =
       profileOk && (await employerDistinctJobCount(ctx, u._id)) >= EMPLOYER_REQUIRED_JOBS;

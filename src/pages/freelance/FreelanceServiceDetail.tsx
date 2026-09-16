@@ -182,7 +182,7 @@ export default function FreelanceServiceDetail() {
             const status = await checkTransactionStatus({ checkoutRequestId: checkoutId });
             if ((status as any).resultCode === "0") {
               setMpesaStep("confirming");
-              await finalizeHire();
+              await finalizeHire("mpesa");
               setMpesaStep("done");
               setHiring(false);
             } else if ((status as any).resultCode && (status as any).resultCode !== "1032" && (status as any).resultCode !== "1037") {
@@ -208,7 +208,7 @@ export default function FreelanceServiceDetail() {
     setHiring(true);
     setHireError("");
     try {
-      await finalizeHire();
+      await finalizeHire("wallet");
     } catch (err: any) {
       setHireError(err.message || "Failed to place order. Please try again.");
     } finally {
@@ -218,7 +218,14 @@ export default function FreelanceServiceDetail() {
 
   // Shared with the M-Pesa success path. Escrow-backed order for digital work:
   // the "delivery" location is normalized to Online/Digital.
-  const finalizeHire = async () => {
+  //
+  // Payment method MUST match how the money actually arrived:
+  //  - "mpesa"  → STK push succeeded, funds are on the paybill; createOrder
+  //               funds the escrow WITHOUT debiting the (uncredited) wallet.
+  //  - "wallet" → pre-funded wallet path; createOrder debits the balance.
+  // Passing "wallet" after an STK payment threw "Insufficient wallet balance"
+  // right after the buyer had already paid — that bug is why this is explicit.
+  const finalizeHire = async (method: "wallet" | "mpesa") => {
     await createOrder({
       listingId: fl._id,
       sellerId: fl.sellerId,
@@ -226,7 +233,7 @@ export default function FreelanceServiceDetail() {
       deliveryCounty: "Online",
       deliveryTown: "Digital",
       deliveryAddress: brief.trim(),
-      paymentMethod: "wallet",
+      paymentMethod: method,
     });
 
     // Open the order chat with the provider right away — the provider gets a
