@@ -26,7 +26,9 @@ export default function BuyerWallet() {
   const [depositStep, setDepositStep] = useState<"idle" | "sending" | "waiting" | "done" | "error">("idle");
   const [depositError, setDepositError] = useState("");
   const initiateStkPush = useAction(api.mpesa.initiateStkPush as any);
-  const checkTransactionStatus = useAction(api.mpesa.checkTransactionStatus as any);
+  // Server-verified completion: the backend re-queries Safaricom itself before
+  // crediting the wallet — the UI never asserts a payment succeeded.
+  const verifyStkDeposit = useAction(api.mpesa.verifyStkDeposit as any);
   const initiateDeposit = useMutation(api.wallet.initiateDeposit);
   const attachCheckoutRequest = useMutation(api.wallet.attachCheckoutRequest);
 
@@ -220,7 +222,9 @@ export default function BuyerWallet() {
                       reference: dep.reference,
                       checkoutRequestId: stk.checkoutRequestId,
                     });
-                    // 4. Poll the REAL Safaricom status — never fake success.
+                    // 4. Poll with SERVER-VERIFIED completion — each poll
+                    //    makes the backend re-query Safaricom and only then
+                    //    credits the wallet. No dummy deposits possible.
                     setDepositStep("waiting");
                     let attempts = 0;
                     const poll = async () => {
@@ -231,8 +235,8 @@ export default function BuyerWallet() {
                         return;
                       }
                       try {
-                        const status = await checkTransactionStatus({ checkoutRequestId: stk.checkoutRequestId });
-                        if (status.resultCode === "0") {
+                        const res = await verifyStkDeposit({ checkoutRequestId: stk.checkoutRequestId });
+                        if (res.status === "paid" || res.status === "already_completed") {
                           setDepositStep("done");
                           setTimeout(() => {
                             setShowDeposit(false);
@@ -242,12 +246,12 @@ export default function BuyerWallet() {
                           }, 2000);
                           return;
                         }
-                        if (status.resultCode && status.resultCode !== "1032" && status.resultCode !== "1037") {
+                        if (res.status === "failed") {
                           setDepositStep("error");
-                          setDepositError(status.resultDesc || "M-Pesa payment failed. Please try again.");
+                          setDepositError(res.resultDesc || "M-Pesa payment failed. Please try again.");
                           return;
                         }
-                        // 1032 = user cancelled, 1037 = still processing — keep polling
+                        // still pending — keep polling
                         setTimeout(poll, 5000);
                       } catch {
                         setTimeout(poll, 5000);

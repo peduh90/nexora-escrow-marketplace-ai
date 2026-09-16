@@ -68,7 +68,9 @@ export default function ProductDetails() {
   const incrementViews = useMutation(api.listings.incrementViews);
   const createOrder = useMutation(api.wallet.createOrder);
   const initiateStkPush = useAction(api.mpesa.initiateStkPush as any);
-  const checkTransactionStatus = useAction(api.mpesa.checkTransactionStatus as any);
+  // Server-verified payment gate: the backend re-queries Safaricom and stamps
+  // verifiedStkPayments; createOrder refuses to fund an escrow without it.
+  const verifyStkPayment = useAction(api.mpesa.verifyStkPayment as any);
   const startConversation = useMutation(api.messages.startConversation);
   // sendMessage removed - startConversation handles the first message internally
   const sendMessage = useMutation(api.messages.sendMessage);
@@ -312,9 +314,9 @@ export default function ProductDetails() {
             return;
           }
           try {
-            const status = await checkTransactionStatus({ checkoutRequestId: checkoutId });
-            if (status.resultCode === "0") {
-              // Payment succeeded — create the order/escrow
+            const status = await verifyStkPayment({ checkoutRequestId: checkoutId });
+            if (status.paid) {
+              // Payment confirmed SERVER-SIDE — create the order/escrow
               setMpesaStep("confirming");
               await createOrder({
                 listingId: listing._id,
@@ -324,6 +326,7 @@ export default function ProductDetails() {
                 deliveryTown,
                 deliveryAddress,
                 paymentMethod: "mpesa",
+                stkCheckoutRequestId: checkoutId,
                 deliveryFee: collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee,
                 deliveryArea: deliveryArea || undefined,
                 deliveryLandmark: deliveryLandmark || undefined,
@@ -346,8 +349,7 @@ export default function ProductDetails() {
               setMpesaStep("done");
               setOrderSuccess(true);
               setShowCheckout(false);
-            } else if (status.resultCode && status.resultCode !== "1032" && status.resultCode !== "1037") {
-              // 1032 = cancelled by user, 1037 = still processing
+            } else if (status.failed) {
               setMpesaStep("error");
               setMpesaError(status.resultDesc || "Payment failed. Please try again.");
               setOrdering(false);

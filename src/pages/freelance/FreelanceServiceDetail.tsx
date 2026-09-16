@@ -44,7 +44,9 @@ export default function FreelanceServiceDetail() {
   const createOrder = useMutation(api.wallet.createOrder);
   const startConversation = useMutation(api.messages.startConversation);
   const initiateStkPush = useAction(api.mpesa.initiateStkPush as any);
-  const checkTransactionStatus = useAction(api.mpesa.checkTransactionStatus as any);
+  // Server-verified payment gate: the backend re-queries Safaricom and stamps
+  // verifiedStkPayments; createOrder refuses to fund an escrow without it.
+  const verifyStkPayment = useAction(api.mpesa.verifyStkPayment as any);
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -179,15 +181,15 @@ export default function FreelanceServiceDetail() {
             return;
           }
           try {
-            const status = await checkTransactionStatus({ checkoutRequestId: checkoutId });
-            if ((status as any).resultCode === "0") {
+            const status = await verifyStkPayment({ checkoutRequestId: checkoutId });
+            if (status.paid) {
               setMpesaStep("confirming");
-              await finalizeHire("mpesa");
+              await finalizeHire("mpesa", checkoutId);
               setMpesaStep("done");
               setHiring(false);
-            } else if ((status as any).resultCode && (status as any).resultCode !== "1032" && (status as any).resultCode !== "1037") {
+            } else if (status.failed) {
               setMpesaStep("error");
-              setMpesaError((status as any).resultDesc || "Payment failed. Please try again.");
+              setMpesaError(status.resultDesc || "Payment failed. Please try again.");
               setHiring(false);
             } else {
               setTimeout(poll, 5000);
@@ -225,7 +227,10 @@ export default function FreelanceServiceDetail() {
   //  - "wallet" → pre-funded wallet path; createOrder debits the balance.
   // Passing "wallet" after an STK payment threw "Insufficient wallet balance"
   // right after the buyer had already paid — that bug is why this is explicit.
-  const finalizeHire = async (method: "wallet" | "mpesa") => {
+  const finalizeHire = async (
+    method: "wallet" | "mpesa",
+    stkCheckoutRequestId?: string,
+  ) => {
     await createOrder({
       listingId: fl._id,
       sellerId: fl.sellerId,
@@ -234,6 +239,9 @@ export default function FreelanceServiceDetail() {
       deliveryTown: "Digital",
       deliveryAddress: brief.trim(),
       paymentMethod: method,
+      // Server-verified payment reference — required for the mpesa path;
+      // createOrder will not fund the escrow without a verified stamp.
+      stkCheckoutRequestId,
     });
 
     // Open the order chat with the provider right away — the provider gets a

@@ -1,5 +1,5 @@
 import { v, ConvexError } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import {
   sellerCommission as sellerCommissionFee,
@@ -115,6 +115,16 @@ export const completeDepositFromCallback = internalMutation({
     mpesaReceipt: v.string(),
   },
   handler: async (ctx, args) => {
+    // The callback comes straight from Safaricom, so record the verification
+    // stamp here too — deposit completion and order funding both rely on it.
+    try {
+      await ctx.runMutation(internal.wallet.recordVerifiedStkPayment, {
+        checkoutRequestId: args.checkoutRequestId,
+      });
+    } catch (err) {
+      console.error("[wallet] failed to stamp verifiedStkPayments from callback:", err);
+    }
+
     const tx = await ctx.db
       .query("walletTransactions")
       .withIndex("by_checkout", (q: any) => q.eq("checkoutRequestId", args.checkoutRequestId))
@@ -159,53 +169,98 @@ export const completeDepositFromCallback = internalMutation({
 });
 
 /**
- * Confirm deposit (called after M-Pesa callback confirms payment).
+ * Confirm deposit (legacy alias) — DISABLED.
  *
- * SECURITY: This mutation is exposed, so it must verify that the caller is
- * authenticated AND that the transaction being confirmed belongs to the caller.
- * Otherwise any client could confirm an arbitrary pending deposit by guessing
- * a reference and crediting their own wallet.
- *
- * The M-Pesa callback (src/convex/http.ts) is the trusted path. It calls this
- * mutation server-to-server after Safaricom confirms the STK Push. The callback
- * trusts the payment provider response; this mutation additionally enforces that
- * only the wallet owner (or the callback path) can finalise a deposit.
+ * SECURITY: this used to accept a client-supplied "mpesaReceipt" string and
+ * credit the wallet with no proof of payment — a free-money hole. Wallet
+ * deposits are now completed ONLY by server-verified paths:
+ *   1. `mpesa.verifyStkDeposit` (action re-queries Safaricom before crediting)
+ *   2. the Safaricom callback in http.ts (server-to-server)
+ * The function is kept as an explicit error so stale clients fail loudly
+ * instead of silently crediting money.
  */
 export const confirmDeposit = mutation({
+  args: {},
+  handler: async () => {
+    throw new ConvexError(
+      "Direct deposit confirmation is disabled. Deposits are verified automatically with Safaricom — check your wallet in a moment."
+    );
+  },
+});
+
+// ─── SERVER-VERIFIED M-PESA COMPLETION HELPERS (internal only) ─────────────
+
+/** Look up a pending wallet deposit by its linked Safaricom CheckoutRequestID. */
+export const getDepositByCheckout = internalQuery({
+  args: { checkoutRequestId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("walletTransactions")
+      .withIndex("by_checkout", (q: any) => q.eq("checkoutRequestId", args.checkoutRequestId))
+      .first();
+  },
+});
+
+/** Resolve the app user row for an email address (internal). */
+export const getUserByEmailInternal = internalQuery({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    return await getUserByEmail(ctx, args.email);
+  },
+});
+
+/**
+ * Credit the deposit owner's wallet and mark the transaction completed.
+ * Called only by `mpesa.verifyStkDeposit` (after its own Safaricom re-query)
+ * and by the Safaricom callback in http.ts. Idempotent.
+ */
+export const completeVerifiedDeposit = internalMutation({
   args: {
-    reference: v.string(),
-    mpesaReceipt: v.string(),
+    txId: v.id("walletTransactions"),
+    mpesaReceipt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError("Not authenticated");
-
-    const tx = await ctx.db
-      .query("walletTransactions")
-      .filter((q: any) => q.eq(q.field("reference"), args.reference))
-      .first();
-
+    const tx = await ctx.db.get(args.txId);
     if (!tx) throw new ConvexError("Transaction not found");
-    if (tx.status === "completed") return { alreadyCompleted: true };
+    if (tx.status === "completed") return { amount: tx.amount, alreadyCompleted: true };
 
-    const ownerUser = await getUserByEmail(ctx, identity.email);
-    if (!ownerUser || ownerUser._id !== tx.userId) {
-      throw new ConvexError("Unauthorized: you can only confirm your own deposits");
-    }
-
-    await ctx.db.patch(tx._id as any, {
+    await ctx.db.patch(args.txId, {
       status: "completed",
-      reference: `${args.reference}|${args.mpesaReceipt}`,
+      reference: `${tx.reference}|${args.mpesaReceipt || "STK-VERIFIED"}`,
     });
 
-    const user = await getUserById(ctx, tx.userId);
+    const user = await ctx.db.get(tx.userId as any);
     if (user && "walletBalance" in user) {
       await ctx.db.patch(user._id as any, {
-        walletBalance: (user.walletBalance || 0) + tx.amount,
+        walletBalance: ((user as any).walletBalance || 0) + tx.amount,
       });
     }
+    return { amount: tx.amount };
+  },
+});
 
-    return { success: true, amount: tx.amount };
+/**
+ * Record that Safaricom CONFIRMED this CheckoutRequestID, verified
+ * server-side. `createOrder`'s mpesa path refuses to fund an escrow unless a
+ * row exists for the CheckoutRequestID it is handed — a tampered client that
+ * skips verification simply cannot create an order.
+ */
+export const recordVerifiedStkPayment = internalMutation({
+  args: {
+    checkoutRequestId: v.string(),
+    payerToken: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("verifiedStkPayments")
+      .withIndex("by_checkout", (q: any) => q.eq("checkoutRequestId", args.checkoutRequestId))
+      .first();
+    if (existing) return;
+    await ctx.db.insert("verifiedStkPayments", {
+      checkoutRequestId: args.checkoutRequestId,
+      payerToken: args.payerToken,
+      verifiedAt: Date.now(),
+    });
   },
 });
 
@@ -343,6 +398,10 @@ export const createOrder = mutation({
     deliveryInstructions: v.optional(v.string()),
     deliveryPin: v.optional(v.string()),
     deliveryAddressId: v.optional(v.string()),
+    // M-Pesa STK path: Safaricom CheckoutRequestID whose payment was verified
+    // server-side (verifiedStkPayments). Required when paymentMethod is
+    // "mpesa" — the escrow will not fund without it.
+    stkCheckoutRequestId: v.optional(v.string()),
     // ─── Phase 3: Diaspora & Gift buying (#106/#107) ───
     // The payer and the recipient can be different people. Recipient details
     // ride along with the escrow so the seller/agent delivers to THEM.
@@ -399,6 +458,25 @@ export const createOrder = mutation({
     // funded WITHOUT debiting the wallet and the payment is ledgered for
     // reconciliation against the Safaricom callback.
     if (args.paymentMethod === "mpesa") {
+      // ── SERVER-SIDE PAYMENT GATE ──
+      // An STK-funded order may only be created when Safaricom has confirmed
+      // the payment server-side (mpesa.verifyStkPayment writes the stamp).
+      // Without this, a tampered client could create escrows out of thin air.
+      if (!args.stkCheckoutRequestId) {
+        throw new ConvexError("Missing M-Pesa payment reference — complete the payment first.");
+      }
+      const verification = await ctx.db
+        .query("verifiedStkPayments")
+        .withIndex("by_checkout", (q: any) => q.eq("checkoutRequestId", args.stkCheckoutRequestId))
+        .first();
+      if (!verification) {
+        throw new ConvexError("Payment not verified with M-Pesa yet. If you just entered your PIN, try again in a moment.");
+      }
+      // Bind the order to the payer who was verified for this payment.
+      if (verification.payerToken && identity.subject !== verification.payerToken) {
+        throw new ConvexError("Payment verification does not match this account.");
+      }
+
       try {
         await recordFeeEarning(ctx.db, {
           sourceType: "mpesa_order_collection",

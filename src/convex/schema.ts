@@ -363,6 +363,19 @@ const schema = defineSchema(
       .index("by_created", ["createdAt"])
       .index("by_checkout", ["checkoutRequestId"]),
 
+    // ─── M-PESA SERVER-SIDE PAYMENT VERIFICATION ─────────────────────────
+    // Written ONLY by the server after re-querying Safaricom's STK status
+    // API. `wallet.createOrder` (mpesa path) refuses to fund an escrow unless
+    // a row exists for the CheckoutRequestID — clients can never assert a
+    // payment happened. Also satisfies deposit completion on the callback
+    // path so either route (poll verification or Safaricom callback) credits
+    // exactly once.
+    verifiedStkPayments: defineTable({
+      checkoutRequestId: v.string(),
+      payerToken: v.optional(v.string()), // auth subject of the payer (audit)
+      verifiedAt: v.number(),
+    }).index("by_checkout", ["checkoutRequestId"]),
+
     // Disputes
     disputes: defineTable({
       escrowId: v.string(),
