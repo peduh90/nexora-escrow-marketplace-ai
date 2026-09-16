@@ -4,6 +4,8 @@ import { api, internal } from "./_generated/api";
 import {
   sellerCommission as sellerCommissionFee,
   buyerProtectionFee,
+  resolveFee,
+  recordFeeEarning,
 } from "./fees";
 
 type UserInfo = {
@@ -372,13 +374,17 @@ export const createOrder = mutation({
     }
 
     // ── Nexora fee engine (src/convex/fees.ts) ──
-    // The buyer pays: listing price + buyer protection fee (tiered).
-    // The seller nets: listing price − seller commission (tiered).
-    // Escrow is included within these fees — never charged separately.
+    // The buyer pays: listing price + buyer protection fee.
+    // The seller nets: listing price − seller commission.
+    // Fees resolve from admin-configured rules first (Money → Platform Fees),
+    // falling back to the documented tier schedule. Fees snapshot here —
+    // later rule edits NEVER change what this transaction charges.
     const marketplace: "product" | "freelance" =
       (listing as any).marketplace === "freelance" ? "freelance" : "product";
-    const sellerCommission = sellerCommissionFee(marketplace, args.amount);
-    const buyerProtection = buyerProtectionFee(marketplace, args.amount);
+    const commissionResolved = await resolveFee(ctx.db, marketplace, "seller_commission", args.amount);
+    const protectionResolved = await resolveFee(ctx.db, marketplace, "buyer_protection", args.amount);
+    const sellerCommission = commissionResolved.breakdown;
+    const buyerProtection = protectionResolved.breakdown;
 
     const platformFee = sellerCommission.fee; // seller-side commission
     const buyerFeeAmount = buyerProtection.fee; // buyer-side protection fee
@@ -445,6 +451,25 @@ export const createOrder = mutation({
       buyerFee: buyerFeeAmount,
       marketplace,
     });
+
+    // Ledger: the buyer protection fee is realized the moment escrow is funded.
+    try {
+      await recordFeeEarning(ctx.db, {
+        sourceType: "escrow_fund",
+        marketplace,
+        feeType: "buyer_protection",
+        ruleKey: protectionResolved.ruleKey,
+        ruleRate: protectionResolved.ruleRate,
+        amount: buyerFeeAmount,
+        baseAmount: args.amount,
+        escrowId: escrowId,
+        buyerId: buyer._id,
+        sellerId: args.sellerId,
+        description: `Buyer protection fee on "${listing.title}"`,
+      });
+    } catch (err) {
+      console.error("[fees] ledger insert failed (escrow_fund):", err);
+    }
 
     await ctx.db.patch(args.listingId as any, { status: "sold" });
 
@@ -563,7 +588,24 @@ export const confirmDelivery = mutation({
       console.error("[referral] escrow release hook failed:", err);
     }
 
-    // Release the seller’s share into their wallet, less platform fee.
+    // Ledger: the seller commission is realized the moment escrow releases.
+    try {
+      await recordFeeEarning(ctx.db, {
+        sourceType: "escrow_release",
+        marketplace: (escrow as any).marketplace || "product",
+        feeType: "seller_commission",
+        amount: escrow.platformFee || 0,
+        baseAmount: escrow.amount,
+        escrowId: escrow._id,
+        buyerId: escrow.buyerId,
+        sellerId: escrow.sellerId,
+        description: `Seller commission on "${escrow.title}"`,
+      });
+    } catch (err) {
+      console.error("[fees] ledger insert failed (escrow_release):", err);
+    }
+
+    // Release the seller's share into their wallet, less platform fee.
     const seller = await getUserById(ctx, escrow.sellerId);
     if (seller && userHasWallet(seller)) {
       const sellerPayout = escrow.amount - (escrow.platformFee || 0);

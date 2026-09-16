@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { toast } from "sonner";
-import { api } from "../../convex/_generated/api";
+import { api } from "../convex/_generated/api";
 import { ConvexError } from "convex/values";
 import NavigationBar from "@/components/layout/NavigationBar";
 import MobileBottomNav from "@/components/MobileBottomNav";

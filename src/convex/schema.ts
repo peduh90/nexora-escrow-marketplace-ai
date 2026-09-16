@@ -1623,6 +1623,83 @@ const schema = defineSchema(
       .index("by_task", ["taskId"])
       .index("by_tasker", ["taskerId"])
       .index("by_status", ["status"]),
+
+    // ─── MONEY: Platform Fees & Commissions control center ───────────────
+    // Admin-configurable fee rules. One row per rule key; transactions
+    // snapshot their fees at charge time so later rule edits NEVER change
+    // fees already applied to completed or in-flight transactions.
+    feeRules: defineTable({
+      // Stable identifier, e.g. "product.seller_commission".
+      key: v.string(),
+      // "product" | "freelance" | "services" | "transport"
+      marketplace: v.string(),
+      // "seller_commission" | "buyer_protection"
+      feeType: v.string(),
+      label: v.string(),
+      payer: v.union(v.literal("seller"), v.literal("buyer")),
+      mode: v.union(v.literal("percentage"), v.literal("fixed")),
+      // percentage tiers: {min, max?, rate}; fixed: {min, max?, fixed}
+      tiers: v.array(
+        v.object({
+          min: v.number(),
+          max: v.optional(v.number()),
+          rate: v.optional(v.number()),
+          fixed: v.optional(v.number()),
+        }),
+      ),
+      // Transactions below this amount pay no fee under this rule.
+      minThreshold: v.optional(v.number()),
+      // Hard cap on the fee charged.
+      maxCap: v.optional(v.number()),
+      effectiveFrom: v.number(),
+      active: v.boolean(),
+      createdBy: v.optional(v.string()),
+      createdByName: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_key", ["key"])
+      .index("by_marketplace", ["marketplace"]),
+
+    // Immutable audit trail: every create/update/toggle is appended here and
+    // never edited. The current feeRules row always reflects the latest state.
+    feeRulesHistory: defineTable({
+      ruleKey: v.string(),
+      action: v.string(), // "created" | "updated" | "activated" | "deactivated"
+      adminId: v.optional(v.string()),
+      adminName: v.string(),
+      snapshot: v.any(), // full rule state after the change
+      note: v.optional(v.string()),
+      at: v.number(),
+    }).index("by_rule", ["ruleKey"]),
+
+    // The ledger where earned fees ACCUMULATE. One row per fee actually
+    // collected (buyer protection at funding, commission at release). This is
+    // the owner's real revenue stream from the fee system.
+    platformFeeEarnings: defineTable({
+      // "escrow_fund" | "escrow_release" | "service_release" |
+      // "freelance_release" | "transport_release" | "transport_fund"
+      sourceType: v.string(),
+      marketplace: v.string(), // "product" | "freelance" | "services" | "transport"
+      feeType: v.string(), // "seller_commission" | "buyer_protection"
+      ruleKey: v.optional(v.string()),
+      ruleRate: v.optional(v.number()),
+      amount: v.number(), // KES collected
+      baseAmount: v.number(),
+      escrowId: v.optional(v.string()),
+      bookingId: v.optional(v.string()),
+      orderId: v.optional(v.string()),
+      projectId: v.optional(v.string()),
+      requestId: v.optional(v.string()),
+      tripId: v.optional(v.string()),
+      buyerId: v.optional(v.string()),
+      sellerId: v.optional(v.string()),
+      description: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_source", ["sourceType"])
+      .index("by_created", ["createdAt"])
+      .index("by_marketplace", ["marketplace"]),
   },
   {
     schemaValidation: false,

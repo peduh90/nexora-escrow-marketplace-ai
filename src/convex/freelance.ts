@@ -1,7 +1,7 @@
 import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { api, internal } from "./_generated/api";
-import { sellerCommission, buyerProtectionFee } from "./fees";
+import { sellerCommission, buyerProtectionFee, resolveFee, recordFeeEarning } from "./fees";
 
 // ─── SHARED HELPERS ───
 
@@ -793,7 +793,8 @@ export const fundProjectEscrow = mutation({
     if (project.status !== "active") throw new ConvexError("Project is not active");
 
     const amount = project.budget;
-    const protection = buyerProtectionFee("freelance", amount);
+    const protectionResolved = await resolveFee(ctx.db, "freelance", "buyer_protection", amount);
+    const protection = protectionResolved.breakdown;
     const total = amount + protection.fee;
 
     const walletBalance = user.walletBalance || 0;
@@ -992,9 +993,43 @@ export const approveWork = mutation({
 
     const now = Date.now();
     const amount = project.budget;
-    const commission = sellerCommission("freelance", amount);
+    const commissionResolved = await resolveFee(ctx.db, "freelance", "seller_commission", amount);
+    const protectionResolved = await resolveFee(ctx.db, "freelance", "buyer_protection", amount);
+    const commission = commissionResolved.breakdown;
+    const protection = protectionResolved.breakdown;
     const netToFreelancer = amount - commission.fee;
-    const protection = buyerProtectionFee("freelance", amount);
+
+    // Ledger: freelancer commission + employer protection realized at release.
+    try {
+      await recordFeeEarning(ctx.db, {
+        sourceType: "freelance_release",
+        marketplace: "freelance",
+        feeType: "seller_commission",
+        ruleKey: commissionResolved.ruleKey,
+        ruleRate: commissionResolved.ruleRate,
+        amount: commission.fee,
+        baseAmount: amount,
+        projectId: project._id,
+        buyerId: user._id,
+        sellerId: project.freelancerId,
+        description: `Freelancer commission on "${project.title}"`,
+      });
+      await recordFeeEarning(ctx.db, {
+        sourceType: "freelance_release",
+        marketplace: "freelance",
+        feeType: "buyer_protection",
+        ruleKey: protectionResolved.ruleKey,
+        ruleRate: protectionResolved.ruleRate,
+        amount: protection.fee,
+        baseAmount: amount,
+        projectId: project._id,
+        buyerId: user._id,
+        sellerId: project.freelancerId,
+        description: `Employer protection fee on "${project.title}"`,
+      });
+    } catch (err) {
+      console.error("[fees] ledger insert failed (freelance_release):", err);
+    }
 
     const employer: any = await ctx.db.get(user._id);
     if (!employer) throw new ConvexError("Employer account not found");

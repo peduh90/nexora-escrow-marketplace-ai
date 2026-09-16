@@ -2,7 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v, ConvexError } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { sellerCommission, buyerProtectionFee } from "./fees";
+import { sellerCommission, buyerProtectionFee, resolveFee, recordFeeEarning } from "./fees";
 
 // ─── LOCAL SERVICES (Kenya-first, simple English) ───────────────────────────
 //
@@ -622,7 +622,8 @@ export const fundServiceRequest = mutation({
     if (r.status !== "pending") throw new ConvexError("This request is no longer awaiting payment");
 
     const amount = r.amount;
-    const protection = buyerProtectionFee("product", amount);
+    const protectionResolved = await resolveFee(ctx.db, "services", "buyer_protection", amount);
+    const protection = protectionResolved.breakdown;
     const total = amount + protection.fee;
     const walletBalance = (user as any).walletBalance || 0;
     if (walletBalance < total) {
@@ -788,9 +789,43 @@ export const completeServiceRequest = mutation({
 
     const now = Date.now();
     const amount = r.amount;
-    const commission = sellerCommission("product", amount);
-    const protection = buyerProtectionFee("product", amount);
+    const commissionResolved = await resolveFee(ctx.db, "services", "seller_commission", amount);
+    const protectionResolved = await resolveFee(ctx.db, "services", "buyer_protection", amount);
+    const commission = commissionResolved.breakdown;
+    const protection = protectionResolved.breakdown;
     const payout = amount - commission.fee;
+
+    // Ledger: service commission + protection realized at release.
+    try {
+      await recordFeeEarning(ctx.db, {
+        sourceType: "service_release",
+        marketplace: "services",
+        feeType: "seller_commission",
+        ruleKey: commissionResolved.ruleKey,
+        ruleRate: commissionResolved.ruleRate,
+        amount: commission.fee,
+        baseAmount: amount,
+        requestId: r._id,
+        buyerId: r.customerId,
+        sellerId: r.providerUserId,
+        description: `Service provider commission on "${r.title}"`,
+      });
+      await recordFeeEarning(ctx.db, {
+        sourceType: "service_release",
+        marketplace: "services",
+        feeType: "buyer_protection",
+        ruleKey: protectionResolved.ruleKey,
+        ruleRate: protectionResolved.ruleRate,
+        amount: protection.fee,
+        baseAmount: amount,
+        requestId: r._id,
+        buyerId: r.customerId,
+        sellerId: r.providerUserId,
+        description: `Buyer protection fee on "${r.title}"`,
+      });
+    } catch (err) {
+      console.error("[fees] ledger insert failed (service_release):", err);
+    }
 
     const customer = await ctx.db.get(r.customerId as any);
     await ctx.db.patch(r.customerId as any, {

@@ -73,7 +73,7 @@ interface Message {
   timestamp: Date;
 }
 
-type ChatPanel = "buyer" | "seller" | "admin" | "freelance" | "services" | "market" | "general";
+type ChatPanel = "buyer" | "seller" | "admin" | "freelance" | "services" | "market" | "general" | "ai_tasker";
 
 export default function AIChat({ panel, stacked }: { panel?: ChatPanel; stacked?: boolean }) {
   const { user } = useAuth();

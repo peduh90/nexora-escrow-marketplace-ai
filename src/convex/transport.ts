@@ -2,7 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v, ConvexError } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { sellerCommission, buyerProtectionFee } from "./fees";
+import { sellerCommission, buyerProtectionFee, resolveFee, recordFeeEarning } from "./fees";
 
 // ─── TRANSPORT & RIDES (Boda, Matatu, Tuk-Tuk, Taxi, Delivery) ──────────────
 //
@@ -649,9 +649,30 @@ export const completeTrip = mutation({
 
     const now = Date.now();
     const amount = t.fare;
-    const commission = sellerCommission("product", amount);
-    const protection = buyerProtectionFee("product", amount);
+    const commissionResolved = await resolveFee(ctx.db, "transport", "seller_commission", amount);
+    const protectionResolved = await resolveFee(ctx.db, "transport", "buyer_protection", amount);
+    const commission = commissionResolved.breakdown;
+    const protection = protectionResolved.breakdown;
     const payout = amount - commission.fee;
+
+    // Ledger: transport commission + protection realized at completion.
+    try {
+      await recordFeeEarning(ctx.db, {
+        sourceType: "transport_release",
+        marketplace: "transport",
+        feeType: "seller_commission",
+        ruleKey: commissionResolved.ruleKey,
+        ruleRate: commissionResolved.ruleRate,
+        amount: commission.fee,
+        baseAmount: amount,
+        tripId: t._id,
+        buyerId: t.customerId,
+        sellerId: t.providerUserId,
+        description: `Transport commission on trip ${t._id}`,
+      });
+    } catch (err) {
+      console.error("[fees] ledger insert failed (transport_release):", err);
+    }
 
     const customer = await ctx.db.get(t.customerId as any);
     await ctx.db.patch(t.customerId as any, {

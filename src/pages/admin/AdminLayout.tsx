@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
 import { useQuery } from "convex/react";
@@ -8,58 +8,108 @@ import AIChat from "@/components/AIChat";
 import {
   Shield, LayoutDashboard, Users, ShoppingCart, Scale,
   Brain, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, ChevronDown,
-  User, Truck, Briefcase, Activity, Wallet, Bell,
+  Truck, Briefcase, Activity, Wallet, Bell,
   Search, Package, CreditCard, MessageSquare, AlertTriangle,
-  Receipt, TrendingUp, X, Menu, Eye, Crown, Home, Share2, MapPin,
+  Receipt, TrendingUp, X, Menu, Crown, Home, Share2, MapPin,
+  Percent, Database, ClipboardCheck, Send, UserCheck,
 } from "lucide-react";
 
-const navSections = [
-  { label: "OVERVIEW", items: [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
-    { icon: Home, label: "Home", path: "/" },
-  ]},
-  { label: "USERS", items: [
-    { icon: Users, label: "All Users", path: "/admin/users" },
-    { icon: Eye, label: "Verification", path: "/admin/kyc" },
-    { icon: Share2, label: "Creator Program", path: "/admin/referrals" },
-  ]},
-  { label: "MARKETPLACE · PRODUCTS", items: [
-    { icon: Package, label: "Products", path: "/admin/products" },
-    { icon: ShoppingCart, label: "Orders", path: "/admin/orders" },
-    { icon: MessageSquare, label: "Messages", path: "/admin/messages" },
-    { icon: Scale, label: "Reviews", path: "/admin/reviews" },
-  ]},
-  { label: "FREELANCE", items: [
-    { icon: Briefcase, label: "Freelancers", path: "/admin/freelancers" },
-    { icon: Briefcase, label: "Job Board", path: "/admin/jobs" },
-  ]},
-  { label: "SERVICES & TRANSPORT", items: [
-    { icon: MapPin, label: "Local Services", path: "/admin/services" },
-  ]},
-  { label: "FINANCES", items: [
-    { icon: CreditCard, label: "Payments", path: "/admin/payments" },
-    { icon: Shield, label: "Escrow", path: "/admin/escrow" },
-    { icon: Wallet, label: "Wallets", path: "/admin/wallets" },
-    { icon: Receipt, label: "Withdrawals", path: "/admin/withdrawals" },
-    { icon: TrendingUp, label: "Revenue", path: "/admin/revenue" },
-  ]},
-  { label: "DELIVERY", items: [
-    { icon: Truck, label: "Deliveries", path: "/admin/deliveries" },
-  ]},
-  { label: "SECURITY", items: [
-    { icon: Brain, label: "AI & Fraud", path: "/admin/ai" },
-    { icon: Scale, label: "Disputes", path: "/admin/disputes" },
-    { icon: AlertTriangle, label: "Reports", path: "/admin/reports" },
-  ]},
-  { label: "PLATFORM", items: [
-    { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
-    { icon: Activity, label: "System Health", path: "/admin/system" },
-    { icon: Bell, label: "Notifications", path: "/admin/notifications" },
-    { icon: Settings, label: "Settings", path: "/admin/settings" },
-    { icon: Eye, label: "Audit Logs", path: "/admin/audit-logs" },
-    { icon: Crown, label: "Owner Control", path: "/admin/owner" },
-  ]},
+/**
+ * ─── NEXORA ADMIN CONTROL CENTER ───────────────────────────────────────────
+ * SaaS-style shell: the sidebar and topbar are fixed; ONLY the main content
+ * area scrolls. Every menu item is an independent route — content replaces,
+ * it never stacks. Groups are collapsible and persist during the session.
+ */
+
+type NavItem = { icon: any; label: string; path: string; desc?: string };
+type NavGroup = { id: string; label: string; items: NavItem[] };
+
+const navGroups: NavGroup[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", path: "/admin", desc: "Live platform overview" },
+      { icon: BarChart3, label: "Analytics", path: "/admin/analytics", desc: "Trends & insights" },
+      { icon: Home, label: "Public Site", path: "/", desc: "View the marketplace" },
+    ],
+  },
+  {
+    id: "people",
+    label: "People",
+    items: [
+      { icon: Users, label: "All Users", path: "/admin/users", desc: "Every account" },
+      { icon: ClipboardCheck, label: "Verification (KYC)", path: "/admin/kyc", desc: "Identity reviews" },
+      { icon: UserCheck, label: "Sellers", path: "/admin/sellers", desc: "Marketplace merchants" },
+      { icon: Share2, label: "Creator Program", path: "/admin/referrals", desc: "Referrals & agreements" },
+    ],
+  },
+  {
+    id: "marketplace",
+    label: "Marketplace",
+    items: [
+      { icon: Package, label: "Products", path: "/admin/products", desc: "Listings & moderation" },
+      { icon: ShoppingCart, label: "Orders", path: "/admin/orders", desc: "Buyer–seller orders" },
+      { icon: MessageSquare, label: "Messages", path: "/admin/messages", desc: "Chat oversight" },
+      { icon: Scale, label: "Reviews", path: "/admin/reviews", desc: "Ratings & trust" },
+    ],
+  },
+  {
+    id: "freelance",
+    label: "Freelance",
+    items: [
+      { icon: Briefcase, label: "Freelancers", path: "/admin/freelancers", desc: "Talent profiles" },
+      { icon: Briefcase, label: "Jobs & Projects", path: "/admin/jobs", desc: "Job board & escrow" },
+    ],
+  },
+  {
+    id: "transport",
+    label: "Transport & Delivery",
+    items: [
+      { icon: Truck, label: "Deliveries", path: "/admin/deliveries", desc: "Parcel logistics" },
+      { icon: MapPin, label: "Local Services", path: "/admin/services", desc: "Fundis & providers" },
+    ],
+  },
+  {
+    id: "money",
+    label: "Money",
+    items: [
+      { icon: Percent, label: "Fees & Commissions", path: "/admin/fees", desc: "Fee engine control" },
+      { icon: CreditCard, label: "Payments", path: "/admin/payments", desc: "M-Pesa & wallet flows" },
+      { icon: Shield, label: "Escrow", path: "/admin/escrow", desc: "Held funds" },
+      { icon: Wallet, label: "Wallets", path: "/admin/wallets", desc: "User balances" },
+      { icon: Receipt, label: "Withdrawals", path: "/admin/withdrawals", desc: "Payout requests" },
+      { icon: TrendingUp, label: "Revenue", path: "/admin/revenue", desc: "Income & accruals" },
+    ],
+  },
+  {
+    id: "trust",
+    label: "Trust & Security",
+    items: [
+      { icon: Brain, label: "AI & Fraud", path: "/admin/ai", desc: "Risk engine" },
+      { icon: Scale, label: "Disputes", path: "/admin/disputes", desc: "Case handling" },
+      { icon: AlertTriangle, label: "Reports", path: "/admin/reports", desc: "Abuse & flags" },
+      { icon: Database, label: "Audit Logs", path: "/admin/audit-logs", desc: "Every admin action" },
+    ],
+  },
+  {
+    id: "platform",
+    label: "Platform",
+    items: [
+      { icon: Activity, label: "System Health", path: "/admin/system", desc: "Engines & jobs" },
+      { icon: Send, label: "Notifications", path: "/admin/notifications", desc: "Comms console" },
+      { icon: Settings, label: "Settings", path: "/admin/settings", desc: "Platform config" },
+      { icon: Crown, label: "Owner Control", path: "/admin/owner", desc: "Owner-only levers" },
+    ],
+  },
 ];
+
+/** Flat map path → { group, item } for breadcrumbs + active states. */
+const pathIndex = (() => {
+  const map = new Map<string, { group: NavGroup; item: NavItem }>();
+  for (const g of navGroups) for (const it of g.items) map.set(it.path, { group: g, item: it });
+  return map;
+})();
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -69,9 +119,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminSearch, setAdminSearch] = useState("");
+  // Collapsible groups: open by default; the group holding the active route
+  // can never be closed, so the user always sees where they are.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(navGroups.map((g) => [g.id, true])),
+  );
   const profileRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   // REAL unread platform notifications for the admin — powers the bell badge.
   const unreadNotifications = useQuery(api.reviews.getUnreadCount);
+
+  // The active group auto-opens on navigation (collapsible but never lost).
+  const active = useMemo(() => {
+    if (pathIndex.has(location.pathname)) return pathIndex.get(location.pathname)!;
+    // Prefix match for sub-routes (e.g. /admin/users/123).
+    const hit = [...pathIndex.entries()]
+      .filter(([p]) => p !== "/admin" && location.pathname.startsWith(p))
+      .sort((a, b) => b[0].length - a[0].length)[0];
+    return hit ? hit[1] : null;
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (active) setOpenGroups((o) => ({ ...o, [active.group.id]: true }));
+  }, [active?.group.id]);
+
+  // Replace-content navigation: each route change resets the scroll position
+  // of the main area, like a real SaaS panel.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [location.pathname]);
 
   // Close the profile dropdown on outside click / Escape.
   useEffect(() => {
@@ -97,123 +173,184 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setAdminSearch("");
   };
 
-  return (
-    <div className="flex min-h-screen bg-[#050508]">
-      {/* Desktop Sidebar */}
-      <aside className={`hidden lg:flex flex-col h-screen sticky top-0 border-r border-white/5 bg-[#08080F] transition-all duration-300 ${collapsed ? "w-[72px]" : "w-[256px]"}`}>
-        <div className={`flex items-center h-14 px-4 border-b border-white/5 ${collapsed ? "justify-center" : "gap-2.5"}`}>
-          <Shield className="w-6 h-6 text-nx-violet shrink-0" />
-          {!collapsed && <span className="text-base font-bold text-white">NEXORA<span className="text-nx-violet">.</span></span>}
-        </div>
-        <div className={`mx-3 mt-3 mb-1 px-3 py-1.5 rounded-lg bg-nx-gold/10 text-nx-gold text-[10px] font-medium tracking-wider uppercase ${collapsed ? "text-center" : ""}`}>
-          {collapsed ? "A" : "ADMIN CONTROL CENTER"}
-        </div>
-        <nav className="flex-1 py-2 px-2 space-y-3 overflow-y-auto">
-          {navSections.map((section) => (
-            <div key={section.label}>
-              {!collapsed && <p className="px-3 mb-1 text-[9px] font-bold text-white/15 tracking-widest uppercase">{section.label}</p>}
-              {section.items.map((item) => {
-                const isActive = item.path === "/" ? location.pathname === "/" : location.pathname === item.path || (item.path !== "/admin" && location.pathname.startsWith(item.path));
-                return (
-                  <button key={item.path} onClick={() => { navigate(item.path); setMobileOpen(false); }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all group ${isActive ? "bg-nx-gold/10 text-nx-gold" : "text-white/35 hover:text-white/70 hover:bg-white/[0.03]"} ${collapsed ? "justify-center" : ""}`}
-                    title={collapsed ? item.label : undefined}>
-                    <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-nx-gold" : "group-hover:text-white/50"}`} />
-                    {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
-                  </button>
-                );
-              })}
+  const toggleGroup = (id: string) =>
+    setOpenGroups((o) => ({ ...o, [id]: !o[id] }));
+
+  const go = (path: string) => {
+    navigate(path);
+    setMobileOpen(false);
+  };
+
+  const crumbs = [
+    { label: "Admin", path: "/admin" },
+    ...(active && active.group.id !== "overview" ? [{ label: active.group.label, path: undefined as string | undefined }] : []),
+    ...(active && active.item.path !== "/admin" ? [{ label: active.item.label, path: active.item.path }] : []),
+  ];
+
+  // ── Sidebar body (shared by desktop + mobile drawer) ──
+  const sidebarBody = (isMobile: boolean) => (
+    <>
+      <div className={`flex items-center h-14 px-4 border-b border-white/5 shrink-0 ${collapsed && !isMobile ? "justify-center" : "gap-2.5"}`}>
+        <Shield className="w-6 h-6 text-nx-violet shrink-0" />
+        {!(collapsed && !isMobile) && (
+          <span className="text-base font-bold text-white flex-1">
+            NEXORA<span className="text-nx-violet">.</span>
+          </span>
+        )}
+        {isMobile && (
+          <button onClick={() => setMobileOpen(false)} className="text-white/30 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+      <div className={`mx-3 mt-3 mb-1 px-3 py-1.5 rounded-lg bg-nx-gold/10 text-nx-gold text-[10px] font-medium tracking-wider uppercase shrink-0 ${collapsed && !isMobile ? "text-center" : ""}`}>
+        {collapsed && !isMobile ? "A" : "ADMIN CONTROL CENTER"}
+      </div>
+      <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1 min-h-0">
+        {navGroups.map((group) => {
+          const isOpen = openGroups[group.id] ?? true;
+          const hasActive = group.items.some((i) => i.path === active?.item.path);
+          return (
+            <div key={group.id} className="mb-1">
+              <button
+                onClick={() => toggleGroup(group.id)}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors ${
+                  hasActive ? "text-nx-gold/80" : "text-white/25 hover:text-white/50"
+                } ${collapsed && !isMobile ? "justify-center" : ""}`}
+                title={collapsed && !isMobile ? group.label : undefined}
+              >
+                {!(collapsed && !isMobile) && (
+                  <>
+                    <span className="flex-1 text-left">{group.label}</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? "" : "-rotate-90"}`} />
+                  </>
+                )}
+                {(collapsed && !isMobile) && <span className="w-px h-4 bg-white/15" />}
+              </button>
+              {isOpen &&
+                group.items.map((item) => {
+                  const isActive = item.path === "/"
+                    ? location.pathname === "/"
+                    : item.path === "/admin"
+                      ? location.pathname === "/admin"
+                      : location.pathname.startsWith(item.path);
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => go(item.path)}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all group ${
+                        isActive
+                          ? "bg-nx-gold/10 text-nx-gold font-medium"
+                          : "text-white/35 hover:text-white/70 hover:bg-white/[0.03]"
+                      } ${collapsed && !isMobile ? "justify-center" : ""}`}
+                      title={item.desc || item.label}
+                    >
+                      <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-nx-gold" : "group-hover:text-white/50"}`} />
+                      {!(collapsed && !isMobile) && <span className="whitespace-nowrap text-left">{item.label}</span>}
+                    </button>
+                  );
+                })}
             </div>
-          ))}
-        </nav>
-        <div className="border-t border-white/5 p-2">
-          <button onClick={() => setCollapsed(!collapsed)} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-white/20 hover:text-white/50 hover:bg-white/[0.03] text-xs transition-colors">
+          );
+        })}
+      </nav>
+      <div className="border-t border-white/5 p-2 shrink-0">
+        {!isMobile && (
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-white/20 hover:text-white/50 hover:bg-white/[0.03] text-xs transition-colors"
+          >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <><ChevronLeft className="w-4 h-4" /><span>Collapse</span></>}
           </button>
-        </div>
-        <div className="border-t border-white/5 p-2">
-          <button onClick={async () => { await signOut(); navigate("/"); }} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/25 hover:text-red-400 hover:bg-red-400/5 transition-colors ${collapsed ? "justify-center" : ""}`}>
-            <LogOut className="w-4 h-4 shrink-0" />
-            {!collapsed && <span>Sign Out</span>}
-          </button>
-        </div>
+        )}
+        <button
+          onClick={async () => { await signOut(); navigate("/"); }}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/25 hover:text-red-400 hover:bg-red-400/5 transition-colors ${collapsed && !isMobile ? "justify-center" : ""}`}
+        >
+          <LogOut className="w-4 h-4 shrink-0" />
+          {!(collapsed && !isMobile) && <span>Sign Out</span>}
+        </button>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#050508]">
+      {/* Desktop sidebar — fixed, its own scroll area for nav overflow */}
+      <aside className={`hidden lg:flex flex-col h-screen sticky top-0 border-r border-white/5 bg-[#08080F] transition-all duration-300 ${collapsed ? "w-[72px]" : "w-[256px]"}`}>
+        {sidebarBody(false)}
       </aside>
 
-      {/* Mobile sidebar */}
+      {/* Mobile drawer */}
       <AnimatePresence>
         {mobileOpen && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setMobileOpen(false)} />
-            <motion.aside initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 z-50 w-[280px] bg-[#08080F] border-r border-white/5 lg:hidden overflow-y-auto">
-              <div className="flex items-center justify-between h-14 px-4 border-b border-white/5">
-                <div className="flex items-center gap-2.5">
-                  <Shield className="w-6 h-6 text-nx-violet" />
-                  <span className="text-base font-bold text-white">NEXORA<span className="text-nx-violet">.</span></span>
-                </div>
-                <button onClick={() => setMobileOpen(false)} className="text-white/30 hover:text-white"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="mx-3 mt-3 mb-1 px-3 py-1.5 rounded-lg bg-nx-gold/10 text-nx-gold text-[10px] font-medium tracking-wider uppercase text-center">ADMIN CONTROL CENTER</div>
-              <nav className="py-3 px-2 space-y-3">
-                {navSections.map((section) => (
-                  <div key={section.label}>
-                    <p className="px-3 mb-1 text-[9px] font-bold text-white/15 tracking-widest uppercase">{section.label}</p>
-                    {section.items.map((item) => {
-                      const isActive = item.path === "/" ? location.pathname === "/" : location.pathname === item.path || (item.path !== "/admin" && location.pathname.startsWith(item.path));
-                      return (
-                        <button key={item.path} onClick={() => { navigate(item.path); setMobileOpen(false); }}
-                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all ${isActive ? "bg-nx-gold/10 text-nx-gold" : "text-white/35 hover:text-white/70 hover:bg-white/[0.03]"}`}>
-                          <item.icon className="w-4 h-4 shrink-0" />
-                          <span className="whitespace-nowrap">{item.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
-              </nav>
-              <div className="border-t border-white/5 p-2 mt-2">
-                <button onClick={async () => { await signOut(); navigate("/"); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-white/25 hover:text-red-400 hover:bg-red-400/5 transition-colors">
-                  <LogOut className="w-4 h-4" /><span>Sign Out</span>
-                </button>
-              </div>
+              className="fixed inset-y-0 left-0 z-50 w-[280px] bg-[#08080F] border-r border-white/5 lg:hidden flex flex-col"
+            >
+              {sidebarBody(true)}
             </motion.aside>
           </>
         )}
       </AnimatePresence>
 
-      {/* Main Content */}
-      <main className="flex-1 min-w-0 pb-20 lg:pb-0">
-        <div className="sticky top-0 z-30 h-14 bg-[#08080F]/80 backdrop-blur-xl border-b border-white/5 flex items-center px-4 md:px-6 justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setMobileOpen(true)} className="lg:hidden text-white/30 hover:text-white"><Menu className="w-5 h-5" /></button>
-            <h2 className="text-sm font-semibold text-white hidden sm:block">Admin Control Center</h2>
+      {/* Main column: fixed topbar + independently scrolling content */}
+      <main className="flex-1 min-w-0 flex flex-col h-screen">
+        <div className="sticky top-0 z-30 h-14 shrink-0 bg-[#08080F]/95 backdrop-blur-xl border-b border-white/5 flex items-center px-4 md:px-6 justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => setMobileOpen(true)} className="lg:hidden text-white/30 hover:text-white shrink-0">
+              <Menu className="w-5 h-5" />
+            </button>
+            {/* Breadcrumbs */}
+            <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs min-w-0 overflow-hidden">
+              {crumbs.map((c, i) => (
+                <span key={`${c.label}-${i}`} className="flex items-center gap-1.5 min-w-0">
+                  {i > 0 && <span className="text-white/15">/</span>}
+                  {c.path && i < crumbs.length - 1 ? (
+                    <button onClick={() => go(c.path!)} className="text-white/35 hover:text-white/70 transition-colors truncate">
+                      {c.label}
+                    </button>
+                  ) : (
+                    <span className={i === crumbs.length - 1 ? "text-white font-medium truncate" : "text-white/40 truncate"}>
+                      {c.label}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </nav>
           </div>
           <form onSubmit={submitSearch} className="flex-1 max-w-md hidden md:block">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
-              <input value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} placeholder="Search users, products, orders..."
-                className="w-full pl-9 pr-4 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none transition-colors" />
+              <input
+                value={adminSearch}
+                onChange={(e) => setAdminSearch(e.target.value)}
+                placeholder="Search users, products, orders..."
+                className="w-full pl-9 pr-4 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none transition-colors"
+              />
             </div>
           </form>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-nx-emerald bg-nx-emerald/10 px-2 py-0.5 rounded-full font-medium hidden sm:inline">● System Healthy</span>
             <button
-              onClick={() => navigate("/admin/notifications")}
+              onClick={() => go("/admin/notifications")}
               className="relative p-2 rounded-lg text-white/30 hover:text-white hover:bg-white/[0.03] transition-colors"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
               {!!unreadNotifications && unreadNotifications > 0 && (
                 <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 rounded-full bg-red-500 flex items-center justify-center">
-                  <span className="text-[8px] font-bold text-white">
-                    {unreadNotifications > 9 ? "9+" : unreadNotifications}
-                  </span>
+                  <span className="text-[8px] font-bold text-white">{unreadNotifications > 9 ? "9+" : unreadNotifications}</span>
                 </span>
               )}
             </button>
-            {/* Admin profile — a real, pressable dropdown (account, shortcuts, sign out). */}
             <div className="relative pl-2 border-l border-white/5" ref={profileRef}>
               <button
                 onClick={() => setProfileOpen((o) => !o)}
@@ -245,22 +382,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <p className="text-xs font-semibold text-white truncate">{user?.name || "Admin"}</p>
                       <p className="text-[10px] text-white/35 truncate">{user?.email || ""}</p>
                     </div>
-                    <button
-                      onClick={() => { setProfileOpen(false); navigate("/admin/users"); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors"
-                    >
+                    <button onClick={() => { setProfileOpen(false); go("/admin/users"); }} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors">
                       <Users className="w-3.5 h-3.5" /> My Account
                     </button>
-                    <button
-                      onClick={() => { setProfileOpen(false); navigate("/admin/settings"); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors"
-                    >
+                    <button onClick={() => { setProfileOpen(false); go("/admin/fees"); }} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors">
+                      <Percent className="w-3.5 h-3.5" /> Fees & Commissions
+                    </button>
+                    <button onClick={() => { setProfileOpen(false); go("/admin/settings"); }} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors">
                       <Settings className="w-3.5 h-3.5" /> Settings
                     </button>
-                    <button
-                      onClick={async () => { setProfileOpen(false); await signOut(); navigate("/"); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-red-400 hover:bg-red-400/5 transition-colors"
-                    >
+                    <button onClick={async () => { setProfileOpen(false); await signOut(); navigate("/"); }} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-red-400 hover:bg-red-400/5 transition-colors">
                       <LogOut className="w-3.5 h-3.5" /> Sign Out
                     </button>
                   </motion.div>
@@ -269,9 +400,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
         </div>
-        <div className="p-4 md:p-6">{children}</div>
+
+        {/* THE ONLY SCROLLING REGION — content replaces per route, never stacks */}
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto">
+          <div className="p-4 md:p-6 pb-24 lg:pb-10">{children}</div>
+        </div>
       </main>
-      {/* WhatsApp floating button - positioned above AI icon */}
+
+      {/* WhatsApp floating button */}
       <a
         href="https://wa.me/254769739216?text=Hello%20Nexora%20Admin%20Support%20%F0%9F%91%8B"
         target="_blank"

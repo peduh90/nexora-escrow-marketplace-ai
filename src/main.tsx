@@ -117,6 +117,7 @@ const CommunityRequests = lazy(() => import("./pages/community/CommunityRequests
 const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications.tsx"));
 const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs.tsx"));
 const AdminOwner = lazy(() => import("./pages/admin/AdminOwner.tsx"));
+const AdminFees = lazy(() => import("./pages/admin/AdminFees.tsx"));
 const AdminCategories = lazy(() => import("./pages/admin/AdminCategories.tsx"));
 
 
@@ -376,6 +377,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/sellers" element={<RequireAdmin><AdminSellers /></RequireAdmin>} />
               <Route path="/admin/products" element={<RequireAdmin><AdminProducts /></RequireAdmin>} />
               <Route path="/admin/orders" element={<RequireAdmin><AdminOrders /></RequireAdmin>} />
+              <Route path="/admin/fees" element={<RequireAdmin><AdminFees /></RequireAdmin>} />
               <Route path="/admin/payments" element={<RequireAdmin><AdminPayments /></RequireAdmin>} />
               <Route path="/admin/escrow" element={<RequireAdmin><AdminEscrow /></RequireAdmin>} />
               <Route path="/admin/wallets" element={<RequireAdmin><AdminWallets /></RequireAdmin>} />
