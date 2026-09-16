@@ -102,7 +102,7 @@ export default function AIChat({ panel, stacked }: { panel?: ChatPanel; stacked?
     : panel === "market" ? MARKET_ACTIONS
     : user?.role === "seller" ? SELLER_ACTIONS
     : user?.role === "admin" ? ADMIN_ACTIONS
-    : user?.role === "buyer" ? BUYER_ACTIONS
+    : user?.role === "buyer" || user?.role === "creator" ? BUYER_ACTIONS
     : VISITOR_ACTIONS;
 
   // Initialize welcome message

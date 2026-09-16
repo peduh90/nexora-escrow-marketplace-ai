@@ -249,6 +249,7 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
       buyer: "/buyer",
       freelancer: "/freelance/dashboard",
       employer: "/employer",
+      creator: "/creator",
     };
     const target = roleRedirects[role as string];
     if (target) {

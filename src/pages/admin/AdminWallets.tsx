@@ -33,7 +33,7 @@ export default function AdminWallets() {
 
   // Build per-user wallet summaries from real data
   const userWallets = users
-    .filter((u: any) => u.role === "buyer" || u.role === "seller")
+    .filter((u: any) => u.role === "buyer" || u.role === "seller" || u.role === "creator")
     .map((u: any) => {
       const userTxs = transactions.filter((t: any) => t.userId === u._id);
       const userEscrows = escrows.filter(

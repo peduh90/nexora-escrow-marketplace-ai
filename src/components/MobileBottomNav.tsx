@@ -24,6 +24,7 @@ export default function MobileBottomNav() {
   const sellPath =
     user?.role === "seller" ? "/seller/add-product"
     : user?.role === "freelancer" ? "/freelance/publish"
+    : user?.role === "creator" ? "/creator" // creators publish referral links, not listings
     : user ? "/auth" // signed-in non-sellers see their panel chooser, not seller signup
     : "/auth"; // signed-out visitors get the Choose Your Path screen
   const profilePath =
@@ -31,6 +32,7 @@ export default function MobileBottomNav() {
     : user?.role === "admin" ? "/admin"
     : user?.role === "freelancer" ? "/freelance/dashboard"
     : user?.role === "employer" ? "/employer"
+    : user?.role === "creator" ? "/creator"
     : user ? "/buyer"
     : "/auth";
 
@@ -48,6 +50,7 @@ export default function MobileBottomNav() {
     if (path === "/seller" && location.pathname.startsWith("/seller")) return true;
     if (path === "/buyer" && location.pathname.startsWith("/buyer")) return true;
     if (path === "/admin" && location.pathname.startsWith("/admin")) return true;
+    if (path === "/creator" && location.pathname.startsWith("/creator")) return true;
     return location.pathname === path;
   };
 
