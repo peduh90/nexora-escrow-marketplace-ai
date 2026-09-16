@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
 import {
   Percent, Calculator, History, TrendingUp, Plus, Save, ToggleLeft, ToggleRight,
   Loader2, ShieldCheck, Landmark, Layers, BadgeCheck, AlertTriangle, Users,
+  Banknote, ArrowUpRight, CheckCircle2, XCircle, Phone, Building2, Lock, Clock,
 } from "lucide-react";
 
 /**
@@ -49,7 +51,18 @@ export default function AdminFees() {
   const seedDefaults = useMutation(api.feeRules.seedDefaultRules);
   const [seeding, setSeeding] = useState(false);
 
-  const [tab, setTab] = useState<"rules" | "calculator" | "earnings" | "history">("rules");
+  // Deep-link support: /admin/fees?tab=payouts jumps straight to withdrawals
+  // (linked from Revenue Analytics and the Money overview).
+  const [searchParams, setSearchParams] = useSearchParams();
+  type FeeTab = "rules" | "calculator" | "earnings" | "payouts" | "history";
+  const urlTab = searchParams.get("tab") as FeeTab | null;
+  const [tab, setTab] = useState<FeeTab>(
+    urlTab && ["rules", "calculator", "earnings", "payouts", "history"].includes(urlTab) ? urlTab : "rules",
+  );
+  const switchTab = (t: "rules" | "calculator" | "earnings" | "payouts" | "history") => {
+    setTab(t);
+    setSearchParams(t === "rules" ? {} : { tab: t }, { replace: true });
+  };
   const [editorMarketplace, setEditorMarketplace] = useState<string>("product");
   const [editorFeeType, setEditorFeeType] = useState<string>("seller_commission");
   const [label, setLabel] = useState("");
@@ -64,6 +77,19 @@ export default function AdminFees() {
   const [calcMarket, setCalcMarket] = useState<string>("product");
   const [calcAmount, setCalcAmount] = useState("5000");
   const [earningsFilter, setEarningsFilter] = useState<string>("all");
+
+  // ── Owner payout state (system earnings → M-Pesa / bank) ──
+  const payoutOverview = useQuery(api.feeRules.payoutOverview, {});
+  const createPayout = useMutation(api.feeRules.createOwnerPayout);
+  const completePayout = useMutation(api.feeRules.completeOwnerPayout);
+  const cancelPayout = useMutation(api.feeRules.cancelOwnerPayout);
+  const [payoutAmount, setPayoutAmount] = useState("");
+  const [payoutMethod, setPayoutMethod] = useState<"mpesa" | "bank">("mpesa");
+  const [payoutDestination, setPayoutDestination] = useState("");
+  const [payoutNote, setPayoutNote] = useState("");
+  const [payoutBusy, setPayoutBusy] = useState(false);
+  const [completeRefFor, setCompleteRefFor] = useState<string | null>(null);
+  const [providerRef, setProviderRef] = useState("");
 
   // Live preview (computed in the browser from the rules list — no writes).
   const preview = useMemo(() => {
@@ -165,6 +191,39 @@ export default function AdminFees() {
 
   const filteredEarnings = (recent || []).filter((r: any) => earningsFilter === "all" || r.marketplace === earningsFilter);
 
+  const requestPayout = async () => {
+    setPayoutBusy(true);
+    try {
+      await createPayout({
+        amount: Number(payoutAmount),
+        method: payoutMethod,
+        destination: payoutDestination.trim(),
+        note: payoutNote.trim() || undefined,
+      });
+      toast.success("Payout reserved. Complete it once the money has actually been sent.");
+      setPayoutAmount("");
+      setPayoutNote("");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not create the payout");
+    } finally {
+      setPayoutBusy(false);
+    }
+  };
+
+  const confirmPayout = async (payoutId: string) => {
+    setPayoutBusy(true);
+    try {
+      await completePayout({ payoutId: payoutId as any, providerReference: providerRef.trim() });
+      toast.success("Payout marked as sent and reconciled.");
+      setCompleteRefFor(null);
+      setProviderRef("");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not complete the payout");
+    } finally {
+      setPayoutBusy(false);
+    }
+  };
+
   const summaryMarket = (summary as any)?.byMarketplace ?? [];
   const sp30 = (summary as any)?.byDay ?? [];
 
@@ -216,11 +275,12 @@ export default function AdminFees() {
           ["rules", "Fee rules", Layers],
           ["calculator", "Calculator & breakdown", Calculator],
           ["earnings", "Earnings ledger", TrendingUp],
+          ["payouts", "Owner payouts", Banknote],
           ["history", "Change history", History],
         ] as const).map(([id, lbl, Icon]) => (
           <button
             key={id}
-            onClick={() => setTab(id)}
+            onClick={() => switchTab(id)}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${tab === id ? "bg-nx-gold/15 text-nx-gold" : "text-white/40 hover:text-white/70"}`}
           >
             <Icon className="w-3.5 h-3.5" /> {lbl}
@@ -479,6 +539,211 @@ export default function AdminFees() {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── OWNER PAYOUTS (system earnings → M-Pesa / bank) ── */}
+      {tab === "payouts" && (
+        <div className="space-y-5">
+          {/* Balance cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { l: "Fees earned (all time)", v: kes((payoutOverview as any)?.totalEarned ?? 0), i: TrendingUp, tint: "text-emerald-300 bg-emerald-400/10" },
+              { l: "Available to withdraw", v: kes((payoutOverview as any)?.available ?? 0), i: Banknote, tint: "text-nx-gold bg-nx-gold/10" },
+              { l: "Paid out to M-Pesa / bank", v: kes((payoutOverview as any)?.paidOut ?? 0), i: CheckCircle2, tint: "text-cyan-300 bg-cyan-400/10" },
+              { l: "Reserved (pending/processing)", v: kes(((payoutOverview as any)?.pendingAmount ?? 0) + ((payoutOverview as any)?.processingAmount ?? 0)), i: Clock, tint: "text-amber-300 bg-amber-400/10" },
+            ].map((k) => (
+              <div key={k.l} className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-white/40 uppercase tracking-wide">{k.l}</p>
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${k.tint}`}><k.i className="w-4 h-4" /></span>
+                </div>
+                <p className="text-xl font-bold text-white mt-2">{k.v}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-5 items-start">
+            {/* Request form */}
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-1">
+                <Banknote className="w-4 h-4 text-nx-gold" /> Withdraw system earnings
+              </h2>
+              <p className="text-[11px] text-white/35 mb-4">
+                Pay the platform's accumulated fees to your own M-Pesa or bank account.
+                You confirm the money actually left — with the M-Pesa receipt or bank reference — before it counts as paid.
+              </p>
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={() => setPayoutMethod("mpesa")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${
+                    payoutMethod === "mpesa" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300" : "border-white/10 text-white/40 hover:text-white/70"
+                  }`}
+                >
+                  <Phone className="w-4 h-4" /> M-Pesa
+                </button>
+                <button
+                  onClick={() => setPayoutMethod("bank")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${
+                    payoutMethod === "bank" ? "border-nx-violet/40 bg-nx-violet/10 text-nx-violet" : "border-white/10 text-white/40 hover:text-white/70"
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" /> Bank transfer
+                </button>
+              </div>
+              <label className="block mb-3">
+                <span className="text-[10px] uppercase tracking-wide text-white/40">
+                  {payoutMethod === "mpesa" ? "M-Pesa number" : "Bank account (bank · account name · no.)"}
+                </span>
+                <input
+                  value={payoutDestination}
+                  onChange={(e) => setPayoutDestination(e.target.value)}
+                  placeholder={payoutMethod === "mpesa" ? "0712 345 678" : "Equity · NEXORA LTD · 1234567890"}
+                  className="mt-1 w-full rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/25"
+                />
+              </label>
+              <label className="block mb-3">
+                <span className="text-[10px] uppercase tracking-wide text-white/40">Amount (KES) — available: {kes((payoutOverview as any)?.available ?? 0)}</span>
+                <input
+                  type="number"
+                  value={payoutAmount}
+                  onChange={(e) => setPayoutAmount(e.target.value)}
+                  placeholder="0"
+                  className="mt-1 w-full rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/25"
+                />
+              </label>
+              <label className="block mb-4">
+                <span className="text-[10px] uppercase tracking-wide text-white/40">Note (optional)</span>
+                <input
+                  value={payoutNote}
+                  onChange={(e) => setPayoutNote(e.target.value)}
+                  placeholder="e.g. Weekly sweep to operations account"
+                  className="mt-1 w-full rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/25"
+                />
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setPayoutAmount(String(Math.floor((payoutOverview as any)?.available ?? 0)));
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs font-medium text-white/60 hover:text-white transition-colors"
+                >
+                  Withdraw all available
+                </button>
+                <button
+                  onClick={requestPayout}
+                  disabled={payoutBusy || !payoutAmount || Number(payoutAmount) <= 0 || !payoutDestination.trim()}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-nx-gold text-black text-sm font-bold hover:bg-nx-gold/85 transition-colors disabled:opacity-50"
+                >
+                  {payoutBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUpRight className="w-4 h-4" />}
+                  Request payout
+                </button>
+              </div>
+            </div>
+
+            {/* Payout history */}
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-4"><Landmark className="w-4 h-4 text-cyan-300" /> Payout history</h2>
+              {payoutOverview === undefined ? (
+                <p className="text-white/30 text-sm py-6 text-center"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</p>
+              ) : !(payoutOverview as any)?.recent?.length ? (
+                <p className="text-white/40 text-sm py-6 text-center">No payouts yet. Your first withdrawal appears here with its M-Pesa/bank reference.</p>
+              ) : (
+                <div className="space-y-2">
+                  {(payoutOverview as any).recent.map((p: any) => (
+                    <div key={p._id} className="rounded-xl border border-white/5 bg-white/[0.03] p-3.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-bold text-white">{kes(p.amount)}</p>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                              p.status === "completed" ? "bg-emerald-400/10 text-emerald-300" :
+                              p.status === "rejected" || p.status === "failed" ? "bg-red-400/10 text-red-300" :
+                              "bg-amber-400/10 text-amber-300"
+                            }`}>{p.status}</span>
+                            <span className="text-[10px] text-white/40">via {p.method === "mpesa" ? "M-Pesa" : "Bank"}</span>
+                          </div>
+                          <p className="text-[11px] text-white/40 mt-0.5 truncate">
+                            {p.method === "mpesa" ? <Phone className="w-3 h-3 inline mr-1 -mt-0.5" /> : <Building2 className="w-3 h-3 inline mr-1 -mt-0.5" />}
+                            {p.destination}
+                          </p>
+                          {p.providerReference && (
+                            <p className="text-[10px] text-white/30 mt-0.5">Ref: <span className="text-white/60 font-medium">{p.providerReference}</span></p>
+                          )}
+                          {p.failReason && <p className="text-[10px] text-red-300/70 mt-0.5">{p.failReason}</p>}
+                          <p className="text-[10px] text-white/25 mt-0.5">
+                            Requested {dt(p.createdAt)} by {p.createdByName}
+                            {p.completedAt ? ` · completed ${dt(p.completedAt)}` : ""}
+                          </p>
+                        </div>
+                        {p.status !== "completed" && p.status !== "rejected" && p.status !== "failed" && (
+                          <div className="flex flex-col items-end gap-1.5 shrink-0">
+                            <button
+                              onClick={() => { setCompleteRefFor(p._id); setProviderRef(""); }}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-400/10 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-400/20"
+                            >
+                              Mark as sent
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await cancelPayout({ payoutId: p._id, reason: "Cancelled from payout center" });
+                                  toast.success("Payout cancelled — amount released back to available");
+                                } catch (e: any) {
+                                  toast.error(e?.message || "Could not cancel");
+                                }
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-white/[0.04] text-[10px] text-white/40 hover:text-white/70"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {completeRefFor === p._id && (
+                        <div className="mt-3 pt-3 border-t border-white/5 flex flex-wrap items-center gap-2">
+                          <input
+                            value={providerRef}
+                            onChange={(e) => setProviderRef(e.target.value)}
+                            placeholder={p.method === "mpesa" ? "M-Pesa receipt e.g. SJ71HK2LMN" : "Bank transaction reference"}
+                            className="flex-1 min-w-[180px] rounded-lg bg-white/[0.04] border border-white/10 px-3 py-1.5 text-xs text-white placeholder:text-white/25"
+                          />
+                          <button
+                            onClick={() => confirmPayout(p._id)}
+                            disabled={!providerRef.trim() || payoutBusy}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-400 text-black text-xs font-bold hover:bg-emerald-300 disabled:opacity-50"
+                          >
+                            Confirm sent
+                          </button>
+                          <button onClick={() => setCompleteRefFor(null)} className="text-[11px] text-white/30 hover:text-white/60">Cancel</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* How it works */}
+          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><Lock className="w-4 h-4 text-white/40" /> How owner payouts work</h2>
+            <div className="grid md:grid-cols-3 gap-3">
+              {[
+                { n: "1. Real balance", d: "Available = every fee actually collected (commission + protection) minus every payout already sent or reserved. Nothing virtual." },
+                { n: "2. Reserved on request", d: "Requesting locks the amount so two payouts can never claim the same fees. Cancel any time before it's sent." },
+                { n: "3. You confirm with the receipt", d: "Send from M-Pesa/business bank, paste the receipt or transaction code, and the payout is reconciled permanently." },
+              ].map((s) => (
+                <div key={s.n} className="flex gap-3 rounded-xl bg-white/[0.03] border border-white/5 p-3.5">
+                  <span className="w-6 h-6 rounded-full bg-nx-gold/15 text-nx-gold text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{s.n.slice(0, 1)}</span>
+                  <div>
+                    <p className="text-white font-medium text-[13px]">{s.n.slice(3)}</p>
+                    <p className="text-white/45 text-xs mt-0.5">{s.d}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

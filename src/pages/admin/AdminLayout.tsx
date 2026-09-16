@@ -11,7 +11,7 @@ import {
   Truck, Briefcase, Activity, Wallet, Bell,
   Search, Package, CreditCard, MessageSquare, AlertTriangle,
   Receipt, TrendingUp, X, Menu, Crown, Home, Share2, MapPin,
-  Percent, Database, ClipboardCheck, Send, UserCheck,
+  Percent, Database, ClipboardCheck, Send, UserCheck, Banknote,
 } from "lucide-react";
 
 /**
@@ -75,6 +75,7 @@ const navGroups: NavGroup[] = [
     label: "Money",
     items: [
       { icon: Percent, label: "Fees & Commissions", path: "/admin/fees", desc: "Fee engine control" },
+      { icon: Banknote, label: "Owner Payouts", path: "/admin/fees?tab=payouts", desc: "Withdraw system earnings" },
       { icon: CreditCard, label: "Payments", path: "/admin/payments", desc: "M-Pesa & wallet flows" },
       { icon: Shield, label: "Escrow", path: "/admin/escrow", desc: "Held funds" },
       { icon: Wallet, label: "Wallets", path: "/admin/wallets", desc: "User balances" },
@@ -104,10 +105,15 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-/** Flat map path → { group, item } for breadcrumbs + active states. */
+/** Flat map path → { group, item } for breadcrumbs + active states. Paths
+ * with a query string (e.g. /admin/fees?tab=payouts) are indexed by pathname
+ * so the active state still resolves. */
 const pathIndex = (() => {
   const map = new Map<string, { group: NavGroup; item: NavItem }>();
-  for (const g of navGroups) for (const it of g.items) map.set(it.path, { group: g, item: it });
+  for (const g of navGroups) for (const it of g.items) {
+    const [pathname] = it.path.split("?");
+    map.set(pathname, { group: g, item: it });
+  }
   return map;
 })();
 
@@ -229,11 +235,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </button>
               {isOpen &&
                 group.items.map((item) => {
+                  // "Owner Payouts" lives at /admin/fees?tab=payouts — compare
+                  // by pathname plus query so it doesn't double-light with
+                  // "Fees & Commissions".
+                  const [itemPathname, itemQuery] = item.path.split("?");
+                  const matchesQuery = itemQuery
+                    ? location.search.includes(itemQuery)
+                    : !location.search.includes("tab=payouts");
                   const isActive = item.path === "/"
                     ? location.pathname === "/"
                     : item.path === "/admin"
                       ? location.pathname === "/admin"
-                      : location.pathname.startsWith(item.path);
+                      : location.pathname.startsWith(itemPathname) && matchesQuery;
                   return (
                     <button
                       key={item.path}

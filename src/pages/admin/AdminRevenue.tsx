@@ -1,7 +1,8 @@
 import { useQuery } from "convex/react";
+import { Link } from "react-router";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { TrendingUp, BarChart3 } from "lucide-react";
+import { TrendingUp, BarChart3, Banknote, ArrowRight } from "lucide-react";
 
 export default function AdminRevenue() {
   const escrows = useQuery(api.admin.getAllEscrows);
@@ -9,6 +10,7 @@ export default function AdminRevenue() {
   // REAL accumulated fee revenue from every marketplace (products, freelance,
   // services, transport) — the ledger written at charge time by the engines.
   const feeSummary = useQuery(api.feeRules.earningsSummary, {});
+  const payoutOverview = useQuery(api.feeRules.payoutOverview, {});
 
   const allEscrows = escrows ?? [];
   const allTxs = transactions ?? [];
@@ -59,6 +61,29 @@ export default function AdminRevenue() {
             <p className="text-xl font-bold text-white mt-1">{s.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Owner earnings withdrawal — the system's own money, withdrawable to M-Pesa/bank */}
+      <div className="mb-6 p-5 rounded-xl border border-nx-gold/20 bg-gradient-to-r from-nx-gold/[0.06] to-transparent flex flex-wrap items-center gap-4">
+        <div className="w-11 h-11 rounded-xl bg-nx-gold/15 border border-nx-gold/25 flex items-center justify-center shrink-0">
+          <Banknote className="w-5 h-5 text-nx-gold" />
+        </div>
+        <div className="flex-1 min-w-[220px]">
+          <p className="text-sm font-bold text-white">System earnings available to withdraw</p>
+          <p className="text-xs text-white/40 mt-0.5">
+            Fees collected across all marketplaces, minus everything already paid out.
+            {payoutOverview && ` KES ${(payoutOverview as any).paidOut.toLocaleString()} withdrawn so far.`}
+          </p>
+        </div>
+        <p className="text-2xl font-black text-nx-gold tracking-tight">
+          KES {((payoutOverview as any)?.available ?? 0).toLocaleString()}
+        </p>
+        <Link
+          to="/admin/fees?tab=payouts"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-nx-gold text-black text-sm font-bold hover:bg-nx-gold/85 transition-colors"
+        >
+          <Banknote className="w-4 h-4" /> Withdraw to M-Pesa / Bank <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
       <div className="p-5 rounded-xl border border-white/5 bg-[#0A0A12]">
         <div className="flex items-center gap-2 mb-4">

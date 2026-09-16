@@ -376,6 +376,32 @@ const schema = defineSchema(
       verifiedAt: v.number(),
     }).index("by_checkout", ["checkoutRequestId"]),
 
+    // ─── OWNER EARNINGS PAYOUTS (system fees → M-Pesa / bank) ────────────
+    // The owner withdraws the platform's accumulated fee revenue (the
+    // platformFeeEarnings ledger) to their own M-Pesa or bank account.
+    // Amounts are reserved at request time and reconciled against real fees
+    // collected — a payout can never exceed fees minus prior payouts.
+    ownerPayouts: defineTable({
+      amount: v.number(),
+      method: v.union(v.literal("mpesa"), v.literal("bank")),
+      destination: v.string(), // M-Pesa phone (2547XXXXXXXX) or bank account
+      status: v.union(
+        v.literal("pending"),
+        v.literal("processing"),
+        v.literal("completed"),
+        v.literal("failed"),
+        v.literal("rejected"),
+      ),
+      providerReference: v.optional(v.string()), // M-Pesa receipt / bank txn code
+      note: v.optional(v.string()),
+      failReason: v.optional(v.string()),
+      createdBy: v.optional(v.string()),
+      createdByName: v.optional(v.string()),
+      completedBy: v.optional(v.string()),
+      completedAt: v.optional(v.number()),
+      createdAt: v.number(),
+    }),
+
     // Disputes
     disputes: defineTable({
       escrowId: v.string(),

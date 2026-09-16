@@ -92,6 +92,48 @@ export const listEarnings = query({
   },
 });
 
+// ─── OWNER EARNINGS PAYOUT (system fees → M-Pesa / bank) ─────────────────
+
+/**
+ * Payout overview for the owner: how much fee revenue has accumulated, how
+ * much has already been paid out to M-Pesa/bank, and what is available now.
+ */
+export const payoutOverview = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const fees = await ctx.db.query("platformFeeEarnings").collect();
+    const payouts = await ctx.db.query("ownerPayouts").collect();
+    const sum = (list: any[]) => list.reduce((s: number, r: any) => s + (r.amount || 0), 0);
+
+    const totalEarned = sum(fees);
+    const completedPayouts = payouts.filter((p: any) => p.status === "completed");
+    const paidOut = sum(completedPayouts);
+    const processing = payouts.filter((p: any) => p.status === "processing");
+    const processingAmount = sum(processing);
+    const pending = payouts.filter((p: any) => p.status === "pending");
+    const pendingAmount = sum(pending);
+    const available = totalEarned - paidOut - processingAmount - pendingAmount;
+
+    const last30 = fees.filter(
+      (r: any) => r.createdAt >= Date.now() - 30 * 86_400_000,
+    );
+
+    return {
+      totalEarned,
+      paidOut,
+      processingAmount,
+      pendingAmount,
+      available: Math.max(0, available),
+      payoutCount: payouts.length,
+      last30: sum(last30),
+      recent: payouts
+        .sort((a: any, b: any) => b.createdAt - a.createdAt)
+        .slice(0, 25),
+    };
+  },
+});
+
 /** Preview what a rule WOULD charge for a test amount (no writes). */
 export const previewFee = query({
   args: {
@@ -332,5 +374,115 @@ export const seedDefaultRules = mutation({
       created.push(key);
     }
     return { created };
+  },
+});
+
+// ─── OWNER PAYOUT MUTATIONS (system earnings → M-Pesa / bank) ─────────────
+
+/**
+ * Create a payout request against accumulated platform fee earnings.
+ * The amount can never exceed what is actually available (fees collected
+ * minus everything already paid out or in flight). Real ledger math — no
+ * virtual balance.
+ */
+export const createOwnerPayout = mutation({
+  args: {
+    amount: v.number(),
+    method: v.union(v.literal("mpesa"), v.literal("bank")),
+    destination: v.string(), // M-Pesa phone (2547XXXXXXXX) or bank account label
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    if (args.amount <= 0) throw new ConvexError("Amount must be greater than zero");
+    if (!args.destination.trim()) throw new ConvexError("Enter the M-Pesa number or bank account to pay to");
+
+    if (args.method === "mpesa") {
+      const digits = args.destination.replace(/[^0-9]/g, "");
+      const normalized = digits.startsWith("0")
+        ? "254" + digits.slice(1)
+        : digits.startsWith("254")
+          ? digits
+          : "254" + digits;
+      if (!/^254[0-9]{9}$/.test(normalized)) {
+        throw new ConvexError("Enter a valid M-Pesa number (e.g. 0712 345 678)");
+      }
+      args.destination = normalized;
+    }
+
+    // Real available balance: fees earned − payouts completed/processing/pending.
+    const fees = await ctx.db.query("platformFeeEarnings").collect();
+    const payouts = await ctx.db.query("ownerPayouts").collect();
+    const sum = (list: any[]) => list.reduce((s: number, r: any) => s + (r.amount || 0), 0);
+    const reserved = sum(payouts.filter((p: any) => p.status !== "failed" && p.status !== "rejected"));
+    const available = sum(fees) - reserved;
+    if (args.amount > available) {
+      throw new ConvexError(
+        `Only KES ${Math.max(0, available).toLocaleString()} is available. Fees already reserved by other payouts: KES ${reserved.toLocaleString()}.`,
+      );
+    }
+
+    const now = Date.now();
+    const id = await ctx.db.insert("ownerPayouts", {
+      amount: args.amount,
+      method: args.method,
+      destination: args.destination.trim(),
+      status: "pending",
+      note: args.note,
+      createdBy: String(admin._id ?? admin.userId ?? ""),
+      createdByName: String((admin as any).name || (admin as any).email || "Admin"),
+      createdAt: now,
+    });
+    return { payoutId: id, amount: args.amount, method: args.method };
+  },
+});
+
+/**
+ * Owner confirms the money actually left — the M-Pesa/B2C was sent or the
+ * bank transfer executed. Records the provider reference (e.g. the M-Pesa
+ * receipt or bank transaction code) for reconciliation.
+ */
+export const completeOwnerPayout = mutation({
+  args: {
+    payoutId: v.id("ownerPayouts"),
+    providerReference: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const payout = await ctx.db.get(args.payoutId);
+    if (!payout) throw new ConvexError("Payout not found");
+    if ((payout as any).status === "completed") return { alreadyCompleted: true };
+    if (!args.providerReference.trim()) {
+      throw new ConvexError("Enter the M-Pesa receipt / bank transaction reference");
+    }
+
+    await ctx.db.patch(args.payoutId, {
+      status: "completed",
+      providerReference: args.providerReference.trim(),
+      completedBy: String(admin._id ?? admin.userId ?? ""),
+      completedAt: Date.now(),
+    });
+    return { success: true };
+  },
+});
+
+/** Cancel a payout that was never sent (frees the reserved amount). */
+export const cancelOwnerPayout = mutation({
+  args: {
+    payoutId: v.id("ownerPayouts"),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const payout = await ctx.db.get(args.payoutId);
+    if (!payout) throw new ConvexError("Payout not found");
+    if ((payout as any).status === "completed") {
+      throw new ConvexError("This payout already completed — record a reversal with the admin instead");
+    }
+    await ctx.db.patch(args.payoutId, {
+      status: "rejected",
+      failReason: args.reason.trim() || "Cancelled by admin",
+    });
+    return { success: true };
   },
 });
