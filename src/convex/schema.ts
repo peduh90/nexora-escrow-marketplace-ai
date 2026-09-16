@@ -1556,6 +1556,73 @@ const schema = defineSchema(
       updatedAt: v.optional(v.number()),
     })
       .index("by_active", ["active"]),
+
+    // ─── AI TASKER ─────────────────────────────────────────────────────────
+    // A task marketplace where AI does the heavy lifting on both sides:
+    // posters describe what they need done in plain language (or Swahili/
+    // Sheng) and the AI turns it into a structured task; taskers describe
+    // their skills and AI drafts their proposals. Real escrow funding via
+    // the normal wallet + fee engine — the same trust rails as products.
+    aiTasks: defineTable({
+      posterId: v.string(), // users._id of the poster (can be any signed-in user)
+      taskerId: v.optional(v.string()), // accepted tasker (users._id)
+      title: v.string(),
+      description: v.string(),
+      category: v.string(), // slug from TASK_CATEGORIES
+      skills: v.optional(v.array(v.string())),
+      location: v.optional(v.string()),
+      county: v.optional(v.string()),
+      budgetMin: v.optional(v.number()),
+      budgetMax: v.optional(v.number()),
+      amount: v.optional(v.number()), // funded amount (agreed price)
+      payout: v.optional(v.number()), // net paid to tasker on approval
+      agreedAmount: v.optional(v.number()), // amount on the accepted offer
+      currency: v.string(),
+      status: v.union(
+        v.literal("open"), // accepting offers
+        v.literal("funded"), // escrow funded, awaiting tasker acceptance
+        v.literal("assigned"), // tasker accepted, work started
+        v.literal("in_progress"),
+        v.literal("submitted"), // tasker delivered, awaiting poster approval
+        v.literal("disputed"),
+        v.literal("completed"), // poster approved, payout sent
+        v.literal("cancelled"),
+      ),
+      posterApprovedAt: v.optional(v.number()),
+      submittedNote: v.optional(v.string()),
+      cancelReason: v.optional(v.string()),
+      ratingGiven: v.optional(v.number()),
+      deadline: v.optional(v.number()),
+      fundedAt: v.optional(v.number()),
+      assignedAt: v.optional(v.number()),
+      submittedAt: v.optional(v.number()),
+      completedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_poster", ["posterId"])
+      .index("by_tasker", ["taskerId"])
+      .index("by_status", ["status"])
+      .index("by_category", ["category"]),
+
+    aiTaskOffers: defineTable({
+      taskId: v.id("aiTasks"),
+      taskerId: v.string(),
+      amount: v.number(),
+      message: v.string(),
+      days: v.optional(v.number()),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("accepted"),
+        v.literal("declined"),
+        v.literal("withdrawn"),
+      ),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_task", ["taskId"])
+      .index("by_tasker", ["taskerId"])
+      .index("by_status", ["status"]),
   },
   {
     schemaValidation: false,
