@@ -9,6 +9,18 @@ const MPESA_CONSUMER_SECRET = process.env.MPESA_CONSUMER_SECRET || "";
 const MPESA_SHORTCODE = process.env.MPESA_SHORTCODE || "607501";
 const MPESA_PASSKEY = process.env.MPESA_PASSKEY || "";
 const MPESA_CALLBACK_URL = process.env.MPESA_CALLBACK_URL || "";
+// Base URL of THIS deployment (no path) — used to build B2C result/timeout
+// callback URLs. Falls back to the STK callback URL's origin if only that
+// was configured.
+const MPESA_CALLBACK_URL_BASE =
+  process.env.MPESA_CALLBACK_URL_BASE ||
+  (() => {
+    try {
+      return MPESA_CALLBACK_URL ? new URL(MPESA_CALLBACK_URL).origin : "";
+    } catch {
+      return "";
+    }
+  })();
 const MPESA_ENV = process.env.MPESA_ENV || "sandbox";
 
 const BASE_URL =
@@ -318,5 +330,108 @@ export const verifyStkDeposit = action({
       return { status: "pending", resultDesc: status.resultDesc };
     }
     return { status: "failed", resultDesc: status.resultDesc || "M-Pesa payment failed" };
+  },
+});
+
+/**
+ * M-PESA B2C AUTO-DISBURSEMENT — sends platform earnings to the owner's
+ * M-Pesa directly from the paybill (BusinessPayment, B2C).
+ *
+ * Requires B2C credentials in API Keys:
+ *   MPESA_B2C_INITIATOR_NAME, MPESA_B2C_SECURITY_CREDENTIAL
+ *   (plus the existing MPESA_CONSUMER_KEY/SECRET, MPESA_SHORTCODE,
+ *   MPESA_ENV and — for automatic reconciliation — MPESA_CALLBACK_URL_BASE
+ *   pointing at this deployment, e.g. https://your-app.vly.sh)
+ *
+ * The action only ACCEPTS the request; the money-moved truth comes from the
+ * Safaricom result callback (/mpesa/b2c/result), which completes the payout
+ * with the real TransactionID. The admin can still confirm manually as a
+ * fallback.
+ */
+export const disburseOwnerPayoutB2C = action({
+  args: {
+    payoutId: v.id("ownerPayouts"),
+  },
+  handler: async (ctx, args): Promise<{ accepted: boolean; conversationId?: string; message: string }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError("Not authenticated");
+
+    const initiator = process.env.MPESA_B2C_INITIATOR_NAME || "";
+    const securityCredential = process.env.MPESA_B2C_SECURITY_CREDENTIAL || "";
+    if (!credentialsConfigured() || !initiator || !securityCredential) {
+      throw new ConvexError(
+        "B2C not configured. Add MPESA_B2C_INITIATOR_NAME and MPESA_B2C_SECURITY_CREDENTIAL (Daraja > B2C > Generate security credential) in API Keys.",
+      );
+    }
+
+    const payout = (await ctx.runQuery(internal.feeRules.getOwnerPayoutInternal, {
+      payoutId: args.payoutId,
+    })) as { _id: any; amount: number; method: string; destination: string; status: string } | null;
+    if (!payout) throw new ConvexError("Payout not found");
+    if (payout.method !== "mpesa") {
+      throw new ConvexError("B2C only sends to M-Pesa numbers — use manual confirmation for bank payouts.");
+    }
+    if (payout.status === "completed") throw new ConvexError("This payout is already completed");
+    if (payout.status === "processing") throw new ConvexError("This payout is already being sent — wait for the M-Pesa result");
+
+    const phone = normalizePhone(payout.destination);
+    if (!/^254[0-9]{9}$/.test(phone)) {
+      throw new ConvexError("The payout destination is not a valid M-Pesa number");
+    }
+
+    const accessToken = await getAccessToken();
+
+    // OriginatorConversationID must be unique; reuse our payout id for clean
+    // correlation with the result callback.
+    const originatorConversationId = `NXB2C-${args.payoutId}-${Date.now()}`;
+
+    const res = await fetch(`${BASE_URL}/mpesa/b2c/v3/paymentrequest`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        OriginatorConversationID: originatorConversationId,
+        InitiatorName: initiator,
+        SecurityCredential: securityCredential,
+        CommandID: "BusinessPayment", // no charges deducted from the recipient
+        Amount: Math.round(payout.amount),
+        PartyA: phone,
+        PartyB: MPESA_SHORTCODE,
+        Remarks: "Nexora system earnings payout",
+        QueueTimeOutURL: `${MPESA_CALLBACK_URL_BASE}/mpesa/b2c/timeout`,
+        ResultURL: `${MPESA_CALLBACK_URL_BASE}/mpesa/b2c/result`,
+        ResultReference: "Nexora Owner Payout",
+        Occasion: "OwnerPayout",
+      }),
+    });
+
+    const data = (await res.json()) as {
+      ResponseCode?: string;
+      ResponseDescription?: string;
+      ConversationID?: string;
+      OriginatorConversationID?: string;
+      errorCode?: string;
+      errorMessage?: string;
+    };
+
+    if (data.ResponseCode !== "0" || !data.ConversationID) {
+      throw new ConvexError(
+        `B2C request rejected: ${data.errorMessage || data.ResponseDescription || "Unknown error"}`,
+      );
+    }
+
+    await ctx.runMutation(internal.feeRules.markPayoutProcessing, {
+      payoutId: args.payoutId,
+      conversationId: data.ConversationID,
+      originatorConversationId,
+    });
+
+    return {
+      accepted: true,
+      conversationId: data.ConversationID,
+      message: "B2C accepted by Safaricom — the payout completes automatically when M-Pesa confirms (usually seconds).",
+    };
   },
 });

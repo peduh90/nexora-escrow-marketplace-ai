@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
@@ -7,7 +7,7 @@ import AdminLayout from "./AdminLayout";
 import {
   Percent, Calculator, History, TrendingUp, Plus, Save, ToggleLeft, ToggleRight,
   Loader2, ShieldCheck, Landmark, Layers, BadgeCheck, AlertTriangle, Users,
-  Banknote, ArrowUpRight, CheckCircle2, XCircle, Phone, Building2, Lock, Clock,
+  Banknote, ArrowUpRight, CheckCircle2, XCircle, Phone, Building2, Lock, Clock, Zap,
 } from "lucide-react";
 
 /**
@@ -83,6 +83,7 @@ export default function AdminFees() {
   const createPayout = useMutation(api.feeRules.createOwnerPayout);
   const completePayout = useMutation(api.feeRules.completeOwnerPayout);
   const cancelPayout = useMutation(api.feeRules.cancelOwnerPayout);
+  const disburseB2C = useAction(api.mpesa.disburseOwnerPayoutB2C as any);
   const [payoutAmount, setPayoutAmount] = useState("");
   const [payoutMethod, setPayoutMethod] = useState<"mpesa" | "bank">("mpesa");
   const [payoutDestination, setPayoutDestination] = useState("");
@@ -90,6 +91,7 @@ export default function AdminFees() {
   const [payoutBusy, setPayoutBusy] = useState(false);
   const [completeRefFor, setCompleteRefFor] = useState<string | null>(null);
   const [providerRef, setProviderRef] = useState("");
+  const [b2cBusyFor, setB2cBusyFor] = useState<string | null>(null);
 
   // Live preview (computed in the browser from the rules list — no writes).
   const preview = useMemo(() => {
@@ -221,6 +223,18 @@ export default function AdminFees() {
       toast.error(e?.message || "Could not complete the payout");
     } finally {
       setPayoutBusy(false);
+    }
+  };
+
+  const sendB2C = async (payoutId: string) => {
+    setB2cBusyFor(payoutId);
+    try {
+      const res = await disburseB2C({ payoutId: payoutId as any });
+      toast.success(res.message || "B2C accepted by Safaricom");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not send the B2C payout");
+    } finally {
+      setB2cBusyFor(null);
     }
   };
 
@@ -669,7 +683,13 @@ export default function AdminFees() {
                             {p.destination}
                           </p>
                           {p.providerReference && (
-                            <p className="text-[10px] text-white/30 mt-0.5">Ref: <span className="text-white/60 font-medium">{p.providerReference}</span></p>
+                            <p className="text-[10px] text-white/30 mt-0.5">
+                              Ref: <span className="text-white/60 font-medium">{p.providerReference}</span>
+                              {p.sentViaB2C && <span className="ml-1.5 text-emerald-300/80">· M-Pesa B2C ✓</span>}
+                            </p>
+                          )}
+                          {p.status === "failed" && p.sentViaB2C && p.resultDesc && (
+                            <p className="text-[10px] text-red-300/70 mt-0.5">M-Pesa said: {p.resultDesc}</p>
                           )}
                           {p.failReason && <p className="text-[10px] text-red-300/70 mt-0.5">{p.failReason}</p>}
                           <p className="text-[10px] text-white/25 mt-0.5">
@@ -679,11 +699,26 @@ export default function AdminFees() {
                         </div>
                         {p.status !== "completed" && p.status !== "rejected" && p.status !== "failed" && (
                           <div className="flex flex-col items-end gap-1.5 shrink-0">
+                            {p.method === "mpesa" && p.status === "pending" && (
+                              <button
+                                onClick={() => sendB2C(p._id)}
+                                disabled={b2cBusyFor === p._id || payoutBusy}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-50"
+                              >
+                                {b2cBusyFor === p._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                                Send via M-Pesa B2C
+                              </button>
+                            )}
+                            {p.status === "processing" && (
+                              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-400/10 text-[10px] font-semibold text-amber-300">
+                                <Loader2 className="w-3 h-3 animate-spin" /> Awaiting M-Pesa confirmation…
+                              </span>
+                            )}
                             <button
                               onClick={() => { setCompleteRefFor(p._id); setProviderRef(""); }}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-400/10 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-400/20"
+                              className="px-2.5 py-1 rounded-lg bg-white/[0.05] text-[10px] font-semibold text-white/60 hover:text-white hover:bg-white/[0.08]"
                             >
-                              Mark as sent
+                              {p.method === "mpesa" ? "Mark as sent manually" : "Mark as sent"}
                             </button>
                             <button
                               onClick={async () => {
@@ -729,11 +764,12 @@ export default function AdminFees() {
           {/* How it works */}
           <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
             <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><Lock className="w-4 h-4 text-white/40" /> How owner payouts work</h2>
-            <div className="grid md:grid-cols-3 gap-3">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
               {[
                 { n: "1. Real balance", d: "Available = every fee actually collected (commission + protection) minus every payout already sent or reserved. Nothing virtual." },
                 { n: "2. Reserved on request", d: "Requesting locks the amount so two payouts can never claim the same fees. Cancel any time before it's sent." },
-                { n: "3. You confirm with the receipt", d: "Send from M-Pesa/business bank, paste the receipt or transaction code, and the payout is reconciled permanently." },
+                { n: "3. Auto-send with M-Pesa B2C", d: "One tap sends the money from the paybill to your M-Pesa. Safaricom's result callback completes the payout with the real TransactionID — no typing receipts." },
+                { n: "4. Or confirm manually", d: "Bank transfers (or B2C without callbacks configured): send yourself, paste the M-Pesa receipt or bank reference, and it's reconciled permanently." },
               ].map((s) => (
                 <div key={s.n} className="flex gap-3 rounded-xl bg-white/[0.03] border border-white/5 p-3.5">
                   <span className="w-6 h-6 rounded-full bg-nx-gold/15 text-nx-gold text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{s.n.slice(0, 1)}</span>

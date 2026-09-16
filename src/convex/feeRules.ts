@@ -1,6 +1,7 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery, internalMutation } from "./_generated/server";
 import { ConvexError } from "convex/values";
+import { internal } from "./_generated/api";
 import { getSessionUser } from "./users";
 import { ruleKeyFor, feeFromRule, AdminFeeRule, FeeBreakdown, rateLabel } from "./fees";
 
@@ -484,5 +485,82 @@ export const cancelOwnerPayout = mutation({
       failReason: args.reason.trim() || "Cancelled by admin",
     });
     return { success: true };
+  },
+});
+
+// ─── B2C AUTO-DISBURSEMENT (server-to-server M-Pesa payout) ───────────────
+// These are internal: only the B2C action and the Safaricom result callback
+// touch them, so no client can fabricate a completed payout.
+
+/** Fetch a payout by id (internal, for the B2C action). */
+export const getOwnerPayoutInternal = internalQuery({
+  args: { payoutId: v.id("ownerPayouts") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.payoutId);
+  },
+});
+
+/** Mark a payout as processing with its Daraja conversation id. */
+export const markPayoutProcessing = internalMutation({
+  args: {
+    payoutId: v.id("ownerPayouts"),
+    conversationId: v.string(),
+    originatorConversationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const payout = await ctx.db.get(args.payoutId);
+    if (!payout) throw new ConvexError("Payout not found");
+    if ((payout as any).status === "completed") return { alreadyCompleted: true };
+    await ctx.db.patch(args.payoutId, {
+      status: "processing",
+      conversationId: args.conversationId,
+      originatorConversationId: args.originatorConversationId,
+      sentViaB2C: true,
+      failReason: undefined,
+    });
+    return { ok: true };
+  },
+});
+
+/**
+ * Complete a payout from the Safaricom B2C result callback. Resolved by
+ * ConversationID; requires ResultCode 0 (real money moved) and records the
+ * actual M-Pesa TransactionID as the provider reference.
+ */
+export const completePayoutFromB2C = internalMutation({
+  args: {
+    conversationId: v.string(),
+    resultCode: v.number(),
+    resultDesc: v.optional(v.string()),
+    transactionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const payout = await ctx.db
+      .query("ownerPayouts")
+      .withIndex("by_conversation", (q: any) => q.eq("conversationId", args.conversationId))
+      .first();
+    if (!payout) {
+      console.error("[b2c] result for unknown conversationId:", args.conversationId);
+      return { found: false };
+    }
+    if (payout.status === "completed") return { found: true, alreadyCompleted: true };
+
+    if (args.resultCode === 0) {
+      await ctx.db.patch(payout._id, {
+        status: "completed",
+        providerReference: args.transactionId || payout.providerReference || "B2C-CONFIRMED",
+        resultDesc: args.resultDesc,
+        completedAt: Date.now(),
+      });
+      return { found: true, completed: true };
+    }
+
+    // Hard failure from Safaricom → release the reserved amount.
+    await ctx.db.patch(payout._id, {
+      status: "failed",
+      resultDesc: args.resultDesc,
+      failReason: args.resultDesc || `M-Pesa B2C failed (code ${args.resultCode})`,
+    });
+    return { found: true, failed: true };
   },
 });

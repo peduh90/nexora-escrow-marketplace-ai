@@ -393,6 +393,11 @@ const schema = defineSchema(
         v.literal("rejected"),
       ),
       providerReference: v.optional(v.string()), // M-Pesa receipt / bank txn code
+      // B2C auto-disbursement tracking (Daraja TransactionID / ConversationID)
+      conversationId: v.optional(v.string()),
+      originatorConversationId: v.optional(v.string()),
+      resultDesc: v.optional(v.string()),
+      sentViaB2C: v.optional(v.boolean()),
       note: v.optional(v.string()),
       failReason: v.optional(v.string()),
       createdBy: v.optional(v.string()),
@@ -400,7 +405,7 @@ const schema = defineSchema(
       completedBy: v.optional(v.string()),
       completedAt: v.optional(v.number()),
       createdAt: v.number(),
-    }),
+    }).index("by_conversation", ["conversationId"]),
 
     // Disputes
     disputes: defineTable({
