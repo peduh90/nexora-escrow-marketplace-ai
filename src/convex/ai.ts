@@ -2,6 +2,8 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
  * NEXORA AI — Complete Chat Engine
@@ -331,31 +333,38 @@ export const chat = action({
   handler: async (ctx, args) => {
     const lastMessage = args.messages[args.messages.length - 1]?.content || "";
 
-    // STEP 1: Check whitelist (deterministic cases — works without API key)
-    const whitelistResult = tryWhitelist(lastMessage, args.userRole);
-    if (whitelistResult) {
-      console.log(JSON.stringify({
-        message: lastMessage,
-        router_decision: "whitelist_match",
-        matched_rule: "deterministic_knowledge_base",
-      }));
-      return whitelistResult;
+    // ── STEP 1: Gather the signed-in user's LIVE system data ──
+    // This is what makes the AI answer from the system's actual logic — real
+    // order statuses, wallet balance, dispute states — not canned words.
+    let liveData: any = null;
+    try {
+      const userId = await getAuthUserId(ctx);
+      if (userId) {
+        liveData = await ctx.runQuery(internal.aiContext.gather, { userId: String(userId) });
+      }
+    } catch (err) {
+      console.warn("NexoraAI: live context unavailable:", err);
     }
 
-    // STEP 2: LLM is the default path — always try it first
-    console.log(JSON.stringify({
-      message: lastMessage,
-      router_decision: "sent_to_llm",
-      matched_rule: null,
-    }));
-
     const apiKey = process.env.OPENAI_API_KEY;
+
+    // ── STEP 2: No API key → deterministic knowledge base (the old whitelist
+    // becomes the offline fallback instead of intercepting everything) ──
     if (!apiKey) {
-      console.warn("NexoraAI: No OPENAI_API_KEY configured — using emergency fallback");
+      console.warn("NexoraAI: No OPENAI_API_KEY configured — using local knowledge base");
+      const canned = tryWhitelist(lastMessage, args.userRole);
+      if (canned) return canned;
       return getEmergencyFallback(args.userRole);
     }
 
-    const systemPrompt = buildSystemPrompt(args.userRole, args.context);
+    // ── STEP 3: LLM with live system context — the DEFAULT path ──
+    console.log(JSON.stringify({
+      message: lastMessage.slice(0, 120),
+      router_decision: "sent_to_llm",
+      grounded: !!liveData,
+    }));
+
+    const systemPrompt = buildSystemPrompt(args.userRole, args.context, liveData);
 
     // Try LLM with retry (max 2 attempts)
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -372,7 +381,7 @@ export const chat = action({
             model: "gpt-4o-mini",
             messages: [
               { role: "system", content: systemPrompt },
-              ...args.messages,
+              ...args.messages.slice(-12), // last 12 turns — enough context, low cost
             ],
             max_tokens: 1000,
             temperature: 0.7,
@@ -400,14 +409,17 @@ export const chat = action({
       }
     }
 
-    // All retries exhausted — fallback to local knowledge base
+    // All retries exhausted — fall back to the deterministic knowledge base,
+    // which CAN now use live data for order lookups.
+    const canned = tryWhitelist(lastMessage, args.userRole);
+    if (canned) return canned;
     return getEmergencyFallback(args.userRole);
   },
 });
 
 /* ─── SYSTEM PROMPT — All 19 Knowledge Sections ─── */
 
-function buildSystemPrompt(role?: string, context?: string): string {
+function buildSystemPrompt(role?: string, context?: string, liveData?: any): string {
   return `You are NEXORA AI — the intelligent operating layer of Nexora Market, an African escrow marketplace headquartered in Nairobi, Kenya. You are not a decorative chatbot — you are the interface through which buyers, sellers, and administrators get things done.
 
 Your job is to understand what people mean, not what they typed, and to turn that understanding into real marketplace actions.
@@ -837,7 +849,22 @@ Never dump large paragraphs or huge result sets.
 ---
 
 ${role === "admin" ? "Current user role: ADMINISTRATOR — You have access to admin-level information and can discuss platform operations, fraud alerts, user management, AI metrics, and revenue data." : role === "seller" ? "Current user role: SELLER — You can discuss product management, orders, earnings, KYC, seller performance, and seller-specific features." : "Current user role: BUYER — You can discuss shopping, orders, payments, escrow, delivery, returns, disputes, and buyer-specific features."}
-${context ? `Additional context: ${context}` : ""}`;
+${context ? `Additional context: ${context}` : ""}
+
+## LIVE SYSTEM DATA — THE USER'S REAL ACCOUNT STATE (fetched moments ago)
+
+${liveData ? `You HAVE live data for this exact user. USE IT — quote real statuses, amounts, IDs and dates from it. Never say you cannot see their account when this block is present. If the user's question is about orders, payments, wallet, disputes or deliveries, ANSWER FROM THIS DATA FIRST, then explain the general rule.
+
+\`\`\`json
+${JSON.stringify(liveData, null, 1)}
+\`\`\`
+
+How to use this data:
+• "Where is my order / oda yangu iko wapi?" → find the matching escrow/order above, state its REAL status in plain words (funded = payment secured, waiting for the seller; delivery = out for delivery; inspection = delivered, buyer has ~48h to confirm; disputed = dispute open), mention the title, amount and when it was created. If a delivery exists, give the tracking code and driver name/phone.
+• "Did my payment go through?" → check payments[] and walletTransactions[] — quote the provider, reference, amount and status. If a payment failed, quote the failureReason and give the exact next step.
+• "My balance / salio" → quote walletBalance and escrowBalance exactly.
+• "Dispute / refund" → check disputes[] — state the real status and resolution if resolved.
+• If the data does NOT contain what they ask about, say so honestly and explain how to find it — never invent orders, payments or numbers.` : "The user is not signed in (or data is unavailable) — guide them to sign in for personalized help and answer general product questions."}`;
 }
 
 /**
