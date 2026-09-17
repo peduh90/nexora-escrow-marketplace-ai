@@ -476,28 +476,28 @@ export default function Landing() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               {
-                icon: Sparkles, emoji: "✨", title: "Get Started Free",
+                icon: Sparkles, title: "Get Started Free",
                 desc: "Join Nexora and choose your path — buyer, seller, freelancer or employer",
                 onClick: () => (user ? navigate(dashboardPath()) : navigate("/auth")),
                 cls: "from-nx-violet/20 to-nx-cyan/10 border-nx-violet/30 hover:border-nx-violet/50",
                 iconCls: "text-nx-violet",
               },
               {
-                icon: ShoppingCart, emoji: "🛒", title: "Shop Products",
+                icon: ShoppingCart, title: "Shop Products",
                 desc: "Phones, fashion, home, farm inputs — buy & sell with escrow protection",
                 onClick: () => navigate("/marketplace"),
                 cls: "from-nx-cyan/10 to-transparent border-nx-cyan/25 hover:border-nx-cyan/45",
                 iconCls: "text-nx-cyan",
               },
               {
-                icon: Wrench, emoji: "🔧", title: "Find Services",
+                icon: Wrench, title: "Find Services",
                 desc: "Salon, plumber, electrician, boda, fundi — verified providers near you",
                 onClick: () => navigate("/services"),
                 cls: "from-amber-400/10 to-transparent border-amber-400/25 hover:border-amber-400/45",
                 iconCls: "text-amber-300",
               },
               {
-                icon: Briefcase, emoji: "💼", title: "Work & Hire",
+                icon: Briefcase, title: "Work & Hire",
                 desc: "Freelance jobs only — writers, designers & employers, escrow-paid",
                 onClick: () => navigate("/freelance"),
                 cls: "from-nx-violet/12 to-transparent border-nx-violet/25 hover:border-nx-violet/45",
@@ -510,8 +510,7 @@ export default function Landing() {
                   className={`group w-full h-full rounded-2xl border bg-gradient-to-b p-5 text-left transition-all hover:scale-[1.02] ${a.cls}`}
                 >
                   <div className="flex items-center gap-3">
-                    <a.icon className={`w-7 h-7 ${a.iconCls}`} />
-                    <span className="text-xl">{a.emoji}</span>
+                    <a.icon className={`w-7 h-7 ${a.iconCls}`} strokeWidth={2.2} />
                   </div>
                   <p className="mt-3 font-extrabold text-white tracking-tight">{a.title}</p>
                   <p className="mt-1 text-xs text-white/45 leading-relaxed">{a.desc}</p>

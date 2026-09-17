@@ -9,6 +9,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import SupportDock from "@/components/SupportDock";
 import {
   ArrowLeft, MapPin, Navigation, Loader2, Lock, Star, ShieldCheck, Phone, AlertTriangle,
+  Bike, CarFront, CarTaxiFront, Package,
 } from "lucide-react";
 
 /**
@@ -158,8 +159,8 @@ export default function TransportPage() {
         {/* Tabs */}
         <div className="mt-5 flex gap-1 border-b border-white/8">
           {[
-            ["ride", "🏍️ Get a Ride"],
-            ["matatu", "🚐 Matatu Routes"],
+            ["ride", "Get a Ride"],
+            ["matatu", "Matatu Routes"],
             ["trips", `My Trips${activeTrips.length ? ` (${activeTrips.length})` : ""}`],
           ].map(([key, label]) => (
             <button
@@ -179,12 +180,12 @@ export default function TransportPage() {
           <div className="mt-5 space-y-4">
             {/* Vehicle type */}
             <div className="grid grid-cols-4 gap-2">
-              {[
-                ["boda", "🏍️", "Boda"],
-                ["tuktuk", "🛺", "Tuk-Tuk"],
-                ["taxi", "🚕", "Taxi"],
-                ["delivery", "📦", "Delivery"],
-              ].map(([value, emoji, label]) => (
+              {([
+                { value: "boda", Icon: Bike, label: "Boda", tint: "text-nx-violet" },
+                { value: "tuktuk", Icon: CarFront, label: "Tuk-Tuk", tint: "text-amber-400" },
+                { value: "taxi", Icon: CarTaxiFront, label: "Taxi", tint: "text-nx-cyan" },
+                { value: "delivery", Icon: Package, label: "Delivery", tint: "text-orange-400" },
+              ] as const).map(({ value, Icon, label, tint }) => (
                 <button
                   key={value}
                   onClick={() => setRideType(value)}
@@ -194,7 +195,9 @@ export default function TransportPage() {
                       : "border-white/8 bg-white/[0.03] hover:bg-white/[0.06]"
                   }`}
                 >
-                  <span className="text-xl">{emoji}</span>
+                  <span className={`flex w-9 h-9 mx-auto items-center justify-center rounded-xl bg-white/[0.05] border border-white/10 ${tint}`}>
+                    <Icon className="w-5 h-5" strokeWidth={2.2} />
+                  </span>
                   <p className="text-[11px] font-semibold mt-1">{label}</p>
                 </button>
               ))}
@@ -308,7 +311,9 @@ export default function TransportPage() {
                     .slice(0, 4)
                     .map((p) => (
                       <div key={p._id} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-3">
-                        <div className="w-9 h-9 rounded-full bg-nx-violet/15 border border-nx-violet/25 flex items-center justify-center">🏍️</div>
+                        <div className="w-9 h-9 rounded-full bg-nx-violet/15 border border-nx-violet/25 flex items-center justify-center text-nx-violet">
+                          {p.serviceType === "boda" ? <Bike className="w-4 h-4" /> : p.serviceType === "taxi" ? <CarTaxiFront className="w-4 h-4" /> : p.serviceType === "tuktuk" ? <CarFront className="w-4 h-4" /> : <Package className="w-4 h-4" />}
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold truncate">{p.displayName}</p>
                           <p className="text-[11px] text-white/40">{p.vehicleModel || p.serviceType} · {p.town}</p>

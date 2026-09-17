@@ -258,7 +258,7 @@ export default function ServiceProviderDashboard() {
               <div className="grid sm:grid-cols-2 gap-3">
                 <input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} placeholder="Business name e.g. Mama Akinyi Salon" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none focus:border-nx-cyan/50" />
                 <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value, serviceType: "" })} className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none">
-                  {(categories ?? []).map((c: any) => <option key={c.slug} value={c.slug}>{c.emoji} {c.name}</option>)}
+                  {(categories ?? []).map((c: any) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
                 </select>
                 <select value={form.serviceType} onChange={(e) => setForm({ ...form, serviceType: e.target.value })} className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none">
                   <option value="">What exactly do you do?</option>

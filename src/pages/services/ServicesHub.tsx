@@ -9,6 +9,7 @@ import {
   ArrowLeft, MapPin, Search, Star, Navigation, Loader2,
 } from "lucide-react";
 import { KENYA_COUNTIES } from "@/lib/kenya-locations";
+import { categoryIcon, categoryTint } from "@/lib/categoryIcons";
 
 /**
  * Local Services hub + category browser. Extremely simple:
@@ -63,8 +64,13 @@ export default function ServicesHub() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="text-xl md:text-2xl font-bold">
-              {activeCat ? `${activeCat.emoji} ${activeCat.name}` : "Services Near You"}
+            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+              {activeCat && (() => { const Icon = categoryIcon(activeCat.slug); return (
+                <span className={`flex w-8 h-8 items-center justify-center rounded-lg border ${categoryTint(activeCat.slug)}`}>
+                  <Icon className="w-4 h-4" strokeWidth={2.2} />
+                </span>
+              ); })()}
+              {activeCat ? activeCat.name : "Services Near You"}
             </h1>
             <p className="text-xs text-white/40 mt-0.5">
               {activeCat ? activeCat.types.join(" · ") : "Real people, real skills, escrow-protected payments."}
@@ -79,9 +85,9 @@ export default function ServicesHub() {
               <button
                 key={c.slug}
                 onClick={() => navigate(`/services/category/${c.slug}`)}
-                className="shrink-0 flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] pl-1.5 pr-3.5 py-1.5 text-xs font-medium text-white/75 hover:border-nx-cyan/40 hover:text-white transition-colors"
+                className="shrink-0 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] pl-2 pr-3.5 py-1.5 text-xs font-medium text-white/75 hover:border-nx-cyan/40 hover:text-white transition-colors"
               >
-                <span className="ml-1.5">{c.emoji}</span>
+                {(() => { const Icon = categoryIcon(c.slug); return <Icon className={`w-3.5 h-3.5 ${categoryTint(c.slug).split(" ")[0]}`} strokeWidth={2.2} />; })()}
                 {c.name}
               </button>
             ))}
@@ -106,7 +112,7 @@ export default function ServicesHub() {
             className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-xs font-medium text-white/70 outline-none focus:border-nx-cyan/40 [&>option]:bg-[#0B0B14]"
             aria-label="Choose your county"
           >
-            <option value="">📍 All Kenya</option>
+            <option value="">All Kenya</option>
             {KENYA_COUNTIES.map((c) => (
               <option key={c.name} value={c.name}>{c.name}</option>
             ))}

@@ -9,6 +9,7 @@ import AIChat from "@/components/AIChat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
+import { categoryIcon, categoryTint } from "@/lib/categoryIcons";
 import {
   Sparkles, Send, Loader2, Wallet, Check, Handshake,
   PackageCheck, MapPin, Clock, Users,
@@ -127,7 +128,7 @@ function PosterSide() {
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Full details — what exactly should be done?" rows={3} className="w-full rounded-md bg-white/[0.04] border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-nx-violet/50" />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="rounded-md bg-white/[0.04] border border-white/10 px-3 py-2 text-sm text-white [&>option]:bg-[#0B0B14]">
-                {TASK_CATEGORIES.map((c) => <option key={c.slug} value={c.slug}>{c.emoji} {c.name}</option>)}
+                {TASK_CATEGORIES.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
               </select>
               <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Area / town" className="bg-white/[0.04] border-white/10 text-white" />
               <Input value={form.budgetMin} onChange={(e) => setForm({ ...form, budgetMin: e.target.value })} type="number" placeholder="Budget from" className="bg-white/[0.04] border-white/10 text-white" />
@@ -183,7 +184,9 @@ function PosterTaskCard({ task }: { task: any }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-lg">{cat.emoji}</span>
+            <span className={`flex w-8 h-8 items-center justify-center rounded-lg border ${categoryTint(task.category)}`}>
+              {(() => { const Icon = categoryIcon(task.category); return <Icon className="w-4 h-4" strokeWidth={2.2} />; })()}
+            </span>
             <h4 className="font-semibold text-white truncate">{task.title}</h4>
             <StatusPill status={task.status} />
           </div>
@@ -335,8 +338,9 @@ function TaskerSide() {
         <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
           <button onClick={() => setCat("")} className={`shrink-0 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${cat === "" ? "border-nx-violet/50 bg-nx-violet/15 text-white" : "border-white/10 bg-white/[0.04] text-white/60 hover:text-white"}`}>All</button>
           {TASK_CATEGORIES.map((c) => (
-            <button key={c.slug} onClick={() => setCat(c.slug)} className={`shrink-0 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${cat === c.slug ? "border-nx-violet/50 bg-nx-violet/15 text-white" : "border-white/10 bg-white/[0.04] text-white/60 hover:text-white"}`}>
-              {c.emoji} {c.name}
+            <button key={c.slug} onClick={() => setCat(c.slug)} className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${cat === c.slug ? "border-nx-violet/50 bg-nx-violet/15 text-white" : "border-white/10 bg-white/[0.04] text-white/60 hover:text-white"}`}>
+              {(() => { const Icon = categoryIcon(c.slug); return <Icon className="w-3.5 h-3.5" strokeWidth={2.2} />; })()}
+              {c.name}
             </button>
           ))}
         </div>
@@ -349,7 +353,9 @@ function TaskerSide() {
             {open.map((t: any) => (
               <div key={t._id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{catOf(t.category).emoji}</span>
+                  <span className={`flex w-7 h-7 items-center justify-center rounded-lg border ${categoryTint(t.category)}`}>
+                    {(() => { const Icon = categoryIcon(t.category); return <Icon className="w-3.5 h-3.5" strokeWidth={2.2} />; })()}
+                  </span>
                   <h4 className="font-semibold text-white text-sm flex-1 truncate">{t.title}</h4>
                   {t.minOffer != null && <span className="text-[10px] text-white/40 shrink-0">from {fmtKes(t.minOffer)}</span>}
                 </div>

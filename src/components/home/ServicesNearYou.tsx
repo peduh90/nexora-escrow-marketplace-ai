@@ -3,7 +3,8 @@ import { api } from "../../convex/_generated/api";
 import { useNavigate } from "react-router";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { ArrowRight, MapPin, Navigation, Star, TrendingUp } from "lucide-react";
+import { ArrowRight, MapPin, Navigation, Star, TrendingUp, Bike, Bus, CarTaxiFront, Package } from "lucide-react";
+import { categoryIcon, categoryTint } from "@/lib/categoryIcons";
 
 /** Same reveal-on-scroll wrapper the homepage already uses. */
 function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -75,7 +76,9 @@ export default function ServicesNearYou() {
                     className="group relative flex flex-col items-center justify-end h-28 rounded-2xl overflow-hidden border border-white/8 hover:border-nx-cyan/40 transition-all text-center px-2 pb-2.5"
                   >
                     <div className="absolute inset-0 bg-gradient-to-b from-nx-cyan/[0.07] to-nx-violet/[0.07] group-hover:from-nx-cyan/[0.12] group-hover:to-nx-violet/[0.12] transition-colors" />
-                    <span className="relative z-10 text-2xl mb-auto mt-4">{cat.emoji}</span>
+                    <span className={`relative z-10 mb-auto mt-4 flex w-10 h-10 items-center justify-center rounded-xl border transition-transform group-hover:scale-110 ${categoryTint(cat.slug)}`}>
+                      {(() => { const Icon = categoryIcon(cat.slug); return <Icon className="w-5 h-5" strokeWidth={2.2} />; })()}
+                    </span>
                     <span className="relative z-10 text-[11px] md:text-xs font-bold text-white leading-tight">
                       {cat.name}
                     </span>
@@ -107,8 +110,8 @@ export default function ServicesNearYou() {
               onClick={() => navigate("/transport?type=boda")}
               className="group rounded-2xl border border-nx-violet/25 bg-nx-violet/[0.07] hover:bg-nx-violet/[0.12] transition-all p-4 text-left"
             >
-              <span className="flex w-12 h-12 rounded-xl bg-white/[0.05] border border-white/10 items-center justify-center text-2xl">
-                🏍️
+              <span className="flex w-12 h-12 rounded-xl bg-white/[0.05] border border-white/10 items-center justify-center text-nx-violet">
+                <Bike className="w-6 h-6" strokeWidth={2.2} />
               </span>
               <p className="mt-2 text-sm font-bold text-white">Get a Boda</p>
               <p className="text-[11px] text-white/45 mt-0.5">Fare shown before you request</p>
@@ -117,8 +120,8 @@ export default function ServicesNearYou() {
               onClick={() => navigate("/transport?type=taxi")}
               className="group rounded-2xl border border-nx-cyan/25 bg-nx-cyan/[0.06] hover:bg-nx-cyan/[0.12] transition-all p-4 text-left"
             >
-              <span className="flex w-12 h-12 rounded-xl bg-white/[0.05] border border-white/10 items-center justify-center text-2xl">
-                🚕
+              <span className="flex w-12 h-12 rounded-xl bg-white/[0.05] border border-white/10 items-center justify-center text-nx-cyan">
+                <CarTaxiFront className="w-6 h-6" strokeWidth={2.2} />
               </span>
               <p className="mt-2 text-sm font-bold text-white">Take a Taxi</p>
               <p className="text-[11px] text-white/45 mt-0.5">Verified drivers only</p>
@@ -127,8 +130,8 @@ export default function ServicesNearYou() {
               onClick={() => navigate("/transport?tab=matatu")}
               className="group rounded-2xl border border-white/8 bg-white/[0.03] hover:bg-white/[0.06] transition-all p-4 text-left"
             >
-              <span className="flex w-12 h-12 rounded-xl bg-white/[0.05] border border-white/10 items-center justify-center text-2xl">
-                🚐
+              <span className="flex w-12 h-12 rounded-xl bg-white/[0.05] border border-white/10 items-center justify-center text-amber-400">
+                <Bus className="w-6 h-6" strokeWidth={2.2} />
               </span>
               <p className="mt-2 text-sm font-bold text-white">Matatu Routes</p>
               <p className="text-[11px] text-white/45 mt-0.5">Stage fares & schedules</p>
@@ -137,8 +140,8 @@ export default function ServicesNearYou() {
               onClick={() => navigate("/transport?type=delivery")}
               className="group rounded-2xl border border-white/8 bg-white/[0.03] hover:bg-white/[0.06] transition-all p-4 text-left"
             >
-              <span className="flex w-12 h-12 rounded-xl bg-white/[0.05] border border-white/10 items-center justify-center text-2xl">
-                📦
+              <span className="flex w-12 h-12 rounded-xl bg-white/[0.05] border border-white/10 items-center justify-center text-orange-400">
+                <Package className="w-6 h-6" strokeWidth={2.2} />
               </span>
               <p className="mt-2 text-sm font-bold text-white">Send a Parcel</p>
               <p className="text-[11px] text-white/45 mt-0.5">Delivery priced by distance</p>
@@ -154,7 +157,7 @@ export default function ServicesNearYou() {
                   onClick={() => navigate("/transport?tab=matatu")}
                   className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-xs text-white/70 hover:text-white hover:border-white/25 transition-colors"
                 >
-                  🚐 {r.name} · {r.stages.length} stages
+                  <Bus className="w-3.5 h-3.5 inline mr-1 -mt-0.5 text-amber-400" />{r.name} · {r.stages.length} stages
                 </button>
               ))}
             </div>
