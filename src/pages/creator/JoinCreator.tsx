@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { motion } from "framer-motion";
 import {
@@ -8,7 +8,6 @@ import {
   Instagram, Youtube, Facebook, Twitter, MessageCircle, Globe2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
 import { getVisitorKey } from "@/lib/visitor-key";
 import { rememberReferralCode } from "@/lib/referral-client";
 
