@@ -31,7 +31,7 @@ const navGroups: NavGroup[] = [
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/admin", desc: "Live platform overview" },
       { icon: BarChart3, label: "Analytics", path: "/admin/analytics", desc: "Trends & insights" },
-      { icon: Home, label: "Public Site", path: "/", desc: "View the marketplace" },
+      { icon: Home, label: "Home", path: "/", desc: "Go to the public marketplace" },
     ],
   },
   {
@@ -197,12 +197,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const sidebarBody = (isMobile: boolean) => (
     <>
       <div className={`flex items-center h-14 px-4 border-b border-white/5 shrink-0 ${collapsed && !isMobile ? "justify-center" : "gap-2.5"}`}>
-        <Shield className="w-6 h-6 text-nx-violet shrink-0" />
-        {!(collapsed && !isMobile) && (
-          <span className="text-base font-bold text-white flex-1">
-            NEXORA<span className="text-nx-violet">.</span>
-          </span>
-        )}
+        <button
+          onClick={() => go("/")}
+          className="flex items-center gap-2.5 min-w-0 group"
+          title="Nexora Market — go to Home"
+        >
+          <Shield className="w-6 h-6 text-nx-violet shrink-0 group-hover:scale-110 transition-transform" />
+          {!(collapsed && !isMobile) && (
+            <span className="text-base font-bold text-white flex-1 group-hover:text-nx-violet transition-colors">
+              NEXORA<span className="text-nx-violet">.</span>
+            </span>
+          )}
+        </button>
         {isMobile && (
           <button onClick={() => setMobileOpen(false)} className="text-white/30 hover:text-white">
             <X className="w-5 h-5" />
@@ -323,9 +329,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </button>
             {/* Breadcrumbs */}
             <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs min-w-0 overflow-hidden">
+              <button onClick={() => go("/")} className="text-white/35 hover:text-white/70 transition-colors shrink-0" title="Home">
+                <Home className="w-3.5 h-3.5" />
+              </button>
               {crumbs.map((c, i) => (
                 <span key={`${c.label}-${i}`} className="flex items-center gap-1.5 min-w-0">
-                  {i > 0 && <span className="text-white/15">/</span>}
+                  <span className="text-white/15">/</span>
                   {c.path && i < crumbs.length - 1 ? (
                     <button onClick={() => go(c.path!)} className="text-white/35 hover:text-white/70 transition-colors truncate">
                       {c.label}
@@ -352,6 +361,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </form>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-nx-emerald bg-nx-emerald/10 px-2 py-0.5 rounded-full font-medium hidden sm:inline">● System Healthy</span>
+            {/* Home — quick jump back to the public marketplace */}
+            <button
+              onClick={() => go("/")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/[0.04] text-xs font-medium transition-colors"
+              title="Back to Home (public marketplace)"
+            >
+              <Home className="w-4 h-4" />
+              <span className="hidden sm:inline">Home</span>
+            </button>
             <button
               onClick={() => go("/admin/notifications")}
               className="relative p-2 rounded-lg text-white/30 hover:text-white hover:bg-white/[0.03] transition-colors"
@@ -395,6 +413,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <p className="text-xs font-semibold text-white truncate">{user?.name || "Admin"}</p>
                       <p className="text-[10px] text-white/35 truncate">{user?.email || ""}</p>
                     </div>
+                    <button onClick={() => { setProfileOpen(false); go("/"); }} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors">
+                      <Home className="w-3.5 h-3.5" /> Visit Marketplace (Home)
+                    </button>
                     <button onClick={() => { setProfileOpen(false); go("/admin/users"); }} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors">
                       <Users className="w-3.5 h-3.5" /> My Account
                     </button>
