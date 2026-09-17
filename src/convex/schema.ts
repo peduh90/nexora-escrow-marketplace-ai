@@ -919,6 +919,10 @@ const schema = defineSchema(
         v.literal("pending_review"),
       ),
       roleMode: v.union(v.literal("freelancer"), v.literal("employer"), v.literal("both")),
+      // Proof of work — Convex storage keys for sample essays, reports, PDFs,
+      // images etc. Writers upload these; employers browse them on profiles.
+      // Resolved to signed URLs only when the profile is read.
+      proofOfWork: v.optional(v.array(v.string())),
       createdAt: v.number(),
       updatedAt: v.number(),
     })

@@ -214,7 +214,80 @@ export const getTopFreelancers = query({
   },
 });
 
-/** Search freelancers */
+/**
+ * Proof-of-work helpers. Writers upload sample essays, reports, PDFs, images
+ * etc. to Convex Storage; the profile stores stable keys, resolved to signed
+ * URLs only at read time. Deletes also delete the stored file itself so the
+ * storage doesn't accumulate dead objects.
+ */
+async function resolveProofs(ctx: any, keys: string[] | undefined): Promise<{ key: string; url: string; kind: "image" | "document" }[]> {
+  const out: { key: string; url: string; kind: "image" | "document" }[] = [];
+  for (const k of keys || []) {
+    try {
+      const url = await ctx.storage.getUrl(k as any);
+      if (url) {
+        out.push({
+          key: k,
+          url,
+          // Storage metadata: if it's a media type treat it as an image preview.
+          kind: /image|avif/.test((await ctx.db.system.get(k as any))?.contentType || "") ? "image" : "document",
+        });
+      }
+    } catch { /* dead key — skip */ }
+  }
+  return out;
+}
+
+/** Add a proof-of-work file (writer-only). Called after the file is in Storage. */
+export const addProofOfWork = mutation({
+  args: { storageId: v.string(), title: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    if (user.role !== "freelancer") {
+      throw new ConvexError("Only Writer/Freelancer accounts can upload proof of work.");
+    }
+    const profile = await ctx.db
+      .query("freelanceProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+    if (!profile) throw new ConvexError("Create your freelance profile first (Profile Settings).");
+    const existing = profile.proofOfWork ?? [];
+    if (existing.length >= 10) throw new ConvexError("Proof-of-work limit reached (10 files). Remove one to add another.");
+    await ctx.db.patch(profile._id, {
+      proofOfWork: [...existing, args.storageId],
+      updatedAt: Date.now(),
+    });
+    return { ok: true, count: existing.length + 1 };
+  },
+});
+
+/** Remove a proof-of-work file (writer-only, self-scoped). */
+export const removeProofOfWork = mutation({
+  args: { storageId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const profile = await ctx.db
+      .query("freelanceProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+    if (!profile) return { ok: true };
+    const existing = profile.proofOfWork ?? [];
+    if (!existing.includes(args.storageId)) return { ok: true };
+    await ctx.db.patch(profile._id, {
+      proofOfWork: existing.filter((k: string) => k !== args.storageId),
+      updatedAt: Date.now(),
+    });
+    // Delete the stored object so removed samples disappear from storage too.
+    try { await ctx.storage.delete(args.storageId as any); } catch { /* already gone */ }
+    return { ok: true };
+  },
+});
+
+/**
+ * Search freelancers — used by the homepage Writers Spotlight and the
+ * employer directory. Sorted by proof-of-work strength then jobs completed:
+ * a writer with more proven samples and more completed work ranks higher.
+ */
 export const searchFreelancers = query({
   args: {
     query: v.optional(v.string()),
@@ -254,7 +327,53 @@ export const searchFreelancers = query({
       profiles = profiles.filter((p) => p.availability === args.availability);
     }
 
-    return profiles;
+    // Strength ranking: proven samples first, then completed jobs, then rate
+    // signal — the homepage Writers Spotlight and directory both rely on this.
+    return profiles.sort(
+      (a, b) =>
+        (b.proofOfWork?.length || 0) - (a.proofOfWork?.length || 0) ||
+        b.completedProjects - a.completedProjects ||
+        (b.hourlyRate || 0) - (a.hourlyRate || 0),
+    );
+  },
+});
+
+/** Public profile incl. resolved proof-of-work URLs for a specific writer. */
+export const getProfileWithProofs = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db
+      .query("freelanceProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!profile) return null;
+    return {
+      ...profile,
+      proofs: await resolveProofs(ctx, profile.proofOfWork),
+    };
+  },
+});
+
+/** The signed-in writer's own profile incl. proof-of-work URLs. */
+export const getMyProfileWithProofs = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+    if (!user) return null;
+    const profile = await ctx.db
+      .query("freelanceProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+    if (!profile) return null;
+    return {
+      ...profile,
+      proofs: await resolveProofs(ctx, profile.proofOfWork),
+    };
   },
 });
 
