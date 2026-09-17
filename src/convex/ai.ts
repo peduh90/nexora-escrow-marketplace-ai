@@ -346,76 +346,168 @@ export const chat = action({
       console.warn("NexoraAI: live context unavailable:", err);
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    // ── STEP 2: No API key → deterministic knowledge base (the old whitelist
-    // becomes the offline fallback instead of intercepting everything) ──
-    if (!apiKey) {
-      console.warn("NexoraAI: No OPENAI_API_KEY configured — using local knowledge base");
-      const canned = tryWhitelist(lastMessage, args.userRole);
-      if (canned) return canned;
-      return getEmergencyFallback(args.userRole);
-    }
+    // ── STEP 2: Provider selection — Gemini (free tier) is the default; the
+    // OpenAI path is preserved and can be restored any time with AI_PROVIDER ──
+    const activeProvider = resolveActiveProvider();
 
     // ── STEP 3: LLM with live system context — the DEFAULT path ──
     console.log(JSON.stringify({
       message: lastMessage.slice(0, 120),
       router_decision: "sent_to_llm",
+      provider: activeProvider,
       grounded: !!liveData,
     }));
 
     const systemPrompt = buildSystemPrompt(args.userRole, args.context, liveData);
+    const turns = args.messages.slice(-12); // last 12 turns — enough context, low cost
 
-    // Try LLM with retry (max 2 attempts)
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 3000));
+    // Primary provider → fallback chain (other provider → knowledge base).
+    // Keys and provider errors NEVER reach the user.
+    const chain: Array<"gemini" | "openai"> = [];
+    if (activeProvider === "gemini") {
+      chain.push("gemini", "openai");
+    } else {
+      chain.push("openai", "gemini");
+    }
 
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              { role: "system", content: systemPrompt },
-              ...args.messages.slice(-12), // last 12 turns — enough context, low cost
-            ],
-            max_tokens: 1000,
-            temperature: 0.7,
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const content = data.choices?.[0]?.message?.content;
-          if (content) return content;
+    let rateLimited = false;
+    for (const provider of chain) {
+      if (!providerConfigured(provider)) continue; // skip silently — other provider takes over
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          if (attempt > 0) await new Promise((r) => setTimeout(r, 2500));
+          const out = await callProvider(provider, systemPrompt, turns);
+          if (out.content) return out.content;
+          if (!out.retryable) break;
+        } catch (err: any) {
+          // Structured, secret-free server logging.
+          console.error(
+            JSON.stringify({
+              component: "nexora_ai",
+              event: "provider_error",
+              provider,
+              status: err?.status,
+              kind: err?.kind,
+              attempt,
+            }),
+          );
+          if (err?.kind === "rate_limited") {
+            rateLimited = true;
+            break; // do not hammer — next provider in the chain takes over
+          }
+          break; // network/5xx — try next provider instead of retry-storming
         }
-
-        // Rate limited — retry once
-        if (response.status === 429 && attempt === 0) {
-          console.warn("NexoraAI: Rate limited, retrying in 3s...");
-          continue;
-        }
-
-        // Other errors — don't retry
-        console.error(`NexoraAI: API returned ${response.status}`);
-        break;
-      } catch (error) {
-        console.error("NexoraAI: Fetch error:", error);
-        break;
       }
     }
 
-    // All retries exhausted — fall back to the deterministic knowledge base,
-    // which CAN now use live data for order lookups.
+    // Every provider failed → degrade gracefully. Never leak provider errors.
+    if (rateLimited) {
+      return "I'm getting a lot of questions right now, so my AI brain is taking a short breather 😅 — please try again in about a minute.\n\n**Meanwhile, I can still help instantly with:** order tracking (share your order ID), fees & escrow questions, payment how-tos (M-Pesa, Airtel Money, card), and delivery timelines.**Kiswahili:** Nimezidiwa na maswali kwa sasa — jaribu tena baada ya dakika moja, au niambie kuhusu oda yako na nikusaidie popote pale.";
+    }
     const canned = tryWhitelist(lastMessage, args.userRole);
     if (canned) return canned;
     return getEmergencyFallback(args.userRole);
   },
 });
+
+/* ─── PROVIDER ABSTRACTION ─────────────────────────────────────────────────
+ *
+ * AI_PROVIDER=gemini  → Google Gemini (free tier) is primary, OpenAI fallback
+ * AI_PROVIDER=openai  → OpenAI primary, Gemini fallback
+ *
+ * Switching providers later is an env change only — the frontend, chat UI,
+ * conversation history and system instructions never change.
+ */
+
+type AiProvider = "gemini" | "openai";
+
+/** Currently free-tier Gemini Flash model. Update here if Google deprecates. */
+const GEMINI_MODEL = "gemini-2.0-flash";
+
+function resolveActiveProvider(): AiProvider {
+  const setting = (process.env.AI_PROVIDER || "gemini").toLowerCase();
+  return setting === "openai" ? "openai" : "gemini";
+}
+
+function providerConfigured(p: AiProvider): boolean {
+  if (p === "gemini") return Boolean(process.env.GEMINI_API_KEY);
+  return Boolean(process.env.OPENAI_API_KEY);
+}
+
+class ProviderError extends Error {
+  kind: "rate_limited" | "unavailable";
+  status?: number;
+  constructor(kind: "rate_limited" | "unavailable", status?: number) {
+    super(kind);
+    this.kind = kind;
+    this.status = status;
+  }
+}
+
+/** One LLM call against one provider. Throws ProviderError; never leaks keys. */
+async function callProvider(
+  provider: AiProvider,
+  systemPrompt: string,
+  turns: Array<{ role: "user" | "assistant"; content: string }>,
+): Promise<{ content?: string; retryable: boolean }> {
+  if (provider === "gemini") {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new ProviderError("unavailable");
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: turns.map((t) => ({
+            role: t.role === "assistant" ? "model" : "user",
+            parts: [{ text: t.content }],
+          })),
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
+          safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+          ],
+        }),
+      },
+    );
+    if (res.status === 429) throw new ProviderError("rate_limited", 429);
+    if (!res.ok) throw new ProviderError("unavailable", res.status);
+    const data = await res.json();
+    const content: string | undefined = data?.candidates?.[0]?.content?.parts
+      ?.map((p: any) => p.text)
+      .filter(Boolean)
+      .join("");
+    if (!content) throw new ProviderError("unavailable", res.status);
+    return { content, retryable: false };
+  }
+
+  // OpenAI — preserved exactly as before (key, model, params).
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new ProviderError("unavailable");
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: systemPrompt }, ...turns],
+      max_tokens: 1000,
+      temperature: 0.7,
+    }),
+  });
+  if (res.status === 429) throw new ProviderError("rate_limited", 429);
+  if (!res.ok) throw new ProviderError("unavailable", res.status);
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new ProviderError("unavailable", res.status);
+  return { content, retryable: false };
+}
 
 /* ─── SYSTEM PROMPT — All 19 Knowledge Sections ─── */
 
@@ -423,6 +515,21 @@ function buildSystemPrompt(role?: string, context?: string, liveData?: any): str
   return `You are NEXORA AI — the intelligent operating layer of Nexora Market, an African escrow marketplace headquartered in Nairobi, Kenya. You are not a decorative chatbot — you are the interface through which buyers, sellers, and administrators get things done.
 
 Your job is to understand what people mean, not what they typed, and to turn that understanding into real marketplace actions.
+
+## ANSWER SCOPE — YOU ARE A NEXORA MARKETPLACE ASSISTANT (HIGHEST PRIORITY WITH LANGUAGES)
+
+You answer questions about EVERYTHING on the Nexora platform:
+• Marketplaces: product marketplace, digital/services marketplace, and the Freelance marketplace (hiring freelancers, AI Taskers, proof-of-work profiles, jobs & gigs)
+• Roles: buyers, sellers, freelancers, employers, AI Taskers, transporters/drivers, creators, admins
+• Escrow protection, payments (M-Pesa STK Push, Airtel Money, Visa/Mastercard card, Nexora Wallet), fees & commissions, withdrawals to M-Pesa/bank
+• Delivery & pickups (Nexora-managed delivery, hubs, tracking), KYC & verification, refunds & disputes, order lifecycle
+• Creator & referral program, store setup, profile & avatar settings, account security
+
+Rules of scope:
+1. Platform-specific rules (fees, timelines, limits, policies, program details) come ONLY from your knowledge below and the LIVE SYSTEM DATA. Never invent fees, dates, policies or numbers. If a specific figure or policy is not in your knowledge or the live data, say plainly that you don't have that detail and point to the right place (e.g. the exact dashboard page or support WhatsApp +254 706 116 043).
+2. Off-platform general questions (recipes, news, coding help, homework, gossip) are outside your role — politely decline briefly and steer back to what you can do: "I'm Nexora's marketplace assistant — I can help with orders, payments, selling, freelancing and disputes. What can I help you with today?"
+3. Be CONCISE and USEFUL: short paragraphs or tight bullet lists, lead with the direct answer, then one or two lines of what to do next. No filler, no repeating the question, no walls of text. Match the user's tone — relaxed and practical for Kenyan users, but always clear.
+4. When live data shows the user's real orders/payments/wallet/disputes, that data WINS over general knowledge. Quote it exactly.
 
 Core philosophy: Don't make the user learn Nexora. Make Nexora understand the user.
 
