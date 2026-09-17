@@ -21,7 +21,7 @@ import {
  * it never stacks. Groups are collapsible and persist during the session.
  */
 
-type NavItem = { icon: any; label: string; path: string; desc?: string };
+type NavItem = { icon: any; label: string; path: string; desc?: string; countKey?: "sellers" };
 type NavGroup = { id: string; label: string; items: NavItem[] };
 
 const navGroups: NavGroup[] = [
@@ -40,7 +40,7 @@ const navGroups: NavGroup[] = [
     items: [
       { icon: Users, label: "All Users", path: "/admin/users", desc: "Every account" },
       { icon: ClipboardCheck, label: "Verification (KYC)", path: "/admin/kyc", desc: "Identity reviews" },
-      { icon: UserCheck, label: "Sellers", path: "/admin/sellers", desc: "Marketplace merchants" },
+      { icon: UserCheck, label: "Sellers", path: "/admin/sellers", desc: "Marketplace merchants", countKey: "sellers" },
       { icon: Share2, label: "Creator Program", path: "/admin/referrals", desc: "Referrals & agreements" },
     ],
   },
@@ -134,6 +134,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // REAL unread platform notifications for the admin — powers the bell badge.
   const unreadNotifications = useQuery(api.reviews.getUnreadCount);
+  // Live seller count — shown as a badge on the sidebar "Sellers" nav item.
+  const userCounts = useQuery(api.admin.getUserCounts);
 
   // The active group auto-opens on navigation (collapsible but never lost).
   const active = useMemo(() => {
@@ -266,6 +268,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     >
                       <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-nx-gold" : "group-hover:text-white/50"}`} />
                       {!(collapsed && !isMobile) && <span className="whitespace-nowrap text-left">{item.label}</span>}
+                      {!(collapsed && !isMobile) && item.countKey && (
+                        <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/50 tabular-nums">
+                          {(userCounts as any)?.[item.countKey] ?? "·"}
+                        </span>
+                      )}
                     </button>
                   );
                 })}

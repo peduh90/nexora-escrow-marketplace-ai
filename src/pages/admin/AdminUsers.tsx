@@ -41,9 +41,10 @@ export default function AdminUsers() {
   const filtered = users.filter((u: any) => {
     const role = effectiveRole(u);
     switch (filter) {
-      // ─── Marketplace groups: each marketplace gets its own rows ───
+      // ─── Marketplace groups: every seller appears in its role group;
+      //     the listing counts only enrich the rows, never hide people. ───
       case "Product Sellers":
-        if (role !== "seller" || (u.productListings ?? 0) === 0) return false;
+        if (role !== "seller") return false;
         break;
       case "Digital Sellers":
         if (role !== "seller" || (u.freelanceListings ?? 0) === 0) return false;
@@ -88,8 +89,10 @@ export default function AdminUsers() {
   // Service/transport providers (any marketplace role — provider is a layer,
   // not a separate account type).
   const providerCount = counts?.serviceProviders ?? users.filter((u: any) => u.serviceType || u.transportType).length;
-  // Marketplace-group counts for the dedicated filter tabs.
-  const productSellerCount = users.filter((u: any) => effectiveRole(u) === "seller" && (u.productListings ?? 0) > 0).length;
+  // Marketplace-group counts for the dedicated filter tabs. Product Sellers
+  // counts ALL seller accounts (with or without listings yet) so the number
+  // in the tab always matches the rows beneath it.
+  const productSellerCount = users.filter((u: any) => effectiveRole(u) === "seller").length;
   const digitalSellerCount = users.filter((u: any) => effectiveRole(u) === "seller" && (u.freelanceListings ?? 0) > 0).length;
   const transportCount = users.filter((u: any) => !!u.transportType).length;
   const aiTaskerCount = users.filter((u: any) => u.aiTasksPosted > 0 || u.aiTasksWorked > 0).length;

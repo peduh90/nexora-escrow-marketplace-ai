@@ -779,24 +779,22 @@ export const getMyDashboard = query({
  * Program-wide stats — VISIBLE TO APPROVED CREATORS AND ADMINS ONLY.
  * The /join landing page must not expose program performance to visitors;
  * the same numbers live inside the approved creator's dashboard instead.
+ * IMPORTANT: unauthorized callers get `null`, never a thrown error — a
+ * thrown query error crashes the whole creator dashboard (pending applicants
+ * legitimately load the page before approval).
  */
 export const getProgramStats = query({
   args: {},
   handler: async (ctx) => {
     const user = await getSessionUser(ctx);
-    if (user) {
-      const creator = await ctx.db
-        .query("referralCreators")
-        .withIndex("by_user", (q: any) => q.eq("userId", user._id))
-        .first();
-      const isApprovedCreator = !!creator && (creator as any).status === "approved";
-      const isAdmin = (user as any).role === "admin";
-      if (!isApprovedCreator && !isAdmin) {
-        throw new ConvexError("Program stats are only visible to approved creators.");
-      }
-    } else {
-      throw new ConvexError("Sign in as an approved creator to view program stats.");
-    }
+    if (!user) return null;
+    const creator = await ctx.db
+      .query("referralCreators")
+      .withIndex("by_user", (q: any) => q.eq("userId", user._id))
+      .first();
+    const isApprovedCreator = !!creator && (creator as any).status === "approved";
+    const isAdmin = (user as any).role === "admin";
+    if (!isApprovedCreator && !isAdmin) return null;
 
     const referrals = await ctx.db.query("referralRecords").collect();
     const earnings = await ctx.db.query("referralEarnings").collect();

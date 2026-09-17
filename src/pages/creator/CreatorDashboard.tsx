@@ -108,8 +108,9 @@ function CreatorDashboardInner() {
   // Hard gate: the signed Creator Referral Agreement must be approved by an
   // admin before ANY dashboard content (link, code, stats) is shown.
   const myAgreement = useQuery(api.referralAgreement.getMyAgreement);
-  // Platform-wide program performance — the backend only serves this to
-  // approved creators and admins (it is never shown on the public /join page).
+  // Platform-wide program performance — the backend returns null for anyone
+  // who is not an approved creator/admin (never throws, so a pending
+  // applicant's dashboard still loads). The section simply hides for null.
   const programStats = useQuery(api.referral.getProgramStats);
 
   const [form, setForm] = useState({
@@ -516,7 +517,9 @@ function CreatorDashboardInner() {
               </div>
             </div>
 
-            {/* Platform-wide program performance — approved creators only */}
+            {/* Platform-wide program performance — approved creators only;
+                hidden entirely while pending (stats are null) */}
+            {programStats && (
             <div>
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-fuchsia-300" /> Program performance
@@ -541,6 +544,7 @@ function CreatorDashboardInner() {
                 ))}
               </div>
             </div>
+            )}
 
             {/* Commission summary */}
             <div className="grid md:grid-cols-3 gap-3">
