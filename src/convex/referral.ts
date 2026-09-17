@@ -339,6 +339,23 @@ export const applyToBeCreator = mutation({
       throw new ConvexError("Describe how you will promote Nexora in at least 20 characters.");
     }
 
+    // ── Creator verification gate ──────────────────────────────────────────
+    // A creator represents Nexora to strangers, so they must have completed
+    // at least ONE real buyer purchase that went through the escrow flow.
+    // Zero purchase history → application rejected with clear guidance.
+    const boughtOrders = await ctx.db
+      .query("orders")
+      .withIndex("by_buyer", (q: any) => q.eq("buyerId", user._id))
+      .collect();
+    const hasCompletePurchase = boughtOrders.some((o) =>
+      ["paid", "funded", "processing", "shipped", "delivered", "completed"].includes(String(o.status)),
+    );
+    if (!hasCompletePurchase) {
+      throw new ConvexError(
+        "Creator verification requires one complete purchase — make a real order as a buyer first, then apply.",
+      );
+    }
+
     const existing = await ctx.db
       .query("referralCreators")
       .withIndex("by_user", (q: any) => q.eq("userId", user._id))
