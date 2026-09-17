@@ -259,6 +259,14 @@ export const getAllUsers = query({
 
     return users.map((u) => {
       const userListings = listings.filter((l) => l.sellerId === u._id);
+      // Marketplace split: physical product listings vs digital (freelance)
+      // listings — legacy rows without the field count as product listings.
+      const productListings = userListings.filter(
+        (l) => (l as any).marketplace !== "freelance",
+      );
+      const freelanceListings = userListings.filter(
+        (l) => (l as any).marketplace === "freelance",
+      );
       const userEscrows = escrows.filter(
         (e) => e.buyerId === u._id || e.sellerId === u._id
       );
@@ -277,6 +285,9 @@ export const getAllUsers = query({
         ...safeUser,
         listingCount: userListings.length,
         orderCount: userEscrows.length,
+        // Marketplace breakdown for the admin sellers panel.
+        productListings: productListings.length,
+        freelanceListings: freelanceListings.length,
         totalSpent: escrows
           .filter((e) => e.buyerId === u._id)
           .reduce((sum, e) => sum + e.amount, 0),

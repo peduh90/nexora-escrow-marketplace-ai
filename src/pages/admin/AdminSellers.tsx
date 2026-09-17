@@ -2,10 +2,14 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { Users, Search, Eye, Mail, CheckCircle2, Clock, ChevronUp, ChevronDown, ExternalLink } from "lucide-react";
+import {
+  Users, Search, Eye, Mail, CheckCircle2, Clock, ChevronUp, ChevronDown,
+  ExternalLink, Store, MonitorSmartphone,
+} from "lucide-react";
 
 export default function AdminSellers() {
   const allUsers = useQuery(api.admin.getAllUsers);
+  const [tab, setTab] = useState<"product" | "digital">("product");
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -13,8 +17,8 @@ export default function AdminSellers() {
 
   // A seller is anyone with the seller role, a business name, or a pending
   // seller registration (still completing verification). This guarantees that
-  // a brand-new seller registration (e.g. Femuki) shows up here immediately,
-  // before their role is assigned.
+  // a brand-new seller registration shows up here immediately, before their
+  // role is assigned.
   const isSeller = (u: any) =>
     u.role === "seller" || !!u.businessName || u.pendingRole === "seller";
 
@@ -27,10 +31,19 @@ export default function AdminSellers() {
     (s.email || "").toLowerCase().includes(search.toLowerCase())
   );
 
+  // Marketplace split — one panel per marketplace. A seller operating in both
+  // appears in both panels; the Marketplace column shows where they sell.
+  const productSellers = filtered.filter(
+    (s: any) => (s.productListings || 0) > 0 || !(s.freelanceListings > 0),
+  );
+  const digitalSellers = filtered.filter((s: any) => (s.freelanceListings || 0) > 0);
+
   const pendingCount = sellers.filter((s: any) => {
     const status = s.accountStatus || (s.role ? "active" : "pending");
     return status === "pending";
   }).length;
+
+  const activePanel = tab === "product" ? productSellers : digitalSellers;
 
   return (
     <AdminLayout>
@@ -47,6 +60,24 @@ export default function AdminSellers() {
           className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0A12] border border-white/5 text-sm text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none" />
       </div>
 
+      {/* One panel per marketplace — Product vs Digital */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setTab("product")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${tab === "product" ? "bg-nx-violet/15 text-nx-violet border-nx-violet/25" : "bg-white/[0.03] text-white/40 border-white/5 hover:border-white/15"}`}
+        >
+          <Store className="w-4 h-4" /> Product Marketplace
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/30">{productSellers.length}</span>
+        </button>
+        <button
+          onClick={() => setTab("digital")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${tab === "digital" ? "bg-nx-cyan/15 text-nx-cyan border-nx-cyan/25" : "bg-white/[0.03] text-white/40 border-white/5 hover:border-white/15"}`}
+        >
+          <MonitorSmartphone className="w-4 h-4" /> Digital Marketplace
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/30">{digitalSellers.length}</span>
+        </button>
+      </div>
+
       {sellers.length === 0 ? (
         <div className="rounded-xl border border-white/5 bg-[#0A0A12] py-16 flex flex-col items-center">
           <Users className="w-8 h-8 text-white/10 mb-3" />
@@ -59,18 +90,20 @@ export default function AdminSellers() {
             <table className="w-full">
               <thead><tr className="border-b border-white/5">
                 <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Seller</th>
+                <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Marketplace</th>
                 <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden md:table-cell">KYC</th>
                 <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden lg:table-cell">Tier</th>
                 <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Status</th>
                 <th className="text-right px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Actions</th>
               </tr></thead>
               <tbody className="divide-y divide-white/[0.03]">
-                {filtered.map((s: any) => {
+                {activePanel.map((s: any) => {
                   const status = s.accountStatus || (s.role ? "active" : "pending");
                   const requested = s.pendingRole || s.role || "seller";
                   const isExpanded = expandedId === s._id;
                   const listingCount = s.listingCount ?? 0;
                   const orderCount = s.orderCount ?? 0;
+                  const isDigitalPanel = tab === "digital";
                   return (
                     <tr key={s._id} className="hover:bg-white/[0.01] transition-colors align-top">
                       <td className="px-4 py-3.5">
@@ -90,6 +123,8 @@ export default function AdminSellers() {
                             <p className="text-[10px] text-white/50">Location: <span className="text-white/80">{[s.town, s.county, s.country].filter(Boolean).join(", ") || "Not set"}</span></p>
                             <p className="text-[10px] text-white/50">Phone: <span className="text-white/80">{s.phone || "Not set"}</span></p>
                             <p className="text-[10px] text-white/50">Listings: <span className="text-white/80">{listingCount}</span></p>
+                            <p className="text-[10px] text-white/50">Product listings: <span className="text-white/80">{s.productListings ?? 0}</span></p>
+                            <p className="text-[10px] text-white/50">Freelance/digital listings: <span className="text-white/80">{s.freelanceListings ?? 0}</span></p>
                             <p className="text-[10px] text-white/50">Orders: <span className="text-white/80">{orderCount}</span></p>
                             <p className="text-[10px] text-white/50">Total earned: <span className="text-white/80">KES {(s.totalEarned ?? 0).toLocaleString()}</span></p>
                             <p className="text-[10px] text-white/50">Wallet balance: <span className="text-white/80">KES {(s.walletBalance ?? 0).toLocaleString()}</span></p>
@@ -106,6 +141,26 @@ export default function AdminSellers() {
                             </a>
                           </div>
                         )}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {(s.productListings || 0) > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-nx-violet/10 text-nx-violet font-medium flex items-center gap-1">
+                              <Store className="w-2.5 h-2.5" /> Product · {s.productListings}
+                            </span>
+                          )}
+                          {(s.freelanceListings || 0) > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-nx-cyan/10 text-nx-cyan font-medium flex items-center gap-1">
+                              <MonitorSmartphone className="w-2.5 h-2.5" /> Digital · {s.freelanceListings}
+                            </span>
+                          )}
+                          {(s.productListings || 0) === 0 && (s.freelanceListings || 0) === 0 && (
+                            <span className="text-[10px] text-white/25">No listings yet</span>
+                          )}
+                          {isDigitalPanel && (s.productListings || 0) > 0 && (
+                            <span className="text-[10px] text-white/25">(also sells products)</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3.5 hidden md:table-cell">
                         <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${s.kycStatus === "verified" ? "bg-nx-emerald/10 text-nx-emerald" : s.kycStatus === "pending" ? "bg-nx-gold/10 text-nx-gold" : "bg-white/5 text-white/30"}`}>
