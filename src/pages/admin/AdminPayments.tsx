@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { CreditCard, Search, ArrowUpRight, ArrowDownRight, XCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { CreditCard, Search, ArrowUpRight, ArrowDownRight, XCircle, CheckCircle2, Clock, Loader2, RefreshCw, Undo2, Smartphone, Wallet, Landmark } from "lucide-react";
 
 const typeMeta: Record<string, { label: string; color: string; icon: typeof ArrowUpRight }> = {
   deposit: { label: "Deposit", color: "text-nx-emerald", icon: ArrowUpRight },
@@ -23,11 +23,66 @@ const statusMeta: Record<string, { label: string; color: string; bg: string }> =
   failed: { label: "Failed", color: "text-red-400", bg: "bg-red-400/10" },
 };
 
+const providerMeta: Record<string, { label: string; icon: typeof CreditCard; color: string }> = {
+  mpesa: { label: "M-Pesa", icon: Smartphone, color: "text-emerald-400" },
+  airtel_money: { label: "Airtel Money", icon: Smartphone, color: "text-red-400" },
+  card: { label: "Card (Visa/Mastercard)", icon: Landmark, color: "text-nx-cyan" },
+};
+
+const unifiedStatusMeta: Record<string, { label: string; color: string; bg: string }> = {
+  initiated: { label: "Initiated", color: "text-white/50", bg: "bg-white/5" },
+  awaiting_confirmation: { label: "Awaiting", color: "text-amber-400", bg: "bg-amber-400/10" },
+  paid: { label: "Paid ✓", color: "text-emerald-400", bg: "bg-emerald-400/10" },
+  failed: { label: "Failed", color: "text-red-400", bg: "bg-red-400/10" },
+  cancelled: { label: "Cancelled", color: "text-white/40", bg: "bg-white/5" },
+  refunded: { label: "Refunded", color: "text-nx-cyan", bg: "bg-nx-cyan/10" },
+  partially_refunded: { label: "Partial refund", color: "text-nx-cyan", bg: "bg-nx-cyan/10" },
+};
+
 export default function AdminPayments() {
   const transactions = useQuery(api.admin.getAllWalletTransactions);
   const users = useQuery(api.admin.getAllUsers);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
+
+  // ── Unified payment engine (M-Pesa / Airtel Money / Card) ──
+  const unified = useQuery(api.paymentStore.listTransactions, { limit: 100 });
+  const unifiedStats = useQuery(api.paymentStore.paymentStats, {});
+  const refundTx = useMutation(api.paymentStore.requestRefund);
+  const executeRefund = useAction(api.payments.executeRefund as any);
+  const reconcile = useAction(api.payments.reconcilePending as any);
+  const [refunding, setRefunding] = useState<string | null>(null);
+  const [sweeping, setSweeping] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const handleRefund = async (tx: any) => {
+    const amount = Number(tx.feeSnapshot?.totalCharge ?? tx.amount);
+    if (!confirm(`Refund KES ${amount.toLocaleString()} to the ${providerMeta[tx.provider]?.label || tx.provider} payer?`)) return;
+    setRefunding(tx._id);
+    setNotice(null);
+    try {
+      const refundId = await refundTx({ paymentTxId: tx._id, amount, reason: "Admin refund from Payments panel" });
+      await executeRefund({ refundId: String(refundId) });
+      setNotice(`Refund of KES ${amount.toLocaleString()} executed via ${providerMeta[tx.provider]?.label || tx.provider}.`);
+    } catch (err: any) {
+      setNotice(err.message || "Refund failed.");
+    } finally {
+      setRefunding(null);
+    }
+  };
+
+  const handleSweep = async () => {
+    setSweeping(true);
+    setNotice(null);
+    try {
+      const r = await reconcile({});
+      setNotice(`Reconciliation swept ${r.checked} pending payment(s) — ${r.resolved} resolved.`);
+    } catch (err: any) {
+      setNotice(err.message || "Sweep failed.");
+    } finally {
+      setSweeping(false);
+    }
+  };
 
   const txs = transactions ?? [];
   const userList = users ?? [];
@@ -55,6 +110,104 @@ export default function AdminPayments() {
         <p className="text-sm text-white/40 mt-1">
           Audit all wallet activity across the platform
         </p>
+      </div>
+
+      {/* ─── UNIFIED COLLECTIONS (M-Pesa · Airtel Money · Card) ─── */}
+      <div className="rounded-xl border border-nx-violet/20 bg-gradient-to-b from-nx-violet/[0.06] to-transparent p-4 mb-6">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div>
+            <h2 className="text-sm font-bold text-white flex items-center gap-2"><CreditCard className="w-4 h-4 text-nx-violet" /> Unified Collections</h2>
+            <p className="text-[11px] text-white/40 mt-0.5">Every checkout payment — verified server-side before orders fund escrow</p>
+          </div>
+          <button onClick={handleSweep} disabled={sweeping}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-nx-violet/10 text-nx-violet hover:bg-nx-violet/20 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+            {sweeping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Reconcile pending
+          </button>
+        </div>
+
+        {notice && (
+          <div className="mb-3 p-2.5 rounded-lg text-xs bg-white/5 border border-white/10 text-white/70">{notice}</div>
+        )}
+
+        {/* Provider breakdown */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          {["mpesa", "airtel_money", "card"].map((p) => {
+            const meta = providerMeta[p];
+            const stat = unifiedStats?.byProvider?.[p];
+            const Icon = meta.icon;
+            return (
+              <div key={p} className="p-3 rounded-lg border border-white/5 bg-[#0A0A12]">
+                <p className={`text-[10px] uppercase flex items-center gap-1.5 ${meta.color}`}><Icon className="w-3.5 h-3.5" /> {meta.label}</p>
+                <p className="text-lg font-bold text-white mt-1">KES {(stat?.volume ?? 0).toLocaleString()}</p>
+                <p className="text-[11px] text-white/30">{stat?.paid ?? 0} paid · {stat?.failed ?? 0} failed · {stat?.pending ?? 0} pending</p>
+              </div>
+            );
+          })}
+          <div className="p-3 rounded-lg border border-white/5 bg-[#0A0A12]">
+            <p className="text-[10px] uppercase text-white/40 flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5" /> All providers</p>
+            <p className="text-lg font-bold text-white mt-1">{unifiedStats?.total ?? 0}</p>
+            <p className="text-[11px] text-white/30">total payment attempts</p>
+          </div>
+        </div>
+
+        {/* Unified transactions table */}
+        {!unified || unified.length === 0 ? (
+          <div className="py-8 flex flex-col items-center text-center">
+            <CreditCard className="w-6 h-6 text-white/10 mb-2" />
+            <p className="text-xs text-white/30">No unified payment attempts yet</p>
+            <p className="text-[10px] text-white/20 mt-1">M-Pesa, Airtel Money and card checkouts will appear here</p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-white/5 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/5 bg-white/[0.02]">
+                    <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase">Reference</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase">Provider</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase">Amount</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase">Status</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase hidden md:table-cell">Escrow</th>
+                    <th className="text-right px-3 py-2 text-[10px] font-medium text-white/30 uppercase">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unified.map((t: any) => {
+                    const meta = providerMeta[t.provider] || { label: t.provider, icon: CreditCard, color: "text-white/50" };
+                    const st = unifiedStatusMeta[t.status] || { label: t.status, color: "text-white/50", bg: "bg-white/5" };
+                    const Icon = meta.icon;
+                    const refundable = t.status === "paid" && !(t.refundedAmount >= (t.feeSnapshot?.totalCharge ?? t.amount));
+                    return (
+                      <tr key={t._id} className="border-b border-white/[0.03] last:border-0">
+                        <td className="px-3 py-2.5 text-[11px] text-white/60 font-mono">{t.reference.slice(0, 18)}…</td>
+                        <td className="px-3 py-2.5 text-xs">
+                          <span className={`flex items-center gap-1.5 ${meta.color}`}><Icon className="w-3.5 h-3.5" /> {meta.label}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-white font-medium">KES {(t.feeSnapshot?.totalCharge ?? t.amount).toLocaleString()}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${st.bg} ${st.color}`}>{st.label}</span>
+                          {t.status === "paid" && t.escrowId && <p className="text-[10px] text-white/25 mt-0.5">escrow #{String(t.escrowId).slice(-6)}</p>}
+                          {t.failureReason && <p className="text-[10px] text-red-400/60 mt-0.5 max-w-[180px] truncate">{t.failureReason}</p>}
+                        </td>
+                        <td className="px-3 py-2.5 text-[11px] text-white/40 hidden md:table-cell">{t.escrowId ? "linked" : t.status === "paid" ? <span className="text-amber-400">unlinked</span> : "—"}</td>
+                        <td className="px-3 py-2.5 text-right">
+                          {refundable ? (
+                            <button onClick={() => handleRefund(t)} disabled={refunding === t._id}
+                              className="px-2 py-1 rounded-md text-[10px] font-medium bg-red-400/10 text-red-400 hover:bg-red-400/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50">
+                              {refunding === t._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Undo2 className="w-3 h-3" />} Refund
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-white/20">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
