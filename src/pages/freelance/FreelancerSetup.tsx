@@ -218,9 +218,9 @@ export default function FreelancerSetup() {
             <AvatarPicker image={(user as any)?.image} name={displayName} size="lg" />
           </div>
 
-          <label className="text-xs font-medium text-white/60 mb-1.5 block">Display name *</label>
+          <label className="text-xs font-medium text-white/60 mb-1.5 block">Profile name *</label>
           <input value={displayName} onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="e.g. Jane Wanjiku"
+            placeholder="e.g. Jane Wanjiku — defaults to your registration name"
             className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/25 focus:border-nx-violet/40 focus:outline-none mb-4" />
 
           <label className="text-xs font-medium text-white/60 mb-1.5 block">Professional title</label>

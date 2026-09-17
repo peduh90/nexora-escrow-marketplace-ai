@@ -53,9 +53,10 @@ function AccountSection({ user }: { user: any }) {
       )}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs text-white/40 mb-1.5 block">Display Name</label>
+          <label className="text-xs text-white/40 mb-1.5 block">Profile Name</label>
           <input value={name} onChange={e => setName(e.target.value)}
             className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" />
+          <p className="text-[10px] text-white/20 mt-1">Shown across Nexora — defaults to your registration name. {user?.role === "seller" ? "Your store displays the Business Name above." : "Change it anytime."}</p>
         </div>
         <div>
           <label className="text-xs text-white/40 mb-1.5 block">Email</label>

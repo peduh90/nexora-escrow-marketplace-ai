@@ -40,7 +40,7 @@ export default function BuyerProfile() {
       <div className="max-w-2xl space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-white">My Account</h1>
-          <p className="text-sm text-white/40 mt-1">Edit your details — name, phone, WhatsApp and location</p>
+          <p className="text-sm text-white/40 mt-1">Edit your profile name, phone, WhatsApp and location</p>
         </div>
 
         {/* Profile Header — with profile icon upload */}
@@ -72,10 +72,11 @@ export default function BuyerProfile() {
 
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-medium text-white/50 mb-1.5">Full Name</label>
+              <label className="block text-xs font-medium text-white/50 mb-1.5">Profile Name</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/30 focus:outline-none"
-                placeholder="Enter your full name" />
+                placeholder="e.g. Jane Wanjiku" />
+              <p className="text-[10px] text-white/20 mt-1">This is the name shown across Nexora — it defaults to the name you registered with. Change it anytime.</p>
             </div>
 
             <div>

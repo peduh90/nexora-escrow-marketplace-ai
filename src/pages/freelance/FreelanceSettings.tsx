@@ -50,6 +50,8 @@ export default function FreelanceSettings() {
       setCategories(profile.categories || []);
       setRoleMode(profile.roleMode || "freelancer");
     } else if (user) {
+      // Default to the profile name (registration name) until the freelancer
+      // picks their public display name.
       setDisplayName(user.name || "");
     }
   }, [profile, user]);
@@ -115,11 +117,12 @@ export default function FreelanceSettings() {
             </div>
           </div>
 
-          {/* Display Name */}
+          {/* Profile / Display Name */}
           <div>
-            <label className="text-xs font-medium text-white/60 mb-1.5 block">Display Name</label>
-            <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your display name"
+            <label className="text-xs font-medium text-white/60 mb-1.5 block">Profile Name</label>
+            <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g. Jane Wanjiku"
               className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
+            <p className="text-[10px] text-white/25 mt-1">Shown to employers and clients — defaults to your registration name.</p>
           </div>
 
           {/* Title */}

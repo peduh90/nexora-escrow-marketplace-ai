@@ -4,7 +4,48 @@ import { api } from "@/convex/_generated/api";
 import AdminLayout from "./AdminLayout";
 import AvatarPicker from "@/components/AvatarPicker";
 import { useAuth } from "@/hooks/use-auth";
-import { Settings, Shield, Bell, Globe, CreditCard, Info, Flag, Loader2, MapPin, Plus, Power } from "lucide-react";
+import { Settings, Shield, Bell, Globe, CreditCard, Info, Flag, Loader2, MapPin, Plus, Power, CheckCircle2 } from "lucide-react";
+
+/** Profile-name editor for the signed-in admin — defaults to the registration
+ * name and saves straight to the account, so every admin surface shows it. */
+function AdminProfileNameField() {
+  const { user } = useAuth();
+  const updateProfile = useMutation(api.users.updateProfile);
+  const [value, setValue] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const current = value ?? user?.name ?? "";
+
+  const save = async () => {
+    if (!current.trim()) return;
+    setSaving(true);
+    try {
+      await updateProfile({ name: current.trim() });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <label className="text-xs font-medium text-white/50 mb-1.5 block">Profile Name</label>
+      <div className="flex gap-2">
+        <input value={current} onChange={(e) => setValue(e.target.value)}
+          placeholder="Your profile name"
+          className="flex-1 px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-gold/50 focus:outline-none" />
+        <button onClick={save} disabled={saving || !current.trim() || current === (user?.name || "")}
+          className="px-4 py-2 rounded-lg bg-nx-gold text-black text-xs font-semibold hover:bg-nx-gold/85 transition-colors disabled:opacity-40 flex items-center gap-1.5">
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : saved ? <CheckCircle2 className="w-3.5 h-3.5" /> : null}
+          {saved ? "Saved" : "Save"}
+        </button>
+      </div>
+      <p className="text-[10px] text-white/20 mt-1">Defaults to the name you registered with — shown across the admin panel and marketplace.</p>
+    </div>
+  );
+}
 
 /**
  * Pickup Hubs tab (#71): admin-managed collection points that cut last-mile
@@ -211,13 +252,15 @@ export default function AdminSettings() {
         <p className="text-sm text-white/40 mt-1">Live platform configuration — controlled by the backend engine</p>
       </div>
 
-      {/* Admin profile icon */}
-      <div className="mb-6 p-5 rounded-xl border border-white/5 bg-[#0A0A12] flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h3 className="text-sm font-semibold text-white">Your Profile Icon</h3>
-          <p className="text-xs text-white/35 mt-0.5">Shown across the admin panel and anywhere your account appears.</p>
+      {/* Admin profile icon + profile name */}
+      <div className="mb-6 p-5 rounded-xl border border-white/5 bg-[#0A0A12]">
+        <h3 className="text-sm font-semibold text-white mb-4">Your Profile</h3>
+        <div className="flex items-start gap-6 flex-wrap">
+          <AvatarPicker image={(user as any)?.image} name={user?.name} size="lg" />
+          <div className="flex-1 min-w-[240px]">
+            <AdminProfileNameField />
+          </div>
         </div>
-        <AvatarPicker image={(user as any)?.image} name={user?.name} size="lg" />
       </div>
 
       <div className="flex gap-1 mb-6 flex-wrap">
