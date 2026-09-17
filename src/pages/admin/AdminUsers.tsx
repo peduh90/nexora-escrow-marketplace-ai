@@ -180,6 +180,7 @@ export default function AdminUsers() {
                 <tr className="border-b border-white/5">
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">User</th>
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden md:table-cell">Role</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden lg:table-cell">Phone</th>
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden lg:table-cell">Location</th>
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden lg:table-cell">Freelance</th>
                   <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden xl:table-cell">Service</th>
@@ -229,6 +230,19 @@ export default function AdminUsers() {
                         const r = effectiveRole(user);
                         return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${r === "seller" ? "bg-nx-violet/10 text-nx-violet" : r === "admin" ? "bg-nx-gold/10 text-nx-gold" : r === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : r === "employer" ? "bg-amber-500/10 text-amber-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{r}</span>);
                       })()}
+                    </td>
+                    <td className="px-4 py-3.5 hidden lg:table-cell">
+                      {user.phone ? (
+                        <a
+                          href={`tel:${user.phone}`}
+                          className="text-[10px] text-white/60 hover:text-nx-cyan transition-colors tabular-nums"
+                          title="Call the registered number"
+                        >
+                          {user.phone}
+                        </a>
+                      ) : (
+                        <span className="text-[10px] text-white/20">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3.5 hidden lg:table-cell">
                       <p className="text-[10px] text-white/25">{[user.county, user.town].filter(Boolean).join(", ") || "—"}</p>

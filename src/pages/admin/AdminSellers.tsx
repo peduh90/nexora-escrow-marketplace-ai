@@ -91,6 +91,7 @@ export default function AdminSellers() {
               <thead><tr className="border-b border-white/5">
                 <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Seller</th>
                 <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Marketplace</th>
+                <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden md:table-cell">Phone</th>
                 <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden md:table-cell">KYC</th>
                 <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden lg:table-cell">Tier</th>
                 <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Status</th>
@@ -161,6 +162,19 @@ export default function AdminSellers() {
                             <span className="text-[10px] text-white/25">(also sells products)</span>
                           )}
                         </div>
+                      </td>
+                      <td className="px-4 py-3.5 hidden md:table-cell">
+                        {s.phone ? (
+                          <a
+                            href={`tel:${s.phone}`}
+                            className="text-[10px] text-white/60 hover:text-nx-cyan transition-colors tabular-nums"
+                            title="Call the registered number"
+                          >
+                            {s.phone}
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-white/20">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3.5 hidden md:table-cell">
                         <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${s.kycStatus === "verified" ? "bg-nx-emerald/10 text-nx-emerald" : s.kycStatus === "pending" ? "bg-nx-gold/10 text-nx-gold" : "bg-white/5 text-white/30"}`}>
