@@ -55,6 +55,13 @@ export default function FreelancerSetup() {
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  // A profile is only COMPLETE with 2+ proofs of work — count both the files
+  // already attached server-side and the new picks in this session.
+  const existingProofCount = data?.profile?.proofOfWork?.length ?? 0;
+  const totalProofs = existingProofCount + files.length;
+  const MIN_PROOFS = (data as any)?.minProofRequired ?? 2;
+  const hasEnoughProofs = totalProofs >= MIN_PROOFS;
+
   const seeded = useRef(false);
   if (data && !seeded.current) {
     seeded.current = true;
@@ -117,6 +124,7 @@ export default function FreelancerSetup() {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
 
   const canSaveProfile = displayName.trim().length > 1 && categories.length > 0;
+  const canFinish = canSaveProfile && hasEnoughProofs;
 
   // Step 1 — save the profile itself so the freelancer exists in the directory.
   const saveProfile = async (): Promise<boolean> => {
@@ -296,12 +304,17 @@ export default function FreelancerSetup() {
 
         {/* ── Proof of work ── */}
         <section className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 mb-6">
-          <h2 className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-nx-gold/15 text-nx-gold text-xs font-bold flex items-center justify-center">2</span>
-            Proof of work <span className="text-[10px] font-normal text-white/30">(up to 10 files)</span>
-          </h2>
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-nx-gold/15 text-nx-gold text-xs font-bold flex items-center justify-center">2</span>
+              Proof of work <span className="text-[10px] font-normal text-white/30">(up to 10 files)</span>
+            </h2>
+            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${hasEnoughProofs ? "bg-nx-emerald/10 text-nx-emerald" : "bg-amber-400/10 text-amber-400"}`}>
+              {totalProofs}/{MIN_PROOFS} minimum uploaded
+            </span>
+          </div>
           <p className="text-xs text-white/35 mb-4 ml-8">
-            Upload samples: images of your designs, PDF reports, Word documents, certificates — anything that proves what you can do.
+            Upload at least <b className="text-white/60">{MIN_PROOFS} samples</b> to complete your profile: images of your designs, PDF reports, Word documents, certificates — anything that proves what you can do.
           </p>
 
           <button type="button" onClick={() => fileInput.current?.click()}
@@ -342,7 +355,7 @@ export default function FreelancerSetup() {
         </section>
 
         {/* ── Finish ── */}
-        <button onClick={finish} disabled={!canSaveProfile || saving || uploading}
+        <button onClick={finish} disabled={!canFinish || saving || uploading}
           className="w-full py-3.5 rounded-xl bg-nx-gold text-black text-sm font-bold hover:bg-nx-gold/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
           {saving || uploading ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> {saving ? "Saving profile…" : "Uploading work samples…"}</>
@@ -353,6 +366,11 @@ export default function FreelancerSetup() {
         {!canSaveProfile && (
           <p className="text-[11px] text-white/25 text-center mt-2">
             Add your display name and pick at least one category to continue.
+          </p>
+        )}
+        {canSaveProfile && !hasEnoughProofs && (
+          <p className="text-[11px] text-amber-400/80 text-center mt-2">
+            Upload {MIN_PROOFS - totalProofs} more work sample{MIN_PROOFS - totalProofs === 1 ? "" : "s"} to finish — employers hire what they can see.
           </p>
         )}
         {profileSaved && !files.length && (

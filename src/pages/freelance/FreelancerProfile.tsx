@@ -91,8 +91,8 @@ export default function FreelancerProfile() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
-        {/* Owner nudge — complete the profile */}
-        {isOwner && !data.hasProfile && (
+        {/* Owner nudge — the profile is incomplete until it has 2+ proofs of work */}
+        {isOwner && !data.profileComplete && (
           <button
             onClick={() => navigate(`/freelancer/${userId}/setup`)}
             className="w-full mb-6 p-5 rounded-2xl border border-nx-gold/30 bg-nx-gold/[0.06] hover:bg-nx-gold/10 transition-colors text-left group"
@@ -102,9 +102,13 @@ export default function FreelancerProfile() {
                 <Sparkles className="w-5 h-5 text-nx-gold" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-nx-gold">Finish your freelance registration</p>
+                <p className="text-sm font-semibold text-nx-gold">
+                  {!data.hasProfile ? "Finish your freelance registration" : "Your profile needs more proof of work"}
+                </p>
                 <p className="text-xs text-white/45 mt-0.5">
-                  Choose your categories and upload proof of work — employers are waiting to see what you can do.
+                  {!data.hasProfile
+                    ? "Choose your categories and upload at least 2 work samples — employers are waiting to see what you can do."
+                    : `Upload ${Math.max(0, (data.minProofRequired ?? 2) - (proofs.length))} more sample${(data.minProofRequired ?? 2) - proofs.length === 1 ? "" : "s"} to complete your profile — employers hire what they can see.`}
                 </p>
               </div>
               <span className="shrink-0 px-3.5 py-2 rounded-xl bg-nx-gold text-black text-xs font-bold group-hover:bg-nx-gold/85 transition-colors">

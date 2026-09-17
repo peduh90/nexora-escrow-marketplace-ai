@@ -10,7 +10,7 @@ import { getWhatsAppChatUrl, normalizeKenyanPhone } from "@/lib/whatsapp";
 import { FREELANCE_CATEGORIES } from "@/lib/freelance-marketplace";
 import {
   ArrowLeft, Search, Star, MapPin, Briefcase, Filter, ChevronDown,
-  Globe, CheckCircle2, Users, ArrowRight, MessageSquare, Bot,
+  Globe, CheckCircle2, Users, ArrowRight, MessageSquare, Bot, FileCheck2,
 } from "lucide-react";
 
 // Every category a freelancer can pick — straight from the shared taxonomy,
@@ -210,6 +210,11 @@ export default function FreelanceFindFreelancers() {
                         <span className="text-xs font-medium text-white">{fl.avgRating?.toFixed(1) || "5.0"}</span>
                       </span>
                       <span className="text-[10px] text-white/30">{fl.completedProjects || 0} jobs done</span>
+                      {(fl.proofCount ?? 0) > 0 && (
+                        <span title="Proof of work uploaded" className="text-[10px] px-1.5 py-0.5 rounded font-medium text-nx-cyan bg-nx-cyan/10 flex items-center gap-1">
+                          <FileCheck2 className="w-2.5 h-2.5" /> {fl.proofCount}
+                        </span>
+                      )}
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${fl.availability === "available" ? "text-nx-emerald bg-nx-emerald/10" : "text-white/40 bg-white/5"}`}>
                         {fl.availability || "available"}
                       </span>

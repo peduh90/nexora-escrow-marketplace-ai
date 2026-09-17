@@ -65,6 +65,13 @@ async function notify(
 
 // ─── FREELANCER PROFILE ───
 
+/**
+ * A freelance profile is only COMPLETE with at least 2 proofs of work.
+ * Enforced in the setup wizard (finish gate), the public profile (banner),
+ * and the directory (ranking) — employers hire what they can see.
+ */
+export const MIN_PROOF_FOR_COMPLETE = 2;
+
 /** Create or update freelancer profile */
 export const upsertProfile = mutation({
   args: {
@@ -406,6 +413,7 @@ export const searchFreelancers = query({
       hasProfile: boolean;
       isAiTasker: boolean;
       proofCount: number;
+      profileComplete: boolean;
       profileId?: string;
     };
     const rows: Row[] = [];
@@ -431,6 +439,7 @@ export const searchFreelancers = query({
         hasProfile,
         isAiTasker: isTasker,
         proofCount: profile?.proofOfWork?.length ?? 0,
+        profileComplete: hasProfile && (profile?.proofOfWork?.length ?? 0) >= MIN_PROOF_FOR_COMPLETE,
         profileId: profile?._id,
       };
     };
@@ -471,10 +480,11 @@ export const searchFreelancers = query({
     if (args.maxRate !== undefined) out = out.filter((p) => (p.hourlyRate || 0) <= args.maxRate!);
     if (args.availability) out = out.filter((p) => p.availability === args.availability);
 
-    // Proven profiles first, then set-up profiles, then new registrations.
+    // Complete profiles (2+ work samples) first, then by proof count, then
+    // set-up profiles, then fresh registrations.
     return out.sort(
       (a, b) =>
-        Number(b.hasProfile) - Number(a.hasProfile) ||
+        Number(b.profileComplete) - Number(a.profileComplete) ||
         b.proofCount - a.proofCount ||
         b.completedProjects - a.completedProjects,
     );
@@ -507,6 +517,10 @@ export const getFreelancerPublic = query({
         accountStatus: user.accountStatus,
       },
       hasProfile: !!profile,
+      // A profile is complete only with at least 2 proofs of work — the
+      // profile page uses this to keep the "finish registration" banner up.
+      profileComplete: !!profile && (profile.proofOfWork?.length ?? 0) >= MIN_PROOF_FOR_COMPLETE,
+      minProofRequired: MIN_PROOF_FOR_COMPLETE,
       profile: profile
         ? {
             ...profile,
