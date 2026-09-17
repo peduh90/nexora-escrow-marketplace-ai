@@ -73,7 +73,7 @@ export default function Marketplace() {
   return (
     <div className="min-h-screen bg-nx-bg">
       {/* ═══ HEADER ═══ */}
-      <div className="sticky top-0 z-30 h-14 bg-nx-card/80 backdrop-blur-xl border-b border-nx-border flex items-center px-4 md:px-6 gap-3">
+      <div className="hidden md:flex sticky top-0 z-30 h-14 bg-nx-card/80 backdrop-blur-xl border-b border-nx-border flex items-center px-4 md:px-6 gap-3">
         <button onClick={() => navigate(-1)} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 transition-colors shrink-0">
           <ArrowLeft className="w-4 h-4" />
         </button>

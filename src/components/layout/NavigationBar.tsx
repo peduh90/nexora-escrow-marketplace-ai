@@ -44,7 +44,7 @@ export default function NavigationBar() {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.1 }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        className={`nx-desktop-nav fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           scrolled ? "nx-glass py-3" : "bg-transparent py-5"
         }`}
       >
@@ -144,7 +144,9 @@ export default function NavigationBar() {
         </div>
       </motion.nav>
 
-      {/* Mobile menu */}
+      {/* Mobile menu — phones now use the dedicated MobileShell (contextual
+          header + bottom tabs + Explore panel); this legacy dropdown remains
+          only for the in-between tablet band (md–lg). */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div

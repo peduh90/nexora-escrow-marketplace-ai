@@ -88,7 +88,7 @@ const ProductDetails = lazy(() => import("./pages/ProductDetails.tsx"));
 const PrivacyPage = lazy(() => import("./pages/Privacy.tsx"));
 const SellerProfilePage = lazy(() => import("./pages/SellerProfile.tsx"));
 // Components
-import MobileBottomNav from "@/components/MobileBottomNav";
+import MobileShell from "@/components/mobile/MobileShell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 const TermsPage = lazy(() => import("./pages/Terms.tsx"));
 // Admin panel
@@ -407,7 +407,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
-          <MobileBottomNav />
+          <MobileShell />
         </BrowserRouter>
         <Toaster />
       </ConvexAuthProvider>

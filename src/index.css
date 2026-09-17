@@ -45,6 +45,13 @@
   --color-nx-surface: #0C0C14;
   --color-nx-surface-elevated: #14141F;
   --color-nx-glass: rgba(20, 20, 31, 0.7);
+  /* Page + chrome tokens used across marketplace, chat and dashboard pages.
+     These were referenced by classes long before they were defined — defining
+     them here fixes every silently-unstyled surface at once. */
+  --color-nx-bg: #05050A;
+  --color-nx-card: #0A0A12;
+  --color-nx-border: rgba(255, 255, 255, 0.06);
+  --color-nx-blue: #60A5FA;
 }
 
 /* Nexora Market — Dark Futuristic Theme */
@@ -216,6 +223,36 @@
 /* Mobile safe area for bottom nav */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ─── MOBILE-FIRST SHELL ──────────────────────────────────────────────
+   The phone experience has its own navigation architecture (contextual
+   MobileHeader + fixed bottom tab bar + full-screen panels). The desktop
+   NavigationBar keeps its hamburger-free spacious layout on large screens
+   and steps aside below lg — the mobile shell owns small screens. */
+@media (max-width: 1023px) {
+  .nx-desktop-nav {
+    display: none !important;
+  }
+}
+
+/* Content clearance: pages must never end underneath the fixed bottom tab
+   bar. Applied once globally instead of patching 100+ page files. */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Sheet scroll containment: an open mobile panel scrolls its own content,
+   never the page behind it. */
+.nx-sheet-open {
+  overflow: hidden;
+  touch-action: none;
+}
+.nx-sheet-panel {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ─── Low-data mode (#56) ─────────────────────────────────────────────────
