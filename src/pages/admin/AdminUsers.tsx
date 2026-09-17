@@ -40,13 +40,42 @@ export default function AdminUsers() {
   };
   const filtered = users.filter((u: any) => {
     const role = effectiveRole(u);
-    if (filter === "Buyers" && role !== "buyer") return false;
-    if (filter === "Sellers" && role !== "seller") return false;
-    if (filter === "Freelancers" && role !== "freelancer") return false;
-    if (filter === "Employers" && role !== "employer") return false;
-    if (filter === "Suspended" && u.accountStatus !== "suspended") return false;
-    if (filter === "Admins" && role !== "admin") return false;
-    if (filter === "Service Providers" && !(u.serviceType || u.transportType)) return false;
+    switch (filter) {
+      // ─── Marketplace groups: each marketplace gets its own rows ───
+      case "Product Sellers":
+        if (role !== "seller" || (u.productListings ?? 0) === 0) return false;
+        break;
+      case "Digital Sellers":
+        if (role !== "seller" || (u.freelanceListings ?? 0) === 0) return false;
+        break;
+      case "Freelancers":
+        if (role !== "freelancer") return false;
+        break;
+      case "Employers":
+        if (role !== "employer") return false;
+        break;
+      case "Buyers":
+        if (role !== "buyer") return false;
+        break;
+      case "Service Providers":
+        if (!u.serviceType) return false;
+        break;
+      case "Transport Providers":
+        if (!u.transportType) return false;
+        break;
+      case "AI Taskers":
+        if (!(u.aiTasksPosted > 0) && !(u.aiTasksWorked > 0)) return false;
+        break;
+      case "Creators":
+        if (!u.creatorStatus) return false;
+        break;
+      case "Suspended":
+        if (u.accountStatus !== "suspended") return false;
+        break;
+      case "Admins":
+        if (role !== "admin") return false;
+        break;
+    }
     if (search && !(u.name || "").toLowerCase().includes(search.toLowerCase()) && !(u.email || "").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -59,6 +88,12 @@ export default function AdminUsers() {
   // Service/transport providers (any marketplace role — provider is a layer,
   // not a separate account type).
   const providerCount = counts?.serviceProviders ?? users.filter((u: any) => u.serviceType || u.transportType).length;
+  // Marketplace-group counts for the dedicated filter tabs.
+  const productSellerCount = users.filter((u: any) => effectiveRole(u) === "seller" && (u.productListings ?? 0) > 0).length;
+  const digitalSellerCount = users.filter((u: any) => effectiveRole(u) === "seller" && (u.freelanceListings ?? 0) > 0).length;
+  const transportCount = users.filter((u: any) => !!u.transportType).length;
+  const aiTaskerCount = users.filter((u: any) => u.aiTasksPosted > 0 || u.aiTasksWorked > 0).length;
+  const creatorCount = users.filter((u: any) => !!u.creatorStatus).length;
 
   const handleSuspend = async () => {
     if (!suspending) return;
@@ -98,10 +133,14 @@ export default function AdminUsers() {
         {[
           { label: "Total Users", value: (counts?.total ?? users.length).toString(), color: "#8B5CF6" },
           { label: "Buyers", value: buyerCount.toString(), color: "#06B6D4" },
-          { label: "Sellers", value: sellerCount.toString(), color: "#10B981" },
+          { label: "Product Sellers", value: sellerCount.toString(), color: "#10B981" },
           { label: "Freelancers", value: freelancerCount.toString(), color: "#34D399" },
           { label: "Employers", value: employerCount.toString(), color: "#F59E0B" },
           { label: "Service Providers", value: providerCount.toString(), color: "#22D3EE" },
+          { label: "Digital Sellers", value: digitalSellerCount.toString(), color: "#A78BFA" },
+          { label: "Transport", value: transportCount.toString(), color: "#38BDF8" },
+          { label: "AI Taskers", value: aiTaskerCount.toString(), color: "#818CF8" },
+          { label: "Creators", value: creatorCount.toString(), color: "#E879F9" },
           { label: "Suspended", value: suspendedCount.toString(), color: "#EF4444" },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-white/5 bg-[#0A0A12]">
@@ -118,7 +157,7 @@ export default function AdminUsers() {
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0A12] border border-white/5 text-sm text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none" />
         </div>
         <div className="flex gap-1 flex-wrap">
-          {["All", "Buyers", "Sellers", "Freelancers", "Employers", "Service Providers", "Suspended", "Admins"].map(f => (
+          {["All", "Buyers", "Product Sellers", "Digital Sellers", "Freelancers", "Employers", "Service Providers", "Transport Providers", "AI Taskers", "Creators", "Suspended", "Admins"].map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${filter === f ? "bg-nx-violet/10 text-nx-violet" : "text-white/30 hover:text-white/50 bg-[#0A0A12] border border-white/5"}`}>{f}</button>
           ))}
         </div>
@@ -205,7 +244,15 @@ export default function AdminUsers() {
                       )}
                     </td>
                     <td className="px-4 py-3.5 hidden xl:table-cell">
-                      {user.serviceType || user.transportType ? (
+                      {user.aiTasksPosted > 0 || user.aiTasksWorked > 0 ? (
+                        <button
+                          onClick={() => setFilter("AI Taskers")}
+                          title={`${user.aiTasksPosted || 0} posted · ${user.aiTasksWorked || 0} worked`}
+                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-medium bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20 transition-colors"
+                        >
+                          AI · {user.aiTasksPosted || 0}p/{user.aiTasksWorked || 0}w
+                        </button>
+                      ) : user.serviceType || user.transportType ? (
                         <button
                           onClick={() => navigate("/admin/services")}
                           title="Open Services & Transport management"

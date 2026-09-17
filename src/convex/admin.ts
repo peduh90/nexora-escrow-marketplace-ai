@@ -256,6 +256,10 @@ export const getAllUsers = query({
     // Freelance layer: skills/title/rating from freelanceProfiles so the admin
     // users table can show what a freelancer actually does.
     const freelanceProfiles = await ctx.db.query("freelanceProfiles").collect();
+    // AI Tasker layer: how many AI-assisted tasks each user posted or worked.
+    const aiTasks = await ctx.db.query("aiTasks").collect();
+    // Creator program: application/approval state per user.
+    const creatorRecords = await ctx.db.query("referralCreators").collect();
 
     return users.map((u) => {
       const userListings = listings.filter((l) => l.sellerId === u._id);
@@ -305,6 +309,11 @@ export const getAllUsers = query({
         freelanceSkills: (flProfile as any)?.skills,
         freelanceStatus: (flProfile as any)?.status,
         freelanceVerified: !!(flProfile as any)?.isVerified,
+        // AI Tasker activity (freelance layer — not a separate role).
+        aiTasksPosted: aiTasks.filter((t: any) => (t as any).posterId === u._id).length,
+        aiTasksWorked: aiTasks.filter((t: any) => (t as any).taskerId === u._id).length,
+        // Creator program state.
+        creatorStatus: (creatorRecords.find((c: any) => (c as any).userId === u._id) as any)?.status,
       };
     });
   },

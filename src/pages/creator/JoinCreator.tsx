@@ -40,7 +40,12 @@ export default function JoinCreator() {
   }, [code, trackClick]);
 
   // Carry the referral code into whichever registration panel the user picks.
-  const registerUrl = (path: string) => `${path}?ref=${encodeURIComponent(code)}&returnTo=/creator`;
+  // creator=1 opens the DEDICATED creator signup form — never the generic
+  // "Choose Your Path" role cards.
+  const registerUrl = (path: string) =>
+    path === "/auth"
+      ? `/auth/creator?ref=${encodeURIComponent(code)}&returnTo=/creator`
+      : `${path}?creator=1&ref=${encodeURIComponent(code)}&returnTo=/creator`;
 
   const copyCode = async () => {
     try {
@@ -129,7 +134,7 @@ export default function JoinCreator() {
             ) : (
               <div className="mt-8 text-sm text-white/40">
                 No referral code? You can still join —{" "}
-                <a href="/auth" className="text-violet-300 underline underline-offset-4 hover:text-violet-200">create a free account</a>{" "}
+                <a href="/auth?creator=1&returnTo=/creator" className="text-violet-300 underline underline-offset-4 hover:text-violet-200">create a free account</a>{" "}
                 and apply from your dashboard.
               </div>
             )}

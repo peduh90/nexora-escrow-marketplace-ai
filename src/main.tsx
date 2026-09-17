@@ -312,6 +312,8 @@ createRoot(document.getElementById("root")!).render(
               {/* Creator / Referral program: public landing, protected dashboard,
                   admin management */}
               <Route path="/join" element={<JoinCreator />} />
+              {/* Dedicated creator registration panel — skips "Choose Your Path". */}
+              <Route path="/auth/creator" element={<AuthPage creatorFirst redirectAfterAuth="/creator" />} />
               <Route path="/creator" element={<RequireAuth><CreatorDashboard /></RequireAuth>} />
               {/* Embedded Creator Referral Agreement: sign + agree → admin review. */}
               <Route path="/creator/agreement" element={<CreatorAgreement />} />
