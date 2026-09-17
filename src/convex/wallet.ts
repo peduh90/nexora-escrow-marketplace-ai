@@ -385,7 +385,17 @@ export const createOrder = mutation({
     deliveryCounty: v.string(),
     deliveryTown: v.string(),
     deliveryAddress: v.string(),
-    paymentMethod: v.union(v.literal("wallet"), v.literal("mpesa")),
+    paymentMethod: v.union(
+      v.literal("wallet"),
+      v.literal("mpesa"),
+      v.literal("airtel_money"),
+      v.literal("card"),
+    ),
+    // Unified payment engine (payments.ts): NX-TX-... reference of a payment
+    // row that must already be VERIFIED server-side (status === "paid").
+    // Required when paymentMethod is "airtel_money" or "card" — the escrow
+    // will not fund without it. Works for "mpesa" too (preferred path).
+    paymentReference: v.optional(v.string()),
     // Delivery fee shown at checkout — charged in the wallet path so the
     // buyer pays exactly the total displayed before confirmation.
     deliveryFee: v.optional(v.number()),
@@ -445,6 +455,7 @@ export const createOrder = mutation({
     const sellerCommission = commissionResolved.breakdown;
     const buyerProtection = protectionResolved.breakdown;
 
+    let unifiedPaymentId: any = null; // paymentTransactions row backing this escrow
     const platformFee = sellerCommission.fee; // seller-side commission
     const buyerFeeAmount = buyerProtection.fee; // buyer-side protection fee
     const deliveryFeeAmount =
@@ -493,6 +504,52 @@ export const createOrder = mutation({
         });
       } catch (err) {
         console.error("[fees] mpesa collection ledger insert failed:", err);
+      }
+    }
+
+    // ── Unified payment engine gate (airtel_money / card / unified mpesa) ──
+    // The escrow funds only from a paymentTransactions row that the BACKEND
+    // verified as paid (payments.verifyPayment / webhook / reconciliation).
+    // A tampered client can never create an escrow out of thin air.
+    if (args.paymentReference) {
+      const payment = await ctx.db
+        .query("paymentTransactions")
+        .withIndex("by_reference", (q: any) => q.eq("reference", args.paymentReference))
+        .first();
+      if (!payment) {
+        throw new ConvexError("Payment not found — complete the payment first.");
+      }
+      if (payment.status !== "paid") {
+        throw new ConvexError("Payment not confirmed yet — try again in a moment.");
+      }
+      if (payment.payerToken && identity.subject !== payment.payerToken) {
+        throw new ConvexError("Payment verification does not match this account.");
+      }
+      if (payment.escrowId) {
+        throw new ConvexError("This payment has already been used for an order.");
+      }
+      // Link the payment to this escrow + ledger the collection.
+      await ctx.db.patch(payment._id as any, {
+        escrowId: undefined, // patched with the real escrow id below
+        updatedAt: Date.now(),
+      } as any);
+      unifiedPaymentId = payment._id;
+      try {
+        await recordFeeEarning(ctx.db, {
+          sourceType: `${payment.provider}_order_collection`,
+          marketplace,
+          feeType: "buyer_protection",
+          ruleKey: protectionResolved.ruleKey,
+          ruleRate: protectionResolved.ruleRate,
+          amount: buyerFeeAmount + deliveryFeeAmount + args.amount,
+          baseAmount: args.amount,
+          escrowId: undefined,
+          buyerId: buyer._id,
+          sellerId: args.sellerId,
+          description: `${payment.provider} collection (incl. fees) for "${listing.title}" — ref ${payment.reference}`,
+        });
+      } catch (err) {
+        console.error("[fees] unified collection ledger insert failed:", err);
       }
     }
 
@@ -553,6 +610,14 @@ export const createOrder = mutation({
       buyerFee: buyerFeeAmount,
       marketplace,
     });
+
+    // Bind the unified payment row to the escrow it funds (one-time use).
+    if (unifiedPaymentId) {
+      await ctx.db.patch(unifiedPaymentId, {
+        escrowId: String(escrowId),
+        updatedAt: Date.now(),
+      } as any);
+    }
 
     // Ledger: the buyer protection fee is realized the moment escrow is funded.
     try {

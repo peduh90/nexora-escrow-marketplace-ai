@@ -1751,6 +1751,78 @@ const schema = defineSchema(
       .index("by_source", ["sourceType"])
       .index("by_created", ["createdAt"])
       .index("by_marketplace", ["marketplace"]),
+
+    // ─── UNIFIED PAYMENT TRANSACTIONS (multi-provider) ──────────────
+    // One row per payment attempt across every provider (mpesa, airtel_money,
+    // card). Idempotent by `reference`; provider statuses reconcile from
+    // webhooks AND server-side re-queries. `feeSnapshot` is immutable once
+    // written - later rule edits never change what was charged.
+    paymentTransactions: defineTable({
+      reference: v.string(), // NX-TX-... idempotency key (unique per attempt)
+      provider: v.union(
+        v.literal("mpesa"),
+        v.literal("airtel_money"),
+        v.literal("card"),
+      ),
+      purpose: v.string(), // "order" | "deposit" (extensible)
+      payerId: v.string(),
+      payerToken: v.optional(v.string()), // auth subject of the payer (audit)
+      amount: v.number(),
+      currency: v.string(),
+      status: v.union(
+        v.literal("initiated"),
+        v.literal("awaiting_confirmation"),
+        v.literal("paid"),
+        v.literal("failed"),
+        v.literal("cancelled"),
+        v.literal("refunded"),
+        v.literal("partially_refunded"),
+      ),
+      providerRef: v.optional(v.string()), // CheckoutRequestID / airtel id / flw link
+      providerStatus: v.optional(v.string()),
+      providerData: v.optional(v.string()), // JSON of safe response fields
+      checkoutUrl: v.optional(v.string()), // hosted checkout (card)
+      msisdn: v.optional(v.string()),
+      escrowId: v.optional(v.string()),
+      verifiedAt: v.optional(v.number()), // server-verified payment truth
+      webhookReceivedAt: v.optional(v.number()),
+      reconciledAt: v.optional(v.number()),
+      failureReason: v.optional(v.string()),
+      feeSnapshot: v.optional(v.record(v.string(), v.number())),
+      refundedAmount: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_reference", ["reference"])
+      .index("by_provider_ref", ["providerRef"])
+      .index("by_payer", ["payerId"])
+      .index("by_status", ["status"])
+      .index("by_provider", ["provider"])
+      .index("by_created", ["createdAt"]),
+
+    // Refund requests against a unified payment transaction. Requested by
+    // admins (dispute outcomes) or the system; executed through the original
+    // provider and reconciled from the provider callback/status.
+    refundRequests: defineTable({
+      paymentTxId: v.string(),
+      amount: v.number(),
+      reason: v.string(),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("processing"),
+        v.literal("completed"),
+        v.literal("failed"),
+        v.literal("rejected"),
+      ),
+      requestedBy: v.string(), // admin userId or "system"
+      providerRefundId: v.optional(v.string()),
+      providerStatus: v.optional(v.string()),
+      escrowId: v.optional(v.string()),
+      createdAt: v.number(),
+      completedAt: v.optional(v.number()),
+    })
+      .index("by_payment", ["paymentTxId"])
+      .index("by_status", ["status"]),
   },
   {
     schemaValidation: false,

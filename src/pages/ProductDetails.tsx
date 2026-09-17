@@ -8,7 +8,7 @@ import { shareListing } from "@/lib/share";
 import {
   Shield, Heart, Share2, MessageSquare, ShoppingCart, ArrowLeft, Star, MapPin, Clock,
   CheckCircle2, Truck, ChevronRight, Package, Eye, X, Minus, Plus, Loader2, Send, MessageCircle, Phone, FileText,
-  Boxes, Hammer, Gift,
+  Boxes, Hammer, Gift, Lock,
 } from "lucide-react";
 import { getWhatsAppSellerUrl, getWhatsAppSupportUrl, openWhatsApp, normalizeKenyanPhone } from "@/lib/whatsapp";
 import { getViewerKey } from "@/lib/viewer";
@@ -86,11 +86,18 @@ export default function ProductDetails() {
   const [deliveryCounty, setDeliveryCounty] = useState("");
   const [deliveryTown, setDeliveryTown] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "mpesa">("wallet");
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "mpesa" | "airtel_money" | "card">("wallet");
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [mpesaStep, setMpesaStep] = useState<"idle" | "sending" | "waiting" | "confirming" | "done" | "error">("idle");
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [mpesaError, setMpesaError] = useState("");
+  // ── Unified payment engine (Airtel Money / Card) ──
+  const providerAvailability = useQuery(api.paymentStore.providerAvailability, {});
+  const initiatePayment = useAction(api.payments.initiatePayment as any);
+  const verifyUnifiedPayment = useAction(api.payments.verifyPayment as any);
+  const [airtelPhone, setAirtelPhone] = useState("");
+  const [upStep, setUpStep] = useState<"idle" | "sending" | "waiting" | "confirming" | "done" | "error">("idle");
+  const [upError, setUpError] = useState("");
 
   // ── Structured landmark delivery (#72) + saved addresses (#73) ──
   const [deliveryArea, setDeliveryArea] = useState("");
@@ -129,6 +136,72 @@ export default function ProductDetails() {
       ) * (listing as any).ratePerDay + ((listing as any).depositAmount ?? 0)
     : 0;
   const selectedHub = hubs?.find((h: any) => h._id === selectedHubId);
+
+  // ── Card checkout return handler ──
+  // Flutterwave redirects back to ?paid=1&ref=NX-TX-...; the order payload was
+  // stashed in sessionStorage before the redirect. Verify server-side, then
+  // create the escrow order exactly like the in-app flows do.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (!params.get("paid") || !ref) return;
+    const key = "nx_pending_order:" + ref;
+    const raw = sessionStorage.getItem(key);
+    if (!raw) {
+      // Unknown session (e.g. paid on another device) — payment reconciles via
+      // webhook + admin view; show success but no order to avoid double-charge.
+      setOrderSuccess(true);
+      return;
+    }
+    const payload = JSON.parse(raw);
+    sessionStorage.removeItem(key);
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await verifyUnifiedPayment({ reference: ref });
+        if (cancelled) return;
+        if (status.status !== "paid") {
+          if (status.status === "failed") {
+            alert("Your card payment failed — no order was created. Please try again.");
+          }
+          return;
+        }
+        await createOrder({
+          listingId: payload.listingId,
+          sellerId: payload.sellerId,
+          amount: payload.amount,
+          deliveryCounty: payload.deliveryCounty,
+          deliveryTown: payload.deliveryTown,
+          deliveryAddress: payload.deliveryAddress,
+          paymentMethod: "card",
+          paymentReference: ref,
+          deliveryFee: payload.deliveryFee,
+          deliveryArea: payload.deliveryArea,
+          deliveryLandmark: payload.deliveryLandmark,
+          deliveryBuilding: payload.deliveryBuilding,
+          deliveryFloorUnit: payload.deliveryFloorUnit,
+          deliveryInstructions: payload.deliveryInstructions,
+          deliveryPin: payload.deliveryPin,
+          deliveryAddressId: payload.deliveryAddressId,
+          ...(payload.recipientName ? {
+            recipientName: payload.recipientName,
+            recipientPhone: payload.recipientPhone,
+            recipientCounty: payload.recipientCounty,
+            recipientTown: payload.recipientTown,
+            giftNote: payload.giftNote,
+          } : {}),
+        });
+        if (cancelled) return;
+        setOrderSuccess(true);
+        // Clean the URL so refresh can't re-trigger.
+        window.history.replaceState({}, "", window.location.pathname);
+      } catch (err: any) {
+        console.error("Card return order failed:", err);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleShare = async () => {
     if (!listing) return;
@@ -365,6 +438,132 @@ export default function ProductDetails() {
       } catch (err: any) {
         setMpesaStep("error");
         setMpesaError(err.message || "Failed to initiate M-Pesa payment. Please try again.");
+        setOrdering(false);
+      }
+      return;
+    }
+
+    // ── Unified payment engine: Airtel Money & Card ──
+    if (paymentMethod === "airtel_money" || paymentMethod === "card") {
+      const provider = paymentMethod;
+      if (provider === "airtel_money" && !airtelPhone) {
+        setUpError("Please enter your Airtel Money number.");
+        return;
+      }
+      // Provider availability comes from the server (env-driven, reactive).
+      if (providerAvailability && !providerAvailability[provider]) {
+        setUpError(
+          provider === "airtel_money"
+            ? "Airtel Money is coming soon — not configured yet."
+            : "Card payments are coming soon — not configured yet.",
+        );
+        return;
+      }
+      setOrdering(true);
+      setUpStep("sending");
+      setUpError("");
+      try {
+        const initiated = await initiatePayment({
+          provider,
+          purpose: "order",
+          amount: totalAmount,
+          marketplace: (listing as any).marketplace === "freelance" ? "freelance" : "product",
+          msisdn: provider === "airtel_money" ? airtelPhone : undefined,
+          listingTitle: listing.title,
+          extraCharge:
+            (collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee) || 0,
+          redirectUrl:
+            provider === "card"
+              ? `${window.location.origin}/product/${listing._id}?paid=1`
+               : undefined,
+        });
+
+        // ── Card: hosted checkout — stash order payload, open Flutterwave ──
+        if (provider === "card" && initiated.checkoutUrl) {
+          sessionStorage.setItem(
+            "nx_pending_order:" + initiated.reference,
+            JSON.stringify({
+              listingId: listing._id,
+              sellerId: listing.sellerId,
+              amount: totalAmount,
+              deliveryCounty,
+              deliveryTown,
+              deliveryAddress,
+              deliveryFee: collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee,
+              deliveryArea: deliveryArea || undefined,
+              deliveryLandmark: deliveryLandmark || undefined,
+              deliveryBuilding: deliveryBuilding || undefined,
+              deliveryFloorUnit: deliveryFloorUnit || undefined,
+              deliveryInstructions: deliveryInstructions || undefined,
+              deliveryPin: deliveryPin || undefined,
+              deliveryAddressId: selectedAddressId ?? undefined,
+              recipientName: recipientName || undefined,
+              recipientPhone: recipientPhone || undefined,
+              recipientCounty: recipientCounty || undefined,
+              recipientTown: recipientTown || undefined,
+              giftNote: giftNote || undefined,
+            }),
+          );
+          window.location.href = initiated.checkoutUrl;
+          return;
+        }
+
+        // ── Airtel: USSD push — poll server-verified status ──
+        setUpStep("waiting");
+        let attempts = 0;
+        const pollUnified = async () => {
+          attempts++;
+          if (attempts > 24) {
+            setUpStep("error");
+            setUpError("Payment timed out — if you completed the payment, the order will be created automatically within minutes.");
+            setOrdering(false);
+            return;
+
+          }
+          try {
+            const status = await verifyUnifiedPayment({ reference: initiated.reference });
+            if (status.status === "paid") {
+              setUpStep("confirming");
+              await createOrder({
+                listingId: listing._id,
+                sellerId: listing.sellerId,
+                amount: totalAmount,
+                deliveryCounty,
+                deliveryTown,
+                deliveryAddress,
+                paymentMethod: provider,
+                paymentReference: initiated.reference,
+                deliveryFee: collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee,
+                deliveryArea: deliveryArea || undefined,
+                deliveryLandmark: deliveryLandmark || undefined,
+                deliveryBuilding: deliveryBuilding || undefined,
+                deliveryFloorUnit: deliveryFloorUnit || undefined,
+                deliveryInstructions: deliveryInstructions || undefined,
+                deliveryPin: deliveryPin || undefined,
+                deliveryAddressId: selectedAddressId ?? undefined,
+                ...(isGift ? { recipientName: recipientName || undefined, recipientPhone: recipientPhone || undefined, recipientCounty: recipientCounty || undefined, recipientTown: recipientTown || undefined, giftNote: giftNote || undefined } : {}),
+              });
+              await persistAddressIfRequested();
+              await startRecurringIfRequested();
+              setUpStep("done");
+              setOrderSuccess(true);
+              setShowCheckout(false);
+              setOrdering(false);
+            } else if (status.status === "failed") {
+              setUpStep("error");
+              setUpError(status.reason || "Payment failed — please try again.");
+              setOrdering(false);
+            } else {
+              setTimeout(pollUnified, 5000);
+           }
+          } catch {
+            setTimeout(pollUnified, 5000);
+          }
+        };
+        setTimeout(pollUnified, 5000);
+      } catch (err: any) {
+        setUpStep("error");
+        setUpError(err.message || "Failed to start the payment. Please try again.");
         setOrdering(false);
       }
       return;
@@ -1053,7 +1252,53 @@ export default function ProductDetails() {
                   <p className="text-[11px] text-white/30">Pay via M-Pesa STK Push</p>
                 </div>
               </label>
+              <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${paymentMethod === "airtel_money" ? "border-nx-violet/30 bg-nx-violet/5" : "border-white/5 bg-white/[0.02]"} ${providerAvailability && !providerAvailability.airtel_money ? "opacity-50" : ""}`}>
+                <input type="radio" name="payment" value="airtel_money" checked={paymentMethod === "airtel_money"} onChange={() => setPaymentMethod("airtel_money")} className="text-nx-violet" />
+                <div>
+                  <p className="text-sm text-white">Airtel Money</p>
+                  <p className="text-[11px] text-white/30">{providerAvailability && !providerAvailability.airtel_money ? "Coming soon" : "Pay via Airtel Money push"}</p>
+                </div>
+              </label>
+              <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${paymentMethod === "card" ? "border-nx-violet/30 bg-nx-violet/5" : "border-white/5 bg-white/[0.02]"} ${providerAvailability && !providerAvailability.card ? "opacity-50" : ""}`}>
+                <input type="radio" name="payment" value="card" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} className="text-nx-violet" />
+                <div>
+                  <p className="text-sm text-white">Visa / Mastercard</p>
+                  <p className="text-[11px] text-white/30">{providerAvailability && !providerAvailability.card ? "Coming soon" : "Secure card checkout · 3D Secure"}</p>
+                </div>
+              </label>
             </div>
+
+            {/* Airtel Money phone input */}
+            {paymentMethod === "airtel_money" && (
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-white/50 mb-1.5">Airtel Money Phone Number</label>
+                <input type="tel" value={airtelPhone} onChange={(e) => setAirtelPhone(e.target.value)} placeholder="0732 345 678"
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/30 focus:outline-none" />
+                <p className="text-[11px] text-white/20 mt-1">You'll receive a payment prompt on this number</p>
+              </div>
+            )}
+
+            {/* Card notice */}
+            {paymentMethod === "card" && (
+              <div className="mb-4 p-3 rounded-lg text-sm bg-nx-cyan/5 border border-nx-cyan/10 text-nx-cyan flex items-center gap-2">
+                <Lock className="w-4 h-4" /> You'll complete payment on a secure hosted page — your card details never touch Nexora.
+              </div>
+            )}
+
+            {/* Unified payment status (Airtel) */}
+            {paymentMethod === "airtel_money" && upStep !== "idle" && (
+              <div className={`mb-4 p-3 rounded-lg text-sm flex items-center gap-2 ${
+                upStep === "error" ? "bg-red-400/5 border border-red-400/10 text-red-400" :
+                upStep === "done" ? "bg-emerald-400/5 border border-emerald-400/10 text-emerald-400" :
+                "bg-nx-cyan/5 border border-nx-cyan/10 text-nx-cyan"
+              }`}>
+                {upStep === "sending" && <><Loader2 className="w-4 h-4 animate-spin" /> Sending Airtel Money prompt to your phone...</>}
+                {upStep === "waiting" && <><Loader2 className="w-4 h-4 animate-spin" /> Enter your Airtel Money PIN on your phone...</>}
+                {upStep === "confirming" && <><Loader2 className="w-4 h-4 animate-spin" /> Payment confirmed! Creating your order...</>}
+                {upStep === "done" && <><CheckCircle2 className="w-4 h-4" /> Payment successful! Order placed.</>}
+                {upStep === "error" && <>{upError}</>}
+              </div>
+            )}
 
             {/* M-Pesa phone input */}
             {paymentMethod === "mpesa" && (
@@ -1090,9 +1335,9 @@ export default function ProductDetails() {
 
             <p className="text-[11px] text-white/20 mb-4">🛡️ Payment is held in escrow until you confirm delivery.</p>
 
-            <button onClick={handleBuyNow} disabled={ordering || !deliveryCounty || !deliveryTown || !deliveryAddress || (paymentMethod === "mpesa" && mpesaStep !== "idle")}
+            <button onClick={handleBuyNow} disabled={ordering || !deliveryCounty || !deliveryTown || !deliveryAddress || (paymentMethod === "mpesa" && mpesaStep !== "idle") || (paymentMethod === "airtel_money" && upStep !== "idle" && upStep !== "error")}
               className="w-full py-3 rounded-xl bg-nx-violet text-white font-semibold text-sm hover:bg-nx-violet/80 transition-colors disabled:opacity-30 flex items-center justify-center gap-2">
-              {ordering ? <><Loader2 className="w-4 h-4 animate-spin" /> {mpesaStep === "waiting" ? "Waiting for M-Pesa..." : "Processing..."}</> : paymentMethod === "mpesa" ? `Pay KES ${grandTotal.toLocaleString()} via M-Pesa` : `Pay KES ${grandTotal.toLocaleString()}`}
+              {ordering ? <><Loader2 className="w-4 h-4 animate-spin" /> {paymentMethod === "airtel_money" && upStep === "waiting" ? "Waiting for Airtel Money..." : mpesaStep === "waiting" ? "Waiting for M-Pesa..." : "Processing..."}</> : paymentMethod === "mpesa" ? `Pay KES ${grandTotal.toLocaleString()} via M-Pesa` : paymentMethod === "airtel_money" ? `Pay KES ${grandTotal.toLocaleString()} via Airtel Money` : paymentMethod === "card" ? `Pay KES ${grandTotal.toLocaleString()} by Card` : `Pay KES ${grandTotal.toLocaleString()}`}
             </button>
           </div>
         </div>

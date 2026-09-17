@@ -2,10 +2,21 @@ import { httpRouter } from "convex/server";
 import { auth } from "./auth";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { processFlwWebhook } from "./payments";
 
 const http = httpRouter();
 
 auth.addHttpRoutes(http);
+
+/**
+ * Flutterwave card-payment webhook — verified via the verif-hash secret
+ * header, then re-verified against the API before any state flips.
+ */
+http.route({
+  path: "/payments/flw/webhook",
+  method: "POST",
+  handler: httpAction((ctx, request) => processFlwWebhook(ctx, request)),
+});
 
 /**
  * M-Pesa B2C result callback — the payout completion truth.
