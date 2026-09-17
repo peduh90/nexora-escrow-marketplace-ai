@@ -6,8 +6,9 @@ import { useNavigate } from "react-router";
 import VerificationCard from "@/components/VerificationCard";
 import {
   Package, ShoppingCart, DollarSign, TrendingUp, Plus,
-  ArrowRight, Wallet, Shield, Loader2,
+  ArrowRight, Wallet, Shield, Loader2, Rocket, CheckCircle2, Circle,
 } from "lucide-react";
+import { useQuery as useConvexQuery } from "convex/react";
 
 interface EscrowRow {
   _id: string;
@@ -24,6 +25,66 @@ export default function SellerDashboard() {
   const walletBalance = useQuery(api.wallet.getWalletBalance);
   // Scoped to this seller's account — returns only their escrow orders.
   const escrows = useQuery(api.wallet.getEscrowBySeller);
+  // Registration checklist — its hasPublishedListing flag is the FINAL step
+  // of seller registration: publish a product, then the dashboard opens.
+  const verification = useConvexQuery(api.verification.getMyVerificationStatus);
+
+  // ─── FINISH-REGISTRATION GATE ───
+  // A seller who has not published ANY product/service yet sees only this
+  // screen — the dashboard itself unlocks with the first genuine listing.
+  // The flag is computed server-side from real listings (60+ char
+  // descriptions), so an empty or draft store never passes.
+  const hasPublished =
+    verification === undefined ? undefined : (verification as any)?.hasPublishedListing === true;
+  if (hasPublished === false) {
+    const reqs = ((verification as any)?.requirements ?? []) as Array<any>;
+    const reqDone = (key: string) => !!reqs.find((r) => r.key === key)?.done;
+    return (
+      <SellerLayout>
+        <div className="max-w-2xl mx-auto py-10 md:py-16 px-4">
+          <div className="rounded-2xl border border-nx-violet/25 bg-gradient-to-br from-nx-violet/[0.08] via-transparent to-transparent p-6 md:p-8">
+            <div className="w-12 h-12 rounded-2xl bg-nx-violet/15 border border-nx-violet/25 flex items-center justify-center">
+              <Rocket className="w-6 h-6 text-nx-violet" />
+            </div>
+            <h1 className="mt-4 text-2xl font-bold text-white">One last step to finish registration</h1>
+            <p className="mt-2 text-sm text-white/50 leading-relaxed">
+              Your account is active, {user?.businessName || user?.name || "seller"} — publish your
+              first product or service and your seller dashboard opens instantly. This is what
+              customers (and escrow) need to see.
+            </p>
+
+            {/* Registration progress — the publish step is the only one left */}
+            <div className="mt-6 space-y-2">
+              {[
+                { label: "Account created & verified", done: reqDone("email") && reqDone("name") && reqDone("phone") },
+                { label: "Business location set", done: reqDone("profile") },
+                { label: "First product or service published", done: reqDone("listing") },
+              ].map((r) => (
+                <div key={r.label} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                  {r.done ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  ) : (
+                    <Circle className="w-5 h-5 text-white/25 shrink-0" />
+                  )}
+                  <span className={`text-sm ${r.done ? "text-white/45 line-through" : "text-white font-medium"}`}>{r.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => navigate("/seller/add-product")}
+              className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-nx-violet hover:bg-nx-violet/85 px-6 py-3.5 font-semibold text-white transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Publish your first product
+            </button>
+            <p className="mt-3 text-[11px] text-white/30 text-center">
+              Takes ~2 minutes — title, price, description, photo. Your dashboard unlocks the moment it's live.
+            </p>
+          </div>
+        </div>
+      </SellerLayout>
+    );
+  }
 
   const myEscrows = (escrows ?? []) as unknown as EscrowRow[];
   const activeProducts = (listings ?? []).filter((l) => l.status === "active");
@@ -36,7 +97,11 @@ export default function SellerDashboard() {
     .reduce((sum: number, e) => sum + (e.amount || 0), 0);
   const recentOrders = myEscrows.slice(0, 5);
 
-  const isLoading = listings === undefined || walletBalance === undefined || escrows === undefined;
+  const isLoading =
+    listings === undefined ||
+    walletBalance === undefined ||
+    escrows === undefined ||
+    verification === undefined;
 
   if (isLoading) {
     return (

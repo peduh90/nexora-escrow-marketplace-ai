@@ -184,6 +184,9 @@ async function buildChecklist(ctx: any, user: any) {
     sellerActivatedAt: u.sellerActivatedAt,
     employerActivatedAt: u.employerActivatedAt,
     kycStatus,
+    // Seller registration is FINISHED only when the first product/service is
+    // actually published — the dashboard gate reads this flag.
+    hasPublishedListing: role === "seller" ? listings.hasAny : undefined,
     genuineListings: role === "seller" ? (listings.hasAny ? 1 : 0) : undefined,
     sellsProducts: role === "seller" ? listings.hasProduct : undefined,
     sellsFreelance: role === "seller" ? listings.hasFreelance : undefined,
