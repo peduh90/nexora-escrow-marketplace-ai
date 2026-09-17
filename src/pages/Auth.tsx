@@ -39,6 +39,8 @@ interface AuthProps {
   sellerFirst?: boolean;
   /** Dedicated freelance (Writer/Freelancer) registration panel. */
   freelanceFirst?: boolean;
+  /** Dedicated creator registration panel — /join's apply buttons land here. */
+  creatorFirst?: boolean;
 }
 
 /**
@@ -103,7 +105,7 @@ type AuthStep =
   | "forgotCode"
   | "forgotNewPassword";
 
-function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}) {
+function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: AuthProps = {}) {
   const { isLoading: authLoading, isAuthenticated, signIn, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -112,6 +114,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   const redirect = resolveRedirectAfterAuth(searchParams.get("returnTo"), "/auth");
   const isAdminLogin = redirect === "/admin";
   const isSellerRegister = sellerFirst === true;
+  // Dedicated creator panel — the Creator Program counterpart of the seller
+  // panel: pressing "Apply as a creator" on /join lands straight on the
+  // creator account form, never the Choose Your Path cards.
+  const isCreatorRegister = creatorFirst === true || searchParams.get("creator") === "1";
   // Dedicated freelance panel — the Writer/Freelancer counterpart of the
   // seller panel: no store, no role cards, straight to the freelance form.
   const isFreelanceRegister = searchParams.get("freelance") === "1" || freelanceFirst === true;
@@ -122,14 +128,14 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst }: AuthProps = {}
   const [step, setStep] = useState<AuthStep>(
     isAdminLogin
       ? "adminEmail"
-      : isSellerRegister || isFreelanceRegister
+      : isSellerRegister || isFreelanceRegister || isCreatorRegister
       ? "signIn"
       : "roleSelect",
   );
   const [selectedRole, setSelectedRole] = useState<
     "buyer" | "seller" | "freelancer" | "employer" | "creator" | null
   >(
-    isFreelanceRegister ? "freelancer" : isSellerRegister ? "seller" : null,
+    isFreelanceRegister ? "freelancer" : isSellerRegister ? "seller" : isCreatorRegister ? "creator" : null,
   );
   // On the dedicated seller panel, toggle between creating an account and
   // signing in to an existing one.
