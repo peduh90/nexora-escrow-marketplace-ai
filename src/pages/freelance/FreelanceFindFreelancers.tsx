@@ -83,7 +83,7 @@ export default function FreelanceFindFreelancers() {
     try {
       const result = await startConversation({
         sellerId: fl.userId,
-        listingId: fl._id,
+        listingId: fl.profileId || fl.userId,
         firstMessage: `Hi ${fl.displayName}! I found your profile on Nexora Freelance and I'd like to work with you.`,
       });
       toast.success("Chat started");
@@ -156,6 +156,7 @@ export default function FreelanceFindFreelancers() {
         {/* Result count */}
         <p className="text-xs text-white/30 mb-3">
           {display.length} freelancer{display.length === 1 ? "" : "s"} available
+          {display.some((f: any) => !f.hasProfile) ? " · some are new and still setting up their profile" : ""}
         </p>
 
         {/* Freelancer cards */}
@@ -193,7 +194,7 @@ export default function FreelanceFindFreelancers() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-white/45 mt-0.5 line-clamp-1">{fl.title || "Freelancer"}</p>
+                    <p className="text-xs text-white/45 mt-0.5 line-clamp-1">{fl.title || (fl.hasProfile ? "Freelancer" : "New freelancer — setting up profile")}</p>
                     <div className="flex items-center gap-2.5 mt-1.5">
                       <span className="flex items-center gap-1">
                         <Star className="w-3 h-3 text-nx-gold fill-nx-gold" />
@@ -208,9 +209,15 @@ export default function FreelanceFindFreelancers() {
                 </div>
 
                 {/* What they do — bio + specialties */}
-                <p className="text-xs text-white/40 leading-relaxed line-clamp-2 mb-3">
-                  {fl.bio || `${fl.title || "Freelancer"} — available for new work on Nexora Freelance.`}
-                </p>
+                {fl.hasProfile ? (
+                  <p className="text-xs text-white/40 leading-relaxed line-clamp-2 mb-3">
+                    {fl.bio || `${fl.title || "Freelancer"} — available for new work on Nexora Freelance.`}
+                  </p>
+                ) : (
+                  <p className="text-xs text-white/35 leading-relaxed line-clamp-2 mb-3 italic">
+                    Just registered — profile coming soon. Reach out directly to discuss your project.
+                  </p>
+                )}
 
                 {/* What they do — category badges */}
                 <div className="flex flex-wrap gap-1.5 mb-3">

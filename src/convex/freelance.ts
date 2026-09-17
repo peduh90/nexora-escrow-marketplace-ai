@@ -304,75 +304,110 @@ export const searchFreelancers = query({
     availability: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    let profiles = await ctx.db
+    // The directory starts from the PEOPLE — every active freelancer-role
+    // account appears here the moment they register, profile or no profile.
+    // Sellers/employers join the list only when they have actually published
+    // a freelance service (a digital offering).
+    const freelancerAccounts = await ctx.db
+      .query("users")
+      .withIndex("by_role" as any, (q: any) => q.eq("role", "freelancer"))
+      .collect();
+
+    const allProfiles = await ctx.db
       .query("freelanceProfiles")
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
+    const profileByUser = new Map<string, any>();
+    for (const p of allProfiles) profileByUser.set((p as any).userId, p);
 
-    // Directory = everyone actively offering freelance services (pure
-    // freelancers AND sellers publishing digital services). Blocked/suspended
-    // accounts are filtered; contact info (phone) is attached for the
-    // WhatsApp button.
-    const withRoles = await Promise.all(
-      profiles.map(async (p) => ({
-        profile: p,
-        user: await ctx.db.get(p.userId as any),
-      })),
-    );
-    profiles = withRoles
-      .filter((r) => {
-        const u = r.user as any;
-        if (!u) return false;
-        if (u.accountStatus === "suspended") return false;
-        return u.role === "freelancer" || u.role === "seller" || u.role === "employer";
-      })
-      .map((r) => r.profile);
+    // Sellers/employers with a published freelance service join the list.
+    const serviceSellerIds = new Set<string>();
+    for (const p of allProfiles) {
+      const u: any = await ctx.db.get((p as any).userId as any);
+      if (u && (u.role === "seller" || u.role === "employer") && u.accountStatus !== "suspended") {
+        serviceSellerIds.add((p as any).userId);
+      }
+    }
 
+    // Build one unified row per person.
+    type Row = {
+      userId: string;
+      displayName: string;
+      title?: string;
+      bio?: string;
+      photo?: string;
+      phone?: string;
+      role: string;
+      categories: string[];
+      skills: string[];
+      hourlyRate?: number;
+      availability: string;
+      completedProjects: number;
+      avgRating: number;
+      isVerified: boolean;
+      hasProfile: boolean;
+      proofCount: number;
+      profileId?: string;
+    };
+    const rows: Row[] = [];
+
+    const buildRow = async (userId: string, account: any, hasProfile: boolean): Promise<Row> => {
+      const profile = hasProfile ? profileByUser.get(userId) : undefined;
+      return {
+        userId,
+        displayName: (profile?.displayName || account?.name || "Freelancer").trim(),
+        title: profile?.title || (account?.freelanceTitle as string | undefined) || undefined,
+        bio: profile?.bio || undefined,
+        photo: profile?.avatar || account?.image || undefined,
+        phone: account?.phone || undefined,
+        role: (account?.role as string) || "freelancer",
+        categories: profile?.categories ?? [],
+        skills: profile?.skills ?? [],
+        hourlyRate: profile?.hourlyRate || undefined,
+        availability: profile?.availability || "available",
+        completedProjects: profile?.completedProjects ?? 0,
+        avgRating: profile?.avgRating ?? 5,
+        isVerified: !!profile?.isVerified,
+        hasProfile,
+        proofCount: profile?.proofOfWork?.length ?? 0,
+        profileId: profile?._id,
+      };
+    };
+
+    for (const account of freelancerAccounts) {
+      const u = account as any;
+      if (u.accountStatus === "suspended") continue;
+      rows.push(await buildRow(u._id, u, profileByUser.has(u._id)));
+    }
+    for (const userId of serviceSellerIds) {
+      if (rows.some((r) => r.userId === userId)) continue;
+      const u: any = await ctx.db.get(userId as any);
+      if (u) rows.push(await buildRow(userId, u, true));
+    }
+
+    let out = rows;
     if (args.query) {
       const q = args.query.toLowerCase();
-      profiles = profiles.filter(
+      out = out.filter(
         (p) =>
           p.displayName.toLowerCase().includes(q) ||
           (p.title && p.title.toLowerCase().includes(q)) ||
-          p.skills.some((s) => s.toLowerCase().includes(q))
+          p.skills.some((s) => s.toLowerCase().includes(q)) ||
+          p.bio?.toLowerCase().includes(q),
       );
     }
+    if (args.category) out = out.filter((p) => p.categories.includes(args.category!));
+    if (args.minRate !== undefined) out = out.filter((p) => (p.hourlyRate || 0) >= args.minRate!);
+    if (args.maxRate !== undefined) out = out.filter((p) => (p.hourlyRate || 0) <= args.maxRate!);
+    if (args.availability) out = out.filter((p) => p.availability === args.availability);
 
-    if (args.category) {
-      profiles = profiles.filter((p) => p.categories.includes(args.category!));
-    }
-
-    if (args.minRate !== undefined) {
-      profiles = profiles.filter((p) => (p.hourlyRate || 0) >= args.minRate!);
-    }
-    if (args.maxRate !== undefined) {
-      profiles = profiles.filter((p) => (p.hourlyRate || 0) <= args.maxRate!);
-    }
-
-    if (args.availability) {
-      profiles = profiles.filter((p) => p.availability === args.availability);
-    }
-
-    // Strength ranking: proven samples first, then completed jobs, then rate
-    // signal — the homepage Writers Spotlight and directory both rely on this.
-    // Each row also carries the profile photo (freelance avatar, falling back
-    // to the account image) so cards render real faces, not just initials.
-    return profiles
-      .sort(
-        (a, b) =>
-          (b.proofOfWork?.length || 0) - (a.proofOfWork?.length || 0) ||
-          b.completedProjects - a.completedProjects ||
-          (b.hourlyRate || 0) - (a.hourlyRate || 0),
-      )
-      .map((p) => {
-        const owner = withRoles.find((r) => r.profile._id === p._id)?.user as any;
-        return {
-          ...p,
-          role: (owner?.role as string) || "freelancer",
-          photo: p.avatar || owner?.image || undefined,
-          phone: owner?.phone || undefined,
-        };
-      });
+    // Proven profiles first, then set-up profiles, then new registrations.
+    return out.sort(
+      (a, b) =>
+        Number(b.hasProfile) - Number(a.hasProfile) ||
+        b.proofCount - a.proofCount ||
+        b.completedProjects - a.completedProjects,
+    );
   },
 });
 
