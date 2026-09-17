@@ -250,8 +250,9 @@ export const addProofOfWork = mutation({
   args: { storageId: v.string(), title: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    if (user.role !== "freelancer") {
-      throw new ConvexError("Only Writer/Freelancer accounts can upload proof of work.");
+    // Freelancers AND AI Taskers both build hireable profiles.
+    if (user.role !== "freelancer" && user.role !== "ai_tasker") {
+      throw new ConvexError("Only Freelancer / AI Tasker accounts can upload proof of work.");
     }
     const profile = await ctx.db
       .query("freelanceProfiles")
@@ -444,6 +445,43 @@ export const searchFreelancers = query({
         b.proofCount - a.proofCount ||
         b.completedProjects - a.completedProjects,
     );
+  },
+});
+
+/**
+ * Public freelancer profile — works even when the freelancer has not set up a
+ * freelance profile yet. Falls back to the raw account (name, photo, role) so
+ * the profile page can render a real person, and owners get routed to the
+ * setup wizard instead of a dead end. Proof-of-work files resolve to URLs so
+ * employers can actually view the samples.
+ */
+export const getFreelancerPublic = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const user: any = await ctx.db.get(args.userId as any);
+    if (!user) return null;
+    const profile = await ctx.db
+      .query("freelanceProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    return {
+      account: {
+        _id: user._id,
+        name: user.name,
+        image: user.image,
+        role: user.role,
+        _creationTime: user._creationTime,
+        accountStatus: user.accountStatus,
+      },
+      hasProfile: !!profile,
+      profile: profile
+        ? {
+            ...profile,
+            proofs: await resolveProofs(ctx, profile.proofOfWork),
+            photo: profile.avatar || user.image || undefined,
+          }
+        : null,
+    };
   },
 });
 

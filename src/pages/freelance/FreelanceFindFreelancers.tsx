@@ -60,7 +60,15 @@ export default function FreelanceFindFreelancers() {
 
   // Hiring itself is escrow-backed and requires an account (buyer/seller/
   // employer all pass); opening and browsing profiles is free for everyone.
+  // A freelancer without a profile who taps their own card goes straight to
+  // the setup wizard to finish their registration.
   const openProfile = (userId: string) => {
+    const me = isAuthenticated && user && (user as any)._id === userId;
+    const target = display.find((f: any) => f.userId === userId);
+    if (me && target && !target.hasProfile) {
+      navigate(`/freelancer/${userId}/setup`);
+      return;
+    }
     navigate(`/freelancer/${userId}`);
   };
 

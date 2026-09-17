@@ -60,6 +60,7 @@ const SellerPromotions = lazy(() => import("./pages/seller/SellerPromotions.tsx"
 const SellerAddProduct = lazy(() => import("./pages/seller/SellerAddProduct.tsx"));
 const SellerEditProduct = lazy(() => import("./pages/seller/SellerEditProduct.tsx"));
 const FreelancerProfile = lazy(() => import("./pages/freelance/FreelancerProfile.tsx"));
+const FreelancerSetup = lazy(() => import("./pages/freelance/FreelancerSetup.tsx"));
 // Freelance marketplace
 const FreelanceLanding = lazy(() => import("./pages/freelance/FreelanceLanding.tsx"));
 const FreelanceServiceDetail = lazy(() => import("./pages/freelance/FreelanceServiceDetail.tsx"));
@@ -298,6 +299,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/freelance/edit-service/:id" element={<RoleRouter allowedRoles={["freelancer", "seller"]}><SellerEditProduct freelanceMode /></RoleRouter>} />
               {/* Public freelancer profile — NOT a seller store page. */}
               <Route path="/freelancer/:userId" element={<FreelancerProfile />} />
+              <Route path="/freelancer/:userId/setup" element={<FreelancerSetup />} />
               <Route path="/freelance/services" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceServices /></RoleRouter>} />
               <Route path="/freelance/earnings" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceEarnings /></RoleRouter>} />
               <Route path="/freelance/settings" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceSettings /></RoleRouter>} />
