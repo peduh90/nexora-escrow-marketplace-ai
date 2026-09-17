@@ -1288,6 +1288,9 @@ export const updateProfile = mutation({
     // storage id kept alongside so the previous file can be deleted on replace.
     image: v.optional(v.string()),
     imageStorageId: v.optional(v.string()),
+    // Profile name: the public name shown across the marketplace. The legal
+    // registration name is kept untouched in `legalName`.
+    profileName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -1307,6 +1310,17 @@ export const updateProfile = mutation({
     if (args.storeHours !== undefined) updates.storeHours = args.storeHours;
     if (args.image !== undefined) updates.image = args.image;
     if (args.imageStorageId !== undefined) updates.imageStorageId = args.imageStorageId;
+    if (args.profileName !== undefined) {
+      const trimmed = args.profileName.trim();
+      if (trimmed.length < 2) throw new ConvexError("Profile name is too short.");
+      // First edit: freeze the registration name as the legal name, then the
+      // profile name becomes whatever the user wants to be called.
+      if (!(user as any).legalName) {
+        updates.legalName = (user as any).name || trimmed;
+      }
+      updates.name = trimmed;
+      updates.profileName = trimmed;
+    }
 
     // Replacing the avatar: clean up the previous uploaded file so storage
     // doesn't accumulate orphaned objects. Google-OAuth images (remote URLs)
