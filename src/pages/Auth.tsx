@@ -116,8 +116,15 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
   const isSellerRegister = sellerFirst === true;
   // Dedicated creator panel — the Creator Program counterpart of the seller
   // panel: pressing "Apply as a creator" on /join lands straight on the
-  // creator account form, never the Choose Your Path cards.
-  const isCreatorRegister = creatorFirst === true || searchParams.get("creator") === "1";
+  // creator account form, never the Choose Your Path cards. A returnTo that
+  // points into the creator program (/creator, /join) opens the same panel:
+  // a mobile user tapping "Creator Program" must not see buyer/seller cards.
+  const isCreatorRegister =
+    creatorFirst === true ||
+    searchParams.get("creator") === "1" ||
+    redirect === "/creator" ||
+    redirect.startsWith("/creator/") ||
+    redirect === "/join";
   // Dedicated freelance panel — the Writer/Freelancer counterpart of the
   // seller panel: no store, no role cards, straight to the freelance form.
   const isFreelanceRegister = searchParams.get("freelance") === "1" || freelanceFirst === true;

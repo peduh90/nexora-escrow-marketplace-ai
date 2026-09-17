@@ -181,7 +181,7 @@ export default function NavigationBar() {
                 Services & Transport
               </button>
               <button
-                onClick={() => { navigate("/creator"); setMobileOpen(false); }}
+                onClick={() => { navigate(user ? "/creator" : "/join"); setMobileOpen(false); }}
                 className="text-white/70 hover:text-white text-sm py-2 text-left"
               >
                 Creator Program
