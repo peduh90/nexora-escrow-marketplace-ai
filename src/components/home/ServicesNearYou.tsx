@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { ArrowRight, MapPin, Navigation, Star, TrendingUp, Bike, Bus, CarTaxiFront, Package } from "lucide-react";
-import { categoryIcon, categoryTint } from "@/lib/categoryIcons";
+import { categoryImage } from "@/lib/categoryImages";
 
 /** Same reveal-on-scroll wrapper the homepage already uses. */
 function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -75,11 +75,19 @@ export default function ServicesNearYou() {
                     onClick={() => goCategory(cat.slug)}
                     className="group relative flex flex-col items-center justify-end h-28 rounded-2xl overflow-hidden border border-white/8 hover:border-nx-cyan/40 transition-all text-center px-2 pb-2.5"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-b from-nx-cyan/[0.07] to-nx-violet/[0.07] group-hover:from-nx-cyan/[0.12] group-hover:to-nx-violet/[0.12] transition-colors" />
-                    <span className={`relative z-10 mb-auto mt-4 flex w-10 h-10 items-center justify-center rounded-xl border transition-transform group-hover:scale-110 ${categoryTint(cat.slug)}`}>
-                      {(() => { const Icon = categoryIcon(cat.slug); return <Icon className="w-5 h-5" strokeWidth={2.2} />; })()}
-                    </span>
-                    <span className="relative z-10 text-[11px] md:text-xs font-bold text-white leading-tight">
+                    {/* Real photo background */}
+                    {(() => { const img = categoryImage(cat.slug); return img ? (
+                      <img
+                        src={img}
+                        alt={cat.name}
+                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-80 group-hover:scale-110 transition-all duration-500"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-b from-nx-cyan/[0.07] to-nx-violet/[0.07]" />
+                    ); })()}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/75 group-hover:from-black/45 group-hover:to-black/70 transition-colors" />
+                    <span className="relative z-10 text-[11px] md:text-xs font-bold text-white leading-tight drop-shadow">
                       {cat.name}
                     </span>
                   </motion.button>

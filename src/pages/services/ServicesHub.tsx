@@ -9,7 +9,7 @@ import {
   ArrowLeft, MapPin, Search, Star, Navigation, Loader2,
 } from "lucide-react";
 import { KENYA_COUNTIES } from "@/lib/kenya-locations";
-import { categoryIcon, categoryTint } from "@/lib/categoryIcons";
+import { categoryImage } from "@/lib/categoryImages";
 
 /**
  * Local Services hub + category browser. Extremely simple:
@@ -64,12 +64,10 @@ export default function ServicesHub() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-              {activeCat && (() => { const Icon = categoryIcon(activeCat.slug); return (
-                <span className={`flex w-8 h-8 items-center justify-center rounded-lg border ${categoryTint(activeCat.slug)}`}>
-                  <Icon className="w-4 h-4" strokeWidth={2.2} />
-                </span>
-              ); })()}
+            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2.5">
+              {activeCat && (() => { const img = categoryImage(activeCat.slug); return img ? (
+                <img src={img} alt={activeCat.name} className="w-9 h-9 rounded-lg object-cover border border-white/15" />
+              ) : null; })()}
               {activeCat ? activeCat.name : "Services Near You"}
             </h1>
             <p className="text-xs text-white/40 mt-0.5">
@@ -85,9 +83,11 @@ export default function ServicesHub() {
               <button
                 key={c.slug}
                 onClick={() => navigate(`/services/category/${c.slug}`)}
-                className="shrink-0 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] pl-2 pr-3.5 py-1.5 text-xs font-medium text-white/75 hover:border-nx-cyan/40 hover:text-white transition-colors"
+                className="shrink-0 flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] pl-1 pr-3.5 py-1 text-xs font-medium text-white/75 hover:border-nx-cyan/40 hover:text-white transition-colors"
               >
-                {(() => { const Icon = categoryIcon(c.slug); return <Icon className={`w-3.5 h-3.5 ${categoryTint(c.slug).split(" ")[0]}`} strokeWidth={2.2} />; })()}
+                {(() => { const img = categoryImage(c.slug); return img ? (
+                  <img src={img} alt="" className="w-6 h-6 rounded-full object-cover border border-white/10" />
+                ) : null; })()}
                 {c.name}
               </button>
             ))}
