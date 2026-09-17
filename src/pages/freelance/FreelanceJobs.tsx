@@ -13,7 +13,7 @@ import {
 import { shortKES } from "@/lib/fees";
 import {
   Search, Briefcase, MapPin, Clock, Users, Globe, X, Plus, Loader2,
-  CheckCircle2, Shield, ArrowRight, Filter, ChevronDown,
+  CheckCircle2, Shield, ArrowRight, Filter, ChevronDown, Star,
 } from "lucide-react";
 
 const priorityColors: Record<string, string> = {
@@ -66,6 +66,14 @@ export default function FreelanceJobs() {
     query: search || undefined,
     limit: 80,
   });
+  // Registered freelancers who completed their profile — shown on the Jobs
+  // Board so employers can hire them directly (escrow-backed from the
+  // freelancer profile page).
+  const freelancers = useQuery(api.freelance.searchFreelancers, {
+    query: search || undefined,
+    category: category === "all" ? undefined : category,
+  });
+  const hireable = useMemo(() => (freelancers ?? []).slice(0, 8), [freelancers]);
   const display = useMemo(() => {
     const list = tasks ?? [];
     return budgetIdx > 0
@@ -199,6 +207,50 @@ export default function FreelanceJobs() {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Freelancers ready to hire — real registered profiles */}
+        {hireable.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 text-nx-cyan" /> Freelancers ready to hire
+                </h2>
+                <p className="text-[11px] text-white/30 mt-0.5">
+                  Registered professionals — open a profile to hire with escrow-protected milestones.
+                </p>
+              </div>
+              <button
+                onClick={() => navigate("/freelance/find-freelancers")}
+                className="text-[11px] text-nx-violet hover:text-nx-violet/80 font-medium shrink-0"
+              >
+                View all →
+              </button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {hireable.map((fl: any) => (
+                <button
+                  key={fl._id || fl.userId}
+                  onClick={() => navigate(`/freelancer/${fl.userId}`)}
+                  className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-cyan/25 hover:bg-white/[0.04] transition-all text-left group"
+                >
+                  <div className="w-11 h-11 rounded-full bg-nx-cyan/10 border border-nx-cyan/20 flex items-center justify-center text-nx-cyan font-bold text-base mb-3">
+                    {(fl.displayName || "U")[0]}
+                  </div>
+                  <h3 className="text-xs font-semibold text-white truncate group-hover:text-nx-cyan transition-colors">{fl.displayName}</h3>
+                  <p className="text-[10px] text-white/35 truncate mt-0.5">{fl.title || "Freelancer"}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="flex items-center gap-1 text-[10px] text-white/50">
+                      <Star className="w-2.5 h-2.5 text-nx-gold fill-nx-gold" />
+                      {fl.avgRating?.toFixed(1) || "4.8"}
+                    </span>
+                    <span className="text-[10px] font-bold text-nx-emerald">{shortKES(fl.hourlyRate || 0)}/hr</span>
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
         )}
