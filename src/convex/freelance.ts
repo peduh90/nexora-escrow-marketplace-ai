@@ -291,6 +291,26 @@ export const removeProofOfWork = mutation({
 });
 
 /**
+ * Directory filter slug → every profile-category slug that belongs under it.
+ * Profiles saved with either the current FREELANCE_CATEGORIES taxonomy or the
+ * legacy short slugs still land in the right group on the directory.
+ */
+const CATEGORY_ALIASES: Record<string, string[]> = {
+  writing: ["writing"],
+  design: ["design"],
+  "video-photo": ["video-photo", "video"],
+  marketing: ["marketing"],
+  development: ["development", "web-development"],
+  "data-research": ["data-research"],
+  "virtual-assistance": ["virtual-assistance"],
+  education: ["education"],
+  "business-professional": ["business-professional", "business"],
+  "ai-accounts-tools": ["ai-accounts-tools", "ai-tech", "ai-tasker"],
+  "digital-products": ["digital-products"],
+  "other-services": ["other-services"],
+};
+
+/**
  * Search freelancers — used by the homepage Writers Spotlight and the
  * employer directory. Sorted by proof-of-work strength then jobs completed:
  * a writer with more proven samples and more completed work ranks higher.
@@ -306,11 +326,15 @@ export const searchFreelancers = query({
   handler: async (ctx, args) => {
     // The directory starts from the PEOPLE — every active freelancer-role
     // account appears here the moment they register, profile or no profile.
-    // Sellers/employers join the list only when they have actually published
-    // a freelance service (a digital offering).
+    // AI Taskers and sellers/employers with a published freelance service
+    // join the list too.
     const freelancerAccounts = await ctx.db
       .query("users")
       .withIndex("by_role" as any, (q: any) => q.eq("role", "freelancer"))
+      .collect();
+    const aiTaskerAccounts = await ctx.db
+      .query("users")
+      .withIndex("by_role" as any, (q: any) => q.eq("role", "ai_tasker"))
       .collect();
 
     const allProfiles = await ctx.db
@@ -346,6 +370,7 @@ export const searchFreelancers = query({
       avgRating: number;
       isVerified: boolean;
       hasProfile: boolean;
+      isAiTasker: boolean;
       proofCount: number;
       profileId?: string;
     };
@@ -353,15 +378,16 @@ export const searchFreelancers = query({
 
     const buildRow = async (userId: string, account: any, hasProfile: boolean): Promise<Row> => {
       const profile = hasProfile ? profileByUser.get(userId) : undefined;
+      const isTasker = (account?.role as string) === "ai_tasker";
       return {
         userId,
         displayName: (profile?.displayName || account?.name || "Freelancer").trim(),
-        title: profile?.title || (account?.freelanceTitle as string | undefined) || undefined,
+        title: profile?.title || (account?.freelanceTitle as string | undefined) || (isTasker ? "AI Tasker" : undefined),
         bio: profile?.bio || undefined,
         photo: profile?.avatar || account?.image || undefined,
         phone: account?.phone || undefined,
         role: (account?.role as string) || "freelancer",
-        categories: profile?.categories ?? [],
+        categories: profile?.categories ?? (isTasker ? ["ai-tasker"] : []),
         skills: profile?.skills ?? [],
         hourlyRate: profile?.hourlyRate || undefined,
         availability: profile?.availability || "available",
@@ -369,12 +395,13 @@ export const searchFreelancers = query({
         avgRating: profile?.avgRating ?? 5,
         isVerified: !!profile?.isVerified,
         hasProfile,
+        isAiTasker: isTasker,
         proofCount: profile?.proofOfWork?.length ?? 0,
         profileId: profile?._id,
       };
     };
 
-    for (const account of freelancerAccounts) {
+    for (const account of [...freelancerAccounts, ...aiTaskerAccounts]) {
       const u = account as any;
       if (u.accountStatus === "suspended") continue;
       rows.push(await buildRow(u._id, u, profileByUser.has(u._id)));
@@ -396,7 +423,16 @@ export const searchFreelancers = query({
           p.bio?.toLowerCase().includes(q),
       );
     }
-    if (args.category) out = out.filter((p) => p.categories.includes(args.category!));
+    if (args.category) {
+      const wanted = CATEGORY_ALIASES[args.category] || [args.category];
+      out = out.filter(
+        (p) =>
+          p.categories.some((c) => wanted.includes(c)) ||
+          // A registered AI Tasker sits in the AI & Digital Tools group even
+          // without a profile.
+          (wanted.includes("ai-accounts-tools") && p.isAiTasker),
+      );
+    }
     if (args.minRate !== undefined) out = out.filter((p) => (p.hourlyRate || 0) >= args.minRate!);
     if (args.maxRate !== undefined) out = out.filter((p) => (p.hourlyRate || 0) <= args.maxRate!);
     if (args.availability) out = out.filter((p) => p.availability === args.availability);

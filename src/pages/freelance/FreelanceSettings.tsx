@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
+import { FREELANCE_CATEGORIES } from "@/lib/freelance-marketplace";
 import {
   ArrowLeft, Save, Loader2, CheckCircle2, X, Plus, User, Phone,
 } from "lucide-react";
@@ -18,9 +19,7 @@ const ALL_SKILLS = [
   "Translation", "Voice Over", "Audio Editing",
 ];
 
-const ALL_CATEGORIES = [
-  "web-development", "writing", "design", "marketing", "business", "video", "education", "ai-tech",
-];
+const ALL_CATEGORIES = FREELANCE_CATEGORIES.map((c) => c.slug);
 
 export default function FreelanceSettings() {
   const navigate = useNavigate();

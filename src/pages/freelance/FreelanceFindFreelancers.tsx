@@ -7,32 +7,33 @@ import { useAuth } from "@/hooks/use-auth";
 import FreelanceNav from "./FreelanceNav";
 import { shortKES } from "@/lib/fees";
 import { getWhatsAppChatUrl, normalizeKenyanPhone } from "@/lib/whatsapp";
+import { FREELANCE_CATEGORIES } from "@/lib/freelance-marketplace";
 import {
   ArrowLeft, Search, Star, MapPin, Briefcase, Filter, ChevronDown,
-  Globe, CheckCircle2, Users, ArrowRight, MessageSquare,
+  Globe, CheckCircle2, Users, ArrowRight, MessageSquare, Bot,
 } from "lucide-react";
 
+// Every category a freelancer can pick — straight from the shared taxonomy,
+// so whatever the freelancer chose in their profile appears here as a chip.
 const CATEGORIES = [
   { slug: "all", label: "All" },
-  { slug: "writing", label: "Writing & Editing" },
-  { slug: "design", label: "Design & Branding" },
-  { slug: "video", label: "Video & Photography" },
-  { slug: "marketing", label: "Social Media & Marketing" },
-  { slug: "web-development", label: "Web & Software" },
-  { slug: "business", label: "Business & Professional" },
-  { slug: "education", label: "Education & Tutoring" },
-  { slug: "ai-tech", label: "AI & Digital Tools" },
+  ...FREELANCE_CATEGORIES.map((c) => ({ slug: c.slug, label: c.name })),
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
   writing: "bg-nx-emerald/10 text-nx-emerald",
   design: "bg-fuchsia-500/10 text-fuchsia-300",
-  video: "bg-rose-500/10 text-rose-300",
+  "video-photo": "bg-rose-500/10 text-rose-300",
   marketing: "bg-nx-gold/10 text-nx-gold",
-  "web-development": "bg-nx-cyan/10 text-nx-cyan",
+  development: "bg-nx-cyan/10 text-nx-cyan",
+  "data-research": "bg-teal-500/10 text-teal-300",
+  "virtual-assistance": "bg-orange-500/10 text-orange-300",
   business: "bg-violet-500/10 text-violet-300",
+  "business-professional": "bg-violet-500/10 text-violet-300",
   education: "bg-sky-500/10 text-sky-300",
-  "ai-tech": "bg-indigo-500/10 text-indigo-300",
+  "ai-accounts-tools": "bg-indigo-500/10 text-indigo-300",
+  "digital-products": "bg-pink-500/10 text-pink-300",
+  "other-services": "bg-white/5 text-white/50",
 };
 
 function categoryLabel(slug: string) {
@@ -194,7 +195,7 @@ export default function FreelanceFindFreelancers() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-white/45 mt-0.5 line-clamp-1">{fl.title || (fl.hasProfile ? "Freelancer" : "New freelancer — setting up profile")}</p>
+                    <p className="text-xs text-white/45 mt-0.5 line-clamp-1">{fl.title || (fl.hasProfile ? "Freelancer" : fl.isAiTasker ? "AI Tasker" : "New freelancer — setting up profile")}</p>
                     <div className="flex items-center gap-2.5 mt-1.5">
                       <span className="flex items-center gap-1">
                         <Star className="w-3 h-3 text-nx-gold fill-nx-gold" />
@@ -221,6 +222,11 @@ export default function FreelanceFindFreelancers() {
 
                 {/* What they do — category badges */}
                 <div className="flex flex-wrap gap-1.5 mb-3">
+                  {fl.isAiTasker && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-300 border border-indigo-400/20">
+                      🤖 AI Tasker
+                    </span>
+                  )}
                   {(fl.categories || []).slice(0, 3).map((c: string) => (
                     <span key={c} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[c] || "bg-white/5 text-white/50"}`}>
                       {categoryLabel(c)}
