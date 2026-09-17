@@ -11,7 +11,7 @@ export default function FreelanceNav({
   active = "services",
   showBack = true,
 }: {
-  active?: "services" | "jobs" | "tools";
+  active?: "services" | "jobs" | "freelancers" | "tools";
   showBack?: boolean;
 }) {
   const navigate = useNavigate();
@@ -47,6 +47,9 @@ export default function FreelanceNav({
         <div className="hidden md:flex items-center gap-5">
           <button onClick={() => navigate("/freelance")} className={linkClass(active === "services")}>
             Services & Tools
+          </button>
+          <button onClick={() => navigate("/freelance/find-freelancers")} className={linkClass(active === "freelancers")}>
+            Freelancers
           </button>
           <button onClick={() => navigate("/freelance/jobs")} className={linkClass(active === "jobs")}>
             Jobs

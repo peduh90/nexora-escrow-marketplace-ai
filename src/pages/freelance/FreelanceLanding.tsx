@@ -106,10 +106,9 @@ export default function FreelanceLanding() {
   };
 
   const goHire = () => {
-    // Only employers can post jobs; everyone else sees the public jobs board.
-    if (role === "employer") navigate("/employer/post-job");
-    else if (isAuthenticated) navigate("/freelance/jobs");
-    else joinFreelance("/freelance/jobs?post=1");
+    // Hiring starts with browsing the people, not a form — take the employer
+    // straight to the freelancer directory with profiles and specialties.
+    navigate("/freelance/find-freelancers");
   };
 
   return (
@@ -200,10 +199,10 @@ export default function FreelanceLanding() {
             <Users className="w-9 h-9 text-nx-gold mb-4 group-hover:scale-110 transition-transform" />
             <h3 className="text-lg font-bold text-white leading-tight">HIRE A FREELANCER</h3>
             <p className="text-xs text-white/50 mt-1.5 leading-relaxed">
-              Post a job, review proposals, pay only when work is delivered.
+              Browse verified writers, designers & developers — open a profile, hire in escrow.
             </p>
             <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-nx-gold">
-              Post a job <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              Meet the freelancers <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </span>
           </button>
 

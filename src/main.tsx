@@ -282,8 +282,10 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/employer/notifications" element={<RoleRouter allowedRoles={["employer"]}><FreelanceNotifications /></RoleRouter>} />
               <Route path="/employer/earnings" element={<RoleRouter allowedRoles={["employer"]}><FreelanceEarnings /></RoleRouter>} />
               <Route path="/freelance/find-work" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceFindWork /></RoleRouter>} />
-              {/* Finding talent is an employer action, not a freelancer one. */}
-              <Route path="/freelance/find-freelancers" element={<RoleRouter allowedRoles={["employer"]}><FreelanceFindFreelancers /></RoleRouter>} />
+              {/* The freelancer directory is PUBLIC — anyone browsing can meet
+                  the freelancers and open profiles; only signed-in employers
+                  can actually hire (escrow flow inside the profile/services). */}
+              <Route path="/freelance/find-freelancers" element={<FreelanceFindFreelancers />} />
               {/* Writers/freelancers must NOT see the post-task screen; the
                   backend role-gates createTask to employers as well. */}
               <Route path="/freelance/post-task" element={<RoleRouter allowedRoles={["employer"]}><FreelancePostTask /></RoleRouter>} />
