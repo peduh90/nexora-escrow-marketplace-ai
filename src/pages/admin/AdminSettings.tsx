@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import AdminLayout from "./AdminLayout";
+import AvatarPicker from "@/components/AvatarPicker";
+import { useAuth } from "@/hooks/use-auth";
 import { Settings, Shield, Bell, Globe, CreditCard, Info, Flag, Loader2, MapPin, Plus, Power } from "lucide-react";
 
 /**
@@ -200,12 +202,22 @@ function FeatureFlagsTab() {
  */
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState("general");
+  const { user } = useAuth();
 
   return (
     <AdminLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Platform Settings</h1>
         <p className="text-sm text-white/40 mt-1">Live platform configuration — controlled by the backend engine</p>
+      </div>
+
+      {/* Admin profile icon */}
+      <div className="mb-6 p-5 rounded-xl border border-white/5 bg-[#0A0A12] flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="text-sm font-semibold text-white">Your Profile Icon</h3>
+          <p className="text-xs text-white/35 mt-0.5">Shown across the admin panel and anywhere your account appears.</p>
+        </div>
+        <AvatarPicker image={(user as any)?.image} name={user?.name} size="lg" />
       </div>
 
       <div className="flex gap-1 mb-6 flex-wrap">

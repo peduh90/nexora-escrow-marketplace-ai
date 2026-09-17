@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import SellerLayout from "./SellerLayout";
+import AvatarPicker from "@/components/AvatarPicker";
 import { api } from "../../convex/_generated/api";
 import { Settings, Shield, Bell, CreditCard, User, Lock, Globe, Palette, Phone } from "lucide-react";
 
@@ -38,6 +39,11 @@ function AccountSection({ user }: { user: any }) {
 
   return (
     <div className="space-y-4">
+      {/* Profile icon — upload/change/remove */}
+      <div className="p-4 rounded-lg bg-white/[0.02] border border-white/5">
+        <p className="text-xs text-white/40 mb-3 font-medium">Profile Icon</p>
+        <AvatarPicker image={user?.image} name={user?.name} size="lg" />
+      </div>
       {user?.role === "seller" && (
         <div>
           <label className="text-xs text-white/40 mb-1.5 block">Business Name</label>

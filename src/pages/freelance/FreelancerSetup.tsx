@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import FreelanceNav from "./FreelanceNav";
+import AvatarPicker from "@/components/AvatarPicker";
 import { FREELANCE_CATEGORIES } from "@/lib/freelance-marketplace";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, FileText, Image as ImageIcon,
@@ -210,6 +211,12 @@ export default function FreelancerSetup() {
             <span className="w-6 h-6 rounded-full bg-nx-violet/15 text-nx-violet text-xs font-bold flex items-center justify-center">1</span>
             What do you do?
           </h2>
+
+          {/* Profile icon */}
+          <div className="mb-5 pb-5 border-b border-white/5">
+            <p className="text-xs font-medium text-white/60 mb-2">Profile icon</p>
+            <AvatarPicker image={(user as any)?.image} name={displayName} size="lg" />
+          </div>
 
           <label className="text-xs font-medium text-white/60 mb-1.5 block">Display name *</label>
           <input value={displayName} onChange={(e) => setDisplayName(e.target.value)}

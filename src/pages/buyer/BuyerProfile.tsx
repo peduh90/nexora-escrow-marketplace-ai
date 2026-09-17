@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import BuyerLayout from "./BuyerLayout";
+import AvatarPicker from "@/components/AvatarPicker";
 import {
   User, Mail, Phone, MapPin, Shield, Save, Loader2, CheckCircle2, Eye, EyeOff, Star,
 } from "lucide-react";
@@ -42,12 +43,10 @@ export default function BuyerProfile() {
           <p className="text-sm text-white/40 mt-1">Edit your details — name, phone, WhatsApp and location</p>
         </div>
 
-        {/* Profile Header */}
+        {/* Profile Header — with profile icon upload */}
         <div className="p-6 rounded-xl bg-white/[0.02] border border-white/5">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-xl bg-nx-cyan/10 flex items-center justify-center text-nx-cyan text-xl font-bold">
-              {name ? name.charAt(0).toUpperCase() : "B"}
-            </div>
+            <AvatarPicker image={(user as any)?.image} name={name} size="lg" />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold text-white">{name || "Buyer"}</h2>

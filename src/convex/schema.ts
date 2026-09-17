@@ -52,6 +52,9 @@ const schema = defineSchema(
     users: defineTable({
       name: v.optional(v.string()),
       image: v.optional(v.string()),
+      // Uploaded avatar file (storage id). `image` keeps the display URL;
+      // this tracks the underlying object so replacements clean up properly.
+      imageStorageId: v.optional(v.string()),
       email: v.optional(v.string()),
       // Written by the Convex Auth library during OTP/verification flows — the
       // auth library shares this `users` table, so these fields must exist in

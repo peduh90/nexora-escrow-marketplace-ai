@@ -1284,6 +1284,10 @@ export const updateProfile = mutation({
     storeDescription: v.optional(v.string()),
     storeWebsite: v.optional(v.string()),
     storeHours: v.optional(v.string()),
+    // Profile icon/avatar: the storage URL of the uploaded file, plus the
+    // storage id kept alongside so the previous file can be deleted on replace.
+    image: v.optional(v.string()),
+    imageStorageId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -1301,11 +1305,75 @@ export const updateProfile = mutation({
     if (args.storeDescription !== undefined) updates.storeDescription = args.storeDescription;
     if (args.storeWebsite !== undefined) updates.storeWebsite = args.storeWebsite;
     if (args.storeHours !== undefined) updates.storeHours = args.storeHours;
+    if (args.image !== undefined) updates.image = args.image;
+    if (args.imageStorageId !== undefined) updates.imageStorageId = args.imageStorageId;
+
+    // Replacing the avatar: clean up the previous uploaded file so storage
+    // doesn't accumulate orphaned objects. Google-OAuth images (remote URLs)
+    // have no storage id and are simply overwritten.
+    if (args.imageStorageId !== undefined) {
+      const old = (user as any).imageStorageId as string | undefined;
+      if (old && old !== args.imageStorageId) {
+        try { await ctx.storage.delete(old as any); } catch { /* already gone */ }
+      }
+    }
 
     if (Object.keys(updates).length > 0) {
       await ctx.db.patch(user._id, updates);
     }
 
+    return { success: true };
+  },
+});
+
+/** Upload URL for a profile icon — available to every signed-in user
+ * (buyers, sellers, freelancers, employers, AI taskers, creators, admins). */
+export const generateAvatarUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError("Not authenticated");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/** Attach an uploaded avatar file to the caller's account. Resolves the
+ * storage URL so every existing `user.image` render keeps working unchanged. */
+export const setAvatarFromUpload = mutation({
+  args: { storageId: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError("Not authenticated");
+    const user = await getSessionUser(ctx);
+    if (!user) throw new ConvexError("User not found");
+
+    const url = await ctx.storage.getUrl(args.storageId as any);
+    if (!url) throw new ConvexError("Upload not found — try again.");
+
+    const old = (user as any).imageStorageId as string | undefined;
+    if (old && old !== args.storageId) {
+      try { await ctx.storage.delete(old as any); } catch { /* already gone */ }
+    }
+
+    await ctx.db.patch(user._id, { image: url, imageStorageId: args.storageId });
+    return { success: true, image: url };
+  },
+});
+
+/** Remove the custom avatar — falls back to the initial-letter placeholder. */
+export const removeAvatar = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError("Not authenticated");
+    const user = await getSessionUser(ctx);
+    if (!user) throw new ConvexError("User not found");
+
+    const old = (user as any).imageStorageId as string | undefined;
+    if (old) {
+      try { await ctx.storage.delete(old as any); } catch { /* already gone */ }
+    }
+    await ctx.db.patch(user._id, { image: undefined, imageStorageId: undefined });
     return { success: true };
   },
 });

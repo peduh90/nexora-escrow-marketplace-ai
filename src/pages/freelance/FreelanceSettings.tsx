@@ -3,9 +3,10 @@ import { useNavigate } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
+import AvatarPicker from "@/components/AvatarPicker";
 import { FREELANCE_CATEGORIES } from "@/lib/freelance-marketplace";
 import {
-  ArrowLeft, Save, Loader2, CheckCircle2, X, Plus, User, Phone,
+  ArrowLeft, Save, Loader2, CheckCircle2, X, Plus, Phone,
 } from "lucide-react";
 
 const ALL_SKILLS = [
@@ -94,19 +95,10 @@ export default function FreelanceSettings() {
         </div>
 
         <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
-          {/* Avatar */}
-          <div className="flex items-center gap-4">
-            {user?.image ? (
-              <img src={user.image} alt="" className="w-16 h-16 rounded-full object-cover border border-nx-violet/20" />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-nx-violet/15 flex items-center justify-center">
-                <User className="w-8 h-8 text-nx-violet/50" />
-              </div>
-            )}
-            <div>
-              <p className="text-sm font-semibold text-white">{user?.name || "User"}</p>
-              <p className="text-xs text-white/40">{user?.email}</p>
-            </div>
+          {/* Avatar — upload/change your profile icon */}
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <p className="text-xs font-medium text-white/60 mb-3">Profile Icon</p>
+            <AvatarPicker image={user?.image} name={user?.name} size="lg" />
           </div>
 
           {/* Role Mode */}

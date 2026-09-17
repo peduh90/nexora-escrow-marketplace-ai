@@ -397,8 +397,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 title="Account"
                 className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-lg hover:bg-white/[0.04] transition-colors"
               >
-                <div className="w-7 h-7 rounded-full bg-nx-gold/15 flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-nx-gold">{(user?.name || user?.email || "A").slice(0, 2).toUpperCase()}</span>
+                <div className="w-7 h-7 rounded-full bg-nx-gold/15 flex items-center justify-center overflow-hidden">
+                  {(user as any)?.image ? (
+                    <img src={(user as any).image} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[10px] font-bold text-nx-gold">{(user?.name || user?.email || "A").slice(0, 2).toUpperCase()}</span>
+                  )}
                 </div>
                 <div className="hidden md:block text-left">
                   <p className="text-[11px] font-medium text-white/70">{user?.name || "Admin"}</p>
@@ -416,9 +420,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     role="menu"
                     className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-white/10 bg-[#0C0C14] shadow-2xl shadow-black/50 p-1.5 z-50"
                   >
-                    <div className="px-3 py-2 border-b border-white/5">
-                      <p className="text-xs font-semibold text-white truncate">{user?.name || "Admin"}</p>
-                      <p className="text-[10px] text-white/35 truncate">{user?.email || ""}</p>
+                    <div className="px-3 py-2 border-b border-white/5 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-nx-gold/15 overflow-hidden flex items-center justify-center shrink-0">
+                        {(user as any)?.image ? (
+                          <img src={(user as any).image} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[10px] font-bold text-nx-gold">{(user?.name || user?.email || "A").slice(0, 2).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-white truncate">{user?.name || "Admin"}</p>
+                        <p className="text-[10px] text-white/35 truncate">{user?.email || ""}</p>
+                      </div>
                     </div>
                     <button onClick={() => { setProfileOpen(false); go("/"); }} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors">
                       <Home className="w-3.5 h-3.5" /> Visit Marketplace (Home)
