@@ -13,6 +13,7 @@ import {
 import { getWhatsAppSellerUrl, getWhatsAppSupportUrl, openWhatsApp, normalizeKenyanPhone } from "@/lib/whatsapp";
 import { getViewerKey } from "@/lib/viewer";
 import { buyerProtectionFee, rateLabel } from "@/lib/fees";
+import { setMeta, listingMeta } from "@/lib/seo";
 
 /** Show the most relevant attributes per category */
 function CategoryAttributes({ category, attributes }: { category: string; attributes?: Record<string, string> }) {
@@ -136,6 +137,13 @@ export default function ProductDetails() {
       ) * (listing as any).ratePerDay + ((listing as any).depositAmount ?? 0)
     : 0;
   const selectedHub = hubs?.find((h: any) => h._id === selectedHubId);
+
+  // ── SEO / social preview: WhatsApp-shared links show real product info ──
+  useEffect(() => {
+    if (listing) {
+      setMeta(listingMeta(listing as any, (listing as any).marketplace === "freelance" ? "freelance" : "product"));
+    }
+  }, [listing?.title, listing?.price, (listing as any)?.images?.length]);
 
   // ── Card checkout return handler ──
   // Flutterwave redirects back to ?paid=1&ref=NX-TX-...; the order payload was

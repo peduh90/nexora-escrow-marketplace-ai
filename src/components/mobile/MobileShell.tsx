@@ -6,7 +6,7 @@ import {
   LayoutDashboard, LogOut, Bell, Sparkles, Search, ShoppingBag, Wrench,
   Laptop, ArrowLeft, Share2, Shield, LifeBuoy, Truck, Wallet, Settings,
   Star, Users, Tag, Megaphone, BarChart3, BadgeCheck, Store, PlusCircle,
-  FileText, TrendingUp, LogIn,
+  FileText, TrendingUp, LogIn, Mic, History,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "convex/react";
@@ -165,6 +165,45 @@ function MobileSearch({ open, onClose }: { open: boolean; onClose: () => void })
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [market, setMarket] = useState<"products" | "services" | "freelance">("products");
+  const [recent, setRecent] = useState<string[]>([]);
+  const [listening, setListening] = useState(false);
+
+  // Recent searches — safe, non-sensitive browsing context ("continue where
+  // you left off"), stored locally, capped, user-clearable.
+  useEffect(() => {
+    if (!open) return;
+    try { setRecent(JSON.parse(localStorage.getItem("nx_recent_searches") || "[]")); } catch { setRecent([]); }
+  }, [open]);
+
+  const rememberSearch = (term: string) => {
+    try {
+      const list = [term, ...recent.filter((r) => r !== term)].slice(0, 6);
+      localStorage.setItem("nx_recent_searches", JSON.stringify(list));
+      setRecent(list);
+    } catch { /* private mode */ }
+  };
+
+  // Voice search — Web Speech API where supported; graceful no-op elsewhere.
+  const startVoice = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = "en-KE";
+    rec.interimResults = false;
+    rec.onstart = () => setListening(true);
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    rec.onresult = (e: any) => {
+      const said = e.results?.[0]?.[0]?.transcript;
+      if (said) {
+        setQ(said);
+        go(said);
+      }
+    };
+    rec.start();
+  };
+  const voiceSupported = typeof window !== "undefined" &&
+    Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
   useEffect(() => {
     if (open) setQ("");
@@ -173,6 +212,7 @@ function MobileSearch({ open, onClose }: { open: boolean; onClose: () => void })
   const go = (term: string) => {
     const t = term.trim();
     if (!t) return;
+    rememberSearch(t);
     if (market === "products") navigate(`/marketplace?q=${encodeURIComponent(t)}`);
     else if (market === "services") navigate(`/services?q=${encodeURIComponent(t)}`);
     else navigate(`/freelance/jobs?q=${encodeURIComponent(t)}`);
@@ -205,9 +245,18 @@ function MobileSearch({ open, onClose }: { open: boolean; onClose: () => void })
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && go(q)}
-                placeholder={`Search ${market}…`}
+                placeholder={listening ? "Listening…" : `Search ${market}…`}
                 className="flex-1 bg-transparent text-white text-[16px] placeholder:text-white/25 focus:outline-none"
               />
+              {!q && voiceSupported && (
+                <button
+                  onClick={startVoice}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center ${listening ? "text-nx-violet animate-pulse" : "text-white/40"}`}
+                  aria-label="Search by voice"
+                >
+                  <Mic className="w-5 h-5" />
+                </button>
+              )}
               {q && (
                 <button onClick={() => setQ("")} className="w-9 h-9 rounded-full flex items-center justify-center text-white/40">
                   <X className="w-4 h-4" />
@@ -233,6 +282,23 @@ function MobileSearch({ open, onClose }: { open: boolean; onClose: () => void })
             </div>
 
             <div className="px-4 pb-8 overflow-y-auto nx-sheet-panel" style={{ maxHeight: "calc(100dvh - 120px)" }}>
+              {recent.length > 0 && !q && (
+                <>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <p className="text-[11px] uppercase tracking-wider text-white/25 font-semibold">Recent</p>
+                    <button onClick={() => { localStorage.removeItem("nx_recent_searches"); setRecent([]); }} className="text-[11px] text-white/30 active:text-white/60">
+                      Clear
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-7">
+                    {recent.map((r) => (
+                      <button key={r} onClick={() => go(r)} className="px-3.5 py-2 rounded-full text-[13px] text-white/55 bg-white/[0.03] border border-nx-border active:bg-white/10 transition-colors flex items-center gap-1.5">
+                        <History className="w-3 h-3 text-white/25" /> {r}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
               <p className="text-[11px] uppercase tracking-wider text-white/25 font-semibold mb-2.5">
                 {q ? "Try searching" : "Popular right now"}
               </p>

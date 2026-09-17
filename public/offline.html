@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Nexora — You're offline</title>
+  <meta name="theme-color" content="#05050A" />
+  <link rel="icon" type="image/png" href="/icons/icon-64.png" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #05050A; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px; text-align: center;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .wrap { max-width: 420px; }
+    .mark {
+      width: 72px; height: 72px; margin: 0 auto 24px;
+      border-radius: 18px; background: rgba(139,92,246,0.12);
+      border: 1px solid rgba(139,92,246,0.3);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .mark svg { width: 40px; height: 40px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+    p { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.55); margin-bottom: 8px; }
+    .note {
+      margin-top: 18px; padding: 12px 16px; border-radius: 12px;
+      background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2);
+      font-size: 12.5px; color: rgba(245,158,11,0.9); line-height: 1.55;
+    }
+    button {
+      margin-top: 24px; padding: 13px 36px; border: none; border-radius: 12px;
+      background: #8B5CF6; color: #fff; font-size: 14.5px; font-weight: 600;
+      cursor: pointer; min-height: 44px;
+    }
+    button:active { transform: scale(0.98); }
+    .status { margin-top: 14px; font-size: 12px; color: rgba(255,255,255,0.3); min-height: 16px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    </div>
+    <h1>You're offline</h1>
+    <p>Nexora can't reach the internet right now.</p>
+    <p style="font-size:13px">Pages you visited recently may still open below.</p>
+    <div class="note">
+      <strong>Important:</strong> orders, payments (M-Pesa &amp; card), wallet balances and escrow
+      status always require a live connection — they are never shown from saved copies, so you
+      can always trust what you see.
+    </div>
+    <button onclick="retry()">Try again</button>
+    <div class="status" id="status"></div>
+  </div>
+  <script>
+    function retry() {
+      document.getElementById("status").textContent = "Reconnecting…";
+      location.reload();
+    }
+    window.addEventListener("online", () => {
+      document.getElementById("status").textContent = "Connection restored — tap Try again.";
+    });
+  </script>
+</body>
+</html>

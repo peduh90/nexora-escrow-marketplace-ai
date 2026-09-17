@@ -1,8 +1,12 @@
 import { useQuery } from "convex/react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { api } from "../convex/_generated/api";
 import ScrollReveal from "@/components/ScrollReveal";
-import { MapPin, Star, Shield, Package, MessageSquare, ArrowLeft, Clock, CheckCircle2, ExternalLink, Store } from "lucide-react";
+import { MapPin, Star, Shield, Package, MessageSquare, ArrowLeft, Clock, CheckCircle2, ExternalLink, Store, QrCode, X, Share2, Download } from "lucide-react";
+import { generateQr, downloadQr } from "@/lib/qr";
+import { setMeta } from "@/lib/seo";
+import { useEffect } from "react";
 
 /** Use the SELLER's stored profile fields (name / business name / county) so a
  * store page is correct even when the seller has no listings yet — previously
@@ -12,6 +16,8 @@ import { MapPin, Star, Shield, Package, MessageSquare, ArrowLeft, Clock, CheckCi
 export default function SellerProfile() {
   const { userId } = useParams();
   const navigate = useNavigate();
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrData, setQrData] = useState<string | null>(null);
 
   const seller = useQuery(api.users.getPublicProfile, { userId: userId as string });
   const rating = useQuery(api.reviews.getSellerRating, { sellerId: userId as string });
@@ -30,6 +36,22 @@ export default function SellerProfile() {
   const avgPrice = sellerListings.length > 0
     ? Math.round(sellerListings.reduce((s: number, l: any) => s + (l.price || 0), 0) / sellerListings.length)
     : 0;
+
+  // SEO: storefront shares render with the shop's real name & location.
+  useEffect(() => {
+    if (sellerName !== "Seller") {
+      setMeta({
+        title: `${sellerName} — Nexora Store`,
+        description: `Shop ${sellerName} on Nexora${sellerLocation !== "Kenya" ? ` · ${sellerLocation}` : ""}. ${totalProducts} product${totalProducts === 1 ? "" : "s"}, escrow-protected payments and Nexora-managed delivery.`,
+        path: `/seller/${userId}`,
+      });
+    }
+  }, [sellerName, sellerLocation, totalProducts, userId]);
+
+  const openQr = async () => {
+    setQrOpen(true);
+    if (!qrData) setQrData(await generateQr({ kind: "storefront", sellerId: userId as string }));
+  };
 
   const handleChat = () => {
     if (sellerListings[0]) {
@@ -95,6 +117,13 @@ export default function SellerProfile() {
               {/* Actions */}
               <div className="flex gap-2 shrink-0">
                 <button
+                  onClick={openQr}
+                  title="Store QR code — scan to open this store"
+                  className="px-4 py-2 rounded-lg bg-white/[0.04] text-white/60 text-sm font-medium hover:bg-white/10 transition-colors border border-white/5 flex items-center gap-1.5"
+                >
+                  <QrCode className="w-4 h-4" /> QR
+                </button>
+                <button
                   onClick={handleChat}
                   className="px-4 py-2 rounded-lg bg-nx-violet/10 text-nx-violet text-sm font-medium hover:bg-nx-violet/20 transition-colors border border-nx-violet/20 flex items-center gap-1.5"
                 >
@@ -104,6 +133,34 @@ export default function SellerProfile() {
             </div>
           </div>
         </ScrollReveal>
+
+        {/* Store QR modal — resolves to the public storefront URL */}
+        {qrOpen && (
+          <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setQrOpen(false)}>
+            <div className="bg-nx-card border border-white/10 rounded-2xl p-6 max-w-sm w-full text-center" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-white">Store QR code</h3>
+                <button onClick={() => setQrOpen(false)} className="p-1 text-white/40 hover:text-white"><X className="w-5 h-5" /></button>
+              </div>
+              {qrData ? (
+                <>
+                  <img src={qrData} alt={`QR code for ${sellerName}'s Nexora store`} className="w-56 h-56 mx-auto rounded-xl bg-white p-2" />
+                  <p className="text-[11px] text-white/40 mt-3">Scan to open <b className="text-white/70">{sellerName}</b> on Nexora — works with any phone camera, app not required.</p>
+                  <button
+                    onClick={() => downloadQr({ kind: "storefront", sellerId: userId as string }, `nexora-store-${String(userId).slice(-6)}.png`)}
+                    className="mt-4 w-full py-2.5 rounded-xl bg-nx-violet/10 border border-nx-violet/25 text-nx-violet text-[13px] font-semibold hover:bg-nx-violet/20 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4" /> Download QR (print & share)
+                  </button>
+                </>
+              ) : (
+                <div className="w-56 h-56 mx-auto rounded-xl bg-white/[0.03] flex items-center justify-center">
+                  <QrCode className="w-8 h-8 text-white/20 animate-pulse" />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Store description (from the seller's saved store profile) */}
         {storeDescription && (

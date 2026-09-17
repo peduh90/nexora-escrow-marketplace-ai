@@ -1,17 +1,58 @@
 {
-  "name": "freebuff.com application",
-  "short_name": "freebuff.com",
-  "description": "freebuff.com application",
-  "start_url": "/",
+  "name": "Nexora Market — AI-Powered Escrow Marketplace",
+  "short_name": "Nexora",
+  "description": "Buy, sell, hire and work securely. Africa's AI-powered escrow marketplace — every payment protected, every participant verified. Built for Kenya and East Africa.",
+  "id": "/",
+  "start_url": "/marketplace?source=pwa",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait-primary",
+  "theme_color": "#05050A",
+  "background_color": "#05050A",
+  "lang": "en-KE",
+  "dir": "ltr",
+  "categories": ["shopping", "business", "finance"],
   "icons": [
+    { "src": "/icons/icon-64.png", "sizes": "64x64", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-152.png", "sizes": "152x152", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-256.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
     {
-      "src": "/logo.png",
-      "sizes": "any",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "name": "My Orders",
+      "short_name": "Orders",
+      "description": "Track your orders and deliveries",
+      "url": "/buyer/orders?source=shortcut",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Messages",
+      "short_name": "Messages",
+      "description": "Open your conversations",
+      "url": "/chat?source=shortcut",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Explore Services",
+      "short_name": "Services",
+      "description": "Find local service providers",
+      "url": "/services?source=shortcut",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Freelance Jobs",
+      "short_name": "Jobs",
+      "description": "Find freelance work or hire talent",
+      "url": "/freelance/jobs?source=shortcut",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
     }
   ]
 }

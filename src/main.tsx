@@ -89,6 +89,8 @@ const PrivacyPage = lazy(() => import("./pages/Privacy.tsx"));
 const SellerProfilePage = lazy(() => import("./pages/SellerProfile.tsx"));
 // Components
 import MobileShell from "@/components/mobile/MobileShell";
+import PwaLayer from "@/components/pwa/PwaLayer";
+import { initPwa } from "@/lib/pwa";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 const TermsPage = lazy(() => import("./pages/Terms.tsx"));
 // Admin panel
@@ -408,9 +410,14 @@ createRoot(document.getElementById("root")!).render(
             </Routes>
           </Suspense>
           <MobileShell />
+          <PwaLayer />
         </BrowserRouter>
         <Toaster />
       </ConvexAuthProvider>
     </RootErrorBoundary>
   </StrictMode>,
 );
+
+// PWA: service worker registration, install capture, update lifecycle.
+// Called after mount so it never blocks first paint.
+initPwa();
