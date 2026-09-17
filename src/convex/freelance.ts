@@ -309,9 +309,10 @@ export const searchFreelancers = query({
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
 
-    // Only genuine freelancer-role accounts appear as hireable freelancers —
-    // sellers, employers, creators and buyers who happen to have a profile
-    // are excluded from every directory surface.
+    // Directory = everyone actively offering freelance services (pure
+    // freelancers AND sellers publishing digital services). Blocked/suspended
+    // accounts are filtered; contact info (phone) is attached for the
+    // WhatsApp button.
     const withRoles = await Promise.all(
       profiles.map(async (p) => ({
         profile: p,
@@ -319,7 +320,12 @@ export const searchFreelancers = query({
       })),
     );
     profiles = withRoles
-      .filter((r) => (r.user as any)?.role === "freelancer")
+      .filter((r) => {
+        const u = r.user as any;
+        if (!u) return false;
+        if (u.accountStatus === "suspended") return false;
+        return u.role === "freelancer" || u.role === "seller" || u.role === "employer";
+      })
       .map((r) => r.profile);
 
     if (args.query) {
@@ -358,11 +364,15 @@ export const searchFreelancers = query({
           b.completedProjects - a.completedProjects ||
           (b.hourlyRate || 0) - (a.hourlyRate || 0),
       )
-      .map((p) => ({
-        ...p,
-        role: "freelancer" as const,
-        photo: p.avatar || (withRoles.find((r) => r.profile._id === p._id)?.user as any)?.image || undefined,
-      }));
+      .map((p) => {
+        const owner = withRoles.find((r) => r.profile._id === p._id)?.user as any;
+        return {
+          ...p,
+          role: (owner?.role as string) || "freelancer",
+          photo: p.avatar || owner?.image || undefined,
+          phone: owner?.phone || undefined,
+        };
+      });
   },
 });
 
