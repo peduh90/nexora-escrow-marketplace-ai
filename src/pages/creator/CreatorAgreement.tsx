@@ -23,7 +23,8 @@ import {
  */
 
 const COMMISSION_ROWS = [
-  { milestone: "Verified user signup", payout: "KSh 10" },
+  { milestone: "Referral registers (no payout)", payout: "KSh 0" },
+  { milestone: "Referred buyer completes first purchase", payout: "KSh 50" },
   { milestone: "Seller fully activated", payout: "KSh 20" },
   { milestone: "Freelancer fully activated", payout: "KSh 20" },
   { milestone: "Employer fully activated", payout: "KSh 25" },

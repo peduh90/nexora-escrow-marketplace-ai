@@ -815,6 +815,31 @@ export const confirmDelivery = mutation({
       createdAt: releasedAt,
     });
 
+    // ── Buyer verification: the first released escrow verifies the buyer ──
+    try {
+      const buyerEscrows = await ctx.db
+        .query("escrows")
+        .withIndex("by_buyer", (q: any) => q.eq("buyerId", escrow.buyerId))
+        .collect();
+      const completedCount = buyerEscrows.filter(
+        (e: any) => e.status === "released" || e.status === "completed",
+      ).length;
+      if (completedCount === 1) {
+        await ctx.db.insert("notifications", {
+          userId: escrow.buyerId,
+          type: "account",
+          title: "You're now a Verified Buyer ✓",
+          message:
+            "Your first purchase completed successfully — your Nexora buyer profile is now fully verified. Verified buyers get faster dispute resolution and higher trust from sellers.",
+          read: false,
+          link: "/buyer/profile",
+          createdAt: releasedAt,
+        });
+      }
+    } catch (err) {
+      console.error("[buyer-verification] badge check failed:", err);
+    }
+
     return { success: true, releasedAt };
   },
 });

@@ -114,11 +114,17 @@ export async function triggerInstall(): Promise<"accepted" | "dismissed" | "unav
 /** Dismissal memory — do not nag. Re-ask after ~30 days at most. */
 const DISMISS_KEY = "nx_pwa_dismissed_at";
 const DISMISS_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
+/** "Later" on the tiny nudge — a softer, shorter cooldown than a real dismissal. */
+const LATER_KEY = "nx_pwa_later_at";
+const LATER_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function wasDismissedRecently(): boolean {
   try {
     const at = Number(localStorage.getItem(DISMISS_KEY) || 0);
-    return at > 0 && Date.now() - at < DISMISS_COOLDOWN_MS;
+    if (at > 0 && Date.now() - at < DISMISS_COOLDOWN_MS) return true;
+    const later = Number(localStorage.getItem(LATER_KEY) || 0);
+    if (later > 0 && Date.now() - later < LATER_COOLDOWN_MS) return true;
+    return false;
   } catch {
     return false;
   }
@@ -126,6 +132,11 @@ export function wasDismissedRecently(): boolean {
 
 export function markDismissed() {
   try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* private mode */ }
+}
+
+/** User tapped "Later" on the tiny nudge — shorter, softer cooldown. */
+export function markLater() {
+  try { localStorage.setItem(LATER_KEY, String(Date.now())); } catch { /* private mode */ }
 }
 
 /** True when the app already runs installed / in a standalone context. */
@@ -154,11 +165,54 @@ export function canOfferInstall(): boolean {
 }
 
 /**
- * Engagement gate — the install prompt appears only after the visitor has
+ * Connection/battery courtesy: on save-data mode, very slow connections, or
+ * critically low battery the install suggestion quietly defers (the browser
+ * only exposes these when it can — otherwise we proceed).
+ */
+export function deviceSaysDefer(): boolean {
+  try {
+    const conn = (navigator as any).connection || (navigator as any).mozConnection;
+    if (conn) {
+      if (conn.saveData) return true;
+      const et = String(conn.effectiveType || "");
+      if (et === "slow-2g" || et === "2g") return true;
+    }
+  } catch { /* not supported — proceed */ }
+  try {
+    const nav = navigator as any;
+    if (typeof nav.getBattery === "function") {
+      // getBattery is async — a synchronous check isn't possible; cached value
+      // below is refreshed by watchBatteryForDefer() at init.
+      if (batteryDeferred === true) return true;
+    }
+  } catch { /* not supported */ }
+  return false;
+}
+
+let batteryDeferred = false;
+/** Best-effort battery watcher — called once from initPwa where supported. */
+export function watchBatteryForDefer(): void {
+  try {
+    const nav = navigator as any;
+    if (typeof nav.getBattery !== "function") return;
+    nav.getBattery().then((b: any) => {
+      const update = () => {
+        batteryDeferred = !b.charging && typeof b.level === "number" && b.level < 0.15;
+      };
+      update();
+      b.addEventListener?.("levelchange", update);
+      b.addEventListener?.("chargingchange", update);
+    }).catch(() => { /* ignore */ });
+  } catch { /* not supported */ }
+}
+
+/**
+ * Engagement gate for the TINY nudge — appears only after the visitor has
  * actually used the marketplace (browsing counts, bounce visits don't).
  */
 export function shouldShowInstallPrompt(): boolean {
   if (isStandalone() || wasDismissedRecently()) return false;
+  if (deviceSaysDefer()) return false;
   try {
     if (localStorage.getItem("nx_pwa_installed")) return false;
   } catch {
@@ -193,5 +247,6 @@ export function initPwa(): void {
     try { localStorage.setItem("nx_pwa_installed", String(Date.now())); } catch { /* ignore */ }
   });
 
+  watchBatteryForDefer();
   void registerServiceWorker();
 }

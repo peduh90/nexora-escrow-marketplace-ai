@@ -5,12 +5,16 @@ import { useAuth } from "@/hooks/use-auth";
 import BuyerLayout from "./BuyerLayout";
 import AvatarPicker from "@/components/AvatarPicker";
 import {
-  User, Mail, Phone, MapPin, Shield, Save, Loader2, CheckCircle2, Eye, EyeOff, Star,
+  User, Mail, Phone, MapPin, Shield, Save, Loader2, CheckCircle2, Eye, EyeOff, Star, ShoppingBag,
 } from "lucide-react";
 
 export default function BuyerProfile() {
   const { user } = useAuth();
   const updateUser = useMutation(api.users.updateProfile);
+  // Purchase-gated verification: the buyer profile is fully verified only
+  // after one completed (escrow-released) purchase — server-computed.
+  const buyerVerification = useQuery(api.users.getBuyerVerification, {});
+  const buyerVerified = buyerVerification?.buyerVerified === true;
 
   const [name, setName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone || "");
@@ -50,9 +54,13 @@ export default function BuyerProfile() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold text-white">{name || "Buyer"}</h2>
-                {user?.kycStatus === "verified" && (
+                {buyerVerified ? (
                   <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400">
-                    <CheckCircle2 className="w-3 h-3" /> Verified
+                    <CheckCircle2 className="w-3 h-3" /> Verified Buyer
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-300">
+                    <ShoppingBag className="w-3 h-3" /> Complete a purchase to verify
                   </span>
                 )}
               </div>
@@ -137,7 +145,18 @@ export default function BuyerProfile() {
             </div>
             <div className="p-3 rounded-lg bg-white/[0.01]">
               <p className="text-[10px] text-white/30 uppercase">Verification</p>
-              <p className="text-sm font-medium text-white">{user?.kycStatus === "verified" ? "✓ Verified" : "Not Verified"}</p>
+              {buyerVerified ? (
+                <p className="text-sm font-medium text-emerald-400">✓ Verified Buyer</p>
+              ) : (
+                <p className="text-sm font-medium text-amber-300">Verify by buying</p>
+              )}
+              {!buyerVerified && (
+                <p className="text-[10px] text-white/30 mt-0.5">One completed purchase verifies your buyer profile</p>
+              )}
+            </div>
+            <div className="p-3 rounded-lg bg-white/[0.01]">
+              <p className="text-[10px] text-white/30 uppercase">Completed Purchases</p>
+              <p className="text-sm font-medium text-white">{buyerVerification?.completePurchases ?? 0}</p>
             </div>
             <div className="p-3 rounded-lg bg-white/[0.01]">
               <p className="text-[10px] text-white/30 uppercase">Currency</p>

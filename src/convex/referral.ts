@@ -8,9 +8,10 @@ import { query, mutation, internalMutation } from "./_generated/server";
 //  1. Attribution is permanent and server-side: the creator→user relationship
 //     is written ONCE at registration from a server-verified click record.
 //     The client cannot create, move, or replace attribution.
-//  2. Creators are NOT rewarded for clicks or raw registrations — a referral
-//     only earns after the referred user passes real verification, and
-//     bonuses follow seller/freelancer activation and first transactions.
+//  2. Creators are NOT rewarded for clicks or raw registrations — buyer
+//     commission unlocks ONLY on the referred buyer's first completed
+//     purchase (escrow released); bonuses follow seller/freelancer
+//     activation and first transactions.
 //  3. Anti-fraud: self-referrals blocked, duplicate identity detection,
 //     hourly registration caps, click-proof requirement, admin fraud queue.
 //  4. Commission rules live in the referralSettings singleton — never
@@ -173,11 +174,15 @@ async function syncReferralEarnings(ctx: any, referralId: string) {
   const has = (t: string) => existing.some((e: any) => e.type === t && e.status !== "rejected");
 
   const awards: Array<{ type: string; amount: number; reason: string }> = [];
-  if (r.verifiedAt && settings.fixedPerVerifiedUser > 0 && !has("verified_user")) {
+  // ── BUYER COMMISSION RULE ────────────────────────────────────────────
+  // A referred buyer earns the creator NOTHING at signup or verification.
+  // The fixed buyer commission unlocks only when the referred user
+  // completes their first REAL purchase (escrow released).
+  if (r.firstTransactionAt && settings.fixedPerVerifiedUser > 0 && !has("verified_user")) {
     awards.push({
       type: "verified_user",
       amount: settings.fixedPerVerifiedUser,
-      reason: "Referred user completed registration & verification",
+      reason: "Referred buyer completed their first verified purchase (buyer verification)",
     });
   }
   if (r.sellerActivatedAt && settings.sellerActivationBonus > 0 && !has("seller_bonus")) {
@@ -337,23 +342,6 @@ export const applyToBeCreator = mutation({
     if (handle.length < 2) throw new ConvexError("Enter your social media handle.");
     if (plan.length < 20) {
       throw new ConvexError("Describe how you will promote Nexora in at least 20 characters.");
-    }
-
-    // ── Creator verification gate ──────────────────────────────────────────
-    // A creator represents Nexora to strangers, so they must have completed
-    // at least ONE real buyer purchase that went through the escrow flow.
-    // Zero purchase history → application rejected with clear guidance.
-    const boughtOrders = await ctx.db
-      .query("orders")
-      .withIndex("by_buyer", (q: any) => q.eq("buyerId", user._id))
-      .collect();
-    const hasCompletePurchase = boughtOrders.some((o) =>
-      ["paid", "funded", "processing", "shipped", "delivered", "completed"].includes(String(o.status)),
-    );
-    if (!hasCompletePurchase) {
-      throw new ConvexError(
-        "Creator verification requires one complete purchase — make a real order as a buyer first, then apply.",
-      );
     }
 
     const existing = await ctx.db
@@ -525,7 +513,7 @@ export const onUserRegistered = mutation({
       ctx,
       (creator as any).userId,
       "New referral signup",
-      `Someone just registered through your link. It will count once they complete verification.`,
+      "Someone just registered through your link. It will earn you a commission once they make their first purchase.",
       "/creator",
     );
 

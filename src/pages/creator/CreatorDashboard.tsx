@@ -501,7 +501,7 @@ function CreatorDashboardInner() {
                 {[
                   { label: "Total clicks", value: creator.clicks, icon: Link2 },
                   { label: "Registrations", value: creator.registrations, icon: Users },
-                  { label: "Verified users", value: creator.verified, icon: UserCheck },
+                  { label: "Verified accounts", value: creator.verified, icon: UserCheck },
                   { label: "Active users", value: creator.activeUsers, icon: Shield },
                   { label: "Sellers referred", value: creator.sellersReferred, icon: Store },
                   { label: "Freelancers referred", value: creator.freelancersReferred, icon: PenLine },
@@ -644,7 +644,7 @@ function CreatorDashboardInner() {
               <div className="mt-4 rounded-2xl border border-white/8 overflow-hidden">
                 {earningsRows.length === 0 ? (
                   <div className="p-8 text-center text-sm text-white/40">
-                    No earnings yet — they appear here the moment a referral completes verification.
+                    No earnings yet — they appear here the moment a referred buyer completes a purchase.
                   </div>
                 ) : (
                   <div className="divide-y divide-white/5">

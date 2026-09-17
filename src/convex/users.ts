@@ -938,6 +938,57 @@ export const requestPasswordReset = mutation({
   },
 });
 
+// ─── BUYER VERIFICATION (purchase-gated) ───────────────────────────────────
+
+/**
+ * A buyer's profile counts as FULLY VERIFIED only after one complete
+ * purchase — an escrow that actually RELEASED (buyer confirmed delivery).
+ * Signup and KYC alone prove identity, not trustworthy buying behaviour.
+ */
+export async function hasCompletedPurchase(ctx: any, userId: string): Promise<boolean> {
+  const escrows = await ctx.db
+    .query("escrows")
+    .withIndex("by_buyer", (q: any) => q.eq("buyerId", userId))
+    .collect();
+  return escrows.some((e: any) => e.status === "released" || e.status === "completed");
+}
+
+/**
+ * Buyer verification status for the signed-in user (or any user if the
+ * caller is an admin). Drives the "Verified Buyer" badge and the
+ * purchase-verification hint on the buyer profile.
+ */
+export const getBuyerVerification = query({
+  args: { userId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    let targetId: string | null = null;
+    if (args.userId) {
+      const viewer = await getSessionUser(ctx);
+      if (viewer && (viewer as any).role === "admin") targetId = args.userId;
+    }
+    if (!targetId) {
+      const me = await getSessionUser(ctx);
+      if (!me) return null;
+      targetId = me._id;
+    }
+    const escrows = await ctx.db
+      .query("escrows")
+      .withIndex("by_buyer", (q: any) => q.eq("buyerId", targetId))
+      .collect();
+    const completed = escrows.filter(
+      (e: any) => e.status === "released" || e.status === "completed",
+    );
+    return {
+      completePurchases: completed.length,
+      buyerVerified: completed.length >= 1,
+      firstPurchaseAt:
+        completed.length > 0
+          ? Math.min(...completed.map((e: any) => (e as any).releasedAt ?? e._creationTime))
+          : undefined,
+    };
+  },
+});
+
 /**
  * Complete a password reset: verify the emailed code and set a new password.
  * Enforces the same strong-password policy as signup, limits attempts to 5,

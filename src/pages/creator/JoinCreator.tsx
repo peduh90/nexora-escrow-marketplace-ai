@@ -163,7 +163,7 @@ export default function JoinCreator() {
             className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-3"
           >
             {[
-              { label: "Earn per verified referral", value: "KES 50+", icon: Users },
+              { label: "Earn per verified buyer", value: "KES 50+", icon: Users },
               { label: "Seller activation bonus", value: "KES 200", icon: Check },
               { label: "First-transaction bonus", value: "KES 150", icon: TrendingUp },
               { label: "Lifetime trade commission", value: "Up to 1%", icon: Sparkles },
@@ -258,7 +258,7 @@ export default function JoinCreator() {
           </h2>
           <p className="mt-4 text-white/55 max-w-xl mx-auto">
             Apply in two minutes: sign the Creator Referral Agreement, then Nexora reviews it — once
-            approved your referral link goes live and every verified signup starts earning for you.
+            approved your referral link goes live and every referred buyer who completes a purchase starts earning for you.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <button

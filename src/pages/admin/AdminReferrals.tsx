@@ -682,7 +682,7 @@ function AdminReferralsInner() {
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {([
-                    ["fixedPerVerifiedUser", "Per verified user (KES)", "Paid when a referral completes registration & verification"],
+                    ["fixedPerVerifiedUser", "Buyer first-purchase commission (KES)", "Paid ONLY when a referred buyer completes their first verified purchase (escrow released) — never at signup"],
                     ["sellerActivationBonus", "Seller activation bonus (KES)", "Paid ONLY when a referred seller is FULLY verified: a genuine listing live (plus KYC if they sell products — freelance sellers don't need KYC)"],
                     ["freelancerActivationBonus", "Freelancer activation bonus (KES)", "Paid when a referral activates as a freelancer"],
                     ["employerActivationBonus", "Employer activation bonus (KES)", "Paid ONLY when a referred employer is FULLY verified: complete profile + 5 distinct legitimate jobs"],

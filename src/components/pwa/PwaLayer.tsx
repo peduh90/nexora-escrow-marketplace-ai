@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Download, Share, Plus, WifiOff, RefreshCw, Shield, Smartphone } from "lucide-react";
 import {
-  applyUpdate, canOfferInstall, isIos, isStandalone, markDismissed,
+  applyUpdate, canOfferInstall, isIos, isStandalone, markDismissed, markLater,
   onInstallAvailabilityChange, onUpdateStateChange, recordEngagement,
   shouldShowInstallPrompt, triggerInstall,
 } from "@/lib/pwa";
@@ -11,8 +11,8 @@ import {
 function InstallBanner() {
   const [available, setAvailable] = useState(false);
   const [eligible, setEligible] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const [showIosGuide, setShowIosGuide] = useState(false);
+  const [stage, setStage] = useState<"nudge" | "full" | "ios">("nudge");
+  const [showNudge, setShowNudge] = useState(false);
   const ios = isIos();
 
   // Track real browser capability (Android Chrome/Edge fire beforeinstallprompt).
@@ -30,30 +30,30 @@ function InstallBanner() {
   // Delay the reveal a bit after eligibility so it never pops mid-tap.
   useEffect(() => {
     if (!eligible) return;
-    const t = setTimeout(() => setVisible(true), 4_000);
+    const t = setTimeout(() => setShowNudge(true), 4_000);
     return () => clearTimeout(t);
   }, [eligible]);
 
   const dismiss = () => {
-    setVisible(false);
-    setShowIosGuide(false);
+    setShowNudge(false);
+    setStage("nudge");
     markDismissed();
   };
 
   const install = async () => {
     if (ios) {
-      setShowIosGuide(true);
+      setStage("ios");
       return;
     }
     const outcome = await triggerInstall();
-    if (outcome === "accepted") setVisible(false);
-    // "dismissed" on the native sheet → banner stays for later; cooldown only
-    // applies to the Nexora banner itself (user closed it explicitly).
+    if (outcome === "accepted") setShowNudge(false);
+    // "dismissed" on the native sheet → nudge stays for later; cooldown only
+    // applies to the Nexora nudge itself (user closed it explicitly).
   };
 
   if (isStandalone()) return null;
   if (!available && !ios) return null;
-  if (!visible && !showIosGuide) return null;
+  if (!showNudge) return null;
 
   return (
     <AnimatePresence>
@@ -68,7 +68,35 @@ function InstallBanner() {
         aria-label="Install Nexora"
       >
         <div className="rounded-2xl border border-nx-violet/25 bg-nx-surface-elevated/95 backdrop-blur-xl p-4 shadow-2xl">
-          {!showIosGuide ? (
+          {stage === "nudge" && (
+            <>
+              <div className="flex items-center gap-3">
+                <img src="/icons/icon-192.png" alt="" className="w-10 h-10 rounded-xl border border-white/10 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13.5px] font-bold text-white leading-tight">Want faster access next time?</p>
+                  <p className="text-[11.5px] text-white/45 mt-0.5 leading-snug">Install Nexora on your phone — free, one tap.</p>
+                </div>
+                <button onClick={dismiss} className="p-1 -m-1 text-white/30 active:text-white/60 shrink-0" aria-label="Dismiss">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => { markLater(); dismiss(); }}
+                  className="flex-1 h-10 rounded-xl border border-white/10 text-white/60 text-[12.5px] font-semibold active:bg-white/5"
+                >
+                  Later
+                </button>
+                <button
+                  onClick={() => setStage(ios ? "ios" : "full")}
+                  className="flex-1 h-10 rounded-xl bg-nx-violet text-white text-[12.5px] font-semibold active:bg-nx-violet/80 transition-colors"
+                >
+                  Show me how
+                </button>
+              </div>
+            </>
+          )}
+          {stage === "full" && (
             <>
               <div className="flex items-start gap-3">
                 <img src="/icons/icon-192.png" alt="" className="w-12 h-12 rounded-xl border border-white/10" />
@@ -87,8 +115,8 @@ function InstallBanner() {
                   onClick={install}
                   className="flex-1 h-11 rounded-xl bg-nx-violet text-white text-[13.5px] font-semibold flex items-center justify-center gap-2 active:bg-nx-violet/80 transition-colors"
                 >
-                  {ios ? <Smartphone className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-                  {ios ? "Add to Home Screen" : "Install app"}
+                  <Download className="w-4 h-4" />
+                  Install app
                 </button>
                 <button
                   onClick={dismiss}
@@ -98,7 +126,8 @@ function InstallBanner() {
                 </button>
               </div>
             </>
-          ) : (
+          )}
+          {stage === "ios" && (
             <>
               <div className="flex items-start justify-between gap-2 mb-3">
                 <p className="text-[14px] font-bold text-white">Add Nexora to your Home Screen</p>
