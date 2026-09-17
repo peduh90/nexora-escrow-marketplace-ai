@@ -421,8 +421,10 @@ export const chat = action({
 
 type AiProvider = "gemini" | "openai";
 
-/** Currently free-tier Gemini Flash model. Update here if Google deprecates. */
-const GEMINI_MODEL = "gemini-2.0-flash";
+/** Free-tier Gemini Flash-Lite alias — always points at the current
+ * available Flash-Lite model (verified live against this API key).
+ * Update here if Google ever deprecates the alias. */
+const GEMINI_MODEL = "gemini-flash-lite-latest";
 
 function resolveActiveProvider(): AiProvider {
   const setting = (process.env.AI_PROVIDER || "gemini").toLowerCase();
