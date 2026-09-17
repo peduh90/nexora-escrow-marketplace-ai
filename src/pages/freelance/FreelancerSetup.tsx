@@ -177,11 +177,13 @@ export default function FreelancerSetup() {
     const okFiles = await uploadProofs();
     if (!okFiles) {
       // Profile is live; just warn about the files.
-      navigate(`/freelancer/${userId}`);
+      navigate(`/freelancer/${userId}`, { replace: true });
       return;
     }
     toast.success("Profile complete! Employers can now see your work. 🎉");
-    navigate(`/freelancer/${userId}`);
+    // Replace so Back never returns to the wizard and the profile page mounts
+    // fresh, re-running its queries against the saved profile + proof files.
+    navigate(`/freelancer/${userId}`, { replace: true });
   };
 
   return (

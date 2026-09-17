@@ -1,12 +1,23 @@
 import { v, ConvexError } from "convex/values";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { sellerCommission, buyerProtectionFee, resolveFee, recordFeeEarning } from "./fees";
 
 // ─── SHARED HELPERS ───
 
-/** Resolve the session's user record (auth-session-bound, email fallback). */
+/**
+ * Resolve the session's user record — SESSION-BOUND FIRST (getAuthUserId),
+ * email fallback. Must match how `users.currentUser` resolves on the client,
+ * otherwise profiles/proofs attach to a duplicate row the URL never points
+ * at (the bug where uploads vanished from the public profile).
+ */
 async function requireUser(ctx: any) {
+  const sessionUserId = await getAuthUserId(ctx);
+  if (sessionUserId !== null) {
+    const sessionUser = await ctx.db.get(sessionUserId);
+    if (sessionUser) return sessionUser;
+  }
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new ConvexError("Not authenticated");
   const user = await ctx.db
@@ -68,14 +79,9 @@ export const upsertProfile = mutation({
     roleMode: v.union(v.literal("freelancer"), v.literal("employer"), v.literal("both")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-    if (!user) throw new ConvexError("User not found");
+    // Session-bound first so the profile attaches to the SAME user row the
+    // auth session and public profile URL resolve to — never a duplicate row.
+    const user: any = await requireUser(ctx);
 
     const existing = await ctx.db
       .query("freelanceProfiles")
@@ -111,7 +117,12 @@ export const upsertProfile = mutation({
     };
 
     if (existing) {
-      await ctx.db.patch(existing._id, { ...data, createdAt: existing.createdAt });
+      // Preserve any proof-of-work already uploaded (auto-created profiles).
+      await ctx.db.patch(existing._id, {
+        ...data,
+        proofOfWork: existing.proofOfWork,
+        createdAt: existing.createdAt,
+      });
       return { profileId: existing._id };
     }
 
@@ -127,13 +138,9 @@ export const upsertProfile = mutation({
 export const getMyProfile = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
+    // Session-bound, same as upsertProfile — one user row, one profile.
+    let user: any = null;
+    try { user = await requireUser(ctx); } catch { return null; }
     if (!user) return null;
 
     const profile = await ctx.db
@@ -245,27 +252,53 @@ async function resolveProofs(ctx: any, keys: string[] | undefined): Promise<{ ke
   return out;
 }
 
-/** Add a proof-of-work file (writer-only). Called after the file is in Storage. */
+/** Add a proof-of-work file. Called after the file is in Storage.
+ * Auto-creates the freelance profile if it doesn't exist yet so an upload can
+ * never be lost to ordering — and any account type building a freelance
+ * presence (freelancer, ai_tasker, seller, employer) may attach samples. */
 export const addProofOfWork = mutation({
   args: { storageId: v.string(), title: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const user = await requireUser(ctx);
-    // Freelancers AND AI Taskers both build hireable profiles.
-    if (user.role !== "freelancer" && user.role !== "ai_tasker") {
-      throw new ConvexError("Only Freelancer / AI Tasker accounts can upload proof of work.");
-    }
-    const profile = await ctx.db
+    const user: any = await requireUser(ctx);
+    let profile = await ctx.db
       .query("freelanceProfiles")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .first();
-    if (!profile) throw new ConvexError("Create your freelance profile first (Profile Settings).");
+    if (!profile) {
+      // Auto-create a minimal active profile — the wizard may not have saved
+      // it yet, but the uploaded work must never be dropped.
+      const now = Date.now();
+      const profileId = await ctx.db.insert("freelanceProfiles", {
+        userId: user._id,
+        displayName: user.name || "Freelancer",
+        avatar: user.image || undefined,
+        skills: [],
+        categories: [],
+        languages: ["English"],
+        currency: "KES",
+        availability: "available",
+        completedProjects: 0,
+        totalEarnings: 0,
+        successRate: 100,
+        responseRate: 100,
+        avgRating: 0,
+        totalReviews: 0,
+        isVerified: user.kycStatus === "verified" || user.verificationLevel === "business",
+        status: "active",
+        roleMode: "freelancer",
+        proofOfWork: [args.storageId],
+        createdAt: now,
+        updatedAt: now,
+      });
+      return { ok: true, count: 1, profileId };
+    }
     const existing = profile.proofOfWork ?? [];
     if (existing.length >= 10) throw new ConvexError("Proof-of-work limit reached (10 files). Remove one to add another.");
     await ctx.db.patch(profile._id, {
       proofOfWork: [...existing, args.storageId],
       updatedAt: Date.now(),
     });
-    return { ok: true, count: existing.length + 1 };
+    return { ok: true, count: existing.length + 1, profileId: profile._id };
   },
 });
 

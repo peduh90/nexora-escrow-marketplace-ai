@@ -22,9 +22,14 @@ export default function FreelancerProfile() {
   const { user, isAuthenticated } = useAuth();
 
   const data = useQuery(api.freelance.getFreelancerPublic, { userId: userId as string });
-  const listings = useQuery(api.listings.getActiveListings, { limit: 100 });
+  // This freelancer's own published services — scoped to their user ID so the
+  // query can't leak other sellers' listings and always reflects this person.
+  const services = useQuery(api.listings.getUserListings, {
+    userId: userId as string,
+    marketplace: MARKETPLACES.FREELANCE,
+  });
 
-  const loading = data === undefined || listings === undefined;
+  const loading = data === undefined || services === undefined;
 
   if (loading) {
     return (
@@ -72,9 +77,7 @@ export default function FreelancerProfile() {
   const images = proofs.filter((p: any) => p.kind === "image");
   const documents = proofs.filter((p: any) => p.kind !== "image");
 
-  const services = (listings ?? []).filter(
-    (l: any) => l.sellerId === userId && l.marketplace === MARKETPLACES.FREELANCE,
-  );
+  const serviceList = services ?? [];
 
   return (
     <div className="min-h-screen bg-nx-bg">
@@ -317,9 +320,9 @@ export default function FreelancerProfile() {
         <ScrollReveal delay={150}>
           <div className="mt-6">
             <h3 className="text-sm font-semibold text-white mb-4">
-              Published Services ({services.length})
+              Published Services ({serviceList.length})
             </h3>
-            {services.length === 0 ? (
+            {serviceList.length === 0 ? (
               <div className="py-12 text-center rounded-xl border border-white/5">
                 <Wrench className="w-10 h-10 text-white/10 mx-auto mb-2" />
                 <p className="text-sm text-white/30">No services published yet</p>
@@ -327,7 +330,7 @@ export default function FreelancerProfile() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {services.map((s: any) => (
+                {serviceList.map((s: any) => (
                   <button
                     key={s._id}
                     onClick={() => navigate(`/freelance/service/${s._id}`)}
