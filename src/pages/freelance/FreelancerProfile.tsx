@@ -62,9 +62,17 @@ export default function FreelancerProfile() {
               <div className="relative p-6 md:p-8 rounded-2xl border border-white/5 bg-white/[0.02] overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-nx-violet/10 to-nx-cyan/5" />
                 <div className="relative z-10 flex flex-col md:flex-row items-start gap-6">
-                  <div className="w-20 h-20 rounded-2xl bg-nx-violet/20 border-2 border-nx-violet/30 flex items-center justify-center text-2xl font-bold text-nx-violet shrink-0">
-                    {name.charAt(0)}
-                  </div>
+                  {(profile as any).photo ? (
+                    <img
+                      src={(profile as any).photo}
+                      alt={name}
+                      className="w-20 h-20 rounded-2xl object-cover border-2 border-nx-violet/30 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-2xl bg-nx-violet/20 border-2 border-nx-violet/30 flex items-center justify-center text-2xl font-bold text-nx-violet shrink-0">
+                      {name.charAt(0)}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h1 className="text-xl font-bold text-white">{name}</h1>

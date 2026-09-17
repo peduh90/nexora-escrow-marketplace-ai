@@ -237,9 +237,17 @@ export default function FreelanceJobs() {
                   onClick={() => navigate(`/freelancer/${fl.userId}`)}
                   className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-cyan/25 hover:bg-white/[0.04] transition-all text-left group"
                 >
-                  <div className="w-11 h-11 rounded-full bg-nx-cyan/10 border border-nx-cyan/20 flex items-center justify-center text-nx-cyan font-bold text-base mb-3">
-                    {(fl.displayName || "U")[0]}
-                  </div>
+                  {fl.photo ? (
+                    <img
+                      src={fl.photo}
+                      alt={fl.displayName}
+                      className="w-12 h-12 rounded-full object-cover border border-nx-cyan/20 mb-3"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-nx-cyan/10 border border-nx-cyan/20 flex items-center justify-center text-nx-cyan font-bold text-base mb-3">
+                      {(fl.displayName || "U")[0]}
+                    </div>
+                  )}
                   <h3 className="text-xs font-semibold text-white truncate group-hover:text-nx-cyan transition-colors">{fl.displayName}</h3>
                   <p className="text-[10px] text-white/35 truncate mt-0.5">{fl.title || "Freelancer"}</p>
                   <div className="flex items-center justify-between mt-2">

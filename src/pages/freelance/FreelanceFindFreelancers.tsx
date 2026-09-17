@@ -84,9 +84,18 @@ export default function FreelanceFindFreelancers() {
               <div key={fl._id || fl.userId || i} className="p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-nx-violet/20 hover:bg-white/[0.04] transition-all cursor-pointer"
                 onClick={() => navigate(`/freelancer/${fl.userId}`)}>
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-nx-violet/15 flex items-center justify-center text-nx-violet font-bold text-lg shrink-0">
-                    {(fl.displayName || "U")[0]}
-                  </div>
+                  {fl.photo ? (
+                    <img
+                      src={fl.photo}
+                      alt={fl.displayName}
+                      className="w-12 h-12 rounded-full object-cover border border-white/10 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-nx-violet/15 flex items-center justify-center text-nx-violet font-bold text-lg shrink-0">
+                      {(fl.displayName || "U")[0]
+                      }
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-white">{fl.displayName}</h3>
                     <p className="text-xs text-white/40 mt-0.5">{fl.title || "Freelancer"}</p>

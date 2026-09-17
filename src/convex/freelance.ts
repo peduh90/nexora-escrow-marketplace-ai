@@ -188,7 +188,14 @@ export const getProfile = query({
       .query("freelanceProfiles")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
-    return profile || null;
+    if (!profile) return null;
+    // Attach the profile photo: the freelance avatar, falling back to the
+    // account image — so profile pages show real uploaded faces.
+    const user = await ctx.db.get(profile.userId as any);
+    return {
+      ...profile,
+      photo: profile.avatar || (user as any)?.image || undefined,
+    };
   },
 });
 
@@ -302,6 +309,19 @@ export const searchFreelancers = query({
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
 
+    // Only genuine freelancer-role accounts appear as hireable freelancers —
+    // sellers, employers, creators and buyers who happen to have a profile
+    // are excluded from every directory surface.
+    const withRoles = await Promise.all(
+      profiles.map(async (p) => ({
+        profile: p,
+        user: await ctx.db.get(p.userId as any),
+      })),
+    );
+    profiles = withRoles
+      .filter((r) => (r.user as any)?.role === "freelancer")
+      .map((r) => r.profile);
+
     if (args.query) {
       const q = args.query.toLowerCase();
       profiles = profiles.filter(
@@ -329,12 +349,20 @@ export const searchFreelancers = query({
 
     // Strength ranking: proven samples first, then completed jobs, then rate
     // signal — the homepage Writers Spotlight and directory both rely on this.
-    return profiles.sort(
-      (a, b) =>
-        (b.proofOfWork?.length || 0) - (a.proofOfWork?.length || 0) ||
-        b.completedProjects - a.completedProjects ||
-        (b.hourlyRate || 0) - (a.hourlyRate || 0),
-    );
+    // Each row also carries the profile photo (freelance avatar, falling back
+    // to the account image) so cards render real faces, not just initials.
+    return profiles
+      .sort(
+        (a, b) =>
+          (b.proofOfWork?.length || 0) - (a.proofOfWork?.length || 0) ||
+          b.completedProjects - a.completedProjects ||
+          (b.hourlyRate || 0) - (a.hourlyRate || 0),
+      )
+      .map((p) => ({
+        ...p,
+        role: "freelancer" as const,
+        photo: p.avatar || (withRoles.find((r) => r.profile._id === p._id)?.user as any)?.image || undefined,
+      }));
   },
 });
 
