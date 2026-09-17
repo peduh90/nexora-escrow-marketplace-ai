@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { motion } from "framer-motion";
 import {
   Shield, Users, TrendingUp, Check, Copy, ArrowRight, Sparkles,
-  Instagram, Youtube, Facebook, Twitter, MessageCircle, Globe2, Loader2,
+  Instagram, Youtube, Facebook, Twitter, MessageCircle, Globe2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
 import { getVisitorKey } from "@/lib/visitor-key";
 import { rememberReferralCode } from "@/lib/referral-client";
 
@@ -20,7 +21,6 @@ export default function JoinCreator() {
   const trackClick = useMutation(api.referral.trackClick);
 
   const code = (searchParams.get("ref") || "").trim().toUpperCase();
-  const stats = useQuery(api.referral.getProgramStats);
   const clickTracked = useRef(false);
   const [copied, setCopied] = useState(false);
 
@@ -151,7 +151,7 @@ export default function JoinCreator() {
             </div>
           </motion.div>
 
-          {/* Live program stats — real numbers from the referral ledger */}
+          {/* Program highlights — no internal program numbers on the public page */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -159,16 +159,14 @@ export default function JoinCreator() {
             className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-3"
           >
             {[
-              { label: "Active creators", value: stats?.activeCreators ?? null, icon: Users },
-              { label: "Qualified referrals", value: stats?.qualifiedReferrals ?? null, icon: Check },
-              { label: "Transactions generated", value: stats?.transactionsGenerated ?? null, icon: TrendingUp },
-              { label: "Paid to creators (KES)", value: stats ? Math.round(stats.totalPaidOut).toLocaleString() : null, icon: Sparkles },
+              { label: "Earn per verified referral", value: "KES 50+", icon: Users },
+              { label: "Seller activation bonus", value: "KES 200", icon: Check },
+              { label: "First-transaction bonus", value: "KES 150", icon: TrendingUp },
+              { label: "Lifetime trade commission", value: "Up to 1%", icon: Sparkles },
             ].map((s) => (
               <div key={s.label} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 md:p-5">
                 <s.icon className="w-4 h-4 text-violet-300" />
-                <div className="mt-3 text-2xl md:text-3xl font-bold tabular-nums">
-                  {s.value === null ? <Loader2 className="w-5 h-5 animate-spin text-white/30" /> : s.value}
-                </div>
+                <div className="mt-3 text-2xl md:text-3xl font-bold tabular-nums">{s.value}</div>
                 <div className="mt-1 text-xs text-white/45">{s.label}</div>
               </div>
             ))}

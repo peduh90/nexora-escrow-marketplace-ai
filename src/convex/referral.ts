@@ -775,10 +775,29 @@ export const getMyDashboard = query({
   },
 });
 
-/** Public program stats for the /join landing page (real numbers only). */
+/**
+ * Program-wide stats — VISIBLE TO APPROVED CREATORS AND ADMINS ONLY.
+ * The /join landing page must not expose program performance to visitors;
+ * the same numbers live inside the approved creator's dashboard instead.
+ */
 export const getProgramStats = query({
   args: {},
   handler: async (ctx) => {
+    const user = await getSessionUser(ctx);
+    if (user) {
+      const creator = await ctx.db
+        .query("referralCreators")
+        .withIndex("by_user", (q: any) => q.eq("userId", user._id))
+        .first();
+      const isApprovedCreator = !!creator && (creator as any).status === "approved";
+      const isAdmin = (user as any).role === "admin";
+      if (!isApprovedCreator && !isAdmin) {
+        throw new ConvexError("Program stats are only visible to approved creators.");
+      }
+    } else {
+      throw new ConvexError("Sign in as an approved creator to view program stats.");
+    }
+
     const referrals = await ctx.db.query("referralRecords").collect();
     const earnings = await ctx.db.query("referralEarnings").collect();
     const creators = await ctx.db.query("referralCreators").collect();
