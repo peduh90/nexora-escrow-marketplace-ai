@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
+import NexoraMark from "@/components/NexoraMark";
 import {
   Home, Compass, Package, Briefcase, MessageSquare, User, X, ChevronRight,
   LayoutDashboard, LogOut, Bell, Sparkles, Search, ShoppingBag, Wrench,
@@ -97,7 +98,7 @@ function MobileHeader({ onSearch }: { onSearch: () => void }) {
           <h1 className="flex-1 text-[15px] font-semibold text-white truncate pl-0.5">{ctx.title}</h1>
         ) : (
           <button onClick={() => navigate("/marketplace")} className="flex items-center gap-2 flex-1 min-w-0">
-            <Shield className="w-5 h-5 text-nx-violet shrink-0" />
+            <NexoraMark className="w-7 h-7 shrink-0" />
             <span className="text-[17px] font-bold tracking-tight text-white">
               NEXORA<span className="text-nx-violet">.</span>
             </span>

@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import ParticleCanvas from "@/components/canvas/ParticleCanvas";
 import GalacticCore from "@/components/canvas/GalacticCore";
 import NavigationBar from "@/components/layout/NavigationBar";
+import NexoraMark from "@/components/NexoraMark";
 import { TrustBanner } from "@/components/layout/TrustBadges";
 import SocialLinks from "@/components/layout/SocialLinks";
 import ServicesNearYou from "@/components/home/ServicesNearYou";
@@ -912,7 +913,7 @@ export default function Landing() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-3">
-                <Shield className="w-5 h-5 text-nx-violet" />
+                <NexoraMark className="w-6 h-6" />
                 <span className="text-base font-bold text-white">NEXORA<span className="text-nx-violet">.</span></span>
               </div>
               <p className="text-xs text-white/30 leading-relaxed max-w-xs">

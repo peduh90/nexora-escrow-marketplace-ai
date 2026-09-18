@@ -31,8 +31,14 @@ export default function Chat() {
     activeConvo?.listingId ? { listingId: activeConvo.listingId } : ("skip" as any)
   );
   // Freelance services open on their own detail page — never the product page.
+  // Guarded: while the listing query is loading/skipped (or the listing was
+  // deleted) `product` is undefined — deriving the href must not crash render.
   const isFreelanceListing = (product as any)?.marketplace === "freelance";
-  const listingHref = isFreelanceListing ? `/freelance/service/${product!._id}` : `/product/${product!._id}`;
+  const listingHref = product
+    ? isFreelanceListing
+      ? `/freelance/service/${product._id}`
+      : `/product/${product._id}`
+    : undefined;
 
   // otherUserName comes enriched from getConversations
   const otherUserName = activeConvo?.otherUserName || "User";
@@ -301,7 +307,7 @@ export default function Chat() {
                       </p>
                     </div>
                     <button
-                      onClick={() => navigate(listingHref)}
+                      onClick={() => listingHref && navigate(listingHref)}
                       className="px-3 py-1.5 rounded-lg bg-nx-violet/10 text-nx-violet text-xs font-semibold hover:bg-nx-violet/20 transition-colors border border-nx-violet/20"
                     >
                       View
@@ -375,7 +381,7 @@ export default function Chat() {
                   </p>
                   {product && (
                     <button
-                      onClick={() => navigate(listingHref)}
+                      onClick={() => listingHref && navigate(listingHref)}
                       className="text-nx-cyan hover:underline"
                     >
                       View listing: {product.title} — KSh {Number(product.price).toLocaleString()}
@@ -390,7 +396,7 @@ export default function Chat() {
                   {product && (
                     <>
                       <button
-                        onClick={() => navigate(listingHref)}
+                        onClick={() => listingHref && navigate(listingHref)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-nx-emerald/10 text-nx-emerald text-xs font-semibold hover:bg-nx-emerald/20 transition-colors border border-nx-emerald/20"
                       >
                         {isFreelanceListing ? "💼 View Service" : "🛒 Buy Now"}

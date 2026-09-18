@@ -192,6 +192,26 @@ class RootErrorBoundary extends React.Component<
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
 /**
+ * Route-level crash isolation. A bug in ONE panel (chat, a dashboard, admin,
+ * etc.) must never blank the whole app again — the boundary catches it and
+ * shows a branded recovery screen with Reload + Go Home. The rest of the app
+ * (navigation shell, other routes) keeps working. Navigating to another route
+ * auto-clears the error so recovery is one tap on any tab.
+ */
+function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  return (
+    <ErrorBoundary
+      resetKeys={[location.pathname, location.search]}
+      fallbackTitle="This screen hit a snag"
+      fallbackMessage="Something went wrong on this page only — the rest of Nexora is fine. Reload this screen or tap any tab to continue."
+    >
+      {children}
+    </ErrorBoundary>
+  );
+}
+
+/**
  * Old single-dashboard URLs (pre role-panels) now redirect to the panel that
  * matches the signed-in user's role instead of showing a dead page.
  */
@@ -247,6 +267,7 @@ createRoot(document.getElementById("root")!).render(
       <ConvexAuthProvider client={convex}>
         <BrowserRouter>
           <RouteSyncer />
+          <RouteErrorBoundary>
           <Suspense fallback={<RouteLoading />}>
             <Routes>
               {/* Public routes */}
@@ -409,6 +430,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
+          </RouteErrorBoundary>
           <MobileShell />
           <PwaLayer />
         </BrowserRouter>

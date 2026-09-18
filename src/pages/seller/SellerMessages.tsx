@@ -29,8 +29,8 @@ export default function SellerMessages() {
 
   const filtered = (conversations ?? []).filter(
     (c) =>
-      c.otherUserName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.listingTitle.toLowerCase().includes(searchQuery.toLowerCase())
+      (c.otherUserName ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.listingTitle ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSend = async () => {

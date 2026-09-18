@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Menu, X } from "lucide-react";
+import NexoraMark from "@/components/NexoraMark";
 import { useNavigate } from "react-router";
 import { useLowData } from "@/hooks/use-low-data";
 import { SignalLow } from "lucide-react";
@@ -51,10 +52,7 @@ export default function NavigationBar() {
         <div className="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between">
           {/* Logo */}
           <a href="/" className="flex items-center gap-2.5 group shrink-0">
-            <div className="relative">
-              <Shield className="w-7 h-7 text-nx-violet transition-colors group-hover:text-nx-cyan" />
-              <div className="absolute inset-0 bg-nx-violet/20 rounded-full blur-lg group-hover:bg-nx-cyan/20 transition-colors" />
-            </div>
+            <NexoraMark className="w-8 h-8 transition-transform group-hover:scale-105" />
             <span className="text-lg font-bold tracking-tight text-white">
               NEXORA<span className="text-nx-violet">.</span>
             </span>

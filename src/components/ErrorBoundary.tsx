@@ -6,6 +6,9 @@ interface ErrorBoundaryProps {
   fallbackTitle?: string;
   fallbackMessage?: string;
   showReload?: boolean;
+  /** When any of these values change, a caught error is cleared and children
+   *  re-render. Lets a route boundary auto-recover when the user navigates. */
+  resetKeys?: unknown[];
 }
 
 interface ErrorBoundaryState {
@@ -24,10 +27,21 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     console.error("[ErrorBoundary]", error, info.componentStack);
   }
 
+  componentDidUpdate(prevProps: ErrorBoundaryProps) {
+    if (
+      this.state.hasError &&
+      this.props.resetKeys &&
+      prevProps.resetKeys &&
+      this.props.resetKeys.some((k, i) => k !== prevProps.resetKeys?.[i])
+    ) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-[300px] flex items-center justify-center p-8">
+        <div className="min-h-[70vh] flex items-center justify-center p-8 bg-transparent">
           <div className="text-center max-w-md">
             <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-8 h-8 text-red-400" />
@@ -35,10 +49,10 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             <h3 className="text-lg font-semibold text-white mb-2">
               {this.props.fallbackTitle || "Something went wrong"}
             </h3>
-            <p className="text-sm text-white/40 mb-4">
+            <p className="text-sm text-white/40 mb-5">
               {this.props.fallbackMessage || "An unexpected error occurred. Please try again."}
             </p>
-            {this.props.showReload !== false && (
+            <div className="flex items-center justify-center gap-3">
               <button
                 onClick={() => window.location.reload()}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-nx-violet/10 text-nx-violet text-sm font-medium hover:bg-nx-violet/20 transition-colors border border-nx-violet/20"
@@ -46,7 +60,14 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 <RefreshCw className="w-4 h-4" />
                 Reload Page
               </button>
-            )}
+              <a
+                href="/marketplace"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/[0.03] text-white/60 text-sm font-medium hover:text-white hover:bg-white/[0.06] transition-colors border border-white/10"
+              >
+                <Shield className="w-4 h-4" />
+                Go Home
+              </a>
+            </div>
           </div>
         </div>
       );
