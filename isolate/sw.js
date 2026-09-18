@@ -20,7 +20,7 @@
  * when the user taps Update.
  */
 
-const VERSION = "nx-v1";
+const VERSION = "nx-v2"; // v2: regenerated maskable icons (proper safe-zone artwork)
 const STATIC_CACHE = `nx-static-${VERSION}`;
 const PAGE_CACHE = `nx-pages-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
