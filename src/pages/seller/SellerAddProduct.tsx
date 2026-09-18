@@ -140,6 +140,10 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
   const forcedFreelance = freelanceModeProp === true;
   const createListing = useMutation(api.listings.createListing);
   const generateUploadUrl = useMutation(api.listings.generateUploadUrl);
+  // Publishing a physical product sets the store's business location (county &
+  // town) when the seller profile doesn't have one yet — this completes the
+  // "Business location set" registration step in the same flow.
+  const updateProfile = useMutation(api.users.updateProfile);
   const [step, setStep] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
@@ -256,6 +260,12 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
     if (!form.title.trim()) { setError("Please enter a listing title"); return; }
     if (!form.price || Number(form.price) <= 0) { setError("Please enter a valid price"); return; }
     if (!form.category) { setError("Please select a category"); return; }
+    // Genuine-listing quality bar — mirrors the server-side rule so the seller
+    // never publishes something the registration gate will not count.
+    if ((form.description || "").replace(/\s+/g, " ").trim().length < 60) {
+      setError("Please write a real description of at least 60 characters (what buyers get, condition, what's included...).");
+      return;
+    }
     if (!isFreelanceMode) {
       if (!form.county.trim()) { setError("Please select a county"); return; }
       if (!form.town.trim()) { setError("Please select a town"); return; }
@@ -263,6 +273,17 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
 
     setPublishing(true);
     try {
+      // First physical product: the listing's location doubles as the store's
+      // business location so "Business location set" completes in this same
+      // flow instead of staying pending forever. Best-effort.
+      if (!isFreelanceMode && !(user as any)?.county) {
+        try {
+          await updateProfile({ county: form.county, town: form.town });
+        } catch (err) {
+          console.error("[profile] business location sync failed:", err);
+        }
+      }
+
       // Upload each image to Convex storage and collect storage keys
       const imageKeys: string[] = [];
       for (let i = 0; i < form.images.length; i++) {
@@ -312,7 +333,10 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
       await createListing({
         marketplace: isFreelanceMode ? "freelance" : "product",
         title: form.title,
-        description: form.description || `${form.title} — ${isFreelanceMode ? "Freelance service" : form.condition}`,
+        // The description is required verbatim (60+ chars, enforced above and
+        // again server-side) — never auto-fabricated, so the listing always
+        // counts toward the seller's finish-registration gate.
+        description: form.description,
         price: Number(form.price),
         currency: "KES",
         category: form.category,
@@ -358,6 +382,9 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
       draft.clearDraft();
       setDraftRestoredAt(null);
       navigate(forcedFreelance ? "/freelance/services" : "/seller");
+      // The first genuine listing completes seller registration — reload so
+      // the auth hook and the dashboard gate pick up the new state instantly.
+      if (!forcedFreelance) window.location.reload();
     } catch (err: any) {
       setError(err.message || "Failed to publish. Please try again.");
     } finally {
@@ -668,11 +695,21 @@ function PublishWizard({
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-1.5 block font-medium">Description *</label>
-                <textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={4}
+                <textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={5}
                   placeholder={isFreelanceMode
-                    ? "Describe the service — what the buyer gets, deliverables, your experience..."
-                    : "Describe your product in detail — condition, features, what's included..."}
+                    ? "Describe the service — what the buyer gets, deliverables, your experience... (60+ characters)"
+                    : "Describe your product in detail — condition, features, what's included... (60+ characters)"}
                   className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none resize-none" />
+                {(() => {
+                  const len = (form.description || "").replace(/\s+/g, " ").trim().length;
+                  return (
+                    <p className={`mt-1.5 text-[11px] ${len >= 60 ? "text-emerald-400" : len > 0 ? "text-amber-400" : "text-white/25"}`}>
+                      {len >= 60
+                        ? "✓ Looks good — buyers can see the details"
+                        : `${len}/60 characters — a real description is required to publish`}
+                    </p>
+                  );
+                })()}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {!isFreelanceMode && (
@@ -891,8 +928,15 @@ function PublishWizard({
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
           {step < TOTAL_STEPS - 1 ? (
-            <button onClick={() => setStep(step + 1)}
-              className="px-6 py-2.5 rounded-xl bg-nx-cyan text-black text-sm font-semibold hover:bg-nx-cyan/80 transition-colors flex items-center gap-1">
+            <button
+              onClick={() => {
+                // Details step: a genuine description is required before moving
+                // on (mirrors the server-side publish rule).
+                if (step === 2 && (form.description || "").replace(/\s+/g, " ").trim().length < 60) return;
+                setStep(step + 1);
+              }}
+              disabled={step === 2 && (form.description || "").replace(/\s+/g, " ").trim().length < 60}
+              className="px-6 py-2.5 rounded-xl bg-nx-cyan text-black text-sm font-semibold hover:bg-nx-cyan/80 transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
               Next <ChevronRight className="w-4 h-4" />
             </button>
           ) : (

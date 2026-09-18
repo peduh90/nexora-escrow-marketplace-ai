@@ -2,6 +2,7 @@ import { v, ConvexError } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { getSessionUser } from "./users";
+import { MIN_DESCRIPTION_CHARS } from "./verification";
 
 /**
  * Reserved owner for demo/system listings. Demo content is never attached to a
@@ -176,6 +177,18 @@ export const createListing = mutation({
       throw new ConvexError("Freelance listings must use a Freelance Marketplace category (writing, design, video, marketing, web/software, data, virtual assistance, education, business, AI & digital tools, digital products or other services).");
     }
 
+    // ── GENUINE-LISTING QUALITY BAR (enforced server-side) ──
+    // The seller finish-registration gate counts only listings with a real
+    // description (60+ chars). Enforce it here so a seller can never publish
+    // something the gate will not count — otherwise products go live while the
+    // seller is stuck on "One last step to finish registration" forever.
+    const trimmedDescription = (args.description || "").replace(/\s+/g, " ").trim();
+    if (trimmedDescription.length < MIN_DESCRIPTION_CHARS) {
+      throw new ConvexError(
+        `Please write a real description of at least ${MIN_DESCRIPTION_CHARS} characters — buyers (and escrow review) need the details. Currently: ${trimmedDescription.length}.`
+      );
+    }
+
     // Illegal-service guard: never publish stolen accounts, cracked software,
     // credential sharing, exam fraud or fake credentials to the marketplace.
     if (marketplace === MARKETPLACE.FREELANCE) {
@@ -321,6 +334,17 @@ export const updateListing = mutation({
     updates.updatedAt = Date.now();
 
     await ctx.db.patch(args.listingId, updates);
+
+    // A genuine-description edit can complete the seller's registration gate —
+    // mirrors createListing so fixing up a thin listing lifts the gate too.
+    try {
+      await ctx.runMutation(internal.verification.internalOnListingCreated, {
+        userId: user._id,
+      });
+    } catch (err) {
+      console.error("[verification] listing update hook failed:", err);
+    }
+
     return { success: true };
   },
 });

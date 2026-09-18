@@ -81,6 +81,17 @@ export default function SellerDashboard() {
             <p className="mt-3 text-[11px] text-white/30 text-center">
               Takes ~2 minutes — title, price, description, photo. Your dashboard unlocks the moment it's live.
             </p>
+            {listings && listings.length > 0 && (
+              <div className="mt-4 p-3 rounded-xl bg-amber-400/[0.04] border border-amber-300/15">
+                <p className="text-xs text-amber-200/80 leading-relaxed">
+                  You have {listings.length} published listing{listings.length > 1 ? "s" : ""}, but {listings.filter((l) => l.status === "active").some((l) => !l.description || l.description.replace(/\s+/g, " ").trim().length < 60) ? "their descriptions are too short to count" : "none are active"}.{" "}
+                  <button onClick={() => navigate("/seller/products")} className="text-amber-300 underline underline-offset-2 hover:text-amber-200">
+                    Add a full description (60+ characters) to any of them
+                  </button>{" "}
+                  and your dashboard opens instantly.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </SellerLayout>

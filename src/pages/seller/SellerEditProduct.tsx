@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
 import { CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
 import { publishFeeSummary, rateLabel } from "@/lib/fees";
@@ -82,6 +83,10 @@ export default function SellerEditProduct({ freelanceMode = false }: { freelance
   const { id } = useParams<{ id: string }>();
   const listing = useQuery(api.listings.getListing, id ? { listingId: id as any } : "skip");
   const updateListing = useMutation(api.listings.updateListing);
+  // Saving a listing can also complete the seller's business-location
+  // registration step when the profile doesn't have one yet.
+  const updateProfile = useMutation(api.users.updateProfile);
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
@@ -151,16 +156,33 @@ export default function SellerEditProduct({ freelanceMode = false }: { freelance
 
   const handleSave = async () => {
     if (!form.title || !form.price || !form.category || !form.county || !form.town || !id) return;
+    // Same genuine-listing bar as publishing — a fix-up edit must leave the
+    // listing qualifying for the seller's finish-registration gate.
+    const descLen = (form.description || "").replace(/\s+/g, " ").trim().length;
+    if (descLen < 60) {
+      alert("Please write a real description of at least 60 characters — this is what completes your seller registration.");
+      setStep(1);
+      return;
+    }
     setSaving(true);
     try {
       await updateListing({
         listingId: id as any,
         title: form.title,
-        description: form.description || `${form.title} - ${form.condition}`,
+        description: form.description,
         price: Number(form.price),
         condition: form.condition,
         attributes: Object.keys(form.attributes).length > 0 ? form.attributes : undefined,
       });
+      // Best-effort: if the seller profile has no business location yet, this
+      // listing's location completes that registration step too.
+      if (!(user as any)?.county && form.county && form.town) {
+        try {
+          await updateProfile({ county: form.county, town: form.town });
+        } catch (err) {
+          console.error("[profile] business location sync failed:", err);
+        }
+      }
       navigate(backTarget);
     } catch (err) {
       console.error("Failed to update:", err);
@@ -272,8 +294,17 @@ export default function SellerEditProduct({ freelanceMode = false }: { freelance
                   <input value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="e.g. Toyota Harrier 2021 Automatic"
                     className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" /></div>
                 <div><label className="text-xs text-white/40 mb-1.5 block">Description *</label>
-                  <textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={4} placeholder="Describe your product..."
-                    className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none resize-none" /></div>
+                  <textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={5} placeholder="Describe your product... (60+ characters)"
+                    className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none resize-none" />
+                  {(() => {
+                    const len = (form.description || "").replace(/\s+/g, " ").trim().length;
+                    return len < 60 ? (
+                      <p className={`mt-1.5 text-[11px] ${len > 0 ? "text-amber-400" : "text-white/25"}`}>{len}/60 characters — a real description is required to save</p>
+                    ) : (
+                      <p className="mt-1.5 text-[11px] text-emerald-400">✓ Looks good</p>
+                    );
+                  })()}
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="text-xs text-white/40 mb-1.5 block">Condition *</label>
                     <select value={form.condition} onChange={(e) => update("condition", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:border-nx-violet/50 focus:outline-none">

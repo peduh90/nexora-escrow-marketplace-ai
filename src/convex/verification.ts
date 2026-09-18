@@ -21,7 +21,7 @@ import { getSessionUser } from "./users";
 // unlocked strictly by these milestones, never by clicks or raw signups.
 
 /** Minimum length for a "genuine" listing/task description (anti-spam). */
-const MIN_DESCRIPTION_CHARS = 60;
+export const MIN_DESCRIPTION_CHARS = 60;
 /** A genuine employer must post at least this many distinct real offerings. */
 export const EMPLOYER_REQUIRED_JOBS = 5;
 
