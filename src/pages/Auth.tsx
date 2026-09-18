@@ -28,6 +28,11 @@ import { isPasswordValid } from "@/lib/password-strength";
 import { PasswordField } from "@/components/ui/password-field";
 import { getVisitorKey } from "@/lib/visitor-key";
 import {
+  isValidKenyanPhone,
+  kenyanPhoneError,
+  digitsOnly,
+} from "@/lib/kenyan-phone";
+import {
   rememberReferralCode,
   getRememberedReferralCode,
   clearRememberedReferralCode,
@@ -140,7 +145,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       : "roleSelect",
   );
   const [selectedRole, setSelectedRole] = useState<
-    "buyer" | "seller" | "freelancer" | "employer" | "creator" | null
+    "buyer" | "seller" | "freelancer" | "employer" | "creator" | "service_provider" | null
   >(
     isFreelanceRegister ? "freelancer" : isSellerRegister ? "seller" : isCreatorRegister ? "creator" : null,
   );
@@ -337,9 +342,11 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         ? "/admin"
         : role === "seller" || role === "driver"
         ? "/seller"
+        : role === "service_provider"
+        ? providerReturn ?? "/services/dashboard"
         : role === "freelancer"
         ? freelanceJoinReturn ?? "/freelance/dashboard"
-        :      role === "employer"
+        : role === "employer"
       ? freelanceJoinReturn ?? "/employer"
       : role === "creator"
       ? "/creator"
@@ -444,7 +451,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
   const [publishIntent, setPublishIntent] = useState(false);
 
   const handleRoleSelect = (
-    role: "buyer" | "seller" | "freelancer" | "employer" | "creator",
+    role: "buyer" | "seller" | "freelancer" | "employer" | "creator" | "service_provider",
     opts?: { publishIntent?: boolean; providerIntent?: boolean },
   ) => {
     setSelectedRole(role);
@@ -605,6 +612,8 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
           returnToOverride ??
           (selectedRole === "seller"
             ? "/seller"
+            : selectedRole === "service_provider"
+            ? providerReturn ?? "/services/dashboard?register=1"
             : selectedRole === "freelancer"
             ? publishIntent
               ? "/freelance/publish"
@@ -1076,10 +1085,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                 )}
 
                 {/* Offer a Service — the LOCAL service provider path (salon,
-                    plumber, boda, fundi…). Deliberately NOT a seller account:
-                    no KYC, no store — register, set your price, go online. */}
+                    plumber, boda, fundi…). Its OWN role: service_provider —
+                    never a buyer, never a seller. One email = one role. */}
                 {!isFreelanceRoute && (
-                  <button onClick={() => handleRoleSelect("buyer", { providerIntent: true })} className="group relative p-6 rounded-2xl border border-nx-cyan/20 bg-nx-cyan/[0.03] backdrop-blur-sm hover:border-nx-cyan/40 hover:bg-nx-cyan/[0.07] transition-all duration-300 text-left">
+                  <button onClick={() => handleRoleSelect("service_provider")} className="group relative p-6 rounded-2xl border border-nx-cyan/20 bg-nx-cyan/[0.03] backdrop-blur-sm hover:border-nx-cyan/40 hover:bg-nx-cyan/[0.07] transition-all duration-300 text-left">
                     <div className="w-14 h-14 rounded-xl bg-nx-cyan/10 flex items-center justify-center mb-4 group-hover:bg-nx-cyan/20 transition-colors">
                       <Wrench className="w-7 h-7 text-nx-cyan" />
                     </div>
@@ -1229,10 +1238,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                   {!isSellerRegister && !isFreelanceRegister && !isCreatorRegister && (
                     <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Change</button>
                   )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : selectedRole === "employer" ? "bg-amber-500/10 text-amber-400" : selectedRole === "creator" ? "bg-fuchsia-500/10 text-fuchsia-300" : providerIntent || providerReturn ? "bg-nx-cyan/15 text-nx-cyan" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "🏪 Seller" : selectedRole === "freelancer" ? "✍️ Freelancer" : selectedRole === "employer" ? "💼 Employer" : selectedRole === "creator" ? "📣 Creator" : providerIntent || providerReturn ? "🔧 Service Provider" : "🛒 Buyer"}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : selectedRole === "employer" ? "bg-amber-500/10 text-amber-400" : selectedRole === "creator" ? "bg-fuchsia-500/10 text-fuchsia-300" : selectedRole === "service_provider" || providerIntent || providerReturn ? "bg-nx-cyan/15 text-nx-cyan" : "bg-nx-cyan/10 text-nx-cyan"`}>{selectedRole === "seller" ? "🏪 Seller" : selectedRole === "freelancer" ? "✍️ Freelancer" : selectedRole === "employer" ? "💼 Employer" : selectedRole === "creator" ? "📣 Creator" : selectedRole === "service_provider" || providerIntent || providerReturn ? "🔧 Service Provider" : "🛒 Buyer"}</span>
                 </div>
-                <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : selectedRole === "employer" ? "Create Employer Account" : selectedRole === "creator" ? "Create Creator Account" : providerIntent || providerReturn ? "Offer a Service on Nexora" : "Create Buyer Account"}</CardTitle>
-                <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : selectedRole === "employer" ? "Set up your employer account to post jobs and hire freelancers" : selectedRole === "creator" ? "Create your account, then apply to the Creator Program — your referral link and earnings live in the creator dashboard" : providerIntent || providerReturn ? "Create your account, then set up your service — salon, plumbing, boda, fundi & more" : "Create your account to start shopping securely"}</CardDescription>
+                <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : selectedRole === "employer" ? "Create Employer Account" : selectedRole === "creator" ? "Create Creator Account" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Offer a Service on Nexora" : "Create Buyer Account"}</CardTitle>
+                <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : selectedRole === "employer" ? "Set up your employer account to post jobs and hire freelancers" : selectedRole === "creator" ? "Create your account, then apply to the Creator Program — your referral link and earnings live in the creator dashboard" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Create your account, then set up your service — salon, plumbing, boda, fundi & more" : "Create your account to start shopping securely"}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="relative"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/5" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-nx-surface px-2 text-white/20 tracking-wider">or sign in with email</span></div></div>

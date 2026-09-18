@@ -4,6 +4,10 @@ import { query, mutation, internalMutation, QueryCtx, MutationCtx } from "./_gen
 import { api, internal } from "./_generated/api";
 import { ALLOWED_ROLES, resolveRole, resolveRoleForAdminFlow, ADMIN_EMAIL } from "./roles";
 import type { AllowedRole } from "./roles";
+// Shared with the client (src/lib/kenyan-phone.ts): one strict validator
+// gates registration on BOTH sides — instant feedback in the form,
+// authoritative enforcement on the server.
+import { kenyanPhoneError } from "../lib/kenyan-phone";
 import type { Id } from "./_generated/dataModel";
 
 /**
@@ -416,11 +420,13 @@ export const verifyLogin = mutation({
     }
 
     // ---- Role repair on login ------------------------------------------
-    // Nexora convention (see getUserCounts): a user with a business name is a
-    // seller. Accounts created by earlier broken auth flows can carry a stale
-    // "buyer" (or missing) role even though businessName is set — that is what
-    // routed sellers to /buyer after login. Repair the stored role here so the
-    // correction is persistent, then route by the repaired role.
+    // A user's role is LOCKED at registration. Login only repairs accounts
+    // with a MISSING role by reading the evidence already on the record
+    // (provider profiles, business name) — it never converts an active
+    // account from one role to another. Service providers registered via the
+    // old "Offer a Service" flow (stuck as buyer) are corrected to
+    // service_provider by the presence of a serviceProfiles/transportProfiles
+    // row — the profile data is the truth, the role field was the bug.
     const hasBusinessName =
       typeof u.businessName === "string" && u.businessName.trim().length > 0;
     let role = typeof u.role === "string" && u.role ? u.role : null;
@@ -435,14 +441,48 @@ export const verifyLogin = mutation({
         accountStatus: "active" as any,
         pendingRole: undefined,
       });
-    } else if (hasBusinessName && role !== "seller" && role !== "admin" && role !== "creator") {
-      role = "seller";
-      await ctx.db.patch(u._id, { role: "seller" as any });
-    } else if (!role) {
-      const inferred = inferRole(u);
-      if (typeof inferred === "string" && inferred) {
-        role = inferred;
-        await ctx.db.patch(u._id, { role: inferred as any });
+    } else {
+      // Provider repair: a registered provider profile is definitive proof of
+      // the intended role. Only applied when the stored role is missing or
+      // still the old default (buyer) — never when the user holds another
+      // real role (seller/freelancer/…).
+      if (!role || role === "buyer") {
+        let providerRole: "service_provider" | "driver" | null = null;
+        try {
+          const svc = await ctx.db
+            .query("serviceProfiles")
+            .withIndex("by_user", (q) => q.eq("userId", u._id))
+            .first();
+          if (svc) providerRole = "service_provider";
+        } catch {
+          // Table missing in older deployments — skip.
+        }
+        if (!providerRole) {
+          try {
+            const tp = await ctx.db
+              .query("transportProfiles")
+              .withIndex("by_user", (q) => q.eq("userId", u._id))
+              .first();
+            if (tp) providerRole = "driver";
+          } catch {
+            // Table missing in older deployments — skip.
+          }
+        }
+        if (providerRole) {
+          role = providerRole;
+          await ctx.db.patch(u._id, { role: providerRole as any });
+        }
+      }
+
+      if (hasBusinessName && role !== "seller" && role !== "admin" && role !== "creator" && !role) {
+        role = "seller";
+        await ctx.db.patch(u._id, { role: "seller" as any });
+      } else if (!role) {
+        const inferred = inferRole(u);
+        if (typeof inferred === "string" && inferred) {
+          role = inferred;
+          await ctx.db.patch(u._id, { role: inferred as any });
+        }
       }
     }
     await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
@@ -610,18 +650,21 @@ export const ensureUserProfile = mutation({
       // EXCEPTIONS: the platform owner email is always created admin + active,
       // and a signup whose form already supplied name + phone (plus the
       // verified email) activates immediately — no second wall to climb.
-      const activateNow = identity.email === ADMIN_EMAIL || profileComplete;
+      // A role must exist before activation — there is NO default role, so a
+      // signup that never picked one stays pending until verification.
+      const activateNow =
+        identity.email === ADMIN_EMAIL || (profileComplete && !!targetRole);
       user = await ctx.db.insert("users", {
         name: args.name || identity.name || identity.email?.split("@")[0] || "User",
         email: identity.email,
         phone: typeof args.phone === "string" ? args.phone : undefined,
-        role: (activateNow ? targetRole : undefined) as any,
-        pendingRole: activateNow ? undefined : targetRole,
+        role: (activateNow && targetRole ? targetRole : undefined) as any,
+        pendingRole: activateNow ? undefined : targetRole ?? undefined,
         accountStatus: (activateNow ? "active" : "pending") as any,
         passwordHash: incomingPasswordHash,
         businessName: typeof args.businessName === "string" ? args.businessName : undefined,
       }) as any;
-      if (activateNow && identity.email !== ADMIN_EMAIL) {
+      if (activateNow && targetRole && identity.email !== ADMIN_EMAIL) {
         await activateNewUser(ctx, user as any, targetRole);
       }
     } else {
@@ -668,13 +711,13 @@ export const ensureUserProfile = mutation({
       // account keeps its pendingRole (updated if the user re-submits); an
       // active account keeps its assigned role unless admin action changes it.
       if ((u as any).accountStatus !== "active") {
-        if (profileComplete) {
+        if (profileComplete && targetRole) {
           // Everything the verification gate asks for is already proven
           // (verified email + name + phone) — activate now instead of
           // bouncing the user through the second verification screen. This
           // is what un-sticks provider signups stranded with no role.
           await ctx.db.patch(u._id, {
-            role: targetRole as any,
+            role: targetRole,
             accountStatus: "active" as any,
             pendingRole: undefined,
             ...(typeof resolvedPhone === "string" && u.phone !== resolvedPhone
@@ -686,10 +729,14 @@ export const ensureUserProfile = mutation({
           return { userId: (user as any)._id, role: targetRole as any };
         }
         // Still pending — record the requested role and stay unverified.
-        if (targetRole !== u.pendingRole) {
-          await ctx.db.patch(u._id, { pendingRole: targetRole });
+        // Pending users CAN change their requested role; active users cannot
+        // (the role is locked once assigned).
+        if ((targetRole ?? undefined) !== u.pendingRole) {
+          await ctx.db.patch(u._id, { pendingRole: targetRole ?? undefined });
         }
-      } else if (typeof u.role !== "string" || u.role !== targetRole) {
+      } else if (!u.role && targetRole) {
+        // Active legacy account missing a role entirely: assign the resolved
+        // one. An account that ALREADY has a role is NEVER overwritten here.
         await ctx.db.patch(u._id, { role: targetRole });
       }
 
@@ -828,6 +875,13 @@ export const completeVerification = mutation({
     }
     if (!hasPhone) {
       throw new ConvexError("Add your phone number to complete registration.");
+    }
+    // Strict Kenyan mobile validation — fake/malformed numbers can never
+    // complete registration (server is authoritative; the client mirrors it
+    // via src/lib/kenyan-phone.ts — same rules).
+    const phoneProblem = kenyanPhoneError(String(fresh.phone ?? ""));
+    if (phoneProblem) {
+      throw new ConvexError(phoneProblem);
     }
 
     // Admin role is never self-assigned here; the admin email path handles it.
@@ -1167,7 +1221,7 @@ export const checkAndPromoteAdmin = mutation({
       user = await ctx.db.insert("users", {
         name,
         email: identity.email,
-        role: targetRoleForInsert,
+        role: targetRoleForInsert ?? undefined,
         phone: phoneFromForm,
         kycStatus: "not_started",
         lastLoginAt: Date.now(),
