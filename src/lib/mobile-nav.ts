@@ -13,6 +13,46 @@ import { SERVICE_CATEGORIES } from "@/lib/service-taxonomy";
  * functionality is removed, only reorganised for thumb reach.
  */
 
+/* ─── REAL CATEGORY ICONS ───────────────────────────────────────────────────
+   Every category renders a proper lucide icon (no emoji). Keys are slugs. */
+export const CATEGORY_ICONS: Record<string, string> = {
+  // Products
+  "mobile-phones": "smartphone", "computers-laptops": "laptop", "fashion": "shirt",
+  "home-living": "sofa", "services": "wrench", "jobs": "briefcase",
+  "agriculture": "wheat", "gaming": "gamepad-2", "health-beauty": "heart-pulse",
+  "sports-fitness": "dumbbell", "baby-kids": "baby", "handmade-art": "palette",
+  "events-tickets": "ticket", "business-industrial": "factory", "tvs-video": "tv",
+  "pets": "paw-print", "animals-pets": "paw-print", "learning-books": "book-open",
+  "music-entertainment": "music", "school-education": "graduation-cap",
+  // Services
+  "boda": "bike", "matatu": "bus", "delivery": "package", "plumbers": "droplets",
+  "electricians": "zap", "auto": "wrench", "cleaning": "sparkles", "laundry": "shirt",
+  "beauty": "scissors", "makeup": "sparkles", "home": "home", "fundis": "hammer",
+  "tech-repair": "smartphone", "cyber": "printer", "courier": "truck",
+  "carhire": "car-front", "events": "party-popper", "photography": "camera",
+  "appliance": "plug", "garden": "leaf",
+  // Freelance
+  "writing": "pen-line", "design": "palette", "video-photo": "camera",
+  "marketing": "megaphone", "development": "code", "data-research": "bar-chart-3",
+  "virtual-assistance": "headphones", "education": "graduation-cap",
+  "business-professional": "briefcase", "ai-accounts-tools": "bot",
+  "digital-products": "download", "other-services": "circle-dashed",
+};
+
+/** Fallback icon when a slug has no mapping. */
+export function categoryIcon(slug: string): string {
+  return CATEGORY_ICONS[slug] ?? "layout-grid";
+}
+
+/** The most-used categories per market, surfaced first in Explore.
+ *  Everything else remains reachable via the market header + "All …"
+ *  toggle — nothing is lost, the rest is simply tucked away. */
+export const TOP_CATEGORIES: Record<"products" | "services" | "freelance", string[]> = {
+  products: ["mobile-phones", "computers-laptops", "fashion", "home-living", "gaming"],
+  services: ["boda", "plumbers", "electricians", "cleaning", "beauty"],
+  freelance: ["writing", "design", "development", "video-photo", "ai-accounts-tools"],
+};
+
 export type NxRole =
   | "admin"
   | "buyer"
@@ -86,6 +126,8 @@ export function accountSections(role?: string | null): Array<{
     {
       title: "My activity",
       links: [
+        // Role dashboard first — the control centre for this account type.
+        { label: dashboardLabel(role), path: roleHome(role), icon: "layout-dashboard", desc: dashboardDesc(role) },
         { label: roleOrdersLabel(role), path: roleOrdersPath(role), icon: "package" },
         { label: "Messages", path: messagesPath(role), icon: "message-square" },
         { label: "Wallet & money", path: walletPath(role), icon: "wallet" },
@@ -117,7 +159,6 @@ export function accountSections(role?: string | null): Array<{
       {
         title: "Selling",
         links: [
-          { label: "Seller Dashboard", path: "/seller", icon: "layout-dashboard" },
           { label: "My products", path: "/seller/products", icon: "package" },
           { label: "Add product", path: "/seller/add-product", icon: "plus-circle" },
           { label: "Withdrawals", path: "/seller/withdrawals", icon: "banknote" },
@@ -138,7 +179,6 @@ export function accountSections(role?: string | null): Array<{
       {
         title: "Freelancing",
         links: [
-          { label: "Freelancer Dashboard", path: "/freelance/dashboard", icon: "layout-dashboard" },
           { label: "Find work", path: "/freelance/find-work", icon: "search" },
           { label: "My projects", path: "/freelance/projects", icon: "briefcase" },
           { label: "Applications", path: "/freelance/applications", icon: "file-text" },
@@ -153,7 +193,6 @@ export function accountSections(role?: string | null): Array<{
       {
         title: "Hiring",
         links: [
-          { label: "Employer Dashboard", path: "/employer", icon: "layout-dashboard" },
           { label: "Post a job", path: "/employer/post-job", icon: "plus-circle" },
           { label: "My jobs", path: "/employer/jobs", icon: "briefcase" },
           { label: "Active work", path: "/employer/projects", icon: "package" },
@@ -166,7 +205,6 @@ export function accountSections(role?: string | null): Array<{
       {
         title: "Creator",
         links: [
-          { label: "Creator Dashboard", path: "/creator", icon: "layout-dashboard" },
           { label: "Referral tools", path: "/creator", icon: "share-2" },
           { label: "Agreement", path: "/creator/agreement", icon: "file-text" },
         ],
@@ -183,7 +221,6 @@ export function accountSections(role?: string | null): Array<{
       {
         title: "Transport",
         links: [
-          { label: "Driver Dashboard", path: "/transport/dashboard", icon: "layout-dashboard" },
           { label: "My bookings", path: "/services/bookings", icon: "package" },
         ],
       },
@@ -192,13 +229,38 @@ export function accountSections(role?: string | null): Array<{
       {
         title: "Administration",
         links: [
-          { label: "Admin Panel", path: "/admin", icon: "layout-dashboard", desc: "Full platform control" },
+          { label: "All users & sellers", path: "/admin/users", icon: "users" },
         ],
       },
     ],
   };
 
   return [...(roleBlocks[role] ?? []), ...common];
+}
+
+/** Label for the role's dashboard link in Account. */
+export function dashboardLabel(role?: string | null): string {
+  switch (role) {
+    case "seller": return "Seller Dashboard";
+    case "freelancer": return "Freelancer Dashboard";
+    case "employer": return "Employer Dashboard";
+    case "creator": return "Creator Dashboard";
+    case "driver": return "Driver Dashboard";
+    case "admin": return "Admin Panel";
+    default: return "My Dashboard";
+  }
+}
+
+function dashboardDesc(role?: string | null): string | undefined {
+  switch (role) {
+    case "seller": return "Sales, products & store controls";
+    case "freelancer": return "Projects, applications & services";
+    case "employer": return "Jobs, applicants & spending";
+    case "creator": return "Referrals, earnings & tools";
+    case "driver": return "Bookings & trips";
+    case "admin": return "Full platform control";
+    default: return "Your overview & quick actions";
+  }
 }
 
 export function roleOrdersLabel(role?: string | null): string {

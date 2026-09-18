@@ -8,6 +8,11 @@ import {
   Laptop, ArrowLeft, Share2, Shield, LifeBuoy, Truck, Wallet, Settings,
   Star, Users, Tag, Megaphone, BarChart3, BadgeCheck, Store, PlusCircle,
   FileText, TrendingUp, LogIn, Mic, History,
+  Smartphone, Shirt, Sofa, Wheat, Gamepad2, HeartPulse, Dumbbell, Baby,
+  Palette, Ticket, Factory, Tv, PawPrint, BookOpen, Music, GraduationCap,
+  Bike, Bus, Droplets, Zap, Car, Hammer, Printer, Camera, Plug, Leaf,
+  PenLine, Code2, Headphones, Bot, Download, CircleDashed, LayoutGrid,
+  CarFront, PartyPopper,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "convex/react";
@@ -15,7 +20,7 @@ import { api } from "../../convex/_generated/api";
 import {
   EXPLORE_MARKETS, SEARCH_SUGGESTIONS, accountSections, isImmersiveRoute,
   isFocusedFlow, messagesPath, roleHome, roleOrdersPath, roleWorkLabel,
-  notificationsPath,
+  notificationsPath, categoryIcon, TOP_CATEGORIES,
 } from "@/lib/mobile-nav";
 
 /* ─── Icon registry (string → component, keeps the lib serialisable) ─── */
@@ -28,6 +33,17 @@ const ICONS: Record<string, any> = {
   "bar-chart-3": BarChart3, megaphone: Megaphone, star: Star, users: Users,
   tag: Tag, briefcase: Briefcase, "file-text": FileText,
   "trending-up": TrendingUp, "share-2": Share2,
+  /* Real category icons (explore + search) — no emoji anywhere */
+  smartphone: Smartphone, laptop: Laptop, shirt: Shirt, sofa: Sofa,
+  wrench: Wrench, wheat: Wheat, "gamepad-2": Gamepad2, "heart-pulse": HeartPulse,
+  dumbbell: Dumbbell, baby: Baby, palette: Palette, ticket: Ticket,
+  factory: Factory, tv: Tv, "paw-print": PawPrint, "book-open": BookOpen,
+  music: Music, "graduation-cap": GraduationCap, bike: Bike, bus: Bus,
+  droplets: Droplets, zap: Zap, car: Car, hammer: Hammer, printer: Printer,
+  camera: Camera, plug: Plug, leaf: Leaf, "pen-line": PenLine,
+  code: Code2, headphones: Headphones, bot: Bot, download: Download,
+  "circle-dashed": CircleDashed, "layout-grid": LayoutGrid,
+  "car-front": CarFront, "party-popper": PartyPopper,
 };
 
 /* ─── Contextual header config per route pattern ─── */
@@ -317,21 +333,26 @@ function MobileSearch({ open, onClose }: { open: boolean; onClose: () => void })
 
               <p className="text-[11px] uppercase tracking-wider text-white/25 font-semibold mb-2.5">Browse by category</p>
               <div className="grid grid-cols-2 gap-2">
-                {EXPLORE_MARKETS.find((m) => m.id === market)!.categories.slice(0, 12).map((c) => (
-                  <button
-                    key={c.slug}
-                    onClick={() => {
-                      if (market === "products") navigate(`/marketplace?category=${c.slug}`);
-                      else if (market === "services") navigate(`/services/category/${c.slug}`);
-                      else navigate(`/freelance/jobs?category=${c.slug}`);
-                      onClose();
-                    }}
-                    className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.03] border border-nx-border active:bg-white/[0.07] transition-colors text-left"
-                  >
-                    <span className="text-lg leading-none">{(c as any).emoji ?? "📁"}</span>
-                    <span className="text-[12.5px] text-white/75 leading-tight">{c.name}</span>
-                  </button>
-                ))}
+                {EXPLORE_MARKETS.find((m) => m.id === market)!.categories.slice(0, 12).map((c) => {
+                  const Icon = ICONS[categoryIcon(c.slug)] ?? LayoutGrid;
+                  return (
+                    <button
+                      key={c.slug}
+                      onClick={() => {
+                        if (market === "products") navigate(`/marketplace?category=${c.slug}`);
+                        else if (market === "services") navigate(`/services/category/${c.slug}`);
+                        else navigate(`/freelance/jobs?category=${c.slug}`);
+                        onClose();
+                      }}
+                      className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.03] border border-nx-border active:bg-white/[0.07] transition-colors text-left"
+                    >
+                      <span className="w-8 h-8 rounded-lg bg-white/[0.05] flex items-center justify-center shrink-0">
+                        <Icon className="w-4 h-4 text-nx-violet" />
+                      </span>
+                      <span className="text-[12.5px] text-white/75 leading-tight min-w-0">{c.name}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               <button
@@ -428,10 +449,17 @@ function ExploreMarketSection({
     : market.id === "services" ? `/services/category/${slug}`
     : `/freelance/jobs?category=${slug}`;
 
-  const shown = expanded ? market.categories : market.categories.slice(0, 8);
+  // Most-used first (fixed order from TOP_CATEGORIES), the rest stay one tap
+  // away — nothing is lost, the list is just prioritised for everyday use.
+  const topSlugs = TOP_CATEGORIES[market.id];
+  const top = topSlugs
+    .map((s) => market.categories.find((c) => c.slug === s))
+    .filter(Boolean) as typeof market.categories;
+  const rest = market.categories.filter((c) => !topSlugs.includes(c.slug));
+  const shown = expanded ? [...top, ...rest] : top;
 
   return (
-    <section className="mb-5">
+    <section className="mb-6">
       <button
         onClick={() => onOpen(market.basePath)}
         className={`w-full p-4 rounded-2xl border ${accentBg} text-left active:scale-[0.99] transition-transform`}
@@ -454,23 +482,37 @@ function ExploreMarketSection({
       </button>
 
       <div className="grid grid-cols-2 gap-2 mt-2">
-        {shown.map((c) => (
-          <button
-            key={c.slug}
-            onClick={() => onOpen(catPath(c.slug))}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-nx-border text-left active:bg-white/[0.06] transition-colors"
-          >
-            {(c as any).emoji && <span className="text-[15px] leading-none">{(c as any).emoji}</span>}
-            <span className="text-[12px] text-white/70 leading-tight">{c.name}</span>
-          </button>
-        ))}
+        {shown.map((c) => {
+          const Icon = ICONS[categoryIcon(c.slug)] ?? LayoutGrid;
+          return (
+            <button
+              key={c.slug}
+              onClick={() => onOpen(catPath(c.slug))}
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-nx-border text-left active:bg-white/[0.06] transition-colors"
+            >
+              <span className={`w-8 h-8 rounded-lg bg-white/[0.05] flex items-center justify-center shrink-0`}>
+                <Icon className={`w-4 h-4 ${accentText}`} />
+              </span>
+              <span className="text-[12px] text-white/75 leading-tight min-w-0">{c.name}</span>
+            </button>
+          );
+        })}
       </div>
-      {market.categories.length > 8 && (
+      {!expanded && rest.length > 0 && (
         <button
-          onClick={() => setExpanded((e) => !e)}
+          onClick={() => setExpanded(true)}
+          className="w-full mt-2 py-2.5 rounded-xl bg-white/[0.02] border border-nx-border text-[12px] font-semibold text-white/45 active:text-white/75 active:bg-white/[0.05] transition-colors flex items-center justify-center gap-1.5"
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+          More {market.name.toLowerCase()} — {rest.length} categories
+        </button>
+      )}
+      {expanded && (
+        <button
+          onClick={() => setExpanded(false)}
           className="w-full mt-2 py-2 text-[12px] font-semibold text-white/40 active:text-white/70"
         >
-          {expanded ? "Show less" : `Show all ${market.categories.length} ${market.name.toLowerCase()} categories`}
+          Show fewer
         </button>
       )}
     </section>

@@ -108,10 +108,6 @@ function CreatorDashboardInner() {
   // Hard gate: the signed Creator Referral Agreement must be approved by an
   // admin before ANY dashboard content (link, code, stats) is shown.
   const myAgreement = useQuery(api.referralAgreement.getMyAgreement);
-  // Platform-wide program performance — the backend returns null for anyone
-  // who is not an approved creator/admin (never throws, so a pending
-  // applicant's dashboard still loads). The section simply hides for null.
-  const programStats = useQuery(api.referral.getProgramStats);
 
   const [form, setForm] = useState({
     displayName: "",
@@ -517,34 +513,6 @@ function CreatorDashboardInner() {
               </div>
             </div>
 
-            {/* Platform-wide program performance — approved creators only;
-                hidden entirely while pending (stats are null) */}
-            {programStats && (
-            <div>
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-fuchsia-300" /> Program performance
-              </h2>
-              <p className="mt-1 text-sm text-white/45">
-                Platform-wide numbers across every creator — private to approved creators and admins.
-              </p>
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { label: "Active creators", value: programStats?.activeCreators, icon: Users },
-                  { label: "Qualified referrals (all creators)", value: programStats?.qualifiedReferrals, icon: UserCheck },
-                  { label: "Transactions generated", value: programStats?.transactionsGenerated, icon: TrendingUp },
-                  { label: "Total paid to creators", value: programStats ? fmtKES(Math.round(programStats.totalPaidOut)) : undefined, icon: Wallet },
-                ].map((s) => (
-                  <div key={s.label} className="rounded-2xl border border-fuchsia-400/12 bg-fuchsia-500/[0.04] p-4">
-                    <s.icon className="w-4 h-4 text-fuchsia-300/80" />
-                    <div className="mt-2.5 text-xl md:text-2xl font-bold tabular-nums">
-                      {s.value === undefined ? <span className="text-white/25">—</span> : s.value}
-                    </div>
-                    <div className="mt-0.5 text-xs text-white/45">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            )}
 
             {/* Commission summary */}
             <div className="grid md:grid-cols-3 gap-3">
