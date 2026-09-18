@@ -673,7 +673,7 @@ export default function Landing() {
                   </p>
                 </div>
                 <div className="shrink-0 w-full md:w-auto">
-                  <button onClick={() => navigate("/auth?returnTo=%2Fseller%2Fdashboard")}
+                  <button onClick={() => navigate("/auth/seller")}
                     className="group w-full md:w-auto px-8 py-3.5 rounded-xl text-white font-medium text-sm relative overflow-hidden transition-all hover:scale-[1.02]"
                     style={{ background: "linear-gradient(135deg, #06B6D4, #0E7490)" }}>
                     <span className="relative z-10 flex items-center gap-2 justify-center">
