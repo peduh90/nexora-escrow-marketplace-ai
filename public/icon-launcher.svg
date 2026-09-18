@@ -1,35 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Nexora">
   <defs>
-    <linearGradient id="nxL" gradientUnits="userSpaceOnUse" x1="120" y1="130" x2="400" y2="380">
-      <stop offset="0%" stop-color="#4F8DF9"/>
-      <stop offset="45%" stop-color="#6E6BF3"/>
-      <stop offset="100%" stop-color="#B06CF9"/>
+    <linearGradient id="nxL" gradientUnits="userSpaceOnUse" x1="110" y1="120" x2="410" y2="390">
+      <stop offset="0%" stop-color="#5590FA"/>
+      <stop offset="50%" stop-color="#7B6FF5"/>
+      <stop offset="100%" stop-color="#B76CFB"/>
     </linearGradient>
     <linearGradient id="nxBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1B1730"/>
-      <stop offset="100%" stop-color="#0B0A16"/>
+      <stop offset="0%" stop-color="#1D1832"/>
+      <stop offset="100%" stop-color="#0C0B18"/>
     </linearGradient>
-    <radialGradient id="nxGlow" cx="50%" cy="42%" r="65%">
-      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.22"/>
+    <radialGradient id="nxGlow" cx="50%" cy="44%" r="62%">
+      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.26"/>
       <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
-  <!-- Full-bleed brand background — no transparency, no dark-on-dark tile.
-       Launchers mask this into circles/squircles; the N stays centered. -->
+  <!-- Full-bleed brand background. No border, no dots: launcher icons must
+       survive circular masks and 48dp sizes — one bold glyph only. -->
   <rect width="512" height="512" fill="url(#nxBg)"/>
   <rect width="512" height="512" fill="url(#nxGlow)"/>
 
-  <!-- Big N monogram — fills the safe zone (inner ~66%) -->
-  <g stroke="url(#nxL)" fill="none" stroke-linecap="round">
-    <line x1="158" y1="368" x2="158" y2="144" stroke-width="66"/>
-    <line x1="158" y1="144" x2="354" y2="368" stroke-width="66"/>
-    <line x1="354" y1="144" x2="354" y2="368" stroke-width="66"/>
+  <!-- Bold N monogram, fills the maskable safe zone, no decorations -->
+  <g stroke="url(#nxL)" fill="none" stroke-linecap="round" stroke-width="76">
+    <line x1="150" y1="372" x2="150" y2="140"/>
+    <line x1="150" y1="140" x2="362" y2="372"/>
+    <line x1="362" y1="140" x2="362" y2="372"/>
   </g>
-
-  <!-- White node dots -->
-  <circle cx="158" cy="144" r="28" fill="#FFFFFF"/>
-  <circle cx="354" cy="368" r="28" fill="#FFFFFF"/>
-  <circle cx="256" cy="256" r="14" fill="#FFFFFF" fill-opacity="0.95"/>
 </svg>
