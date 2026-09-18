@@ -120,9 +120,10 @@ export const getDashboardStats = query({
     const realUsers = users.filter(isRealUser);
     const isSellerAccount = (u: any) =>
       u.role === "seller" || !!u.businessName || u.pendingRole === "seller";
-    const buyers = realUsers.filter(
-      (u) => u.role === "buyer" || (!u.role && !u.businessName && !isSellerAccount(u))
-    );
+    // Buyers are ONLY accounts with the real buyer role — role-less pending
+    // accounts are never silently counted as buyers (each user has exactly
+    // one role, assigned through registration/verification).
+    const buyers = realUsers.filter((u: any) => (u as any).role === "buyer");
     const sellers = realUsers.filter(isSellerAccount);
     // Freelancers are tracked in freelanceProfiles, not in users.role.
     // Count them here from the freelanceProfiles table separately.
@@ -339,8 +340,11 @@ export const getUserCounts = query({
     // new seller registrations are counted the moment they sign up.
     const isSellerAccount = (u: any) =>
       u.role === "seller" || !!u.businessName || u.pendingRole === "seller";
+    // Buyers are ONLY accounts with the real buyer role — role-less pending
+    // accounts are never silently counted as buyers (each user has exactly
+    // one role, assigned through registration/verification).
     const buyers = realUsers.filter(
-      (u: any) => u.role === "buyer" || (!u.role && !u.businessName && !isSellerAccount(u))
+      (u: any) => (u as any).role === "buyer"
     );
     const sellers = realUsers.filter(isSellerAccount);
     const admins = realUsers.filter((u: any) => u.role === "admin");

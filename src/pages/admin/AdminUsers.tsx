@@ -30,13 +30,13 @@ export default function AdminUsers() {
   // with their requested role so new sellers are never mistaken for buyers.
   const effectiveRole = (u: any) => {
     if (u.role === "admin") return "admin";
-    if (u.role === "seller" || u.businessName || u.pendingRole === "seller") return "seller";
-    // A freelancer is a person: role assigned by the freelance join flow OR a
-    // completed freelance profile. The two must agree with the stat card.
-    if (u.role === "freelancer" || u.freelanceTitle) return "freelancer";
-    if (u.role === "employer") return "employer";
-    if (u.role === "driver") return "driver";
-    return "buyer";
+    if (u.role) return u.role;
+    // No role field yet — fall back to profile evidence only. Never assume
+    // "buyer": an account without a role is exactly that, pending/role-less.
+    if (u.businessName || u.pendingRole === "seller") return "seller";
+    if (u.freelanceTitle) return "freelancer";
+    if (u.pendingRole) return u.pendingRole;
+    return "—";
   };
   const filtered = users.filter((u: any) => {
     const role = effectiveRole(u);
@@ -228,7 +228,7 @@ export default function AdminUsers() {
                           );
                         }
                         const r = effectiveRole(user);
-                        return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${r === "seller" ? "bg-nx-violet/10 text-nx-violet" : r === "admin" ? "bg-nx-gold/10 text-nx-gold" : r === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : r === "employer" ? "bg-amber-500/10 text-amber-400" : "bg-nx-cyan/10 text-nx-cyan"}`}>{r}</span>);
+                        return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${r === "seller" ? "bg-nx-violet/10 text-nx-violet" : r === "admin" ? "bg-nx-gold/10 text-nx-gold" : r === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : r === "employer" ? "bg-amber-500/10 text-amber-400" : r === "service_provider" ? "bg-nx-cyan/10 text-nx-cyan" : r === "driver" ? "bg-orange-500/10 text-orange-400" : r === "creator" ? "bg-fuchsia-500/10 text-fuchsia-300" : r === "buyer" ? "bg-white/5 text-white/50" : "bg-white/5 text-white/30"}`}>{r === "—" ? "no role yet" : r}</span>);
                       })()}
                     </td>
                     <td className="px-4 py-3.5 hidden lg:table-cell">

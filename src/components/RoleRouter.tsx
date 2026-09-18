@@ -250,6 +250,8 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
       freelancer: "/freelance/dashboard",
       employer: "/employer",
       creator: "/creator",
+      service_provider: "/services/dashboard",
+      driver: "/seller",
     };
     const target = roleRedirects[role as string];
     if (target) {
@@ -287,6 +289,10 @@ export function getDashboardPath(role?: string | null): string {
       return "/employer";
     case "creator":
       return "/creator";
+    case "service_provider":
+      return "/services/dashboard";
+    case "driver":
+      return "/seller";
     default:
       return "/auth?returnTo=/";
   }

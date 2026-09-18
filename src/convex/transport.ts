@@ -383,6 +383,20 @@ export const upsertTransportProfile = mutation({
       completedTrips: 0,
       createdAt: now,
     } as any);
+
+    // ── Role assignment: registering a transport profile IS a role request ──
+    // A rider/driver identity lives on the account itself: this user becomes
+    // "driver" the moment they publish. Applied when the account has no role
+    // (pending registrations) or still carries the legacy default "buyer" —
+    // never when the user already holds another real role.
+    if (!user.role || user.role === "buyer") {
+      await ctx.db.patch(user._id, {
+        role: "driver" as any,
+        pendingRole: undefined,
+        ...(user.accountStatus !== "active" ? { accountStatus: "active" as any } : {}),
+      });
+    }
+
     const admins = await ctx.db
       .query("users")
       .withIndex("by_role" as any, (q: any) => q.eq("role", "admin"))

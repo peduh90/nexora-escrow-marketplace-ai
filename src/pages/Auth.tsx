@@ -776,20 +776,22 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         localStorage.setItem(`__convexAuthRefreshToken_${ns}`, tokens.refreshToken);
 
         // Navigate using the role returned from the backend, which is read from
-        // the persistent DB record. Do NOT fallback to /buyer when the role is
-        // missing — instead route to the auth page so the profile can be repaired.
-        const r = result.role;
+        // the persistent DB record. One role → one dashboard. A role-less
+        // account is NOT an error: it goes to the role picker so the auth flow
+        // can finish creating the profile.
+        const r = result.role as string | null | undefined;
         let target: string | null = null;
         if (r === "admin") target = "/admin";
         else if (r === "seller" || r === "driver") target = "/seller";
+        else if (r === "service_provider") target = "/services/dashboard";
         else if (r === "freelancer") target = "/freelance/dashboard";
         else if (r === "buyer") target = "/buyer";
         else if (r === "employer") target = "/employer";
         else if (r === "creator") target = "/creator";
-        else {
-          setError("Your account role is not recognised. Please contact support.");
-          setLoginPassword("");
-          setIsLoading(false);
+        if (!target) {
+          // No role yet — the account exists but the profile was never
+          // completed. Route to the role picker instead of a dead end.
+          window.location.href = "/auth";
           return;
         }
         window.location.href = target;
@@ -1206,11 +1208,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                         <div className="relative"><Lock className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="password" placeholder="Password" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" required /></div>
                         {error && <p className="text-sm text-red-400">{error}</p>}
                         <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>
-                  {emailTaken ? (
-                    <>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Sign In to Existing Account <ArrowRight className="ml-2 h-4 w-4" /></>
-                  ) : (
-                    <>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create"} {selectedRole === "seller" ? "Seller Account" : selectedRole === "freelancer" ? "Freelancer Account" : selectedRole === "employer" ? "Employer Account" : selectedRole === "creator" ? "Creator Account" : "Account"} {isLoading ? null : <ArrowRight className="ml-2 h-4 w-4" />}</>
-                  )}
                           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign In <ArrowRight className="ml-2 h-4 w-4" /></>}
                         </Button>
                         <button type="button" onClick={startForgotPassword} className="w-full text-center text-xs text-white/40 hover:text-nx-violet transition-colors">
@@ -1238,7 +1235,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                   {!isSellerRegister && !isFreelanceRegister && !isCreatorRegister && (
                     <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Change</button>
                   )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : selectedRole === "employer" ? "bg-amber-500/10 text-amber-400" : selectedRole === "creator" ? "bg-fuchsia-500/10 text-fuchsia-300" : selectedRole === "service_provider" || providerIntent || providerReturn ? "bg-nx-cyan/15 text-nx-cyan" : "bg-nx-cyan/10 text-nx-cyan"`}>{selectedRole === "seller" ? "🏪 Seller" : selectedRole === "freelancer" ? "✍️ Freelancer" : selectedRole === "employer" ? "💼 Employer" : selectedRole === "creator" ? "📣 Creator" : selectedRole === "service_provider" || providerIntent || providerReturn ? "🔧 Service Provider" : "🛒 Buyer"}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : selectedRole === "employer" ? "bg-amber-500/10 text-amber-400" : selectedRole === "creator" ? "bg-fuchsia-500/10 text-fuchsia-300" : selectedRole === "service_provider" || providerIntent || providerReturn ? "bg-nx-cyan/15 text-nx-cyan" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "🏪 Seller" : selectedRole === "freelancer" ? "✍️ Freelancer" : selectedRole === "employer" ? "💼 Employer" : selectedRole === "creator" ? "📣 Creator" : selectedRole === "service_provider" || providerIntent || providerReturn ? "🔧 Service Provider" : "🛒 Buyer"}</span>
                 </div>
                 <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : selectedRole === "employer" ? "Create Employer Account" : selectedRole === "creator" ? "Create Creator Account" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Offer a Service on Nexora" : "Create Buyer Account"}</CardTitle>
                 <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : selectedRole === "employer" ? "Set up your employer account to post jobs and hire freelancers" : selectedRole === "creator" ? "Create your account, then apply to the Creator Program — your referral link and earnings live in the creator dashboard" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Create your account, then set up your service — salon, plumbing, boda, fundi & more" : "Create your account to start shopping securely"}</CardDescription>
@@ -1284,7 +1281,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                   {usePasswordAuth && (
                     <input type="hidden" name="password" value={password} />
                   )}
-                  <input type="hidden" name="role" value={selectedRole || "buyer"} />
+                  <input type="hidden" name="role" value={selectedRole || ""} />
                   <input type="hidden" name="businessName" value={selectedRole === "seller" ? fullName || undefined : undefined} />
                   {selectedRole === "seller" && (
                     <div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="businessName" placeholder="Business / Store Name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>

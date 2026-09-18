@@ -536,15 +536,8 @@ function inferRole(user: any): string | null {
   if (typeof user.email === "string" && user.email === ADMIN_EMAIL) return "admin";
   if (typeof user.email === "string" && user.email === process.env.ADMIN_EMAIL) return "admin";
   if (typeof user.businessName === "string" && user.businessName) return "seller";
-  // Legacy real accounts (real email, not anonymous) without a stored role
-  // are buyers — never guess anything else.
-  if (
-    typeof user.email === "string" &&
-    user.email.includes("@") &&
-    !user.email.toLowerCase().includes("anonymous")
-  ) {
-    return "buyer";
-  }
+  // NO default role: a real account without a role or business name stays
+  // role-less. The caller keeps it pending until onboarding assigns one.
   return null;
 }
 
@@ -768,9 +761,8 @@ export const backfillAccountStatus = internalMutation({
         await ctx.db.patch(u._id, { accountStatus: "active" as any });
         activated++;
       } else {
-        if (!anyU.pendingRole && anyU.email?.includes("@")) {
-          await ctx.db.patch(u._id, { pendingRole: "buyer" as any });
-        }
+        // NO default role: accounts without a role stay pending with none
+        // requested. They choose their role when completing onboarding.
         keptPending++;
       }
     }
@@ -806,12 +798,13 @@ export const getOnboardingStatus = query({
         ? u.pendingRole
         : typeof u.role === "string" && u.role
           ? u.role
-          : "buyer";
+          : null;
 
     const requirements: Array<{ key: string; label: string; met: boolean }> = [
       { key: "email", label: "Verified email account", met: hasEmail },
       { key: "name", label: "Full name on profile", met: hasName },
       { key: "phone", label: "Phone number (M-Pesa & delivery)", met: hasPhone },
+      { key: "role", label: "Chosen account type", met: !!requestedRole },
     ];
     const isComplete = requirements.every((r) => r.met);
 
@@ -823,6 +816,34 @@ export const getOnboardingStatus = query({
       isComplete,
       profile: { name: u.name || "", email: u.email || "", phone: u.phone || "" },
     };
+  },
+});
+
+/**
+ * Set the pending role from the onboarding screen. Called by the verification
+ * gate when a role-less pending account picks its account type — the role is
+ * stored as pendingRole and only becomes real through completeVerification.
+ */
+export const setPendingRole = mutation({
+  args: { role: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx);
+    if (!user) throw new ConvexError("Not authenticated");
+    const u = user as any;
+
+    // Active accounts with a role are LOCKED — role changes go through admin.
+    if (u.accountStatus === "active" && typeof u.role === "string" && u.role) {
+      return { success: false, role: u.role };
+    }
+
+    // Platform roles only — admin is never self-assigned.
+    const allowed = ["buyer", "seller", "freelancer", "employer", "creator", "service_provider", "driver"];
+    if (!allowed.includes(args.role)) {
+      throw new ConvexError("Unknown account type.");
+    }
+
+    await ctx.db.patch(u._id, { pendingRole: args.role as any });
+    return { success: true, role: args.role };
   },
 });
 
@@ -865,7 +886,7 @@ export const completeVerification = mutation({
         ? fresh.pendingRole
         : typeof fresh.role === "string" && fresh.role
           ? fresh.role
-          : "buyer";
+          : null;
 
     if (!hasEmail) {
       throw new ConvexError("Verify your email before completing registration.");
@@ -875,6 +896,9 @@ export const completeVerification = mutation({
     }
     if (!hasPhone) {
       throw new ConvexError("Add your phone number to complete registration.");
+    }
+    if (!requestedRole) {
+      throw new ConvexError("Choose your account type to complete registration.");
     }
     // Strict Kenyan mobile validation — fake/malformed numbers can never
     // complete registration (server is authoritative; the client mirrors it

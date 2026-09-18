@@ -525,6 +525,20 @@ export const upsertMyService = mutation({
       createdAt: now,
     } as any);
 
+    // ── Role assignment: registering a service profile IS a role request ──
+    // The provider identity lives on the account, not in a parallel table:
+    // this user is a service_provider from the moment they publish. Applied
+    // when the account has no role yet (pending registrations) or is still
+    // carrying the legacy default "buyer" — never when the user already holds
+    // another real role (seller/freelancer/admin keep theirs).
+    if (!user.role || user.role === "buyer") {
+      await ctx.db.patch(user._id, {
+        role: "service_provider" as any,
+        pendingRole: undefined,
+        ...(user.accountStatus !== "active" ? { accountStatus: "active" as any } : {}),
+      });
+    }
+
     // Admins get a real verification task in their panel flow (notification).
     const admins = await ctx.db
       .query("users")
