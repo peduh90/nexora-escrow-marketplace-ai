@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Menu, X } from "lucide-react";
 import NexoraMark from "@/components/NexoraMark";
+import InstallButton from "@/components/pwa/InstallButton";
 import { useNavigate } from "react-router";
 import { useLowData } from "@/hooks/use-low-data";
 import { SignalLow } from "lucide-react";
@@ -108,6 +109,7 @@ export default function NavigationBar() {
               the Marketplace page (below the nav links) where buyers — the
               default audience — land, not in the global menu. */}
           <div className="hidden md:flex items-center gap-3">
+            <InstallButton variant="inline" className="hidden lg:flex" />
             <LowDataToggle compact />
             {user ? (
               <button
@@ -155,6 +157,7 @@ export default function NavigationBar() {
           >
             <div className="flex flex-col gap-2">
               <LowDataToggle />
+              <InstallButton variant="inline" className="justify-center" />
               <div className="border-t border-white/5 my-2" />
               <button
                 onClick={() => { navigate("/"); setMobileOpen(false); }}

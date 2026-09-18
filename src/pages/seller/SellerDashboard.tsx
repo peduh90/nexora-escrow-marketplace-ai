@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
 import VerificationCard from "@/components/VerificationCard";
+import StoreQrCard from "@/components/seller/StoreQrCard";
 import {
   Package, ShoppingCart, DollarSign, TrendingUp, Plus,
   ArrowRight, Wallet, Shield, Loader2, Rocket, CheckCircle2, Circle,
@@ -133,6 +134,9 @@ export default function SellerDashboard() {
 
         {/* Progressive verification — KYC + genuine listing gate */}
         <VerificationCard />
+
+        {/* Store QR — permanent link customers scan to reach this store */}
+        <StoreQrCard />
 
         {/* Stats cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

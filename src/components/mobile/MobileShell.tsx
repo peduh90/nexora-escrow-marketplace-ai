@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import NexoraMark from "@/components/NexoraMark";
+import InstallButton from "@/components/pwa/InstallButton";
 import {
   Home, Compass, Package, Briefcase, MessageSquare, User, X, ChevronRight,
   LayoutDashboard, LogOut, Bell, Sparkles, Search, ShoppingBag, Wrench,
@@ -122,6 +123,10 @@ function MobileHeader({ onSearch }: { onSearch: () => void }) {
         )}
 
         <div className="flex items-center gap-0.5 shrink-0">
+          {/* Install entry point in the app header — hidden once installed. */}
+          <div className="md:hidden">
+            <InstallButton variant="icon" />
+          </div>
           {ctx.actions?.includes("search") && (
             <button
               onClick={onSearch}

@@ -106,7 +106,7 @@ export async function triggerInstall(): Promise<"accepted" | "dismissed" | "unav
   deferredPrompt = null;
   emitInstallAvailability();
   if (outcome === "accepted") {
-    try { localStorage.setItem("nx_pwa_installed", String(Date.now())); } catch { /* private mode */ }
+    markInstalled();
   }
   return outcome;
 }
@@ -137,6 +137,29 @@ export function markDismissed() {
 /** User tapped "Later" on the tiny nudge — shorter, softer cooldown. */
 export function markLater() {
   try { localStorage.setItem(LATER_KEY, String(Date.now())); } catch { /* private mode */ }
+}
+
+/**
+ * True when the user has EVER installed the app on this device (used to stop
+ * suggesting installation forever after a successful install, even if the
+ * icon is later removed). "appinstalled" writes the marker; a standalone
+ * session on iOS also records it so a re-open never re-prompts.
+ */
+export function hasInstalledBefore(): boolean {
+  try {
+    if (localStorage.getItem("nx_pwa_installed")) return true;
+  } catch {
+    return isStandalone();
+  }
+  return isStandalone();
+}
+
+/**
+ * Record a successful install (called from "appinstalled" and from a
+ * standalone session that somehow has no marker yet, e.g. iOS restores).
+ */
+export function markInstalled() {
+  try { localStorage.setItem("nx_pwa_installed", String(Date.now())); } catch { /* private mode */ }
 }
 
 /** True when the app already runs installed / in a standalone context. */
@@ -244,7 +267,7 @@ export function initPwa(): void {
   window.addEventListener("appinstalled", () => {
     deferredPrompt = null;
     emitInstallAvailability();
-    try { localStorage.setItem("nx_pwa_installed", String(Date.now())); } catch { /* ignore */ }
+    markInstalled();
   });
 
   watchBatteryForDefer();

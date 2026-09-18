@@ -20,6 +20,7 @@ import { TrustBanner } from "@/components/layout/TrustBadges";
 import SocialLinks from "@/components/layout/SocialLinks";
 import ServicesNearYou from "@/components/home/ServicesNearYou";
 import DigitalServicesRail from "@/components/home/DigitalServicesRail";
+import InstallButton from "@/components/pwa/InstallButton";
 import SupportDock from "@/components/SupportDock";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
@@ -286,6 +287,10 @@ export default function Landing() {
           transition={{ duration: 0.8, delay: 1.2 }}
           className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mt-8 w-full max-w-4xl"
         >
+          {/* Install Nexora — browser-only sessions, never an installed app. */}
+          <div className="col-span-2 flex justify-center lg:col-span-4">
+            <InstallButton variant="inline" />
+          </div>
           {/* ✨ GET STARTED FREE — the main onboarding CTA */}
           <button
             onClick={() => (user ? navigate(dashboardPath()) : navigate("/auth"))}
