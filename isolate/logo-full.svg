@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="Nexora Market">
+  <defs>
+    <linearGradient id="nxMarkF" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="45%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="nxMarkText" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="55%" stop-color="#7C6CF6"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="nxTileF" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#151321"/>
+      <stop offset="100%" stop-color="#0A0A12"/>
+    </linearGradient>
+    <clipPath id="tileClipF">
+      <rect x="380" y="75" width="440" height="440" rx="100" ry="100"/>
+    </clipPath>
+  </defs>
+
+  <!-- Canvas -->
+  <rect width="1200" height="630" fill="#05050A"/>
+
+  <!-- App tile -->
+  <g clip-path="url(#tileClipF)">
+    <rect x="380" y="75" width="440" height="440" fill="url(#nxTileF)"/>
+    <rect x="381.5" y="76.5" width="437" height="437" rx="98.5" ry="98.5" fill="none" stroke="#8B5CF6" stroke-opacity="0.28" stroke-width="3"/>
+  </g>
+
+  <!-- N monogram -->
+  <g stroke="url(#nxMarkF)" fill="none">
+    <line x1="484" y1="368" x2="484" y2="222" stroke-width="52" stroke-linecap="round"/>
+    <line x1="484" y1="222" x2="716" y2="368" stroke-width="52" stroke-linecap="round"/>
+    <line x1="716" y1="222" x2="716" y2="368" stroke-width="52" stroke-linecap="round"/>
+  </g>
+  <circle cx="484" cy="222" r="22" fill="#FFFFFF"/>
+  <circle cx="716" cy="368" r="22" fill="#FFFFFF"/>
+  <circle cx="599" cy="294" r="11" fill="#FFFFFF" fill-opacity="0.92"/>
+
+  <!-- NEXORA wordmark — vector letterforms (font-independent).
+       Letters drawn in a 396x56 box starting at x=402, y=528. -->
+  <g stroke="url(#nxMarkText)" fill="none" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+    <!-- N (w 54) -->
+    <g transform="translate(402,528)">
+      <line x1="7" y1="56" x2="7" y2="0"/>
+      <line x1="7" y1="0" x2="47" y2="56"/>
+      <line x1="47" y1="0" x2="47" y2="56"/>
+    </g>
+    <!-- E (w 44) -->
+    <g transform="translate(474,528)">
+      <line x1="7" y1="0" x2="7" y2="56"/>
+      <line x1="7" y1="0" x2="40" y2="0"/>
+      <line x1="7" y1="28" x2="34" y2="28"/>
+      <line x1="7" y1="56" x2="40" y2="56"/>
+    </g>
+    <!-- X (w 50) -->
+    <g transform="translate(536,528)">
+      <line x1="7" y1="0" x2="43" y2="56"/>
+      <line x1="43" y1="0" x2="7" y2="56"/>
+    </g>
+    <!-- O (w 54) -->
+    <g transform="translate(604,528)">
+      <ellipse cx="27" cy="28" rx="20" ry="21.5"/>
+    </g>
+    <!-- R (w 48) -->
+    <g transform="translate(676,528)">
+      <line x1="7" y1="0" x2="7" y2="56"/>
+      <path d="M7,6.5 H25 A11,11 0 0 1 25,28.5 H7"/>
+      <line x1="23" y1="28.5" x2="41" y2="56"/>
+    </g>
+    <!-- A (w 56) -->
+    <g transform="translate(742,528)">
+      <line x1="28" y1="0" x2="7" y2="56"/>
+      <line x1="28" y1="0" x2="49" y2="56"/>
+      <line x1="15" y1="38" x2="41" y2="38"/>
+    </g>
+  </g>
+</svg>
