@@ -88,7 +88,19 @@ export default function AdminKYC() {
                     <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${app.status === "approved" ? "bg-nx-emerald/10 text-nx-emerald" : app.status === "rejected" ? "bg-red-400/10 text-red-400" : "bg-nx-gold/10 text-nx-gold"}`}>{app.status}</span>
                   </div>
                   <p className="text-white/70 font-medium">{app.businessName}</p>
-                  <p className="text-[11px] text-white/30">{app.businessType} · {app.county}, {app.town}</p>
+                  <p className="text-[11px] text-white/30">
+                    {(app.businessType || "").replace("_", " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                    {app.businessType === "individual" && (
+                      <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-nx-cyan/10 text-nx-cyan">ID-only seller</span>
+                    )}
+                    · {app.county}, {app.town}
+                  </p>
+                  {(app.registrationNumber || app.taxPin) && (
+                    <p className="text-[10px] text-white/25 mt-0.5">
+                      {app.registrationNumber && <>Reg: {app.registrationNumber} · </>}
+                      {app.taxPin && <>KRA PIN: {app.taxPin}</>}
+                    </p>
+                  )}
                   {app.reviewNotes && <p className="text-[10px] text-white/20 mt-1">Notes: {app.reviewNotes}</p>}
                 </div>
                 {app.status === "pending" && (
