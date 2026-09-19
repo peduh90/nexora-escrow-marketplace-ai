@@ -363,12 +363,8 @@ export const chat = action({
 
     // Primary provider → fallback chain (other provider → knowledge base).
     // Keys and provider errors NEVER reach the user.
-    const chain: Array<"gemini" | "openai"> = [];
-    if (activeProvider === "gemini") {
-      chain.push("gemini", "openai");
-    } else {
-      chain.push("openai", "gemini");
-    }
+    const all: AiProvider[] = ["groq", "openai", "gemini"];
+    const chain: AiProvider[] = [activeProvider, ...all.filter((p) => p !== activeProvider)];
 
     let rateLimited = false;
     for (const provider of chain) {
@@ -412,26 +408,36 @@ export const chat = action({
 
 /* ─── PROVIDER ABSTRACTION ─────────────────────────────────────────────────
  *
- * AI_PROVIDER=gemini  → Google Gemini (free tier) is primary, OpenAI fallback
- * AI_PROVIDER=openai  → OpenAI primary, Gemini fallback
+ * AI_PROVIDER=groq    → Groq (free, ultra-fast LPU) primary — DEFAULT
+ * AI_PROVIDER=openai  → OpenAI primary
+ * AI_PROVIDER=gemini  → Google Gemini primary
  *
- * Switching providers later is an env change only — the frontend, chat UI,
- * conversation history and system instructions never change.
+ * The fallback chain always continues through the other configured
+ * providers, then the knowledge base. Switching providers later is an env
+ * change only — the frontend, chat UI, conversation history and system
+ * instructions never change.
  */
 
-type AiProvider = "gemini" | "openai";
+type AiProvider = "groq" | "openai" | "gemini";
 
-/** Free-tier Gemini Flash-Lite alias — always points at the current
- * available Flash-Lite model (verified live against this API key).
- * Update here if Google ever deprecates the alias. */
+/** Groq — primary provider (free tier, ultra-fast LPU inference).
+ *  Model verified live against the account's model list: strongest chat
+ *  model with 131K context. Update here if Groq deprecates it. */
+export const GROQ_MODEL = "openai/gpt-oss-120b";
+export const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+/** Free-tier Gemini Flash-Lite alias — kept as a secondary fallback. */
 const GEMINI_MODEL = "gemini-flash-lite-latest";
 
 function resolveActiveProvider(): AiProvider {
-  const setting = (process.env.AI_PROVIDER || "gemini").toLowerCase();
-  return setting === "openai" ? "openai" : "gemini";
+  const setting = (process.env.AI_PROVIDER || "groq").toLowerCase();
+  if (setting === "openai") return "openai";
+  if (setting === "gemini") return "gemini";
+  return "groq";
 }
 
 function providerConfigured(p: AiProvider): boolean {
+  if (p === "groq") return Boolean(process.env.GROQ_API_KEY);
   if (p === "gemini") return Boolean(process.env.GEMINI_API_KEY);
   return Boolean(process.env.OPENAI_API_KEY);
 }
@@ -452,6 +458,27 @@ async function callProvider(
   systemPrompt: string,
   turns: Array<{ role: "user" | "assistant"; content: string }>,
 ): Promise<{ content?: string; retryable: boolean }> {
+  if (provider === "groq") {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) throw new ProviderError("unavailable");
+    const res = await fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [{ role: "system", content: systemPrompt }, ...turns],
+        max_tokens: 1200,
+        temperature: 0.7,
+      }),
+    });
+    if (res.status === 429) throw new ProviderError("rate_limited", 429);
+    if (!res.ok) throw new ProviderError("unavailable", res.status);
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) throw new ProviderError("unavailable", res.status);
+    return { content, retryable: false };
+  }
+
   if (provider === "gemini") {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new ProviderError("unavailable");
@@ -509,6 +536,40 @@ async function callProvider(
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new ProviderError("unavailable", res.status);
   return { content, retryable: false };
+}
+
+/** Shared OpenAI-compatible completion helper for the structured JSON
+ *  actions (fraud score, price analysis, disputes). Groq primary, OpenAI
+ *  fallback. Returns the raw content string, or null when no provider is
+ *  configured/available — callers keep their rule-based fallbacks. */
+async function llmComplete(
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+  opts: { maxTokens: number; temperature: number },
+): Promise<string | null> {
+  const providers: Array<{ url: string; key?: string; model: string }> = [
+    { url: GROQ_API_URL, key: process.env.GROQ_API_KEY, model: GROQ_MODEL },
+    { url: "https://api.openai.com/v1/chat/completions", key: process.env.OPENAI_API_KEY, model: "gpt-4o-mini" },
+  ];
+  for (const p of providers) {
+    if (!p.key) continue;
+    try {
+      const res = await fetch(p.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
+        body: JSON.stringify({
+          model: p.model,
+          messages,
+          max_tokens: opts.maxTokens,
+          temperature: opts.temperature,
+        }),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (content) return content;
+    } catch { /* next provider */ }
+  }
+  return null;
 }
 
 /* ─── SYSTEM PROMPT — All 19 Knowledge Sections ─── */
@@ -991,48 +1052,32 @@ export const scoreTransaction = action({
     sellerVerified: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return ruleBasedFraudScore(args);
-
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
-
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content: `You are a fraud detection system for Nexora Market, a Kenyan escrow marketplace. Analyze the transaction and return ONLY valid JSON with: "score" (0-100), "level" ("low"/"medium"/"high"/"critical"), "flags" (array of strings), "recommendation" (string), "reason" (string). Risk factors: high amounts, unverified sellers, new accounts, location mismatches, high-risk categories (electronics, vehicles).`,
-              },
-              {
-                role: "user",
-                content: JSON.stringify({
-                  amount: args.amount,
-                  category: args.productCategory,
-                  buyerLocation: args.buyerLocation,
-                  sellerLocation: args.sellerLocation,
-                  sellerTransactions: args.sellerTransactionCount || 0,
-                  sellerRating: args.sellerRating || 0,
-                  sellerVerified: args.sellerVerified || false,
-                }),
-              },
-            ],
-            max_tokens: 300,
-            temperature: 0.1,
+    const content = await llmComplete(
+      [
+        {
+          role: "system",
+          content: `You are a fraud detection system for Nexora Market, a Kenyan escrow marketplace. Analyze the transaction and return ONLY valid JSON with: "score" (0-100), "level" ("low"/"medium"/"high"/"critical"), "flags" (array of strings), "recommendation" (string), "reason" (string). Risk factors: high amounts, unverified sellers, new accounts, location mismatches, high-risk categories (electronics, vehicles).`,
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            amount: args.amount,
+            category: args.productCategory,
+            buyerLocation: args.buyerLocation,
+            sellerLocation: args.sellerLocation,
+            sellerTransactions: args.sellerTransactionCount || 0,
+            sellerRating: args.sellerRating || 0,
+            sellerVerified: args.sellerVerified || false,
           }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const content = data.choices?.[0]?.message?.content || "{}";
-          const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
-          return JSON.parse(cleaned);
-        }
-      } catch {}
+        },
+      ],
+      { maxTokens: 600, temperature: 0.1 },
+    );
+    if (content) {
+      const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
+      try {
+        return JSON.parse(cleaned);
+      } catch { /* malformed JSON → rule-based fallback */ }
     }
     return ruleBasedFraudScore(args);
   },
@@ -1050,37 +1095,22 @@ export const analyzePrice = action({
     sellerRating: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return { assessment: "fair", reasoning: "AI pricing analysis not available. Check similar listings on Nexora." };
-
-    try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: `You are a price analysis AI for Nexora Market (Kenyan marketplace, KES currency). Analyze if a product price is fair. Return ONLY valid JSON: "assessment" ("great_deal"/"good_deal"/"fair_price"/"above_average"/"overpriced"), "reasoning" (string), "estimatedRange" (string like "KSh 15,000 - 25,000"), "tips" (array of strings). Consider: Kenyan market prices, product condition, seller reputation, specifications.`,
-            },
-            {
-              role: "user",
-              content: JSON.stringify(args),
-            },
-          ],
-          max_tokens: 300,
-          temperature: 0.2,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content || "{}";
-        const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
+    const content = await llmComplete(
+      [
+        {
+          role: "system",
+          content: `You are a price analysis AI for Nexora Market (Kenyan marketplace, KES currency). Analyze if a product price is fair. Return ONLY valid JSON: "assessment" ("great_deal"/"good_deal"/"fair_price"/"above_average"/"overpriced"), "reasoning" (string), "estimatedRange" (string like "KSh 15,000 - 25,000"), "tips" (array of strings). Consider: Kenyan market prices, product condition, seller reputation, specifications.`,
+        },
+        { role: "user", content: JSON.stringify(args) },
+      ],
+      { maxTokens: 600, temperature: 0.2 },
+    );
+    if (content) {
+      const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
+      try {
         return JSON.parse(cleaned);
-      }
-    } catch {}
+      } catch { /* malformed JSON → fallback below */ }
+    }
     return { assessment: "fair", reasoning: "AI pricing analysis unavailable. Compare with similar listings on Nexora.", estimatedRange: "Check marketplace", tips: [] };
   },
 });
@@ -1097,36 +1127,22 @@ export const resolveDispute = action({
     evidence: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return { recommendation: "pending_review", reasoning: "AI not configured. Admin review required.", suggestedAction: "Manual review", confidence: 0 };
-    }
-
-    try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: `You are a dispute resolution AI for Nexora Market. Analyze disputes fairly. Return ONLY valid JSON: "recommendation" ("release_to_seller"/"refund_buyer"/"partial_refund"/"pending_review"/"mediate"), "reasoning" (string), "suggestedAction" (string), "confidence" (0-100).`,
-            },
-            { role: "user", content: JSON.stringify(args) },
-          ],
-          max_tokens: 400,
-          temperature: 0.2,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content || "{}";
-        const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
+    const content = await llmComplete(
+      [
+        {
+          role: "system",
+          content: `You are a dispute resolution AI for Nexora Market. Analyze disputes fairly. Return ONLY valid JSON: "recommendation" ("release_to_seller"/"refund_buyer"/"partial_refund"/"pending_review"/"mediate"), "reasoning" (string), "suggestedAction" (string), "confidence" (0-100).`,
+        },
+        { role: "user", content: JSON.stringify(args) },
+      ],
+      { maxTokens: 800, temperature: 0.2 },
+    );
+    if (content) {
+      const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
+      try {
         return JSON.parse(cleaned);
-      }
-    } catch {}
+      } catch { /* malformed JSON → fallback below */ }
+    }
     return { recommendation: "pending_review", reasoning: "AI analysis unavailable.", suggestedAction: "Manual review", confidence: 0 };
   },
 });

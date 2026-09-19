@@ -1,5 +1,6 @@
 import { v, ConvexError } from "convex/values";
 import { query, mutation, action } from "./_generated/server";
+import { GROQ_API_URL, GROQ_MODEL, llmComplete } from "./ai";
 
 // ═══════════════════════════════════════════════════════════════
 // NEXORA AI OPERATIONS ENGINE
@@ -366,21 +367,14 @@ export const processCustomerMessage = action({
     }
 
     // Step 2: Generate response
-    const apiKey = process.env.OPENAI_API_KEY;
     let response: string;
     let responseConfidence = confidence;
 
-    if (apiKey) {
-      try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content: `You are NexoraAI, the intelligent support assistant for Nexora Market — an AI-powered escrow marketplace in Kenya. 
+    const llm = await llmComplete(
+      [
+        {
+          role: "system",
+          content: `You are NexoraAI, the intelligent support assistant for Nexora Market — an AI-powered escrow marketplace in Kenya. 
 
 RULES:
 - Be concise, helpful, and professional
@@ -395,26 +389,15 @@ RULES:
 
 INTENT DETECTED: ${intent}
 USER ROLE: ${args.userRole}`,
-              },
-              { role: "user", content: args.message },
-            ],
-            max_tokens: 500,
-            temperature: 0.5,
-          }),
-        });
+        },
+        { role: "user", content: args.message },
+      ],
+      { maxTokens: 600, temperature: 0.5 },
+    );
 
-        if (res.ok) {
-          const data = await res.json();
-          response = data.choices?.[0]?.message?.content || "I'm here to help. Could you tell me more?";
-          responseConfidence = 0.8;
-        } else {
-          response = getDeterministicResponse(intent, args.userRole);
-          responseConfidence = 0.7;
-        }
-      } catch {
-        response = getDeterministicResponse(intent, args.userRole);
-        responseConfidence = 0.7;
-      }
+    if (llm) {
+      response = llm;
+      responseConfidence = 0.8;
     } else {
       response = getDeterministicResponse(intent, args.userRole);
       responseConfidence = 0.7;
@@ -661,56 +644,43 @@ export const analyzeDispute = action({
     sellerId: v.string(),
   },
   handler: async (ctx, args) => {
-    const apiKey = process.env.OPENAI_API_KEY;
     let analysis: string;
     let recommendation = "pending_review";
     let confidence = 0.5;
 
-    if (apiKey) {
-      try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content: `You are a dispute analysis AI for Nexora Market. Analyze the dispute and return ONLY valid JSON with:
+    const llm = await llmComplete(
+      [
+        {
+          role: "system",
+          content: `You are a dispute analysis AI for Nexora Market. Analyze the dispute and return ONLY valid JSON with:
 "analysis" (string - clear summary), "recommendation" (one of: "release_to_seller", "refund_buyer", "partial_refund", "mediate", "pending_review"), "confidence" (0-100), "riskFactors" (array of strings), "nextStep" (string).
 Be fair. Consider both parties. High-value disputes (over KES 50,000) should be escalated to human review.`,
-              },
-              {
-                role: "user",
-                content: JSON.stringify({
-                  disputeId: args.disputeId,
-                  reason: args.reason,
-                  description: args.description,
-                  amount: `KES ${args.amount.toLocaleString()}`,
-                }),
-              },
-            ],
-            max_tokens: 400,
-            temperature: 0.2,
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            disputeId: args.disputeId,
+            reason: args.reason,
+            description: args.description,
+            amount: `KES ${args.amount.toLocaleString()}`,
           }),
-        });
+        },
+      ],
+      { maxTokens: 600, temperature: 0.2 },
+    );
 
-        if (res.ok) {
-          const data = await res.json();
-          const content = data.choices?.[0]?.message?.content || "{}";
-          const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
-          const parsed = JSON.parse(cleaned);
-          analysis = parsed.analysis || "Dispute analyzed.";
-          recommendation = parsed.recommendation || "pending_review";
-          confidence = (parsed.confidence || 50) / 100;
-        } else {
-          analysis = "AI analysis unavailable. Manual review recommended.";
-        }
+    if (llm) {
+      try {
+        const cleaned = llm.replace(/```json\n?|\n?```/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+        analysis = parsed.analysis || "Dispute analyzed.";
+        recommendation = parsed.recommendation || "pending_review";
+        confidence = (parsed.confidence || 50) / 100;
       } catch {
-        analysis = "AI analysis temporarily unavailable. Escalating to human review.";
+        analysis = "AI analysis unavailable. Manual review recommended.";
       }
     } else {
-      analysis = "AI not configured. Manual review required.";
+      analysis = "AI analysis unavailable. Manual review recommended.";
     }
 
     // High-value disputes always escalate
