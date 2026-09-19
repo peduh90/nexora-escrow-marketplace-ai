@@ -338,6 +338,32 @@ export default function Landing() {
           </button>
         </motion.div>
 
+        {/* ✨ CREATOR PROGRAM — visible entry on every screen size. On phones the
+            hamburger sits below the fold and the footer link is faint, so the
+            programme was effectively invisible on mobile home. This banner
+            gives it a first-class tap target next to the main actions. */}
+        <motion.button
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 1.35 }}
+          onClick={() => navigate(user ? "/creator" : "/join")}
+          className="group relative w-full max-w-4xl mt-3 overflow-hidden rounded-2xl border border-fuchsia-400/25 bg-gradient-to-r from-fuchsia-500/[0.08] via-nx-violet/[0.06] to-transparent p-4 md:p-5 flex items-center gap-4 text-left transition-all hover:border-fuchsia-400/40 hover:scale-[1.01]"
+        >
+          <span className="w-11 h-11 md:w-12 md:h-12 rounded-xl bg-fuchsia-500/15 border border-fuchsia-400/25 flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-fuchsia-300" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm md:text-base font-extrabold text-white tracking-tight">
+              Join the Creator Program
+              <span className="ml-2 align-middle text-[9px] md:text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-400/20">Earn</span>
+            </span>
+            <span className="block text-[11px] md:text-xs text-white/45 leading-snug mt-0.5">
+              Share your referral link, earn when friends buy, sell or get hired on Nexora.
+            </span>
+          </span>
+          <ArrowRight className="w-5 h-5 text-fuchsia-300/70 shrink-0 group-hover:translate-x-1 transition-transform" />
+        </motion.button>
+
         {/* Search Bar (legacy position removed — search now sits above) */}
         <motion.div className="hidden" />
 

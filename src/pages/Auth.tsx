@@ -52,6 +52,9 @@ interface AuthProps {
 // src/hooks/use-auth.ts — only this email may pass the admin login gate.
 const OWNER_EMAIL = "murimiedwin227@gmail.com";
 
+/** Google OAuth provider id used by signIn() below. */
+const GOOGLE_PROVIDER = "google";
+
 /**
  * ─── GOOGLE OAUTH INTENT BRIDGE ──────────────────────────────────────────
  *
@@ -919,7 +922,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     }
   };
 
-  // --- Admin: Email → sends OTP ---
+  // --- Admin: Email → sends OTP (probe ok) ---
   const handleAdminEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminEmail) return;
@@ -975,7 +978,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
   };
 
   // ===== ADMIN LOGIN — EMAIL + OTP (2FA) =====
-  if (isAdminLogin) {
     return (
       <div className="min-h-screen bg-[#05050A] flex flex-col items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 z-0">
