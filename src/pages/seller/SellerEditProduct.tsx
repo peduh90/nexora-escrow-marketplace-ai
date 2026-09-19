@@ -165,9 +165,10 @@ export default function SellerEditProduct({ freelanceMode = false }: { freelance
         condition: form.condition,
         attributes: Object.keys(form.attributes).length > 0 ? form.attributes : undefined,
       });
-      // Best-effort: if the seller profile has no business location yet, this
-      // listing's location completes that registration step too.
-      if (!(user as any)?.county && form.county && form.town) {
+      // Best-effort: if the seller profile is missing either half of its
+      // business location, this listing's location completes that step too
+      // (a county-only profile used to stay stuck).
+      if ((!(user as any)?.county || !(user as any)?.town) && form.county && form.town) {
         try {
           await updateProfile({ county: form.county, town: form.town });
         } catch (err) {

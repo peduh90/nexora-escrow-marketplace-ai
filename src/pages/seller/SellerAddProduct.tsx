@@ -274,11 +274,16 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
     try {
       // First physical product: the listing's location doubles as the store's
       // business location so "Business location set" completes in this same
-      // flow instead of staying pending forever. Best-effort.
-      if (!isFreelanceMode && !(user as any)?.county) {
+      // flow instead of staying pending forever. Sync whenever the profile is
+      // missing EITHER half — a county-only profile used to stay stuck. The
+      // listing location always wins for a first publish (it is what the
+      // seller just confirmed), so no silent skip on partial profiles.
+      if (!isFreelanceMode && (!(user as any)?.county || !(user as any)?.town)) {
         try {
           await updateProfile({ county: form.county, town: form.town });
         } catch (err) {
+          // Surface it — a swallowed failure here reads as an unpressable
+          // "Business location set" step on the dashboard.
           console.error("[profile] business location sync failed:", err);
         }
       }
@@ -380,10 +385,18 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
       // Return to the panel that owns the listing.
       draft.clearDraft();
       setDraftRestoredAt(null);
-      navigate(forcedFreelance ? "/freelance/services" : "/seller");
-      // The first genuine listing completes seller registration — reload so
-      // the auth hook and the dashboard gate pick up the new state instantly.
-      if (!forcedFreelance) window.location.reload();
+      // The first genuine listing completes seller registration — the reload
+      // below re-anchors the app on the seller dashboard with fully fresh
+      // auth/gate state. CRITICAL ORDER: navigate FIRST, then reload on the
+      // next tick. Reloading synchronously races React Router's commit — the
+      // browser re-requests the OLD wizard URL and the seller lands back in
+      // the form, which reads as "nothing happened / gate never unlocks".
+      if (!forcedFreelance) {
+        navigate("/seller", { replace: true });
+        setTimeout(() => window.location.reload(), 50);
+      } else {
+        navigate("/freelance/services", { replace: true });
+      }
     } catch (err: any) {
       setError(err.message || "Failed to publish. Please try again.");
     } finally {

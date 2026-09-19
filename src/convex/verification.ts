@@ -126,13 +126,30 @@ async function buildChecklist(ctx: any, user: any) {
   ];
 
   if (role === "seller") {
+    // Name exactly what is still missing — "Business location set" bundles
+    // location AND contact details, and a row that stays grey with no reason
+    // is unpressable. The detail line + action pin down the one thing to do.
+    const missingProfileBits: string[] = [];
+    if (!nameOk) missingProfileBits.push("your full name");
+    if (!phoneOk) missingProfileBits.push("a phone number (M-Pesa reachable)");
+    if (!(typeof u.county === "string" && !!u.county.trim())) missingProfileBits.push("your county");
+    if (!(typeof u.town === "string" && !!u.town.trim())) missingProfileBits.push("your town");
+    const locationMissing =
+      !(typeof u.county === "string" && !!u.county.trim()) ||
+      !(typeof u.town === "string" && !!u.town.trim());
     requirements.push(
       {
         key: "profile",
-        label: "Business location (county & town)",
+        label: "Business location set",
         done: profileOk,
-        detail: profileOk ? undefined : "Complete your business profile location.",
-        action: profileOk ? undefined : "/seller/store",
+        detail: profileOk
+          ? undefined
+          : `Still needed: ${missingProfileBits.join(", ")}.`,
+        action: profileOk
+          ? undefined
+          : locationMissing
+          ? "/seller/store"
+          : "/buyer/settings",
       },
       {
         key: "listing",

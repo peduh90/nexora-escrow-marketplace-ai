@@ -39,7 +39,34 @@ export default function SellerDashboard() {
     verification === undefined ? undefined : (verification as any)?.hasPublishedListing === true;
   if (hasPublished === false) {
     const reqs = ((verification as any)?.requirements ?? []) as Array<any>;
-    const reqDone = (key: string) => !!reqs.find((r) => r.key === key)?.done;
+    const req = (key: string) => reqs.find((r) => r.key === key);
+    const reqDone = (key: string) => !!req(key)?.done;
+    // Every unfinished row is PRESSABLE: it names exactly what is missing
+    // (server-provided detail) and tapping it goes straight to the place
+    // that fixes it. A grey row with no way to act is how sellers got stuck.
+    const steps = [
+      {
+        label: "Account created & verified",
+        done: reqDone("email") && reqDone("name") && reqDone("phone"),
+        detail: ["email", "name", "phone"].filter((k) => !reqDone(k)).map((k) => req(k)?.detail).filter(Boolean).join(" "),
+        action: "/buyer/settings",
+      },
+      {
+        label: "Business location set",
+        done: reqDone("profile"),
+        detail: req("profile")?.detail as string | undefined,
+        action: (req("profile")?.action as string | undefined) ?? "/seller/store",
+      },
+      {
+        label: "First product or service published",
+        done: reqDone("listing"),
+        detail: req("listing")?.detail as string | undefined,
+        action: (req("listing")?.action as string | undefined) ?? "/seller/add-product",
+      },
+    ];
+    const thinListings = (listings ?? []).filter(
+      (l) => l.status === "active" && (!l.description || l.description.replace(/\s+/g, " ").trim().length < 60),
+    );
     return (
       <SellerLayout>
         <div className="max-w-2xl mx-auto py-10 md:py-16 px-4">
@@ -54,21 +81,31 @@ export default function SellerDashboard() {
               customers (and escrow) need to see.
             </p>
 
-            {/* Registration progress — the publish step is the only one left */}
+            {/* Registration progress — every open step is a button */}
             <div className="mt-6 space-y-2">
-              {[
-                { label: "Account created & verified", done: reqDone("email") && reqDone("name") && reqDone("phone") },
-                { label: "Business location set", done: reqDone("profile") },
-                { label: "First product or service published", done: reqDone("listing") },
-              ].map((r) => (
-                <div key={r.label} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+              {steps.map((r) => (
+                <button
+                  key={r.label}
+                  onClick={() => !r.done && r.action && navigate(r.action)}
+                  disabled={r.done}
+                  className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-colors ${
+                    r.done
+                      ? "bg-white/[0.02] border-white/5"
+                      : "bg-white/[0.03] border-nx-violet/25 hover:border-nx-violet/50 hover:bg-nx-violet/[0.06] active:bg-nx-violet/[0.1]"
+                  }`}
+                >
                   {r.done ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                   ) : (
-                    <Circle className="w-5 h-5 text-white/25 shrink-0" />
+                    <Circle className="w-5 h-5 text-nx-violet/60 shrink-0 mt-0.5" />
                   )}
-                  <span className={`text-sm ${r.done ? "text-white/45 line-through" : "text-white font-medium"}`}>{r.label}</span>
-                </div>
+                  <span className="min-w-0">
+                    <span className={`block text-sm ${r.done ? "text-white/45 line-through" : "text-white font-medium"}`}>{r.label}</span>
+                    {!r.done && r.detail && (
+                      <span className="block text-[11px] text-white/40 mt-0.5 leading-snug">{r.detail} — tap to fix →</span>
+                    )}
+                  </span>
+                </button>
               ))}
             </div>
 
@@ -81,14 +118,14 @@ export default function SellerDashboard() {
             <p className="mt-3 text-[11px] text-white/30 text-center">
               Takes ~2 minutes — title, price, description, photo. Your dashboard unlocks the moment it's live.
             </p>
-            {listings && listings.length > 0 && (
+            {(thinListings.length > 0 || (listings ?? []).some((l) => l.status !== "active")) && (
               <div className="mt-4 p-3 rounded-xl bg-amber-400/[0.04] border border-amber-300/15">
                 <p className="text-xs text-amber-200/80 leading-relaxed">
-                  You have {listings.length} published listing{listings.length > 1 ? "s" : ""}, but {listings.filter((l) => l.status === "active").some((l) => !l.description || l.description.replace(/\s+/g, " ").trim().length < 60) ? "their descriptions are too short to count" : "none are active"}.{" "}
+                  You have {listings?.length ?? 0} listing{((listings?.length ?? 0) !== 1) ? "s" : ""}, but {thinListings.length > 0 ? `${thinListings.length === 1 ? "its description is" : "their descriptions are"} too short to count (60+ characters needed)` : "none are active"}.{" "}
                   <button onClick={() => navigate("/seller/products")} className="text-amber-300 underline underline-offset-2 hover:text-amber-200">
-                    Add a full description (60+ characters) to any of them
+                    Open My Products and complete {thinListings.length > 0 ? "the description" : "and activate one"}
                   </button>{" "}
-                  and your dashboard opens instantly.
+                  — your dashboard opens instantly after that.
                 </p>
               </div>
             )}
