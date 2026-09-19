@@ -232,6 +232,20 @@ async function notify(ctx: any, userId: string, title: string, message: string, 
 
 // ─── PUBLIC DISCOVERY ───────────────────────────────────────────────────────
 
+/**
+ * Resolve a provider profile image (Convex storage key OR external URL) to a
+ * displayable URL. Storage keys alone don't render on <img> — without this
+ * an uploaded photo silently shows as a broken card.
+ */
+async function resolveProfileImage(ctx: any, image: string | undefined): Promise<string | undefined> {
+  if (!image) return undefined;
+  try {
+    const url = await ctx.storage.getUrl(image);
+    if (url) return url;
+  } catch { /* not a storage key — fall through to URL check */ }
+  return typeof image === "string" && image.startsWith("http") ? image : undefined;
+}
+
 /** Category list for the homepage "Services Near You" grid (static config). */
 export const getCategories = query({
   args: {},
@@ -259,7 +273,7 @@ async function toPublicProvider(ctx: any, p: any) {
     ratingCount: p.ratingCount || 0,
     completedJobs: p.completedJobs || 0,
     verified: !!p.adminVerified || (user as any)?.verificationLevel === "business",
-    image: p.image ?? (user as any)?.image ?? undefined,
+    image: await resolveProfileImage(ctx, p.image ?? (user as any)?.image),
     // Direct WhatsApp contact — customers can chat with the provider outside
     // the escrow flow if they prefer. Only shared when the provider listed a
     // number.
@@ -420,7 +434,12 @@ export const getMyService = query({
     );
     const completed = withCustomer.filter((r: any) => r.status === "completed");
     const earnings = completed.reduce((s: number, r: any) => s + (r.payout ?? 0), 0);
-    return { profile: profile ?? null, requests: withCustomer, completedCount: completed.length, earnings };
+    // Resolve the stored image (storage key or URL) so the dashboard edit form
+    // previews it directly; saving unchanged writes the URL back harmlessly.
+    const profileOut = profile
+      ? { ...profile, image: await resolveProfileImage(ctx, profile.image) }
+      : null;
+    return { profile: profileOut, requests: withCustomer, completedCount: completed.length, earnings };
   },
 });
 
