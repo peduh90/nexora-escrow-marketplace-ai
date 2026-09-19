@@ -102,6 +102,38 @@ export const createTask = mutation({
 
 // ─── POSTER: AI drafts the task from a plain-language blurb ────────────────
 
+// ─── Groq-primary LLM helper (OpenAI fallback) ─────────────────────────────
+// Groq (free tier, LPU inference) is the default provider across Nexora AI;
+// OpenAI remains a fallback. Kept local to this module.
+const GROQ_MODEL = "openai/gpt-oss-120b";
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+async function chatGroq(
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+  maxTokens: number,
+  temperature: number,
+): Promise<string | null> {
+  const providers: Array<{ url: string; key?: string; model: string }> = [
+    { url: GROQ_API_URL, key: process.env.GROQ_API_KEY, model: GROQ_MODEL },
+    { url: "https://api.openai.com/v1/chat/completions", key: process.env.OPENAI_API_KEY, model: "gpt-4o-mini" },
+  ];
+  for (const p of providers) {
+    if (!p.key) continue;
+    try {
+      const res = await fetch(p.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
+        body: JSON.stringify({ model: p.model, messages, max_tokens: maxTokens, temperature }),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (content) return content;
+    } catch { /* next provider */ }
+  }
+  return null;
+}
+
 export const aiDraftTask = action({
   args: { blurb: v.string(), location: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -110,9 +142,9 @@ export const aiDraftTask = action({
     const blurb = args.blurb.trim();
     if (blurb.length < 5) throw new ConvexError("Type what you need done — even one line is enough");
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      // Deterministic fallback: still useful without an API key.
+    const hasLlm = Boolean(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY);
+    if (!hasLlm) {
+      // Deterministic fallback: still useful without any LLM key.
       const firstLine = blurb.split(/[.\n]/)[0].slice(0, 70);
       const lower = blurb.toLowerCase();
       let category = "other";
@@ -133,32 +165,14 @@ export const aiDraftTask = action({
       };
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
+    const content: string | null = await chatGroq([
           {
             role: "system",
             content:
               "You help Kenyan users post tasks on Nexora AI Tasker. The user describes what they need done in English, Kiswahili or Sheng. Reply with ONLY a JSON object: {\"title\": short clear English title, \"description\": clear full task description in English a worker can act on, \"category\": one of [errands, research, writing, design, data, tech, home, events, other], \"skills\": [up to 4 short skill tags], \"budgetHint\": one short sentence suggesting a fair KES budget range for Kenya}. No markdown, no code fences, JSON only.",
           },
           { role: "user", content: args.location ? `${blurb} (Location: ${args.location})` : blurb },
-        ],
-        max_tokens: 500,
-        temperature: 0.4,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new ConvexError("The AI is busy right now — try again in a moment, or fill the form yourself.");
-    }
-    const data = await response.json();
-    const content: string | undefined = data.choices?.[0]?.message?.content;
+      ], 500, 0.4);
     if (!content) throw new ConvexError("The AI could not draft the task — try again or fill the form yourself.");
     try {
       const cleaned = content.replace(/```json|```/g, "").trim();
@@ -243,20 +257,12 @@ export const aiDraftOffer = action({
     const pitch = args.taskerPitch.trim();
     if (pitch.length < 3) throw new ConvexError("Add a few words about your skills or plan first");
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
+    const hasLlm = Boolean(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY);
+    if (!hasLlm) {
       return `Hi! I can handle "${args.taskTitle}" for you. ${pitch.charAt(0).toUpperCase() + pitch.slice(1)}. I'll keep you updated at every step, and you only release payment once you're happy with the result${args.amount ? ` — KES ${args.amount.toLocaleString()} covers everything` : ""}. Thank you!`;
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
+    const content: string | null = await chatGroq([
           {
             role: "system",
             content:
@@ -266,15 +272,7 @@ export const aiDraftOffer = action({
             role: "user",
             content: `TASK: ${args.taskTitle}\nDETAILS: ${args.taskDescription}\nMY SKILLS/PLAN: ${pitch}${args.amount ? `\nMY PRICE: KES ${args.amount}` : ""}`,
           },
-        ],
-        max_tokens: 300,
-        temperature: 0.7,
-      }),
-    });
-
-    if (!response.ok) throw new ConvexError("The AI is busy right now — try again in a moment.");
-    const data = await response.json();
-    const content: string | undefined = data.choices?.[0]?.message?.content;
+      ], 300, 0.7);
     if (!content) throw new ConvexError("The AI could not draft the proposal — try again.");
     return content.trim();
   },
