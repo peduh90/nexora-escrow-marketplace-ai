@@ -25,6 +25,35 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("[ErrorBoundary]", error, info.componentStack);
+    this.autoRecoverFromStaleChunk(error);
+  }
+
+  /**
+   * Deploy resilience: after a redeploy, an already-open tab can hold HTML
+   * that references pruned hashed chunks — the lazy import fails and the
+   * screen "hits a snag". Detect that case and recover once per session:
+   * purge the service-worker caches (which hold the stale shell) and reload.
+   */
+  private autoRecoverFromStaleChunk(error: Error) {
+    const msg = error.message || "";
+    const isChunkFailure =
+      /Failed to fetch dynamically imported module/i.test(msg) ||
+      /Importing a module script failed/i.test(msg) ||
+      /error loading dynamically imported module/i.test(msg) ||
+      /Loading chunk \S+ failed/i.test(msg);
+    if (!isChunkFailure) return;
+    const key = "nx-chunk-recovery";
+    if (sessionStorage.getItem(key)) return; // recover only once per session
+    sessionStorage.setItem(key, "1");
+    const cacheStorage = (window as unknown as { caches?: CacheStorage }).caches;
+    if (cacheStorage) {
+      cacheStorage.keys()
+        .then((keys) => Promise.all(keys.map((k) => cacheStorage.delete(k))))
+        .catch(() => undefined)
+        .finally(() => window.location.reload());
+    } else {
+      window.location.reload();
+    }
   }
 
   componentDidUpdate(prevProps: ErrorBoundaryProps) {

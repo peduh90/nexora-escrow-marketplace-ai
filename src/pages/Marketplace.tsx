@@ -42,9 +42,11 @@ export default function Marketplace() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
     searchParams.get("category"),
   );
-  const [activeSection, setActiveSection] = useState<string | null>(
-    searchParams.get("section"),
-  );
+  const [activeSection, setActiveSection] = useState<string | null>(() => {
+    const s = searchParams.get("section");
+    // Ignore unknown section values instead of rendering a broken drill-down.
+    return s && MARKET_SECTIONS.some((m) => m.id === s) ? s : null;
+  });
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedCounty, setSelectedCounty] = useState("All Counties");
   const [minPrice, setMinPrice] = useState("");
