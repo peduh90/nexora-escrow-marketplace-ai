@@ -77,6 +77,48 @@ function normalizeMarketplace(m?: string): MarketplaceValue {
   return m === MARKETPLACE.FREELANCE ? MARKETPLACE.FREELANCE : MARKETPLACE.PRODUCT;
 }
 
+/**
+ * ─── CATEGORY ALIASES & MARKET SECTIONS ───────────────────────────────────
+ * Mirror of src/lib/market-sections.ts (Convex modules can't import from the
+ * frontend lib). Keep both in sync. Aliases resolve legacy/duplicate slugs at
+ * READ time so no listing is ever lost after the hierarchy consolidation.
+ */
+const CATEGORY_ALIASES: Record<string, string> = {
+  "animals-pets": "pets", // merged into Pets
+  "school-education": "learning-books", // merged into Learning & Books
+  jobs: "services", // employment is not a product
+  "phones-tablets": "mobile-phones",
+  electronics: "tvs-video",
+  property: "rentals", // houses & apartments surface under Rentals
+};
+
+function canonicalCategory(slug?: string): string {
+  if (!slug) return "";
+  return CATEGORY_ALIASES[slug] ?? slug;
+}
+
+/** Leaf category slugs that surface inside each marketplace section. */
+const SECTION_CATEGORY_SLUGS: Record<string, string[]> = {
+  products: [
+    "mobile-phones", "computers-laptops", "fashion", "home-living", "tvs-video",
+    "health-beauty", "agriculture", "baby-kids", "gaming", "sports-fitness",
+    "handmade-art", "learning-books", "business-industrial", "music-entertainment",
+    "food-drinks", "pets",
+  ],
+  services: ["services"],
+  stays: ["stays-experiences", "events-tickets"],
+  rentals: ["rentals"],
+};
+
+const sectionValidator = v.optional(
+  v.union(
+    v.literal("products"),
+    v.literal("services"),
+    v.literal("stays"),
+    v.literal("rentals"),
+  )
+);
+
 /** Resolve Convex storage keys / external image URLs to displayable URLs. */
 async function resolveListingImages(ctx: any, images: string[] | undefined): Promise<string[]> {
   const out: string[] = [];
@@ -687,6 +729,7 @@ export const searchListings = query({
     query: v.string(),
     marketplace: marketplaceValidator,
     category: v.optional(v.string()),
+    section: sectionValidator,
     county: v.optional(v.string()),
     minPrice: v.optional(v.number()),
     maxPrice: v.optional(v.number()),
@@ -717,9 +760,22 @@ export const searchListings = query({
       );
     }
 
-    // Category filter
+    // Category filter — alias-aware: legacy/duplicate slugs ("animals-pets",
+    // "school-education", "jobs", "property", "electronics") keep resolving
+    // to their canonical category, so no listing is ever lost.
     if (args.category) {
-      results = results.filter((l: any) => l.category === args.category);
+      const wanted = canonicalCategory(args.category);
+      results = results.filter((l: any) => canonicalCategory(l.category) === wanted);
+    }
+
+    // Market-section filter — Products / Services / Stays / Rentals. Rentals
+    // additionally includes any listing explicitly flagged rental: true.
+    if (args.section) {
+      const slugs = SECTION_CATEGORY_SLUGS[args.section] ?? [];
+      results = results.filter((l: any) => {
+        if (args.section === "rentals" && l.rental === true) return true;
+        return slugs.includes(canonicalCategory(l.category));
+      });
     }
 
     // County filter

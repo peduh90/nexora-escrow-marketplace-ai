@@ -23,6 +23,7 @@ export const CATEGORY_ICONS: Record<string, string> = {
   "sports-fitness": "dumbbell", "baby-kids": "baby", "handmade-art": "palette",
   "events-tickets": "ticket", "business-industrial": "factory", "tvs-video": "tv",
   "pets": "paw-print", "animals-pets": "paw-print", "learning-books": "book-open",
+  "food-drinks": "utensils",
   "music-entertainment": "music", "school-education": "graduation-cap",
   // Services
   "boda": "bike", "matatu": "bus", "delivery": "package", "plumbers": "droplets",
@@ -48,7 +49,7 @@ export function categoryIcon(slug: string): string {
  *  Everything else remains reachable via the market header + "All …"
  *  toggle — nothing is lost, the rest is simply tucked away. */
 export const TOP_CATEGORIES: Record<"products" | "services" | "freelance", string[]> = {
-  products: ["mobile-phones", "computers-laptops", "fashion", "home-living", "gaming"],
+  products: ["mobile-phones", "computers-laptops", "fashion", "home-living", "food-drinks"],
   services: ["boda", "plumbers", "electricians", "cleaning", "beauty"],
   freelance: ["writing", "design", "development", "video-photo", "ai-accounts-tools"],
 };

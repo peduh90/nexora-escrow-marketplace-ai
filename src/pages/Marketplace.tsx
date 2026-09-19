@@ -4,10 +4,29 @@ import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 
-import { Search, ArrowLeft, X, MapPin, Shield, Truck, Heart, ChevronRight, Wrench, ArrowUpRight } from "lucide-react";
+import { Search, ArrowLeft, X, MapPin, Shield, Truck, Heart, ChevronRight, Wrench, ArrowUpRight, ShoppingBag, BedDouble, KeyRound, Laptop } from "lucide-react";
 import SupportDock from "@/components/SupportDock";
 import { CATEGORIES } from "@/lib/categories";
 import { CATEGORY_DEFAULTS, PRODUCT_PLACEHOLDER } from "@/lib/category-images";
+import { MARKET_SECTIONS, getSection } from "@/lib/market-sections";
+
+/** Lucide icon per market section (kept static so Tailwind sees full classes). */
+const SECTION_ICONS: Record<string, any> = {
+  products: ShoppingBag,
+  services: Wrench,
+  stays: BedDouble,
+  rentals: KeyRound,
+  freelance: Laptop,
+};
+
+/** Per-section accent styling — literal class strings for Tailwind JIT. */
+const SECTION_ACCENT: Record<string, { text: string; border: string; glow: string; chip: string }> = {
+  products: { text: "text-nx-violet", border: "hover:border-nx-violet/50", glow: "hover:shadow-nx-violet/20", chip: "bg-nx-violet/15 text-nx-violet border-nx-violet/30" },
+  services: { text: "text-nx-cyan", border: "hover:border-nx-cyan/50", glow: "hover:shadow-nx-cyan/20", chip: "bg-nx-cyan/15 text-nx-cyan border-nx-cyan/30" },
+  stays: { text: "text-nx-emerald", border: "hover:border-nx-emerald/50", glow: "hover:shadow-nx-emerald/20", chip: "bg-nx-emerald/15 text-nx-emerald border-nx-emerald/30" },
+  rentals: { text: "text-amber-400", border: "hover:border-amber-400/50", glow: "hover:shadow-amber-400/20", chip: "bg-amber-400/15 text-amber-400 border-amber-400/30" },
+  freelance: { text: "text-nx-gold", border: "hover:border-nx-gold/50", glow: "hover:shadow-nx-gold/20", chip: "bg-nx-gold/15 text-nx-gold border-nx-gold/30" },
+};
 
 const KENYA_COUNTIES = [
   "Baringo","Bomet","Bungoma","Busia","Elgeyo-Marakwet","Embu","Garissa","Homa Bay","Isiolo","Kajiado",
@@ -23,12 +42,15 @@ export default function Marketplace() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
     searchParams.get("category"),
   );
+  const [activeSection, setActiveSection] = useState<string | null>(
+    searchParams.get("section"),
+  );
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedCounty, setSelectedCounty] = useState("All Counties");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [showHero, setShowHero] = useState(
-    !searchParams.get("q") && !searchParams.get("category"),
+    !searchParams.get("q") && !searchParams.get("category") && !searchParams.get("section"),
   );
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
@@ -43,16 +65,20 @@ export default function Marketplace() {
   const queryArgs = useMemo(() => {
     const args: Record<string, string | number> = { query: searchQuery };
     if (selectedCategory) args.category = selectedCategory;
+    // Section browsing (Products / Services / Stays / Rentals) — only when no
+    // specific category is chosen, so a leaf category always wins.
+    else if (activeSection) args.section = activeSection;
     if (selectedCounty !== "All Counties") args.county = selectedCounty;
     if (minPrice) args.minPrice = Number(minPrice);
     if (maxPrice) args.maxPrice = Number(maxPrice);
     return args;
-  }, [searchQuery, selectedCategory, selectedCounty, minPrice, maxPrice]);
+  }, [searchQuery, selectedCategory, activeSection, selectedCounty, minPrice, maxPrice]);
 
   const listings = useQuery(api.listings.searchListings, queryArgs as any);
   const results = listings ?? [];
 
   const activeCat = CATEGORIES.find((c) => c.slug === selectedCategory);
+  const activeSectionObj = getSection(activeSection);
 
   const handleCategoryClick = (slug: string) => {
     setSelectedCategory(slug);
@@ -60,8 +86,23 @@ export default function Marketplace() {
     setShowHero(false);
   };
 
+  const handleSectionClick = (id: string) => {
+    setActiveSection(id);
+    setSelectedCategory(null);
+    setSelectedSubcategory(null);
+    setShowHero(false);
+  };
+
+  const handleBackToSections = () => {
+    setActiveSection(null);
+    setSelectedCategory(null);
+    setSelectedSubcategory(null);
+    setShowHero(true);
+  };
+
   const handleClearAll = () => {
     setSelectedCategory(null);
+    setActiveSection(null);
     setSelectedSubcategory(null);
     setSelectedCounty("All Counties");
     setMinPrice("");
@@ -196,21 +237,29 @@ export default function Marketplace() {
         {/* ═══ SIDEBAR ═══ */}
         <aside className="hidden md:block w-56 lg:w-60 shrink-0 border-r border-nx-border/50 bg-nx-card/20 min-h-[calc(100vh-56px)] sticky top-14 overflow-y-auto">
           <div className="p-4 space-y-5">
-            {/* Category */}
+            {/* Category — grouped by market section */}
             <div>
               <h4 className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Category</h4>
-              <div className="space-y-0.5 max-h-[30vh] overflow-y-auto pr-1">
+              <div className="space-y-0.5 max-h-[60vh] overflow-y-auto pr-1">
                 <button onClick={handleClearAll}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-all ${!selectedCategory ? "bg-nx-violet/15 text-nx-violet border border-nx-violet/20" : "text-white/50 hover:bg-white/[0.03] hover:text-white/70"}`}>
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-all ${!selectedCategory && !activeSection ? "bg-nx-violet/15 text-nx-violet border border-nx-violet/20" : "text-white/50 hover:bg-white/[0.03] hover:text-white/70"}`}>
                   <div className="w-5 h-5 rounded bg-gradient-to-br from-nx-violet/20 to-nx-cyan/20 flex items-center justify-center text-[9px]">🏪</div>
                   <span className="text-[10px] font-medium">All Categories</span>
                 </button>
-                {CATEGORIES.map((cat) => (
-                  <button key={cat.slug} onClick={() => handleCategoryClick(cat.slug)}
-                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-all ${selectedCategory === cat.slug ? "bg-nx-violet/15 text-nx-violet border border-nx-violet/20" : "text-white/50 hover:bg-white/[0.03] hover:text-white/70"}`}>
-                    <div className="w-5 h-5 rounded overflow-hidden shrink-0"><img src={CATEGORY_DEFAULTS[cat.slug]} alt="" className="w-full h-full object-cover" loading="lazy" /></div>
-                    <span className="text-[10px] font-medium truncate">{cat.name}</span>
-                  </button>
+                {MARKET_SECTIONS.map((section) => (
+                  <div key={section.id}>
+                    <button onClick={() => handleSectionClick(section.id)}
+                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-all ${activeSection === section.id && !selectedCategory ? "bg-nx-violet/15 text-nx-violet border border-nx-violet/20" : "text-white/60 hover:bg-white/[0.03] hover:text-white/80"}`}>
+                      <span className="text-[10px] font-bold uppercase tracking-wide">{section.name}</span>
+                    </button>
+                    {section.categories.map((cat) => (
+                      <button key={cat.slug} onClick={() => handleCategoryClick(cat.slug)}
+                        className={`w-full flex items-center gap-2 pl-5 pr-2.5 py-1.5 rounded-lg text-left transition-all ${selectedCategory === cat.slug ? "bg-nx-violet/15 text-nx-violet border border-nx-violet/20" : "text-white/50 hover:bg-white/[0.03] hover:text-white/70"}`}>
+                        <div className="w-5 h-5 rounded overflow-hidden shrink-0"><img src={CATEGORY_DEFAULTS[cat.slug]} alt="" className="w-full h-full object-cover" loading="lazy" /></div>
+                        <span className="text-[10px] font-medium truncate">{cat.name}</span>
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </div>
             </div>
@@ -247,7 +296,48 @@ export default function Marketplace() {
 
         {/* ═══ MAIN ═══ */}
         <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8">
-          {/* Subcategory chips */}
+          {/* Section browse bar (drill-down) — back + section name */}
+          {activeSection && !selectedCategory && (
+            <div className="mb-4">
+              <button onClick={handleBackToSections} className="flex items-center gap-1 text-[11px] text-white/35 hover:text-white/70 mb-2 transition-colors">
+                <ArrowLeft className="w-3 h-3" /> All market sections
+              </button>
+              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                {(() => { const Icon = SECTION_ICONS[activeSection]; return Icon ? <Icon className={`w-4 h-4 ${SECTION_ACCENT[activeSection]?.text ?? "text-nx-violet"}`} /> : null; })()}
+                {activeSectionObj?.name}
+                <span className="text-[10px] font-normal text-white/30">{activeSectionObj?.tagline}</span>
+              </h2>
+              {activeSectionObj?.helperPath && (
+                <button onClick={() => navigate(activeSectionObj.helperPath!)} className="text-[10px] text-nx-cyan hover:text-white/80 mt-1 transition-colors">
+                  {activeSectionObj.helperLabel}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Drill-down category cards — ~25–30% smaller than the old grid:
+              ~6 per row on desktop, 2 per row on mobile */}
+          {activeSection && !selectedCategory && !searchQuery && (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-2.5 mb-8">
+              {(activeSectionObj?.categories ?? []).map((cat) => (
+                <button key={cat.slug} onClick={() => handleCategoryClick(cat.slug)}
+                  className="group relative rounded-lg overflow-hidden aspect-[4/3] hover:shadow-lg hover:shadow-nx-violet/10 transition-all duration-300 hover:-translate-y-0.5">
+                  <img src={CATEGORY_DEFAULTS[cat.slug]} alt={cat.name}
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-1.5 md:p-2">
+                    <h3 className="text-[10px] md:text-[11px] font-bold text-white leading-tight drop-shadow">{cat.name}</h3>
+                    <span className="text-[8px] md:text-[9px] text-white/45 group-hover:text-white/70 transition-colors flex items-center gap-0.5 mt-0.5">
+                      Explore <ChevronRight className="w-2.5 h-2.5" />
+                    </span>
+                    <p className="hidden md:block text-[8px] text-white/30 truncate mt-0.5">{cat.subcategories.slice(0, 3).map((s) => s.name).join(" · ")}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Subcategory chips (leaf category selected) */}
           {activeCat && (
             <div className="flex flex-wrap gap-1.5 mb-4">
               <button onClick={() => setSelectedSubcategory(null)}
@@ -263,27 +353,63 @@ export default function Marketplace() {
             </div>
           )}
 
-          {/* Category grid — show when no category selected */}
-          {!selectedCategory && !searchQuery && (
+          {/* MARKET SECTIONS — the top-level hierarchy. 5 cards per row desktop,
+              2 per row mobile; ~28% smaller than the old category cards. */}
+          {!activeSection && !selectedCategory && !searchQuery && (
             <div className="mb-8">
-              <h2 className="text-lg font-bold text-white mb-1">All Categories</h2>
-              <p className="text-[11px] text-white/30 mb-4">Browse products across all categories in Kenya</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 md:gap-3">
-                {CATEGORIES.map((cat) => (
-                  <button key={cat.slug} onClick={() => handleCategoryClick(cat.slug)}
-                    className="group relative rounded-xl overflow-hidden aspect-[4/3] hover:shadow-lg hover:shadow-nx-violet/10 transition-all duration-300 hover:-translate-y-0.5">
-                    <img src={CATEGORY_DEFAULTS[cat.slug]} alt={cat.name}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-2.5 md:p-3">
-                      <h3 className="text-[11px] md:text-xs font-bold text-white leading-tight drop-shadow-lg">{cat.name}</h3>
-                      <span className="text-[9px] text-white/40 group-hover:text-white/60 transition-colors flex items-center gap-0.5 mt-0.5">
-                        Explore <ChevronRight className="w-2.5 h-2.5" />
-                      </span>
-                    </div>
-                  </button>
-                ))}
+              <div className="mb-3">
+                <h2 className="text-base md:text-lg font-bold text-white">Browse by section</h2>
+                <p className="text-[11px] text-white/30">Five markets, one escrow-protected experience</p>
               </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-2.5">
+                {MARKET_SECTIONS.map((section) => {
+                  const Icon = SECTION_ICONS[section.id];
+                  const accent = SECTION_ACCENT[section.id];
+                  return (
+                    <button key={section.id} onClick={() => handleSectionClick(section.id)}
+                      className={`group relative rounded-xl overflow-hidden aspect-[4/5] hover:shadow-lg ${accent.border} ${accent.glow} transition-all duration-300 hover:-translate-y-0.5`}>
+                      <img src={section.image} alt={section.name}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+                      <div className="absolute top-2 left-2 p-1.5 rounded-lg bg-black/45 backdrop-blur-sm border border-white/10">
+                        <Icon className={`w-3.5 h-3.5 ${accent.text}`} />
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 p-2 md:p-2.5">
+                        <h3 className="text-xs md:text-sm font-bold text-white leading-tight drop-shadow">{section.name}</h3>
+                        <p className="text-[9px] md:text-[10px] text-white/45 group-hover:text-white/70 transition-colors">{section.tagline}</p>
+                        <span className="text-[8px] md:text-[9px] text-white/35 flex items-center gap-0.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          Explore <ChevronRight className="w-2.5 h-2.5" />
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Quick access — all categories, grouped by section (compact pills) */}
+          {!activeSection && !selectedCategory && !searchQuery && (
+            <div className="space-y-3 mb-8">
+              {MARKET_SECTIONS.filter((s) => s.categories.length > 0).map((section) => (
+                <div key={section.id} className="flex items-center gap-2 flex-wrap">
+                  {(() => { const Icon = SECTION_ICONS[section.id]; return <Icon className={`w-3 h-3 ${SECTION_ACCENT[section.id]?.text} shrink-0`} />; })()}
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-white/40 shrink-0 w-28">{section.name}</span>
+                  <div className="flex flex-wrap gap-1">
+                    {section.categories.slice(0, 8).map((cat) => (
+                      <button key={cat.slug} onClick={() => handleCategoryClick(cat.slug)}
+                        className="px-2 py-0.5 rounded-full text-[9px] text-white/45 bg-white/[0.03] border border-white/5 hover:text-white/80 hover:border-white/15 transition-colors">
+                        {cat.name}
+                      </button>
+                    ))}
+                    {section.categories.length > 8 && (
+                      <button onClick={() => handleSectionClick(section.id)} className="px-2 py-0.5 rounded-full text-[9px] text-nx-violet hover:text-white transition-colors">
+                        +{section.categories.length - 8} more
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -292,7 +418,7 @@ export default function Marketplace() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <h2 className="text-sm font-bold text-white/70">
-                  {selectedCategory ? `${activeCat?.name || "Category"} Products` : "All Products"}
+                  {activeCat ? `${activeCat.name} ${activeSectionObj ? `· ${activeSectionObj.name}` : ""}` : activeSectionObj ? activeSectionObj.name : "All Products"}
                 </h2>
                 <span className="text-[10px] text-white/25 bg-white/[0.03] px-2 py-0.5 rounded-full">{results.length}</span>
               </div>
@@ -328,7 +454,7 @@ export default function Marketplace() {
           )}
 
           {/* Empty */}
-          {results.length === 0 && (selectedCategory || searchQuery) && (
+          {results.length === 0 && (selectedCategory || activeSection || searchQuery) && (
             <div className="text-center py-16">
               <h3 className="text-base font-semibold text-white mb-1">No products found</h3>
               <p className="text-[11px] text-white/30 mb-4">Try adjusting your filters or browse other categories.</p>

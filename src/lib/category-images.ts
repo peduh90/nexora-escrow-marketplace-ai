@@ -16,25 +16,28 @@ export const CATEGORY_BANNERS: Record<string, string> = {
   "fashion": pexels(1536619),           // Fashion clothing rack
   "home-living": pexels(1648776),       // Modern living room
   "services": pexels(3184418),          // Team collaboration
-  "jobs": pexels(3184291),             // Professional workspace
-  "agriculture": pexels(4490616),        // Farm work / harvesting
-  "gaming": pexels(3165335),           // Gaming controller
-  "health-beauty": pexels(3373716),    // Beauty products
-  "sports-fitness": pexels(2294361),   // Fitness equipment
-  "baby-kids": pexels(1648377),        // Baby clothing
-  "handmade-art": pexels(1103970),     // Art supplies
-  "events-tickets": pexels(2263436),   // Concert crowd
+  "jobs": pexels(3184291),              // Professional workspace
+  "agriculture": pexels(4490616),       // Farm work / harvesting
+  "gaming": pexels(3165335),            // Gaming controller
+  "health-beauty": pexels(3373716),     // Beauty products
+  "sports-fitness": pexels(2294361),    // Fitness equipment
+  "baby-kids": pexels(1648377),         // Baby clothing
+  "handmade-art": pexels(1103970),      // Art supplies
+  "events-tickets": pexels(2263436),    // Concert crowd
   "business-industrial": pexels(1181298), // Industrial machinery
-  "tvs-video": pexels(1229861),        // Modern TV
-  "pets": pexels(1108099),             // Dog portrait
+  "tvs-video": pexels(1229861),         // Modern TV
+  "pets": pexels(1108099),              // Dog portrait
   "learning-books": pexels(4210853),    // Study materials
-  "vehicles": pexels(116675),          // Car interior
-  "property": pexels(106399),          // Modern house
-  "phones-tablets": pexels(699122),    // Tablet device
-  "electronics": pexels(1714208),      // Computer setup
-  "animals-pets": pexels(1108099),     // Pet
+  "food-drinks": pexels(1058277),       // Fresh food spread
+  "stays-experiences": pexels(258154),  // Resort stay
+  "rentals": pexels(116675),            // Rental car interior
+  "vehicles": pexels(116675),           // Car interior
+  "property": pexels(106399),           // Modern house
+  "phones-tablets": pexels(699122),     // Tablet device
+  "electronics": pexels(1714208),       // Computer setup
+  "animals-pets": pexels(1108099),      // Pet
   "music-entertainment": pexels(1190298), // Musical instruments
-  "school-education": pexels(5212700), // Education materials
+  "school-education": pexels(5212700),  // Education materials
 };
 
 /**
@@ -167,6 +170,19 @@ export const SUBCATEGORY_IMAGES: Record<string, string> = {
   apartments: pexels(2581922),
   land: pexels(1029599),
   offices: pexels(260931),
+
+  // Stays & Experiences
+  hotels: pexels(258154),
+  "apartments-short-stays": pexels(2581922),
+  "restaurants-bars": pexels(260922),
+  "travel-tours": pexels(2325446),
+  "venues-spaces": pexels(1190298),
+
+  // Rentals
+  "cars-motorbikes": pexels(210019),
+  "equipment-tools": pexels(209235),
+  "event-equipment": pexels(2263436),
+  "spaces-venues": pexels(260931),
 };
 
 /**
@@ -192,8 +208,11 @@ export const CATEGORY_DEFAULTS: Record<string, string> = {
   pets: pexels(1108099),
   "learning-books": pexels(4210853),
   "animals-pets": pexels(1108099),
+  "food-drinks": pexels(1058277),
   "music-entertainment": pexels(1190298),
   "school-education": pexels(5212700),
+  "stays-experiences": pexels(258154),
+  rentals: pexels(116675),
   vehicles: pexels(116675),
   property: pexels(106399),
   "phones-tablets": pexels(699122),
@@ -247,4 +266,7 @@ export const PRODUCT_PLACEHOLDER: Record<string, string> = {
   "music-entertainment": pexels(1190298, 400, 400),
   "school-education": pexels(5212700, 400, 400),
   "cooking-gas": pexels(6216300, 400, 400),
+  "food-drinks": pexels(1058277, 400, 400),
+  "stays-experiences": pexels(258154, 400, 400),
+  rentals: pexels(116675, 400, 400),
 };

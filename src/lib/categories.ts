@@ -88,20 +88,17 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    name: "Jobs",
-    slug: "jobs",
-    icon: "💼",
-    description: "Full-time, part-time, contract, and freelance jobs",
+    name: "Food & Drinks",
+    slug: "food-drinks",
+    icon: "🍽️",
+    description: "Groceries, snacks, beverages, and farm-fresh food",
     subcategories: [
-      { name: "Accounting & Finance", slug: "accounting" },
-      { name: "IT & Software Development", slug: "it-software" },
-      { name: "Marketing & Communications", slug: "marketing" },
-      { name: "Sales", slug: "sales" },
-      { name: "Customer Service", slug: "customer-service" },
-      { name: "Education & Training", slug: "education" },
-      { name: "Healthcare", slug: "healthcare" },
-      { name: "Skilled Trades", slug: "skilled-trades" },
-      { name: "Transport & Logistics", slug: "transport-jobs" },
+      { name: "Groceries", slug: "groceries" },
+      { name: "Snacks & Confectionery", slug: "snacks" },
+      { name: "Beverages", slug: "beverages" },
+      { name: "Wine & Spirits", slug: "wine-spirits" },
+      { name: "Farm Produce", slug: "farm-produce" },
+      { name: "Coffee & Tea", slug: "coffee-tea" },
     ],
   },
   {
@@ -256,20 +253,6 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    name: "Animals & Pets",
-    slug: "animals-pets",
-    icon: "🐾",
-    description: "Dogs, cats, birds, fish, and pet supplies",
-    subcategories: [
-      { name: "Dogs", slug: "dogs" },
-      { name: "Cats", slug: "cats" },
-      { name: "Birds", slug: "birds" },
-      { name: "Fish & Aquariums", slug: "fish" },
-      { name: "Pet Food & Supplies", slug: "pet-food" },
-      { name: "Pet Accessories", slug: "pet-accessories" },
-    ],
-  },
-  {
     name: "Music & Entertainment",
     slug: "music-entertainment",
     icon: "🎵",
@@ -283,20 +266,43 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    name: "School & Education",
-    slug: "school-education",
-    icon: "🎓",
-    description: "Books, uniforms, stationery, and educational materials",
+    name: "Stays & Experiences",
+    slug: "stays-experiences",
+    icon: "🏨",
+    description: "Hotels, short stays, restaurants, tours, and venues",
     subcategories: [
-      { name: "Textbooks", slug: "textbooks" },
-      { name: "Stationery", slug: "stationery" },
-      { name: "School Uniforms", slug: "school-uniforms" },
-      { name: "Online Courses", slug: "online-courses" },
-      { name: "Tutoring", slug: "tutoring" },
-      { name: "Lab Equipment", slug: "lab-equipment" },
+      { name: "Hotels & Accommodation", slug: "hotels" },
+      { name: "Apartments & Short Stays", slug: "apartments-short-stays" },
+      { name: "Restaurants & Bars", slug: "restaurants-bars" },
+      { name: "Travel & Tours", slug: "travel-tours" },
+      { name: "Venues & Spaces", slug: "venues-spaces" },
+    ],
+  },
+  {
+    name: "Rentals",
+    slug: "rentals",
+    icon: "🔑",
+    description: "Cars, tools, event equipment, and spaces you rent",
+    subcategories: [
+      { name: "Cars & Motorbikes", slug: "cars-motorbikes" },
+      { name: "Equipment & Tools", slug: "equipment-tools" },
+      { name: "Event Equipment", slug: "event-equipment" },
+      { name: "Spaces & Venues", slug: "spaces-venues" },
     ],
   },
 ];
+
+/**
+ * RETIRED top-level categories — kept out of the browsing UI, but their slugs
+ * still resolve everywhere via CATEGORY_ALIASES (src/lib/market-sections.ts):
+ *  - "jobs"             → hiring/work lives in Services & Freelance workflows
+ *  - "animals-pets"     → merged into "pets"
+ *  - "school-education" → merged into "learning-books"
+ *  - "property"         → surfaced under Rentals (houses & apartments)
+ *
+ * The marketplace browses by the five MARKET_SECTIONS (Products, Services,
+ * Stays & Experiences, Rentals, Freelance) — see src/lib/market-sections.ts.
+ */
 
 export function getCategoryBySlug(slug: string): Category | undefined {
   return CATEGORIES.find((c) => c.slug === slug);
