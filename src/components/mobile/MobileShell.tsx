@@ -715,16 +715,29 @@ export function MobileBottomNav({ onExplore, onAccount }: { onExplore: () => voi
 
   const workPath = roleOrdersPath(role);
   const msgPath = user ? messagesPath(role) : "/auth";
+  // Home is the user's own dashboard (seller/freelancer/buyer…), NOT the
+  // marketplace — shopping lives in its own tab.
+  const homePath = user ? roleHome(role) : "/marketplace";
+  const workActive = (p: string) =>
+    workPath !== "#" && (p === workPath || p.startsWith(workPath + "/") || (role === "seller" && p.startsWith("/seller/orders")));
+  // Account lights up for panel sub-pages (products, KYC, wallet…) — the
+  // dashboard root itself belongs to the Home tab.
+  const accountActive = (p: string) => {
+    if (!user || p === homePath || workActive(p)) return false;
+    return p.startsWith("/buyer/") || p.startsWith("/seller/") ||
+      p.startsWith("/freelance/") || p.startsWith("/employer/") ||
+      p.startsWith("/creator/") || p.startsWith("/transport/");
+  };
 
   const tabs = [
-    { key: "home", icon: Home, label: "Home", path: "/marketplace", match: (p: string) => p === "/marketplace" || p.startsWith("/product/") },
-    { key: "explore", icon: Compass, label: "Explore", path: null as string | null, match: () => false },
-    { key: "work", icon: role === "freelancer" || role === "employer" ? Briefcase : Package, label: roleWorkLabel(role), path: workPath, match: (p: string) => workPath !== "#" && (p.startsWith(workPath) || (role === "seller" && p.startsWith("/seller/orders"))) },
-    { key: "messages", icon: MessageSquare, label: "Messages", path: msgPath, match: (p: string) => p.startsWith("/chat") || p === msgPath, badge: unread },
-    { key: "account", icon: User, label: "Account", path: null as string | null, match: (p: string) =>
-      p.startsWith("/buyer") || p.startsWith("/seller") && !p.startsWith("/seller/orders") ||
-      p.startsWith("/freelance/dashboard") || p.startsWith("/employer") || p.startsWith("/creator") || p.startsWith("/transport/dashboard"),
+    { key: "home", icon: Home, label: "Home", path: homePath, match: (p: string) => p === "/" || p === homePath },
+    { key: "market", icon: Store, label: "Marketplace", path: "/marketplace", match: (p: string) =>
+      (p.startsWith("/marketplace") || p.startsWith("/product/") || p.startsWith("/services") || (p.startsWith("/transport") && p !== "/transport/dashboard")) && p !== homePath,
     },
+    { key: "explore", icon: Compass, label: "Explore", path: null as string | null, match: () => false },
+    { key: "work", icon: role === "freelancer" || role === "employer" ? Briefcase : Package, label: roleWorkLabel(role), path: workPath, match: workActive },
+    { key: "messages", icon: MessageSquare, label: "Messages", path: msgPath, match: (p: string) => p.startsWith("/chat") || p === msgPath, badge: unread },
+    { key: "account", icon: User, label: "Account", path: null as string | null, match: accountActive },
   ];
 
   return (
