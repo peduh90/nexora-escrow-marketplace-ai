@@ -16,6 +16,7 @@ import {
   CarFront, PartyPopper,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useSignOutConfirm } from "@/components/SignOutConfirm";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
@@ -600,16 +601,11 @@ function ExploreMarketSection({
 /* ═══ ACCOUNT SHEET (role-aware control centre) ═══ */
 function AccountSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
-  const { user, role, signOut } = useAuth();
+  const { user, role } = useAuth();
+  const confirmSignOut = useSignOutConfirm();
   const sections = useMemo(() => accountSections(role), [role]);
 
   const go = (path: string) => { navigate(path); onClose(); };
-
-  const doSignOut = async () => {
-    await signOut();
-    onClose();
-    navigate("/");
-  };
 
   return (
     <AnimatePresence>
@@ -691,7 +687,7 @@ function AccountSheet({ open, onClose }: { open: boolean; onClose: () => void })
 
               {user && (
                 <button
-                  onClick={doSignOut}
+                  onClick={() => { onClose(); confirmSignOut(); }}
                   className="w-full flex items-center gap-3 px-3.5 py-3.5 rounded-2xl border border-red-400/15 bg-red-400/[0.04] text-red-400 active:bg-red-400/10 transition-colors mb-2"
                 >
                   <LogOut className="w-[17px] h-[17px]" />

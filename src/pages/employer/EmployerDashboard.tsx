@@ -3,12 +3,14 @@ import { useNavigate } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
+import { useSignOutConfirm } from "@/components/SignOutConfirm";
 import VerificationCard from "@/components/VerificationCard";
 import { ArrowLeft, Briefcase, Plus, FolderOpen, FileText, MessageSquare, Wallet, LogOut, Settings, Phone, Search, Users, Clock, CheckCircle2, Bell } from "lucide-react";
 
 export default function EmployerDashboard() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const confirmSignOut = useSignOutConfirm();
   const myTasks = useQuery(api.freelance.getMyTasks);
   // Employer-scoped projects (only where employerId === current user).
   const projects = useQuery(api.freelance.getEmployerProjects);
@@ -95,7 +97,7 @@ export default function EmployerDashboard() {
               </div>
             )}
           </div>
-          <button onClick={async () => { await signOut(); navigate("/"); }} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/30 hover:text-white/60 hover:bg-white/[0.03] transition-colors mt-2 w-full justify-center">
+          <button onClick={confirmSignOut} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/30 hover:text-white/60 hover:bg-white/[0.03] transition-colors mt-2 w-full justify-center">
             <LogOut className="w-3.5 h-3.5" /> Sign Out
           </button>
         </div>

@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
+import { useSignOutConfirm } from "@/components/SignOutConfirm";
 import AIChat from "@/components/AIChat";
 import { getWhatsAppSupportUrl, openWhatsApp } from "@/lib/whatsapp";
 import {
@@ -29,7 +30,8 @@ const sidebarItems = [
 export default function FreelanceDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const confirmSignOut = useSignOutConfirm();
   const [collapsed, setCollapsed] = useState(false);
 
   // Legacy repair: some accounts created by the old signup flow carry the
@@ -97,7 +99,7 @@ export default function FreelanceDashboard() {
               </div>
             )}
           </div>
-          <button onClick={async () => { await signOut(); navigate("/"); }}
+          <button onClick={confirmSignOut}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/30 hover:text-white/60 hover:bg-white/[0.03] transition-colors mt-2 ${collapsed ? "justify-center w-full" : ""}`}>
             <LogOut className="w-3.5 h-3.5" /> {!collapsed && "Sign Out"}
           </button>

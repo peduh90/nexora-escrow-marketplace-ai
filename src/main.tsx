@@ -92,6 +92,7 @@ const SellerProfilePage = lazy(() => import("./pages/SellerProfile.tsx"));
 // Components
 import MobileShell from "@/components/mobile/MobileShell";
 import PwaLayer from "@/components/pwa/PwaLayer";
+import { SignOutProvider } from "@/components/SignOutConfirm";
 import { initPwa } from "@/lib/pwa";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 const TermsPage = lazy(() => import("./pages/Terms.tsx"));
@@ -267,6 +268,7 @@ createRoot(document.getElementById("root")!).render(
         <VlyToolbar />
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
+        <SignOutProvider>
         <BrowserRouter>
           <RouteSyncer />
           <RouteErrorBoundary>
@@ -440,6 +442,7 @@ createRoot(document.getElementById("root")!).render(
           <MobileShell />
           <PwaLayer />
         </BrowserRouter>
+        </SignOutProvider>
         <Toaster />
       </ConvexAuthProvider>
     </RootErrorBoundary>

@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
+import { useSignOutConfirm } from "@/components/SignOutConfirm";
 import AIChat from "@/components/AIChat";
 import {
   Shield, LayoutDashboard, Users, ShoppingCart, Scale,
@@ -120,7 +121,8 @@ const pathIndex = (() => {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const confirmSignOut = useSignOutConfirm();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -290,7 +292,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         )}
         <button
-          onClick={async () => { await signOut(); navigate("/"); }}
+          onClick={confirmSignOut}
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/25 hover:text-red-400 hover:bg-red-400/5 transition-colors ${collapsed && !isMobile ? "justify-center" : ""}`}
         >
           <LogOut className="w-4 h-4 shrink-0" />
@@ -445,7 +447,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <button onClick={() => { setProfileOpen(false); go("/admin/settings"); }} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors">
                       <Settings className="w-3.5 h-3.5" /> Settings
                     </button>
-                    <button onClick={async () => { setProfileOpen(false); await signOut(); navigate("/"); }} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-red-400 hover:bg-red-400/5 transition-colors">
+                    <button onClick={() => { setProfileOpen(false); confirmSignOut(); }} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/60 hover:text-red-400 hover:bg-red-400/5 transition-colors">
                       <LogOut className="w-3.5 h-3.5" /> Sign Out
                     </button>
                   </motion.div>

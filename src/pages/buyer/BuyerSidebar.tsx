@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useSignOutConfirm } from "@/components/SignOutConfirm";
 import {
   Shield, LayoutDashboard, Store, ShoppingCart, Truck, Scale,
   Briefcase, Wallet, Settings, LogOut, ChevronLeft, ChevronRight, User, MessageCircle, Phone,
@@ -22,7 +23,8 @@ const navItems = [
 export default function BuyerSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const confirmSignOut = useSignOutConfirm();
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -82,7 +84,7 @@ export default function BuyerSidebar() {
               </div>
             )}
           </div>
-          <button onClick={async () => { await signOut(); navigate("/"); }}
+          <button onClick={confirmSignOut}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/30 hover:text-white/60 hover:bg-white/[0.03] transition-colors mt-2 ${collapsed ? "justify-center w-full" : ""}`}>
             <LogOut className="w-3.5 h-3.5" /> {!collapsed && "Sign Out"}
           </button>

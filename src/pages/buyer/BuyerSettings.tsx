@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import BuyerLayout from "./BuyerLayout";
 import { useAuth } from "@/hooks/use-auth";
+import { useSignOutConfirm } from "@/components/SignOutConfirm";
 import { useNavigate } from "react-router";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -32,7 +33,8 @@ type SettingsItem = {
 };
 
 export default function BuyerSettings() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const confirmSignOut = useSignOutConfirm();
   const navigate = useNavigate();
   const updatePassword = useMutation(api.users.updatePassword);
   const [showSecurity, setShowSecurity] = useState(false);
@@ -214,7 +216,7 @@ export default function BuyerSettings() {
         {/* Sign out */}
         <FadeIn delay={0.3}>
           <button
-            onClick={async () => { await signOut(); navigate("/"); }}
+            onClick={confirmSignOut}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-400/10 bg-red-400/5 text-red-400 text-sm font-medium hover:bg-red-400/10 transition-colors"
           >
             <LogOut className="w-4 h-4" />
