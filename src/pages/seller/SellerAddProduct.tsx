@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useDraftAutosave } from "@/hooks/use-draft-autosave";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery } from "convex/react";
@@ -8,7 +8,6 @@ import SellerLayout from "./SellerLayout";
 import { CATEGORIES as FALLBACK_CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
 import { CATEGORY_BANNERS } from "@/lib/category-images";
 import { FREELANCE_CATEGORIES, getFreelanceCategory, getFreelanceCategoryIcon } from "@/lib/freelance-marketplace";
-import { publishFeeSummary, rateLabel } from "@/lib/fees";
 import DocumentUpload, { type PickedFile } from "@/components/DocumentUpload";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 
@@ -566,18 +565,6 @@ function PublishWizard({
   onPublish: () => void;
   onBack: () => void;
 }) {
-  // Live, tiered fee preview — the exact settled Nexora schedule, never a flat
-  // percentage. Freelance listings use the freelancer commission tiers; normal
-  // marketplace products use the seller commission tiers.
-  const summary = useMemo(
-    () => publishFeeSummary("freelance", Number(form.price) || 0),
-    [form.price],
-  );
-  const productSummary = useMemo(
-    () => publishFeeSummary("product", Number(form.price) || 0),
-    [form.price],
-  );
-
   return (
     <div className="max-w-4xl mx-auto">
 
@@ -872,19 +859,6 @@ function PublishWizard({
                   </div>
                 )}
               </div>
-              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
-                <div className="flex justify-between text-xs">
-                  <span className="text-white/40">Platform commission ({rateLabel(productSummary.fee.rate)})</span>
-                  <span className="text-white/60">− KES {productSummary.fee.fee.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-white/40">Your Earnings</span>
-                  <span className="text-emerald-400 font-bold">KES {productSummary.earnings.toLocaleString()}</span>
-                </div>
-                <p className="text-[10px] text-white/25 pt-1.5 border-t border-white/5">
-                  Tiered commission: 3% under KES 5,000 · 2.5% to KES 50,000 · 2% to KES 200,000 · 1.5% above.
-                </p>
-              </div>
             </div>
           </div>
         )}
@@ -905,19 +879,7 @@ function PublishWizard({
               <div className="p-3 rounded-lg bg-nx-violet/5 border border-nx-violet/10">
                 <p className="text-xs text-white/50">💼 <span className="text-nx-violet font-medium">Digital delivery.</span> Work is delivered online and the fee stays in escrow until the buyer confirms delivery.</p>
               </div>
-              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
-                <div className="flex justify-between text-xs">
-                  <span className="text-white/40">Platform commission ({rateLabel(summary.fee.rate)})</span>
-                  <span className="text-white/60">− KES {summary.fee.fee.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-white/40">Your Earnings</span>
-                  <span className="text-emerald-400 font-bold">KES {summary.earnings.toLocaleString()}</span>
-                </div>
-                <p className="text-[10px] text-white/25 pt-1.5 border-t border-white/5">
-                  Tiered commission: 3% under KES 5,000 · 2% to KES 50,000 · 1.5% to KES 250,000 · 1% above.
-                </p>
-              </div>
+
             </div>
           </div>
         )}
