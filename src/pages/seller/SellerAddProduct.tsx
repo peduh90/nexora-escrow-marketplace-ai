@@ -395,7 +395,7 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
   // shell — the publish flow renders standalone with its own header.
   if (forcedFreelance) {
     return (
-      <div className="min-h-screen bg-[#05050A] px-4 py-8">
+      <div className="min-h-screen bg-[#05050A] px-4 py-8 pb-28 md:pb-8">
         <div className="max-w-4xl mx-auto">
           <FreelancePublishHeader onBack={() => (step > 0 ? setStep(step - 1) : navigate("/freelance/services"))} step={step} />
           <PublishWizard
@@ -432,6 +432,16 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
   return (
     <SellerLayout>
       <div className="max-w-4xl mx-auto">
+        {/* Phone top bar — this flow is shell-immersive (the global mobile
+            header is hidden here), so phones need their own back + title. */}
+        <div className="flex md:hidden items-center gap-2 mb-4">
+          <button onClick={() => (step > 0 ? setStep(step - 1) : navigate("/seller"))}
+            className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/60 active:bg-white/[0.08] transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <h1 className="flex-1 text-[15px] font-semibold text-white">Create listing</h1>
+          <span className="text-xs text-white/40 shrink-0">Step {step + 1} of {TOTAL_STEPS}</span>
+        </div>
         <DraftStatusBanner
           status={draft.status}
           savedAt={draft.savedAt}

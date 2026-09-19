@@ -51,7 +51,7 @@ export default function MyBookings() {
   return (
     <div className="min-h-screen bg-[#05050A] text-white pb-24 md:pb-8">
       <NavigationBar />
-      <div className="max-w-3xl mx-auto px-4 md:px-6 pt-24 pb-10 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 pt-14 md:pt-24 pb-28 md:pb-10 space-y-6">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("/services")} className="p-2 rounded-lg bg-white/[0.04] border border-white/8 text-white/50 hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />

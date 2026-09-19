@@ -214,7 +214,7 @@ export default function ServiceProviderDashboard() {
     <div className="min-h-screen bg-[#05050A] text-white pb-24 md:pb-8">
       <NavigationBar />
 
-      <div className="max-w-4xl mx-auto px-4 md:px-6 pt-24 pb-10 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 pt-14 md:pt-24 pb-28 md:pb-10 space-y-6">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/services")}

@@ -54,11 +54,11 @@ export default function ServicesHub() {
     <div className="min-h-screen bg-[#05050A] text-white pb-24 md:pb-8">
       <NavigationBar />
 
-      <div className="max-w-6xl mx-auto px-4 md:px-6 pt-24 pb-10">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 pt-14 md:pt-24 pb-28 md:pb-10">
         {/* Header */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => (category ? navigate("/services") : navigate("/"))}
+            onClick={() => (category ? navigate("/services") : navigate("/marketplace"))}
             className="p-2 rounded-lg bg-white/[0.04] border border-white/8 text-white/50 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

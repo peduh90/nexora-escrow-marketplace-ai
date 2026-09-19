@@ -31,7 +31,7 @@ const navGroups: NavGroup[] = [
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/admin", desc: "Live platform overview" },
       { icon: BarChart3, label: "Analytics", path: "/admin/analytics", desc: "Trends & insights" },
-      { icon: Home, label: "Home", path: "/", desc: "Go to the public marketplace" },
+      { icon: Home, label: "Home", path: "/marketplace", desc: "Go to the public marketplace" },
     ],
   },
   {

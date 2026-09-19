@@ -63,14 +63,14 @@ export default function EmployerJobs() {
   return (
     <div className="flex min-h-screen bg-[#05050A]">
       <div className="flex-1 min-w-0">
-        <div className="sticky top-0 z-30 h-14 bg-[#08080F]/80 backdrop-blur-xl border-b border-white/5 flex items-center px-4 md:px-6">
+        <div className="hidden md:flex sticky top-0 z-30 h-14 bg-[#08080F]/80 backdrop-blur-xl border-b border-white/5 items-center px-4 md:px-6">
           <button onClick={() => navigate("/employer")} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 transition-colors mr-3">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <h1 className="text-sm font-semibold text-white">My Jobs & Applicants</h1>
         </div>
 
-        <div className="p-4 md:p-6 space-y-5 pb-20">
+        <div className="p-4 md:p-6 space-y-5 pb-28 md:pb-6">
           {tasks.length === 0 ? (
             <div className="text-center py-16 rounded-xl bg-white/[0.02] border border-white/5">
               <Briefcase className="w-12 h-12 text-white/10 mx-auto mb-3" />

@@ -47,25 +47,98 @@ const ICONS: Record<string, any> = {
   "car-front": CarFront, "party-popper": PartyPopper,
 };
 
+/* ─── Panel page titles — most specific match first ─── */
+const SELLER_PANEL_PAGES = [
+  "products", "add-product", "orders", "escrow", "messages", "offers",
+  "customers", "earnings", "withdrawals", "delivery", "analytics", "reviews",
+  "promotions", "kyc", "store", "notifications", "settings", "help",
+];
+
+function sellerTitle(pathname: string): string {
+  if (pathname.startsWith("/seller/products")) return "My Products";
+  if (pathname.startsWith("/seller/orders")) return "Orders";
+  if (pathname.startsWith("/seller/escrow")) return "Escrow";
+  if (pathname.startsWith("/seller/messages")) return "Messages";
+  if (pathname.startsWith("/seller/offers")) return "Offers";
+  if (pathname.startsWith("/seller/customers")) return "Customers";
+  if (pathname.startsWith("/seller/earnings")) return "Wallet";
+  if (pathname.startsWith("/seller/withdrawals")) return "Withdrawals";
+  if (pathname.startsWith("/seller/delivery")) return "Delivery";
+  if (pathname.startsWith("/seller/analytics")) return "Analytics";
+  if (pathname.startsWith("/seller/reviews")) return "Reviews";
+  if (pathname.startsWith("/seller/promotions")) return "Promotions";
+  if (pathname.startsWith("/seller/kyc")) return "Verification";
+  if (pathname.startsWith("/seller/store")) return "Store Profile";
+  if (pathname.startsWith("/seller/notifications")) return "Notifications";
+  if (pathname.startsWith("/seller/settings")) return "Settings";
+  if (pathname.startsWith("/seller/help")) return "Help & Support";
+  return "Seller Dashboard";
+}
+
+function buyerTitle(pathname: string): string {
+  if (pathname.startsWith("/buyer/orders")) return "My Orders";
+  if (pathname.startsWith("/buyer/wallet")) return "Wallet";
+  if (pathname.startsWith("/buyer/disputes")) return "Disputes";
+  if (pathname.startsWith("/buyer/deliveries")) return "Deliveries";
+  if (pathname.startsWith("/buyer/notifications")) return "Notifications";
+  if (pathname.startsWith("/buyer/settings")) return "Settings";
+  if (pathname.startsWith("/buyer/marketplace")) return "Marketplace";
+  return "My Nexora";
+}
+
+function freelanceTitle(pathname: string): string {
+  if (pathname.startsWith("/freelance/find-work")) return "Find Work";
+  if (pathname.startsWith("/freelance/projects")) return "My Projects";
+  if (pathname.startsWith("/freelance/applications")) return "Applications";
+  if (pathname.startsWith("/freelance/services")) return "My Services";
+  if (pathname.startsWith("/freelance/earnings")) return "Earnings";
+  if (pathname.startsWith("/freelance/settings")) return "Settings";
+  if (pathname.startsWith("/freelance/messages")) return "Messages";
+  if (pathname.startsWith("/freelance/notifications")) return "Notifications";
+  if (pathname.startsWith("/freelance/post-task")) return "Post a Job";
+  return "Freelance Dashboard";
+}
+
+function employerTitle(pathname: string): string {
+  if (pathname.startsWith("/employer/post-job")) return "Post a Job";
+  if (pathname.startsWith("/employer/jobs")) return "Applicants";
+  if (pathname.startsWith("/employer/projects")) return "Projects";
+  if (pathname.startsWith("/employer/messages")) return "Messages";
+  if (pathname.startsWith("/employer/notifications")) return "Notifications";
+  if (pathname.startsWith("/employer/earnings")) return "Wallet & Escrow";
+  if (pathname.startsWith("/employer/settings")) return "Settings";
+  return "Employer Hub";
+}
+
 /* ─── Contextual header config per route pattern ─── */
 function headerContext(pathname: string): {
   title?: string; back?: boolean; actions?: Array<"share" | "search" | "none">;
 } {
   if (pathname.startsWith("/product/")) return { back: true, actions: ["share", "search"] };
   if (pathname.startsWith("/chat")) return { title: "Messages", back: true, actions: ["none"] };
+  if (pathname.startsWith("/seller/add-product") || pathname.startsWith("/freelance/publish")) return { title: "Create listing", back: true, actions: ["none"] };
+  /* Public seller storefront /seller/:userId — must not swallow panel pages,
+     so only single-segment paths outside the reserved panel pages match. */
+  const sellerSeg = pathname.split("/")[2];
+  if (/^\/seller\/[^/]+$/.test(pathname) && !SELLER_PANEL_PAGES.includes(sellerSeg)) return { title: "Seller Store", back: true, actions: ["share"] };
+  if (pathname === "/seller") return { title: "Seller Dashboard", actions: ["none"] };
+  if (pathname.startsWith("/seller/edit-product/")) return { title: "Edit Product", back: true, actions: ["none"] };
+  if (pathname.startsWith("/seller")) return { title: sellerTitle(pathname), back: true, actions: ["none"] };
+  if (pathname === "/employer") return { title: "Employer Hub", actions: ["none"] };
+  if (pathname.startsWith("/employer")) return { title: employerTitle(pathname), back: true, actions: ["none"] };
+  if (pathname === "/buyer") return { title: "My Nexora", actions: ["search"] };
+  if (pathname.startsWith("/buyer/marketplace")) return { title: "Marketplace", back: true, actions: ["search"] };
+  if (pathname.startsWith("/buyer")) return { title: buyerTitle(pathname), back: true, actions: ["none"] };
+  if (pathname === "/freelance/dashboard") return { title: "Freelance Dashboard", actions: ["none"] };
+  if (pathname.startsWith("/freelance/find-work") || pathname.startsWith("/freelance/projects") || pathname.startsWith("/freelance/applications") || pathname.startsWith("/freelance/services") || pathname.startsWith("/freelance/earnings") || pathname.startsWith("/freelance/settings") || pathname.startsWith("/freelance/messages") || pathname.startsWith("/freelance/notifications") || pathname.startsWith("/freelance/post-task"))
+    return { title: freelanceTitle(pathname), back: true, actions: ["none"] };
   if (pathname.startsWith("/services")) return { title: "Local Services", back: !pathname.match(/^\/services\/?$/), actions: ["search"] };
   if (pathname.startsWith("/freelance/jobs")) return { title: "Freelance Jobs", back: pathname !== "/freelance/jobs", actions: ["search"] };
   if (pathname.startsWith("/freelance")) return { title: "Freelance", back: !pathname.match(/^\/freelance\/?$/), actions: ["search"] };
-  if (pathname.startsWith("/seller/add-product") || pathname.startsWith("/freelance/publish")) return { title: "Create listing", back: true, actions: ["none"] };
-  if (pathname.startsWith("/seller")) return { title: "Seller Studio", actions: ["search"] };
-  if (pathname.startsWith("/employer")) return { title: "Employer Hub", actions: ["search"] };
-  if (pathname.startsWith("/buyer/orders")) return { title: "My Orders", back: true, actions: ["search"] };
-  if (pathname.startsWith("/buyer/wallet")) return { title: "Wallet", back: true, actions: ["none"] };
-  if (pathname.startsWith("/buyer")) return { title: "My Nexora", actions: ["search"] };
   if (pathname.startsWith("/marketplace")) return { actions: ["search"] };
   if (pathname.startsWith("/transport")) return { title: "Transport", back: true, actions: ["none"] };
   if (pathname.startsWith("/community")) return { title: "Community", back: true, actions: ["none"] };
-  if (pathname.startsWith("/creator")) return { title: "Creator Program", actions: ["none"] };
+  if (pathname.startsWith("/creator")) return { title: "Creator Program", back: true, actions: ["none"] };
   return { title: "Nexora", actions: ["search"] };
 }
 

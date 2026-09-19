@@ -64,14 +64,14 @@ export default function SellerProfile() {
   return (
     <div className="min-h-screen bg-nx-bg">
       {/* Header */}
-      <div className="sticky top-0 z-30 h-14 bg-nx-card/80 backdrop-blur-xl border-b border-nx-border flex items-center px-4 md:px-6">
+      <div className="hidden md:flex sticky top-0 z-30 h-14 bg-nx-card/80 backdrop-blur-xl border-b border-nx-border items-center px-4 md:px-6">
         <button onClick={() => navigate(-1)} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-colors mr-3">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <h2 className="text-sm font-semibold text-white">Seller Profile</h2>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 pb-28 md:pb-8">
         {/* Seller Card */}
         <ScrollReveal>
           <div className="relative p-6 md:p-8 rounded-2xl border border-white/5 bg-white/[0.02] overflow-hidden">

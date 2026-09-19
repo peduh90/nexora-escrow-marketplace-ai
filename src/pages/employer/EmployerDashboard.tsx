@@ -101,9 +101,9 @@ export default function EmployerDashboard() {
         </div>
       </aside>
 
-      {/* Mobile bottom nav */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#08080F]/95 backdrop-blur-xl border-t border-white/5">
-        <nav className="flex items-center justify-around py-2 px-2 overflow-x-auto">
+      {/* Tablet bottom nav (md–lg); phones use the global shell's tab bar. */}
+      <div className="hidden md:flex lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#08080F]/95 backdrop-blur-xl border-t border-white/5">
+        <nav className="flex items-center justify-around py-2 px-2 overflow-x-auto w-full">
           {[
             { icon: Briefcase, label: "Home", path: "/employer" },
             { icon: Plus, label: "Post Job", path: "/employer/post-job" },
@@ -120,13 +120,14 @@ export default function EmployerDashboard() {
 
       {/* Main Content */}
       <div className="flex-1 min-w-0">
-        {/* Header */}
-        <div className="sticky top-0 z-30 h-14 bg-[#08080F]/80 backdrop-blur-xl border-b border-white/5 flex items-center px-4 md:px-6 justify-between">
+        {/* Header — phones (<md) get their contextual header from the global
+            mobile shell, so this panel header only shows md and up. */}
+        <div className="hidden md:flex sticky top-0 z-30 h-14 bg-[#08080F]/80 backdrop-blur-xl border-b border-white/5 items-center px-4 md:px-6 justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/freelance")} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
+            <button onClick={() => navigate("/marketplace")} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-colors" title="Back to Marketplace">
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <h1 className="text-sm font-semibold text-white hidden sm:block">Employer Dashboard</h1>
+            <h1 className="text-sm font-semibold text-white">Employer Dashboard</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -151,7 +152,7 @@ export default function EmployerDashboard() {
         </div>
 
         {/* Dashboard Content */}
-        <div className="p-4 md:p-6 space-y-6 pb-20 lg:pb-6">
+        <div className="p-4 md:p-6 space-y-6 pb-28 md:pb-24 lg:pb-6">
           <div>
             <h1 className="text-2xl font-bold text-white">💼 Employer Dashboard</h1>
             <p className="text-sm text-white/40 mt-1">Post jobs, hire writers, review work, release escrow payments</p>

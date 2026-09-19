@@ -41,7 +41,7 @@ export default function FreelanceNotifications() {
   return (
     <div className="flex min-h-screen bg-[#05050A]">
       <div className="flex-1 min-w-0">
-        <div className="sticky top-0 z-30 h-14 bg-[#08080F]/80 backdrop-blur-xl border-b border-white/5 flex items-center px-4 md:px-6">
+        <div className="hidden md:flex sticky top-0 z-30 h-14 bg-[#08080F]/80 backdrop-blur-xl border-b border-white/5 items-center px-4 md:px-6">
           <button
             onClick={() => navigate(isEmployer ? "/employer" : "/freelance/dashboard")}
             className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 transition-colors mr-3"

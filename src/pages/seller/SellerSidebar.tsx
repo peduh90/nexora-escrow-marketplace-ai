@@ -105,9 +105,11 @@ export default function SellerSidebar() {
         </div>
       </aside>
 
-      {/* Mobile bottom nav */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#0A0A12]/95 backdrop-blur-xl border-t border-white/5">
-        <nav className="flex items-center justify-around py-1.5 px-1">
+      {/* Tablet bottom nav (md–lg). Phones (<md) use the global mobile
+          shell's tab bar + Account sheet, which contains every panel page —
+          a second bar here overlapped it and double-owned navigation. */}
+      <div className="hidden md:flex lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#0A0A12]/95 backdrop-blur-xl border-t border-white/5">
+        <nav className="flex items-center justify-around py-1.5 px-1 w-full">
           {[
             { icon: LayoutDashboard, label: "Dashboard", path: "/seller" },
             { icon: ShoppingCart, label: "Orders", path: "/seller/orders" },

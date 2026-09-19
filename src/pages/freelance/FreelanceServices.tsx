@@ -51,7 +51,7 @@ export default function FreelanceServices() {
   return (
     <div className="flex min-h-screen bg-[#05050A]">
       <div className="flex-1 min-w-0">
-        <div className="sticky top-0 z-30 h-14 bg-[#08080F]/80 backdrop-blur-xl border-b border-white/5 flex items-center px-4 md:px-6 justify-between">
+        <div className="hidden md:flex sticky top-0 z-30 h-14 bg-[#08080F]/80 backdrop-blur-xl border-b border-white/5 items-center px-4 md:px-6 justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/freelance/dashboard")} className="p-2 rounded-lg bg-white/[0.03] border border-white/5 text-white/40 hover:text-white/70 transition-colors">
               <ArrowLeft className="w-4 h-4" />
@@ -67,7 +67,7 @@ export default function FreelanceServices() {
           </button>
         </div>
 
-        <div className="p-4 md:p-6 space-y-5">
+        <div className="p-4 md:p-6 space-y-5 pb-28 md:pb-6">
           {/* Summary */}
           <div className="grid grid-cols-3 gap-3">
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">

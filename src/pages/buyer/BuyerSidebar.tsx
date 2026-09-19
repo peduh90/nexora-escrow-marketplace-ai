@@ -93,8 +93,9 @@ export default function BuyerSidebar() {
         </button>
       </motion.aside>
 
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#08080F]/95 backdrop-blur-xl border-t border-white/5">
-        <nav className="flex items-center justify-around py-2 px-2">
+      {/* Tablet bottom nav (md–lg); phones use the global shell's tab bar. */}
+      <div className="hidden md:flex lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#08080F]/95 backdrop-blur-xl border-t border-white/5">
+        <nav className="flex items-center justify-around py-2 px-2 w-full">
           {navItems.slice(0, 5).map((item) => {
             const isActive = location.pathname === item.path;
             return (

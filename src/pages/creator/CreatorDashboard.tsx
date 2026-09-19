@@ -200,10 +200,10 @@ function CreatorDashboardInner() {
   if (!creator) {
     return (
       <div className="min-h-screen bg-[#07070c] text-white">
-        <nav className="border-b border-white/5">
+        <nav className="hidden md:block border-b border-white/5">
           <div className="max-w-3xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-            <button onClick={() => navigate("/")} className="flex items-center gap-2 text-sm text-white/60 hover:text-white">
-              <ArrowLeft className="w-4 h-4" /> Back to Nexora
+            <button onClick={() => navigate("/marketplace")} className="flex items-center gap-2 text-sm text-white/60 hover:text-white">
+              <ArrowLeft className="w-4 h-4" /> Marketplace
             </button>
             <div className="flex items-center gap-2 text-sm font-semibold tracking-wide text-white/50">
               <Sparkles className="w-4 h-4 text-violet-400" /> CREATOR PROGRAM
@@ -211,7 +211,7 @@ function CreatorDashboardInner() {
           </div>
         </nav>
 
-        <div className="max-w-3xl mx-auto px-4 md:px-6 py-12">
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-12 pb-28 md:pb-12">
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Join the Nexora Creator Program</h1>
           <p className="mt-3 text-white/55 leading-relaxed">
             Promote Nexora to your audience and earn real commissions when they verify, open businesses
@@ -313,10 +313,10 @@ function CreatorDashboardInner() {
   // ─── Applied: status card or full dashboard ───
   return (
     <div className="min-h-screen bg-[#07070c] text-white">
-      <nav className="border-b border-white/5">
+      <nav className="hidden md:block border-b border-white/5">
         <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2 text-sm text-white/60 hover:text-white">
-            <ArrowLeft className="w-4 h-4" /> Back to Nexora
+          <button onClick={() => navigate("/marketplace")} className="flex items-center gap-2 text-sm text-white/60 hover:text-white">
+            <ArrowLeft className="w-4 h-4" /> Marketplace
           </button>
           <div className="flex items-center gap-2 text-sm font-semibold tracking-wide text-white/50">
             <Sparkles className="w-4 h-4 text-violet-400" /> CREATOR DASHBOARD
@@ -324,7 +324,7 @@ function CreatorDashboardInner() {
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-10 space-y-8">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-10 pb-28 md:pb-10 space-y-8">
         {/* Agreement status lives INSIDE the open panel: pending = banner;
             missing/rejected = the document itself, embedded right here.
             None of this blocks the panel — approving the creator unlocks the

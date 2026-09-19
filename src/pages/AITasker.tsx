@@ -467,7 +467,7 @@ export default function AITaskerPage() {
   return (
     <div className="min-h-screen bg-[#0B0B14] text-white">
       <NavigationBar />
-      <main className="max-w-5xl mx-auto px-4 pt-24 pb-28 md:pb-16">
+      <main className="max-w-5xl mx-auto px-4 pt-14 md:pt-24 pb-28 md:pb-16">
         {/* Header */}
         <div className="rounded-3xl border border-nx-violet/20 bg-gradient-to-br from-nx-violet/[0.12] via-transparent to-transparent p-6 md:p-8 mb-6">
           <div className="flex items-center gap-3 mb-2">

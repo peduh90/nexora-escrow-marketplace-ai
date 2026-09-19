@@ -1,13 +1,26 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "react-router";
 import { Shield, Menu, X } from "lucide-react";
 import NexoraMark from "@/components/NexoraMark";
 import InstallButton from "@/components/pwa/InstallButton";
 import { useNavigate } from "react-router";
+import { MOBILE_SHELL_HIDDEN_ON, isImmersiveRoute } from "@/lib/mobile-nav";
 import { useLowData } from "@/hooks/use-low-data";
 import { SignalLow } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { getDashboardPath as sharedGetDashboardPath } from "@/components/RoleRouter";
+
+/** Routes where the global mobile shell does NOT render — this navbar is the
+ *  only navigation there, so it stays visible on phones too. */
+function isShellImmersivePath(pathname: string): boolean {
+  return (
+    MOBILE_SHELL_HIDDEN_ON.includes(pathname) ||
+    pathname === "/" ||
+    pathname.startsWith("/auth") ||
+    isImmersiveRoute(pathname)
+  );
+}
 
 function scrollToSection(hash: string) {
   const id = hash.replace("#", "");
@@ -40,6 +53,13 @@ export default function NavigationBar() {
     return sharedGetDashboardPath((user as any)?.role);
   };
 
+  const location = useLocation();
+  // Phones (<md) on shell-covered routes are owned by the global MobileShell —
+  // its contextual header (brand, page title, search, notifications) covers
+  // those pages, and rendering this marketing navbar underneath double-stacked
+  // two fixed headers. Standalone pages WITHOUT the shell (landing, /join)
+  // keep this bar on phones as their only navigation.
+  const shellImmersive = isShellImmersivePath(location.pathname);
   return (
     <>
       <motion.nav
@@ -47,6 +67,8 @@ export default function NavigationBar() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.1 }}
         className={`nx-desktop-nav fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+          shellImmersive ? "" : "max-md:hidden"
+        } ${
           scrolled ? "nx-glass py-3" : "bg-transparent py-5"
         }`}
       >
