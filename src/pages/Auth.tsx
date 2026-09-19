@@ -52,9 +52,6 @@ interface AuthProps {
 // src/hooks/use-auth.ts — only this email may pass the admin login gate.
 const OWNER_EMAIL = "murimiedwin227@gmail.com";
 
-/** Google OAuth provider id used by signIn() below. */
-const GOOGLE_PROVIDER = "google";
-
 /**
  * ─── GOOGLE OAUTH INTENT BRIDGE ──────────────────────────────────────────
  *
@@ -922,7 +919,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     }
   };
 
-  // --- Admin: Email → sends OTP (probe ok) ---
+  // --- Admin: Email → sends OTP ---
   const handleAdminEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminEmail) return;
@@ -977,7 +974,9 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     }
   };
 
-  // ===== ADMIN LOGIN — EMAIL + OTP (2FA) =====
+  // ===== ADMIN LOGIN — EMAIL + OTP (2FA) — owner only, NO Google sign-in: =====
+  // the control center must stay on the gated email+OTP path.
+  if (isAdminLogin) {
     return (
       <div className="min-h-screen bg-[#05050A] flex flex-col items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 z-0">
@@ -1342,7 +1341,8 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                           Never set a password on this account? Tap <span className="text-white/50">Forgot password</span> — we'll email you a code to create one.
                         </p>
                       </form>
-                      <p className="text-[11px] text-white/20 text-center">Don't have an account? Use the options above to sign up.</p>
+                                      <GoogleAuthButton onClick={handleGoogleLogin} disabled={isLoading} label="Sign in with Google" />
+<p className="text-[11px] text-white/20 text-center">Don't have an account? Use the options above to sign up.</p>
                     </CardContent>
                     <div className="py-3 px-6 text-xs text-center text-white/20 bg-white/[0.02] border-t border-white/5 rounded-b-lg flex items-center justify-center gap-1.5">
                       <Shield className="w-3 h-3" /> Protected by Nexora Escrow Security
@@ -1366,7 +1366,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                 <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : selectedRole === "employer" ? "Set up your employer account to post jobs and hire freelancers" : selectedRole === "creator" ? "Create your account, then apply to the Creator Program — your referral link and earnings live in the creator dashboard" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Create your account, then set up your service — salon, plumbing, boda, fundi & more" : "Create your account to start shopping securely"}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="relative"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/5" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-nx-surface px-2 text-white/20 tracking-wider">or sign in with email</span></div></div>
+                <GoogleAuthButton onClick={handleGoogleLogin} disabled={isLoading} label={selectedRole === "seller" ? "Sign up with Google" : "Continue with Google"} />
 
                 {/* ---- PASSWORD STEP (strong policy, same across all panels) ---- */}
                 {usePasswordAuth && (
@@ -1553,6 +1553,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                   New to Nexora Freelance?{" "}
                   <button type="button" onClick={() => setFreelancePanelMode("register")} className="text-emerald-400 hover:text-emerald-400/80 font-medium">Register as a Freelancer</button>
                 </p>
+                <GoogleAuthButton onClick={handleGoogleLogin} disabled={isLoading} label="Sign in with Google" />
               </CardContent>
               <div className="py-3 px-6 text-xs text-center text-white/20 bg-white/[0.02] border-t border-white/5 rounded-b-lg flex items-center justify-center gap-1.5">
                 <Shield className="w-3 h-3" /> Protected by Nexora Escrow Security
@@ -1589,6 +1590,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                   Don't have a store yet?{" "}
                   <button type="button" onClick={() => setSellerMode("register")} className="text-nx-violet hover:text-nx-violet/80 font-medium">Register your store</button>
                 </p>
+                <GoogleAuthButton onClick={handleGoogleLogin} disabled={isLoading} label="Sign in with Google" />
               </CardContent>
               <div className="py-3 px-6 text-xs text-center text-white/20 bg-white/[0.02] border-t border-white/5 rounded-b-lg flex items-center justify-center gap-1.5">
                 <Shield className="w-3 h-3" /> Protected by Nexora Escrow Security
