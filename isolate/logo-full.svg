@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="Nexora Market">
   <defs>
-    <linearGradient id="nxMarkF" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- userSpaceOnUse is REQUIRED here: the wordmark/N strokes are pure
+         vertical/horizontal <line>s whose objectBoundingBox has zero width
+         or height. Per the SVG spec an objectBoundingBox gradient on a
+         zero-area box paints NOTHING — browsers are lenient but PNG
+         rasterizers (sharp/librsvg, social scrapers) drop the strokes.
+         Anchoring the gradient in user space makes every stroke render. -->
+    <linearGradient id="nxMarkF" gradientUnits="userSpaceOnUse" x1="458" y1="196" x2="742" y2="394">
       <stop offset="0%" stop-color="#3B82F6"/>
       <stop offset="45%" stop-color="#6366F1"/>
       <stop offset="100%" stop-color="#A855F7"/>
     </linearGradient>
-    <linearGradient id="nxMarkText" x1="0%" y1="0%" x2="100%" y2="0%">
+    <linearGradient id="nxMarkText" gradientUnits="userSpaceOnUse" x1="402" y1="528" x2="798" y2="584">
       <stop offset="0%" stop-color="#3B82F6"/>
       <stop offset="55%" stop-color="#7C6CF6"/>
       <stop offset="100%" stop-color="#A855F7"/>
