@@ -130,6 +130,21 @@ export const FREELANCE_CATEGORIES: FreelanceCategory[] = [
     ],
   },
   {
+    name: "AI Tasking & Data Work",
+    slug: "ai-tasking",
+    icon: "bot",
+    description: "AI-assisted tasks, data annotation, transcription & model testing",
+    subcategories: [
+      { name: "AI-Assisted Tasks", slug: "ai-assisted-tasks" },
+      { name: "Data Annotation & Labeling", slug: "data-annotation" },
+      { name: "Transcription", slug: "transcription" },
+      { name: "Search Relevance Evaluation", slug: "search-evaluation" },
+      { name: "Chatbot Testing & Rating", slug: "chatbot-testing" },
+      { name: "AI Content Review", slug: "ai-content-review" },
+      { name: "Data Collection & Surveys", slug: "data-collection" },
+    ],
+  },
+  {
     name: "Virtual Assistance & Admin",
     slug: "virtual-assistance",
     icon: "headset",
@@ -250,6 +265,8 @@ export function getFreelanceCategoryIcon(slug: string): LucideIcon {
  */
 const LEGACY_CATEGORY_ALIASES: Record<string, string> = {
   "ai-accounts-tools": "ai-accounts-tools",
+  // AI Taskers are freelancers with a field — legacy records land here.
+  "ai-tasker": "ai-tasking",
   writing: "writing",
   design: "design",
   development: "development",

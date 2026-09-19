@@ -347,6 +347,9 @@ const CATEGORY_ALIASES: Record<string, string[]> = {
   education: ["education"],
   "business-professional": ["business-professional", "business"],
   "ai-accounts-tools": ["ai-accounts-tools", "ai-tech", "ai-tasker"],
+  // AI Tasking is a FIELD under freelancing (like web dev) — registered AI
+  // taskers surface in this bucket even without a published service.
+  "ai-tasking": ["ai-tasking", "ai-tasker"],
   "digital-products": ["digital-products"],
   "other-services": ["other-services"],
 };
@@ -429,7 +432,9 @@ export const searchFreelancers = query({
         photo: profile?.avatar || account?.image || undefined,
         phone: account?.phone || undefined,
         role: (account?.role as string) || "freelancer",
-        categories: profile?.categories ?? (isTasker ? ["ai-tasker"] : []),
+        // AI Tasker is a FIELD under freelancing — their canonical category is
+        // "ai-tasking" so the directory groups them under that field.
+        categories: profile?.categories ?? (isTasker ? ["ai-tasking"] : []),
         skills: profile?.skills ?? [],
         hourlyRate: profile?.hourlyRate || undefined,
         availability: profile?.availability || "available",
@@ -470,10 +475,10 @@ export const searchFreelancers = query({
       const wanted = CATEGORY_ALIASES[args.category] || [args.category];
       out = out.filter(
         (p) =>
-          p.categories.some((c) => wanted.includes(c)) ||
-          // A registered AI Tasker sits in the AI & Digital Tools group even
-          // without a profile.
-          (wanted.includes("ai-accounts-tools") && p.isAiTasker),
+          p.categories.some((c) => wanted.includes(c) || wanted.includes(CATEGORY_ALIASES[c]?.[0] ?? c)) ||
+          // A registered AI Tasker sits in the AI Tasking field even without
+          // a profile (AI tasking is a freelance field, not a separate role).
+          (wanted.includes("ai-tasking") && p.isAiTasker),
       );
     }
     if (args.minRate !== undefined) out = out.filter((p) => (p.hourlyRate || 0) >= args.minRate!);

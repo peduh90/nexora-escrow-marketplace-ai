@@ -61,6 +61,8 @@ const SellerAddProduct = lazy(() => import("./pages/seller/SellerAddProduct.tsx"
 const SellerEditProduct = lazy(() => import("./pages/seller/SellerEditProduct.tsx"));
 const FreelancerProfile = lazy(() => import("./pages/freelance/FreelancerProfile.tsx"));
 const FreelancerSetup = lazy(() => import("./pages/freelance/FreelancerSetup.tsx"));
+// AI Tasking — a field under freelancing (escrow-protected AI-assisted tasks).
+const AITasker = lazy(() => import("./pages/AITasker.tsx"));
 // Freelance marketplace
 const FreelanceLanding = lazy(() => import("./pages/freelance/FreelanceLanding.tsx"));
 const FreelanceServiceDetail = lazy(() => import("./pages/freelance/FreelanceServiceDetail.tsx"));
@@ -294,7 +296,7 @@ createRoot(document.getElementById("root")!).render(
               {/* legacy deep-link kept for the freelancer panel's Find Work cards */}
               <Route path="/freelance/task/:id" element={<FreelanceJobDetail />} />
               <Route path="/freelance/tools" element={<FreelancerTools />} />
-              <Route path="/freelance/dashboard" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceDashboard /></RoleRouter>} />
+              <Route path="/freelance/dashboard" element={<RoleRouter allowedRoles={["freelancer", "ai_tasker"]}><FreelanceDashboard /></RoleRouter>} />
               {/* Employer routes — the employer panel is entirely separate from
                   the writer/freelancer panel. /employer/jobs is the applicant
                   management screen for the employer's own job posts. */}
@@ -305,7 +307,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/employer/messages" element={<RoleRouter allowedRoles={["employer"]}><FreelanceMessages /></RoleRouter>} />
               <Route path="/employer/notifications" element={<RoleRouter allowedRoles={["employer"]}><FreelanceNotifications /></RoleRouter>} />
               <Route path="/employer/earnings" element={<RoleRouter allowedRoles={["employer"]}><FreelanceEarnings /></RoleRouter>} />
-              <Route path="/freelance/find-work" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceFindWork /></RoleRouter>} />
+              <Route path="/freelance/find-work" element={<RoleRouter allowedRoles={["freelancer", "ai_tasker"]}><FreelanceFindWork /></RoleRouter>} />
               {/* The freelancer directory is PUBLIC — anyone browsing can meet
                   the freelancers and open profiles; only signed-in employers
                   can actually hire (escrow flow inside the profile/services). */}
@@ -313,8 +315,8 @@ createRoot(document.getElementById("root")!).render(
               {/* Writers/freelancers must NOT see the post-task screen; the
                   backend role-gates createTask to employers as well. */}
               <Route path="/freelance/post-task" element={<RoleRouter allowedRoles={["employer"]}><FreelancePostTask /></RoleRouter>} />
-              <Route path="/freelance/projects" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceProjects /></RoleRouter>} />
-              <Route path="/freelance/applications" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceApplications /></RoleRouter>} />
+              <Route path="/freelance/projects" element={<RoleRouter allowedRoles={["freelancer", "ai_tasker"]}><FreelanceProjects /></RoleRouter>} />
+              <Route path="/freelance/applications" element={<RoleRouter allowedRoles={["freelancer", "ai_tasker"]}><FreelanceApplications /></RoleRouter>} />
               {/* Publishing a freelance service — the freelancer's own flow
                   (seller-style wizard, no seller layout, marketplace locked to
                   freelance). Services land in the Freelance Marketplace. */}
@@ -323,11 +325,15 @@ createRoot(document.getElementById("root")!).render(
               {/* Public freelancer profile — NOT a seller store page. */}
               <Route path="/freelancer/:userId" element={<FreelancerProfile />} />
               <Route path="/freelancer/:userId/setup" element={<FreelancerSetup />} />
-              <Route path="/freelance/services" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceServices /></RoleRouter>} />
-              <Route path="/freelance/earnings" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceEarnings /></RoleRouter>} />
-              <Route path="/freelance/settings" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceSettings /></RoleRouter>} />
-              <Route path="/freelance/messages" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceMessages /></RoleRouter>} />
-              <Route path="/freelance/notifications" element={<RoleRouter allowedRoles={["freelancer"]}><FreelanceNotifications /></RoleRouter>} />
+              <Route path="/freelance/services" element={<RoleRouter allowedRoles={["freelancer", "ai_tasker"]}><FreelanceServices /></RoleRouter>} />
+              <Route path="/freelance/earnings" element={<RoleRouter allowedRoles={["freelancer", "ai_tasker"]}><FreelanceEarnings /></RoleRouter>} />
+              <Route path="/freelance/settings" element={<RoleRouter allowedRoles={["freelancer", "ai_tasker"]}><FreelanceSettings /></RoleRouter>} />
+              <Route path="/freelance/messages" element={<RoleRouter allowedRoles={["freelancer", "ai_tasker"]}><FreelanceMessages /></RoleRouter>} />
+              <Route path="/freelance/notifications" element={<RoleRouter allowedRoles={["freelancer", "ai_tasker"]}><FreelanceNotifications /></RoleRouter>} />
+              {/* AI Tasking marketplace — open to everyone (any signed-in role
+                  can post or work tasks; it is a freelance field, not a role). */}
+              <Route path="/ai-tasker" element={<AITasker />} />
+              <Route path="/ai-tasker/tasker" element={<AITasker />} />
               <Route path="/product/:id" element={<ProductDetails />} />
               <Route path="/chat" element={<RequireAuth><Chat /></RequireAuth>} />
               <Route path="/chat/:conversationId" element={<RequireAuth><Chat /></RequireAuth>} />

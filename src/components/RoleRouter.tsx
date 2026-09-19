@@ -247,11 +247,14 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
       admin: "/admin",
       seller: "/seller",
       buyer: "/buyer",
+    // AI Tasker is a FIELD under freelancing (not a separate panel) — route
+    // them into the freelance dashboard like any other freelancer.
       freelancer: "/freelance/dashboard",
+      ai_tasker: "/freelance/dashboard",
       employer: "/employer",
       creator: "/creator",
       service_provider: "/services/dashboard",
-      driver: "/seller",
+      driver: "/transport/dashboard",
     };
     const target = roleRedirects[role as string];
     if (target) {
@@ -284,6 +287,7 @@ export function getDashboardPath(role?: string | null): string {
     case "buyer":
       return "/buyer";
     case "freelancer":
+    case "ai_tasker": // AI tasking is a freelance field — same panel
       return "/freelance/dashboard";
     case "employer":
       return "/employer";
@@ -292,7 +296,7 @@ export function getDashboardPath(role?: string | null): string {
     case "service_provider":
       return "/services/dashboard";
     case "driver":
-      return "/seller";
+      return "/transport/dashboard";
     default:
       return "/auth?returnTo=/";
   }

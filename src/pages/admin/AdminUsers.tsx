@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
@@ -10,93 +10,155 @@ import {
 
 const OWNER_EMAIL = "murimiedwin227@gmail.com";
 
+/**
+ * ─── SINGLE SOURCE OF TRUTH ─────────────────────────────────────────────────
+ * Every statistic on this page is computed from the SAME array of user rows
+ * that the All Users table renders — api.admin.getAllUsers. No separate
+ * counts endpoint, no hardcoded numbers, no phantom fields.
+ *
+ * Definitions (mutually exclusive vs overlapping, kept strictly apart):
+ *   • PRIMARY ROLE  — users.role, exactly one per account. Roles are
+ *     mutually exclusive: Total Users = sum of all role buckets + "No role
+ *     yet" (pending accounts). Nothing is forced to add up beyond that.
+ *   • ATTRIBUTES    — overlapping layers on top of any role: a seller can
+ *     also publish digital/freelance services, a freelancer can do AI
+ *     tasking (a FIELD under freelancing, not a role), service/transport
+ *     provider profiles attach to any account.
+ *   • PROGRAM/STATUS— Creator is a program (referralCreators), Suspended is
+ *     an accountStatus — neither is a user type.
+ * The filter tabs below the cards use the EXACT same predicate functions,
+ * so a card's number always equals the rows shown when clicked.
+ */
+
+type UserRow = any;
+
+/** Primary role resolution — mirrors what the Role column displays. */
+function primaryRole(u: UserRow): string {
+  if (u.role === "admin") return "admin";
+  if (u.role) return u.role;
+  // No role field yet — fall back to profile evidence only. Never assume
+  // "buyer": an account without a role is exactly that, pending/role-less.
+  if (u.businessName || u.pendingRole === "seller") return "seller";
+  if (u.freelanceTitle) return "freelancer";
+  if (u.pendingRole) return u.pendingRole;
+  return "—";
+}
+
+/** Attribute predicates — these OVERLAP by design (a seller can be a
+ *  digital seller too; a freelancer can do AI tasking too). */
+const isDigitalSeller = (u: UserRow) =>
+  primaryRole(u) === "seller" && (u.freelanceListings ?? 0) > 0;
+const doesAiTasking = (u: UserRow) =>
+  (u.freelanceCategories ?? []).includes("ai-tasking") ||
+  primaryRole(u) === "ai_tasker" ||
+  (u.aiTasksPosted ?? 0) > 0 ||
+  (u.aiTasksWorked ?? 0) > 0;
+const isServiceProvider = (u: UserRow) => !!u.serviceType;
+const isTransportProvider = (u: UserRow) => !!u.transportType;
+const isCreatorProgram = (u: UserRow) => !!u.creatorStatus;
+const isSuspended = (u: UserRow) => u.accountStatus === "suspended";
+
+/** Filter tabs — each maps to the SAME predicate its stat card uses. */
+type FilterKey =
+  | "all" | "buyer" | "seller" | "freelancer" | "employer"
+  | "service_provider" | "driver" | "digital_seller" | "ai_tasking"
+  | "creator" | "suspended" | "admin" | "no_role";
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "buyer", label: "Buyers" },
+  { key: "seller", label: "Product Sellers" },
+  { key: "digital_seller", label: "Digital Sellers" },
+  { key: "freelancer", label: "Freelancers" },
+  { key: "employer", label: "Employers" },
+  { key: "service_provider", label: "Service Providers" },
+  { key: "driver", label: "Transport Providers" },
+  { key: "ai_tasking", label: "AI Tasking" },
+  { key: "creator", label: "Creators" },
+  { key: "suspended", label: "Suspended" },
+  { key: "admin", label: "Admins" },
+  { key: "no_role", label: "No role yet" },
+];
+
+function matchesFilter(u: UserRow, f: FilterKey): boolean {
+  const role = primaryRole(u);
+  switch (f) {
+    case "all": return true;
+    case "buyer": return role === "buyer";
+    case "seller": return role === "seller";
+    case "digital_seller": return isDigitalSeller(u);
+    case "freelancer": return role === "freelancer" || role === "ai_tasker";
+    case "employer": return role === "employer";
+    case "service_provider": return isServiceProvider(u);
+    case "driver": return isTransportProvider(u) || role === "driver";
+    case "ai_tasking": return doesAiTasking(u);
+    case "creator": return isCreatorProgram(u);
+    case "suspended": return isSuspended(u);
+    case "admin": return role === "admin";
+    case "no_role": return role === "—";
+  }
+}
+
+const ROLE_COLORS: Record<string, string> = {
+  seller: "bg-nx-violet/10 text-nx-violet",
+  admin: "bg-nx-gold/10 text-nx-gold",
+  freelancer: "bg-emerald-500/10 text-emerald-400",
+  ai_tasker: "bg-indigo-500/10 text-indigo-300",
+  employer: "bg-amber-500/10 text-amber-400",
+  service_provider: "bg-nx-cyan/10 text-nx-cyan",
+  driver: "bg-orange-500/10 text-orange-400",
+  creator: "bg-fuchsia-500/10 text-fuchsia-300",
+  buyer: "bg-white/5 text-white/50",
+};
+
 export default function AdminUsers() {
   const navigate = useNavigate();
   const allUsers = useQuery(api.admin.getAllUsers);
-  const counts = useQuery(api.admin.getUserCounts);
   const setUserSuspended = useMutation(api.admin.setUserSuspended);
   // ?q= deep-link support — the AdminLayout topbar search navigates here.
   const [searchParams, setSearchParams] = useSearchParams();
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [suspending, setSuspending] = useState<{ id: string; name: string } | null>(null);
   const [reason, setReason] = useState("");
 
-  const users = (allUsers ?? []).filter((u: any) => u.email && u.email.includes("@") && u.name !== "Guest User");
+  // Guest/anonymous accounts are already excluded server-side — these rows
+  // ARE the database truth the stats and table both render from.
+  const users: UserRow[] = allUsers ?? [];
 
-  // Determine effective role: prefer role field, fall back to businessName (seller),
-  // a pending seller registration, or buyer. Pending registrations are shown
-  // with their requested role so new sellers are never mistaken for buyers.
-  const effectiveRole = (u: any) => {
-    if (u.role === "admin") return "admin";
-    if (u.role) return u.role;
-    // No role field yet — fall back to profile evidence only. Never assume
-    // "buyer": an account without a role is exactly that, pending/role-less.
-    if (u.businessName || u.pendingRole === "seller") return "seller";
-    if (u.freelanceTitle) return "freelancer";
-    if (u.pendingRole) return u.pendingRole;
-    return "—";
-  };
-  const filtered = users.filter((u: any) => {
-    const role = effectiveRole(u);
-    switch (filter) {
-      // ─── Marketplace groups: every seller appears in its role group;
-      //     the listing counts only enrich the rows, never hide people. ───
-      case "Product Sellers":
-        if (role !== "seller") return false;
-        break;
-      case "Digital Sellers":
-        if (role !== "seller" || (u.freelanceListings ?? 0) === 0) return false;
-        break;
-      case "Freelancers":
-        if (role !== "freelancer") return false;
-        break;
-      case "Employers":
-        if (role !== "employer") return false;
-        break;
-      case "Buyers":
-        if (role !== "buyer") return false;
-        break;
-      case "Service Providers":
-        if (!u.serviceType) return false;
-        break;
-      case "Transport Providers":
-        if (!u.transportType) return false;
-        break;
-      case "AI Taskers":
-        if (!(u.aiTasksPosted > 0) && !(u.aiTasksWorked > 0)) return false;
-        break;
-      case "Creators":
-        if (!u.creatorStatus) return false;
-        break;
-      case "Suspended":
-        if (u.accountStatus !== "suspended") return false;
-        break;
-      case "Admins":
-        if (role !== "admin") return false;
-        break;
+  // ── Statistics: computed once from the same rows the table shows ──
+  const stats = useMemo(() => {
+    const byRole = (r: string) => users.filter((u) => primaryRole(u) === r).length;
+    return {
+      total: users.length,
+      // Primary roles (mutually exclusive — one per account)
+      buyers: byRole("buyer"),
+      productSellers: byRole("seller"),
+      freelancers: byRole("freelancer") + byRole("ai_tasker"), // ai_tasker ⊂ freelance
+      employers: byRole("employer"),
+      serviceProviders: users.filter(isServiceProvider).length,
+      transportProviders: users.filter((u) => isTransportProvider(u) || primaryRole(u) === "driver").length,
+      admins: byRole("admin"),
+      noRole: byRole("—"),
+      // Attributes (overlap roles — NOT added into the role total)
+      digitalSellers: users.filter(isDigitalSeller).length,
+      aiTasking: users.filter(doesAiTasking).length,
+      // Program / status (neither is a user type)
+      creators: users.filter(isCreatorProgram).length,
+      suspended: users.filter(isSuspended).length,
+    };
+  }, [users]);
+
+  const filtered = users.filter((u: UserRow) => {
+    if (!matchesFilter(u, filter)) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const hay = `${(u.name || "").toLowerCase()} ${(u.email || "").toLowerCase()}`;
+      if (!hay.includes(q)) return false;
     }
-    if (search && !(u.name || "").toLowerCase().includes(search.toLowerCase()) && !(u.email || "").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
-
-  const buyerCount = counts?.buyers ?? users.filter((u: any) => effectiveRole(u) === "buyer").length;
-  const sellerCount = counts?.sellers ?? users.filter((u: any) => effectiveRole(u) === "seller").length;
-  const freelancerCount = counts?.freelancers ?? users.filter((u: any) => effectiveRole(u) === "freelancer").length;
-  const employerCount = counts?.employers ?? users.filter((u: any) => effectiveRole(u) === "employer").length;
-  const suspendedCount = users.filter((u: any) => u.accountStatus === "suspended").length;
-  // Service/transport providers (any marketplace role — provider is a layer,
-  // not a separate account type).
-  const providerCount = counts?.serviceProviders ?? users.filter((u: any) => u.serviceType || u.transportType).length;
-  // Marketplace-group counts for the dedicated filter tabs. Product Sellers
-  // counts ALL seller accounts (with or without listings yet) so the number
-  // in the tab always matches the rows beneath it.
-  const productSellerCount = users.filter((u: any) => effectiveRole(u) === "seller").length;
-  const digitalSellerCount = users.filter((u: any) => effectiveRole(u) === "seller" && (u.freelanceListings ?? 0) > 0).length;
-  const transportCount = users.filter((u: any) => !!u.transportType).length;
-  const aiTaskerCount = users.filter((u: any) => u.aiTasksPosted > 0 || u.aiTasksWorked > 0).length;
-  const creatorCount = users.filter((u: any) => !!u.creatorStatus).length;
 
   const handleSuspend = async () => {
     if (!suspending) return;
@@ -125,31 +187,63 @@ export default function AdminUsers() {
     }
   };
 
+  const roleCards: { label: string; value: number; color: string; key: FilterKey }[] = [
+    { label: "Total Users", value: stats.total, color: "#8B5CF6", key: "all" },
+    { label: "Buyers", value: stats.buyers, color: "#06B6D4", key: "buyer" },
+    { label: "Product Sellers", value: stats.productSellers, color: "#10B981", key: "seller" },
+    { label: "Freelancers", value: stats.freelancers, color: "#34D399", key: "freelancer" },
+    { label: "Employers", value: stats.employers, color: "#F59E0B", key: "employer" },
+    { label: "Service Providers", value: stats.serviceProviders, color: "#22D3EE", key: "service_provider" },
+    { label: "Transport Providers", value: stats.transportProviders, color: "#38BDF8", key: "driver" },
+    { label: "Admins", value: stats.admins, color: "#FBBF24", key: "admin" },
+  ];
+  const attrCards: { label: string; value: number; color: string; key: FilterKey }[] = [
+    { label: "Digital Sellers", value: stats.digitalSellers, color: "#A78BFA", key: "digital_seller" },
+    { label: "AI Tasking", value: stats.aiTasking, color: "#818CF8", key: "ai_tasking" },
+    { label: "Creators (program)", value: stats.creators, color: "#E879F9", key: "creator" },
+    { label: "Suspended (status)", value: stats.suspended, color: "#EF4444", key: "suspended" },
+  ];
+
   return (
     <AdminLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">User Management</h1>
-        <p className="text-sm text-white/40 mt-1">Manage all platform users — {counts?.total ?? users.length} total</p>
+        <p className="text-sm text-white/40 mt-1">
+          Manage all platform users — {stats.total} total · counted live from the users database
+        </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
-        {[
-          { label: "Total Users", value: (counts?.total ?? users.length).toString(), color: "#8B5CF6" },
-          { label: "Buyers", value: buyerCount.toString(), color: "#06B6D4" },
-          { label: "Product Sellers", value: sellerCount.toString(), color: "#10B981" },
-          { label: "Freelancers", value: freelancerCount.toString(), color: "#34D399" },
-          { label: "Employers", value: employerCount.toString(), color: "#F59E0B" },
-          { label: "Service Providers", value: providerCount.toString(), color: "#22D3EE" },
-          { label: "Digital Sellers", value: digitalSellerCount.toString(), color: "#A78BFA" },
-          { label: "Transport", value: transportCount.toString(), color: "#38BDF8" },
-          { label: "AI Taskers", value: aiTaskerCount.toString(), color: "#818CF8" },
-          { label: "Creators", value: creatorCount.toString(), color: "#E879F9" },
-          { label: "Suspended", value: suspendedCount.toString(), color: "#EF4444" },
-        ].map(s => (
-          <div key={s.label} className="p-4 rounded-xl border border-white/5 bg-[#0A0A12]">
-            <p className="text-[10px] text-white/30 uppercase">{s.label}</p>
-            <p className="text-xl font-bold text-white mt-1">{s.value}</p>
-          </div>
+      {/* ── Primary roles: mutually exclusive, one per account ── */}
+      <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Primary roles — one per account</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-5">
+        {roleCards.map((s) => (
+          <button
+            key={s.label}
+            onClick={() => setFilter(s.key)}
+            title={`Show ${s.label} in the table below`}
+            className={`p-4 rounded-xl border text-left transition-all ${filter === s.key ? "border-nx-violet/40 bg-nx-violet/[0.06]" : "border-white/5 bg-[#0A0A12] hover:border-white/15"}`}
+          >
+            <p className="text-[10px] text-white/30 uppercase leading-tight">{s.label}</p>
+            <p className="text-xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Attributes & statuses: overlapping layers, not user types ── */}
+      <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
+        Attributes &amp; status — overlap with roles (not added into totals)
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {attrCards.map((s) => (
+          <button
+            key={s.label}
+            onClick={() => setFilter(s.key)}
+            title={`Show ${s.label} in the table below`}
+            className={`p-4 rounded-xl border text-left transition-all ${filter === s.key ? "border-nx-violet/40 bg-nx-violet/[0.06]" : "border-white/5 bg-[#0A0A12] hover:border-white/15"}`}
+          >
+            <p className="text-[10px] text-white/30 uppercase leading-tight">{s.label}</p>
+            <p className="text-xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
+          </button>
         ))}
       </div>
 
@@ -160,8 +254,8 @@ export default function AdminUsers() {
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0A12] border border-white/5 text-sm text-white placeholder-white/20 focus:border-nx-violet/30 focus:outline-none" />
         </div>
         <div className="flex gap-1 flex-wrap">
-          {["All", "Buyers", "Product Sellers", "Digital Sellers", "Freelancers", "Employers", "Service Providers", "Transport Providers", "AI Taskers", "Creators", "Suspended", "Admins"].map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${filter === f ? "bg-nx-violet/10 text-nx-violet" : "text-white/30 hover:text-white/50 bg-[#0A0A12] border border-white/5"}`}>{f}</button>
+          {FILTERS.map((f) => (
+            <button key={f.key} onClick={() => setFilter(f.key)} className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${filter === f.key ? "bg-nx-violet/10 text-nx-violet" : "text-white/30 hover:text-white/50 bg-[#0A0A12] border border-white/5"}`}>{f.label}</button>
           ))}
         </div>
       </div>
@@ -191,7 +285,7 @@ export default function AdminUsers() {
               <tbody className="divide-y divide-white/[0.03]">
                 {filtered.map((user: any) => {
                   const suspended = user.accountStatus === "suspended";
-                  const isOwnerAccount = user.email === OWNER_EMAIL || effectiveRole(user) === "admin";
+                  const isOwnerAccount = user.email === OWNER_EMAIL || primaryRole(user) === "admin";
                   return (
                   <tr key={user._id} className={`hover:bg-white/[0.01] transition-colors ${suspended ? "opacity-60" : ""}`}>
                     <td className="px-4 py-3.5">
@@ -212,7 +306,7 @@ export default function AdminUsers() {
                     <td className="px-4 py-3.5 hidden md:table-cell">
                       {(() => {
                         const status = (user as any).accountStatus || ((user as any).role ? "active" : "pending");
-                        const requested = (user as any).pendingRole || effectiveRole(user);
+                        const requested = (user as any).pendingRole || primaryRole(user);
                         if (suspended) {
                           return (
                             <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-red-400/10 text-red-400" title={user.suspensionReason || "Suspended"}>
@@ -227,8 +321,8 @@ export default function AdminUsers() {
                             </span>
                           );
                         }
-                        const r = effectiveRole(user);
-                        return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${r === "seller" ? "bg-nx-violet/10 text-nx-violet" : r === "admin" ? "bg-nx-gold/10 text-nx-gold" : r === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : r === "employer" ? "bg-amber-500/10 text-amber-400" : r === "service_provider" ? "bg-nx-cyan/10 text-nx-cyan" : r === "driver" ? "bg-orange-500/10 text-orange-400" : r === "creator" ? "bg-fuchsia-500/10 text-fuchsia-300" : r === "buyer" ? "bg-white/5 text-white/50" : "bg-white/5 text-white/30"}`}>{r === "—" ? "no role yet" : r}</span>);
+                        const r = primaryRole(user);
+                        return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${ROLE_COLORS[r] ?? "bg-white/5 text-white/30"}`}>{r === "—" ? "no role yet" : r}</span>);
                       })()}
                     </td>
                     <td className="px-4 py-3.5 hidden lg:table-cell">
@@ -251,10 +345,18 @@ export default function AdminUsers() {
                       {user.freelanceTitle ? (
                         <button
                           onClick={() => navigate("/admin/freelancers")}
-                          title={`Freelance profile — ${user.freelanceTitle} · ${(user.freelanceSkills || []).slice(0, 3).join(", ")}`}
+                          title={`Freelance profile — ${user.freelanceTitle} · ${(user.freelanceSkills || []).slice(0, 3).join(", ")}${(user.freelanceCategories ?? []).length ? ` · fields: ${user.freelanceCategories.join(", ")}` : ""}`}
                           className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-medium bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20 transition-colors"
                         >
                           {user.freelanceTitle}{user.freelanceVerified ? " ✓" : ""}
+                        </button>
+                      ) : (user.freelanceCategories ?? []).includes("ai-tasking") ? (
+                        <button
+                          onClick={() => setFilter("ai_tasking")}
+                          title="Registered AI tasker — AI tasking is a field under freelancing"
+                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-medium bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20 transition-colors"
+                        >
+                          AI tasking
                         </button>
                       ) : (
                         <span className="text-[10px] text-white/15">—</span>
@@ -263,7 +365,7 @@ export default function AdminUsers() {
                     <td className="px-4 py-3.5 hidden xl:table-cell">
                       {user.aiTasksPosted > 0 || user.aiTasksWorked > 0 ? (
                         <button
-                          onClick={() => setFilter("AI Taskers")}
+                          onClick={() => setFilter("ai_tasking")}
                           title={`${user.aiTasksPosted || 0} posted · ${user.aiTasksWorked || 0} worked`}
                           className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-medium bg-indigo-400/10 text-indigo-300 hover:bg-indigo-400/20 transition-colors"
                         >
@@ -321,6 +423,12 @@ export default function AdminUsers() {
               </tbody>
             </table>
           </div>
+          {filtered.length === 0 && (
+            <div className="py-10 text-center">
+              <p className="text-sm text-white/30">No users match this filter</p>
+              <p className="text-[11px] text-white/15 mt-1">Try another card or clear the search</p>
+            </div>
+          )}
         </div>
       )}
 

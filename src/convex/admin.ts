@@ -310,6 +310,9 @@ export const getAllUsers = query({
         freelanceSkills: (flProfile as any)?.skills,
         freelanceStatus: (flProfile as any)?.status,
         freelanceVerified: !!(flProfile as any)?.isVerified,
+        // Fields the freelancer picked (e.g. "ai-tasking") — AI tasking is a
+        // freelance FIELD, not a separate role.
+        freelanceCategories: (flProfile as any)?.categories ?? [],
         // AI Tasker activity (freelance layer — not a separate role).
         aiTasksPosted: aiTasks.filter((t: any) => (t as any).posterId === u._id).length,
         aiTasksWorked: aiTasks.filter((t: any) => (t as any).taskerId === u._id).length,
