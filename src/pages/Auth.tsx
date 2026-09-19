@@ -48,6 +48,10 @@ interface AuthProps {
   creatorFirst?: boolean;
 }
 
+// Must match ADMIN_EMAIL in src/convex/roles.ts and OWNER_EMAIL in
+// src/hooks/use-auth.ts — only this email may pass the admin login gate.
+const OWNER_EMAIL = "murimiedwin227@gmail.com";
+
 /**
  * Map any auth-stack error to a short, human message. Convex auth surfaces
  * expired codes / rate limits as opaque "[CONVEX ...] Server Error" strings,
@@ -777,8 +781,9 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
 
         // Navigate using the role returned from the backend, which is read from
         // the persistent DB record. One role → one dashboard. A role-less
-        // account is NOT an error: it goes to the role picker so the auth flow
-        // can finish creating the profile.
+        // account is NOT an error: it goes through any protected route, where
+        // the onboarding gate finishes its profile — including the account-type
+        // picker for accounts that never completed registration.
         const r = result.role as string | null | undefined;
         let target: string | null = null;
         if (r === "admin") target = "/admin";
@@ -790,8 +795,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         else if (r === "creator") target = "/creator";
         if (!target) {
           // No role yet — the account exists but the profile was never
-          // completed. Route to the role picker instead of a dead end.
-          window.location.href = "/auth";
+          // completed. /buyer is RoleRouter-gated: the onboarding screen
+          // picks them up there (name/phone/account-type). The auth page
+          // itself can never activate a pending account.
+          window.location.href = "/buyer";
           return;
         }
         window.location.href = target;
@@ -812,6 +819,16 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     if (!adminEmail) return;
     setIsLoading(true);
     setAdminError(null);
+    // The admin gate is for the platform owner ONLY. Reject any other email
+    // before an OTP is even sent — previously any email could pass both steps
+    // here, and the backend promotion call then created role-less stub
+    // accounts (the source of the "no role, pending forever" flood in the
+    // admin panel). Strangers get a clear message instead of a ghost account.
+    if (adminEmail.trim().toLowerCase() !== OWNER_EMAIL) {
+      setAdminError("This email is not registered as the platform administrator.");
+      setIsLoading(false);
+      return;
+    }
     try {
       const formData = new FormData();
       formData.set("email", adminEmail);

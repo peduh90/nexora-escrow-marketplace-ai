@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, ShieldAlert, CheckCircle2, Circle, ArrowRight } from "lucide-react";
+import { Loader2, ShieldAlert, CheckCircle2, Circle, ArrowRight, ShoppingBag, Store, PenLine, Briefcase, Wrench, Truck, Sparkles } from "lucide-react";
 import { Navigate } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -26,6 +26,7 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
   const { isLoading, isAuthenticated, user } = useAuth();
   const onboarding = useQuery(api.users.getOnboardingStatus);
   const completeVerification = useMutation(api.users.completeVerification);
+  const setPendingRole = useMutation(api.users.setPendingRole);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Inline inputs so the user can actually complete pending steps here.
@@ -33,6 +34,9 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
   // them in, so "Finish verification" stayed disabled forever.)
   const [nameInput, setNameInput] = useState<string | null>(null);
   const [phoneInput, setPhoneInput] = useState<string | null>(null);
+  // Local mirror of the requested account type while the picker is open —
+  // optimistically shows the selection before the server round-trip lands.
+  const [rolePicked, setRolePicked] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -116,7 +120,38 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
     const emailMet = reqMet("email", false);
     const nameMet = reqMet("name", effName.length > 1);
     const phoneMet = reqMet("phone", effPhone.replace(/[^0-9]/g, "").length >= 9);
-    const allMet = emailMet && nameMet && phoneMet;
+    // The requested role counts as met when the server has it recorded —
+    // either persisted as pendingRole/role, or just picked in the picker
+    // below (the pick fires setPendingRole immediately).
+    const effRole = onboarding.requestedRole ?? rolePicked;
+    const roleMet = reqMet("role", !!effRole);
+    const allMet = emailMet && nameMet && phoneMet && roleMet;
+
+    // ── Account-type picker ──
+    // Registration on Nexora REQUIRES choosing what you do — the role is the
+    // account. An account that never picked one stays on this step until it
+    // does (one email = one role, locked once verified — mirroring the auth
+    // "Choose Your Path" cards, so the choice is identical wherever the
+    // account was created).
+    const ROLE_CHOICES: Array<{ role: string; label: string; icon: any; tint: string; desc: string }> = [
+      { role: "buyer", label: "Buyer", icon: ShoppingBag, tint: "text-nx-cyan bg-nx-cyan/10", desc: "Shop with escrow protection" },
+      { role: "seller", label: "Product Seller", icon: Store, tint: "text-nx-violet bg-nx-violet/10", desc: "List products, run a store" },
+      { role: "freelancer", label: "Freelancer", icon: PenLine, tint: "text-emerald-400 bg-emerald-500/10", desc: "Digital work — incl. AI tasking" },
+      { role: "employer", label: "Employer", icon: Briefcase, tint: "text-amber-400 bg-amber-500/10", desc: "Post jobs & hire talent" },
+      { role: "service_provider", label: "Service Provider", icon: Wrench, tint: "text-nx-cyan bg-nx-cyan/10", desc: "Local services — salon, plumber, fundi" },
+      { role: "driver", label: "Transport Provider", icon: Truck, tint: "text-orange-400 bg-orange-500/10", desc: "Rides, delivery & moving" },
+    ];
+
+    const handlePickRole = async (role: string) => {
+      setRolePicked(role);
+      setError(null);
+      try {
+        await setPendingRole({ role });
+      } catch (err: any) {
+        setError(err?.message || "Could not save your account type.");
+        setRolePicked(null);
+      }
+    };
 
     const handleComplete = async () => {
       setSubmitting(true);
@@ -129,6 +164,12 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
         if (result?.role) {
           // Reload so the auth hook picks up the newly assigned role.
           window.location.reload();
+        } else if (effRole) {
+          setError("Choose your account type above to finish registration.");
+          setSubmitting(false);
+        } else {
+          setError("Choose your account type above to finish registration.");
+          setSubmitting(false);
         }
       } catch (err: any) {
         setError(err?.message || "Could not complete verification.");
@@ -202,6 +243,37 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
                       autoComplete="tel"
                       className="mt-2.5 w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/40"
                     />
+                  )}
+                  {/* Account-type picker: this is the ONLY remaining way for a
+                      pending account to choose its role — the auth form's
+                      hidden field does not reach accounts created before a
+                      role was picked (e.g. via the admin-gate bug). */}
+                  {r.key === "role" && !rowMet && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {ROLE_CHOICES.map((c) => {
+                        const active = effRole === c.role;
+                        return (
+                          <button
+                            key={c.role}
+                            type="button"
+                            onClick={() => handlePickRole(c.role)}
+                            className={`text-left p-2.5 rounded-lg border transition-all ${
+                              active
+                                ? "border-nx-violet/50 bg-nx-violet/[0.08]"
+                                : "border-white/5 bg-white/[0.02] hover:border-white/20"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${c.tint}`}>
+                                <c.icon className="w-3.5 h-3.5" />
+                              </span>
+                              <span className="text-xs font-medium text-white">{c.label}</span>
+                            </div>
+                            <p className="text-[10px] text-white/30 mt-1 leading-snug">{c.desc}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               );

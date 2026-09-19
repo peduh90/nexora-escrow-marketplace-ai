@@ -44,6 +44,14 @@ function primaryRole(u: UserRow): string {
   return "—";
 }
 
+/**
+ * An account is "stuck" when it never completed registration: no role AND
+ * no requested role. These are real people who stopped (or were stubbed by
+ * the old admin-gate bug) mid-signup — they are counted honestly, never
+ * forced into a role bucket.
+ */
+const isStuckRegistration = (u: UserRow) => !u.role && !u.pendingRole;
+
 /** Attribute predicates — these OVERLAP by design (a seller can be a
  *  digital seller too; a freelancer can do AI tasking too). */
 const isDigitalSeller = (u: UserRow) =>
@@ -62,7 +70,7 @@ const isSuspended = (u: UserRow) => u.accountStatus === "suspended";
 type FilterKey =
   | "all" | "buyer" | "seller" | "freelancer" | "employer"
   | "service_provider" | "driver" | "digital_seller" | "ai_tasking"
-  | "creator" | "suspended" | "admin" | "no_role";
+  | "creator" | "suspended" | "admin" | "no_role" | "stuck";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "All" },
@@ -78,6 +86,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "suspended", label: "Suspended" },
   { key: "admin", label: "Admins" },
   { key: "no_role", label: "No role yet" },
+  { key: "stuck", label: "Not completed" },
 ];
 
 function matchesFilter(u: UserRow, f: FilterKey): boolean {
@@ -96,6 +105,7 @@ function matchesFilter(u: UserRow, f: FilterKey): boolean {
     case "suspended": return isSuspended(u);
     case "admin": return role === "admin";
     case "no_role": return role === "—";
+    case "stuck": return isStuckRegistration(u);
   }
 }
 
@@ -141,6 +151,7 @@ export default function AdminUsers() {
       transportProviders: users.filter((u) => isTransportProvider(u) || primaryRole(u) === "driver").length,
       admins: byRole("admin"),
       noRole: byRole("—"),
+      stuck: users.filter(isStuckRegistration).length,
       // Attributes (overlap roles — NOT added into the role total)
       digitalSellers: users.filter(isDigitalSeller).length,
       aiTasking: users.filter(doesAiTasking).length,
@@ -196,6 +207,7 @@ export default function AdminUsers() {
     { label: "Service Providers", value: stats.serviceProviders, color: "#22D3EE", key: "service_provider" },
     { label: "Transport Providers", value: stats.transportProviders, color: "#38BDF8", key: "driver" },
     { label: "Admins", value: stats.admins, color: "#FBBF24", key: "admin" },
+    { label: "Not completed", value: stats.stuck, color: "#94A3B8", key: "stuck" },
   ];
   const attrCards: { label: string; value: number; color: string; key: FilterKey }[] = [
     { label: "Digital Sellers", value: stats.digitalSellers, color: "#A78BFA", key: "digital_seller" },
@@ -306,7 +318,7 @@ export default function AdminUsers() {
                     <td className="px-4 py-3.5 hidden md:table-cell">
                       {(() => {
                         const status = (user as any).accountStatus || ((user as any).role ? "active" : "pending");
-                        const requested = (user as any).pendingRole || primaryRole(user);
+                        const requested = (user as any).pendingRole;
                         if (suspended) {
                           return (
                             <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-red-400/10 text-red-400" title={user.suspensionReason || "Suspended"}>
@@ -315,14 +327,24 @@ export default function AdminUsers() {
                           );
                         }
                         if (status === "pending") {
+                          // Honest labeling: distinguish an account that ASKED
+                          // for a role but never finished verification from one
+                          // that never even picked a role (legacy stub rows).
+                          if (requested) {
+                            return (
+                              <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-amber-400/10 text-amber-400" title={`Requested ${requested} — registration not finished (name/phone/verification incomplete)`}>
+                                ⏳ wants {requested} · not verified
+                              </span>
+                            );
+                          }
                           return (
-                            <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-amber-400/10 text-amber-400" title={`Awaiting verification — requested role: ${requested}`}>
-                              ⏳ {requested} (pending)
+                            <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-white/5 text-white/40" title="This account never completed registration — no role was ever chosen. The owner can sign in and pick an account type on the onboarding screen.">
+                              ✳ registration not completed
                             </span>
                           );
                         }
                         const r = primaryRole(user);
-                        return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${ROLE_COLORS[r] ?? "bg-white/5 text-white/30"}`}>{r === "—" ? "no role yet" : r}</span>);
+                        return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${ROLE_COLORS[r] ?? "bg-white/5 text-white/30"}`}>{r === "—" ? "no role" : r}</span>);
                       })()}
                     </td>
                     <td className="px-4 py-3.5 hidden lg:table-cell">

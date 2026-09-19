@@ -724,7 +724,13 @@ export const ensureUserProfile = mutation({
         // Still pending — record the requested role and stay unverified.
         // Pending users CAN change their requested role; active users cannot
         // (the role is locked once assigned).
-        if ((targetRole ?? undefined) !== u.pendingRole) {
+        // CRITICAL: only touch pendingRole when THIS call actually carried a
+        // role request. The use-auth self-heal fires ensureUserProfile({})
+        // with no args on every page load for role-less accounts — that sync
+        // must never wipe a pendingRole the user already picked (it used to,
+        // erasing "seller" and leaving the account with neither a role nor a
+        // requested one, un-recoverable from the onboarding screen).
+        if (typeof args.role === "string" && args.role && (targetRole ?? undefined) !== u.pendingRole) {
           await ctx.db.patch(u._id, { pendingRole: targetRole ?? undefined });
         }
       } else if (!u.role && targetRole) {
@@ -909,7 +915,16 @@ export const completeVerification = mutation({
     }
 
     // Admin role is never self-assigned here; the admin email path handles it.
-    const finalRole = requestedRole === "admin" ? "admin" : requestedRole;
+    // allowlist: only platform roles can ever be completed here — admin is
+    // assigned by the owner-email path, never requested by a client.
+    const SELF_SERVICE_ROLES = ["buyer", "seller", "freelancer", "employer", "creator", "service_provider", "driver"] as const;
+    const finalRole =
+      typeof requestedRole === "string" && (SELF_SERVICE_ROLES as readonly string[]).includes(requestedRole)
+        ? (requestedRole as (typeof SELF_SERVICE_ROLES)[number])
+        : null;
+    if (!finalRole) {
+      throw new ConvexError("Choose a valid account type to complete registration.");
+    }
 
     await ctx.db.patch(u._id, {
       role: finalRole,
@@ -1234,63 +1249,49 @@ export const checkAndPromoteAdmin = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError("Not authenticated");
 
+    // ── ADMIN-ONLY PROMOTION ──────────────────────────────────────────
+    // This mutation is called exclusively from the admin login OTP step.
+    // It must NEVER create or modify records for non-admin emails: the old
+    // version inserted a stub user (name = email prefix, no role) for ANY
+    // email that completed an OTP at the admin gate, which silently flooded
+    // the database with permanent "no role, pending" accounts. Everyone who
+    // is not the platform owner is left completely untouched here.
+    if (identity.email !== ADMIN_EMAIL) {
+      return { promoted: false, message: "Not an admin email" };
+    }
+
     let user = await getSessionUser(ctx);
 
-    // If user not found in DB (e.g. just created via auth), create the user record
+    // Owner account missing entirely (fresh deployment): create it directly
+    // as admin + active. Only ever for ADMIN_EMAIL.
     if (!user) {
-      const name = identity.name || identity.email?.split("@")[0] || "User";
-      const phoneFromForm = typeof args.phone === "string" ? args.phone : undefined;
-
-      const targetRoleForInsert = resolveRoleForAdminFlow(identity.email, typeof args.role === "string" ? args.role : undefined, null);
+      const name = identity.name || "Nexora Admin";
       user = await ctx.db.insert("users", {
         name,
         email: identity.email,
-        role: targetRoleForInsert ?? undefined,
-        phone: phoneFromForm,
+        role: "admin" as any,
+        accountStatus: "active" as any,
         kycStatus: "not_started",
         lastLoginAt: Date.now(),
         lastActivityAt: Date.now(),
         joinedAt: Date.now(),
       }) as any;
-    } else {
-      // User already exists in DB — ensure role is set correctly
-      const u = user as any;
-      const phoneFromForm = typeof args.phone === "string" ? args.phone : undefined;
-
-      // Update phone if provided
-      if (phoneFromForm && u.phone !== phoneFromForm) {
-        await ctx.db.patch(u._id, { phone: phoneFromForm });
-      }
-
-      // ALWAYS assign the correct role — this is the critical fix.
-      // Previously this only ran when !u.role || u.role === "buyer", missing users
-      // whose role was already set to something else or undefined from legacy signups.
-      const targetRole = resolveRoleForAdminFlow(identity.email, typeof args.role === "string" ? args.role : undefined, user as any);
-      if (targetRole && u.role !== targetRole) {
-        await ctx.db.patch(u._id, { role: targetRole });
-        // Refresh user record after patch (type assertion needed since db.get is generic)
-        user = (await ctx.db.get(u._id)) as typeof user;
-      }
-
-      // Update activity timestamp on every login, even when the role does not change.
-      await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
+      return { promoted: true, message: "Admin account ready" };
     }
 
-    if (!user) return { promoted: false, message: "User not found" };
-
-    // Auto-promote if email matches admin email
-    if (identity.email === ADMIN_EMAIL) {
-      const fresh = await ctx.db.get((user as any)._id);
-      const finalUser = fresh as any;
-      if (finalUser && finalUser.role !== "admin") {
-        await ctx.db.patch(finalUser._id, { role: "admin" });
-      }
-      await ctx.db.patch(finalUser?._id ?? (user as any)._id, { lastActivityAt: Date.now() });
-      return { promoted: true, message: "You have been promoted to admin!" };
+    // Existing owner record: force admin + active, clear any stale gate.
+    const u = user as any;
+    const ownerPatch: Record<string, any> = {};
+    if (u.role !== "admin") ownerPatch.role = "admin" as const;
+    if (u.accountStatus !== "active") {
+      ownerPatch.accountStatus = "active" as const;
+      ownerPatch.pendingRole = undefined;
     }
-
-    await ctx.db.patch((user as any)._id, { lastActivityAt: Date.now() });
-    return { promoted: false, message: "No auto-promotion needed" };
+    if (Object.keys(ownerPatch).length > 0) {
+      await ctx.db.patch(u._id, ownerPatch);
+    }
+    await ctx.db.patch(u._id, { lastActivityAt: Date.now() });
+    return { promoted: true, message: "You have been promoted to admin!" };
   },
 });
 
