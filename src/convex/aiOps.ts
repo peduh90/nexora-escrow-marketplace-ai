@@ -1,6 +1,43 @@
 import { v, ConvexError } from "convex/values";
 import { query, mutation, action } from "./_generated/server";
-import { GROQ_API_URL, GROQ_MODEL, llmComplete } from "./ai";
+
+// Groq is the primary LLM provider (free tier, LPU inference). Kept local to
+// this module so the AI ops engine never depends on cross-file exports.
+const GROQ_MODEL = "openai/gpt-oss-120b";
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+/** OpenAI-compatible completion helper. Groq primary, OpenAI fallback.
+ *  Returns raw content, or null when no provider is configured/available —
+ *  callers keep their deterministic fallbacks. */
+async function llmComplete(
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+  opts: { maxTokens: number; temperature: number },
+): Promise<string | null> {
+  const providers: Array<{ url: string; key?: string; model: string }> = [
+    { url: GROQ_API_URL, key: process.env.GROQ_API_KEY, model: GROQ_MODEL },
+    { url: "https://api.openai.com/v1/chat/completions", key: process.env.OPENAI_API_KEY, model: "gpt-4o-mini" },
+  ];
+  for (const p of providers) {
+    if (!p.key) continue;
+    try {
+      const res = await fetch(p.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
+        body: JSON.stringify({
+          model: p.model,
+          messages,
+          max_tokens: opts.maxTokens,
+          temperature: opts.temperature,
+        }),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (content) return content;
+    } catch { /* next provider */ }
+  }
+  return null;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // NEXORA AI OPERATIONS ENGINE
