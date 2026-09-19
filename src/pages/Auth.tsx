@@ -53,6 +53,84 @@ interface AuthProps {
 const OWNER_EMAIL = "murimiedwin227@gmail.com";
 
 /**
+ * ─── GOOGLE OAUTH INTENT BRIDGE ──────────────────────────────────────────
+ *
+ * Google's OAuth redirect does a FULL PAGE reload — every React state
+ * (selected role, typed name) is wiped by the time the user lands back on
+ * /auth. To preserve the account setup across the redirect, the form state
+ * is parked in sessionStorage just before leaving for Google and consumed
+ * by the profile-sync effect on return.
+ *
+ * This is what keeps "Continue with Google" equivalent to the email flow:
+ * the chosen role is synced to the server on return (pendingRole until the
+ * verification gate completes it — role lock, KYC and phone rules all apply
+ * exactly as before), and the remembered referral code binds through the
+ * same server-verified attributeReferral call.
+ *
+ * TTL of 30 minutes + consumed-on-read so stale intents can't leak into a
+ * later, unrelated sign-in.
+ */
+const GOOGLE_INTENT_KEY = "nx_google_intent";
+const GOOGLE_INTENT_TTL = 30 * 60 * 1000;
+
+function parkGoogleIntent(intent: { role?: string | null; name?: string | null; refCode?: string | null }) {
+  try {
+    sessionStorage.setItem(
+      GOOGLE_INTENT_KEY,
+      JSON.stringify({ ...intent, at: Date.now() }),
+    );
+  } catch {
+    /* non-fatal */
+  }
+}
+
+function consumeGoogleIntent(): { role?: string; name?: string; refCode?: string } | null {
+  try {
+    const raw = sessionStorage.getItem(GOOGLE_INTENT_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(GOOGLE_INTENT_KEY);
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!parsed.at || Date.now() - parsed.at > GOOGLE_INTENT_TTL) return null;
+    return {
+      role: typeof parsed.role === "string" && parsed.role ? parsed.role : undefined,
+      name: typeof parsed.name === "string" && parsed.name ? parsed.name : undefined,
+      refCode: typeof parsed.refCode === "string" && parsed.refCode ? parsed.refCode : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * "Continue with Google" button + divider. Authentication ONLY — the role
+ * chosen on the cards above still decides the account type (bridged across
+ * the OAuth redirect), and every verification gate (phone, KYC, escrow)
+ * applies exactly as it does for email sign-up.
+ */
+function GoogleAuthButton({ onClick, disabled, label = "Continue with Google" }: { onClick: () => void; disabled?: boolean; label?: string }) {
+  return (
+    <>
+      <div className="relative my-1"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/5" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-nx-surface px-2 text-white/20 tracking-wider">or</span></div></div>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className="w-full h-11 flex items-center justify-center gap-3 rounded-lg bg-white text-[#1f1f1f] text-sm font-medium hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+        </svg>
+        {disabled ? "Connecting…" : label}
+      </button>
+    </>
+  );
+}
+
+/**
  * Map any auth-stack error to a short, human message. Convex auth surfaces
  * expired codes / rate limits as opaque "[CONVEX ...] Server Error" strings,
  * and provider failures as ConvexError with structured `data` — users should
@@ -256,6 +334,9 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
 
   // Guards the auto profile-sync so it runs at most once per sign-in.
   const profileSyncRef = useRef(false);
+  // Google OAuth return: the parked registration intent (role/name/refCode),
+  // read ONCE on mount — the redirect lands here with sessionStorage intact.
+  const googleIntentRef = useRef<{ role?: string; name?: string; refCode?: string } | null>(consumeGoogleIntent());
 
   // A returnTo pointing at the local services/transport provider registration
   // must survive sign-up — landing in the buyer dashboard instead would break
@@ -283,6 +364,16 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       return;
     }
 
+    // ── Google OAuth return: consume the parked intent ──
+    // The OAuth redirect wiped React state; the intent bridges the chosen
+    // role + name across it. The referral code inside the intent (and the
+    // localStorage-remembered one) binds through the SAME server-verified
+    // attributeReferral call the email flow uses — attribution is never lost
+    // during Google registration.
+    const googleIntent = googleIntentRef.current;
+    const googleRole = googleIntent?.role as (typeof selectedRole) | undefined;
+    const googleName = googleIntent?.name || "";
+
     // Session exists but the Nexora profile is missing or has no role yet (the
     // OTP profile sync can race the auth token attach or fail on a backend
     // error, leaving the user stuck on /auth or a role-missing spinner with a
@@ -290,13 +381,15 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     // signup data is present — never fabricate a role after a refresh wiped the
     // form.
     const needsProfileRepair = !user || (!!user && !user.role);
-    if (needsProfileRepair && !profileSyncRef.current && (selectedRole || fullName || password)) {
+    if (needsProfileRepair && !profileSyncRef.current && (selectedRole || fullName || password || googleIntent)) {
       profileSyncRef.current = true;
+      const syncRole = selectedRole || googleRole || undefined;
+      const syncName = fullName || googleName || undefined;
       void ensureUserProfile({
-        name: fullName || undefined,
+        name: syncName,
         phone: phoneNumber || undefined,
-        role: selectedRole || undefined,
-        businessName: selectedRole === "seller" ? fullName || undefined : undefined,
+        role: syncRole,
+        businessName: syncRole === "seller" ? syncName || undefined : undefined,
         password: password.trim() || undefined,
       })
         .then(async () => {
@@ -372,7 +465,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     if (role && typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")) {
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, user, navigate, redirect, fullName, phoneNumber, selectedRole, password, ensureUserProfile, activeRefCode, attributeReferral, providerIntent, providerReturn]);
+  }, [authLoading, isAuthenticated, user, navigate, redirect, fullName, phoneNumber, selectedRole, password, ensureUserProfile, activeRefCode, attributeReferral, providerIntent, providerReturn]); // googleIntentRef intentionally excluded: consumed once via profileSyncRef guard
 
   // Guarded check: reject only when the password actually contains the email
   // (full address or local part) or a meaningful name. An empty field must
@@ -657,10 +750,23 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError(null);
+    // Park the account setup across the OAuth full-page redirect so the
+    // profile-sync on return recreates exactly what the email flow does:
+    // chosen role (buyer/seller/freelancer/…), typed name, and the referral
+    // code (if any) for server-verified attribution after the account exists.
+    parkGoogleIntent({
+      role: selectedRole,
+      name: fullName || null,
+      refCode: activeRefCode || getRememberedReferralCode() || null,
+    });
     try {
       await signIn("google");
-      // Navigation handled by useEffect after auth state updates
+      // Full-page redirect to Google happens inside signIn; the effect on
+      // return completes profile sync + referral attribution.
     } catch (error: any) {
+      // The user cancelled the Google chooser or the popup closed — clear the
+      // parked intent so it can't apply to a future, unrelated sign-in.
+      try { sessionStorage.removeItem(GOOGLE_INTENT_KEY); } catch { /* noop */ }
       console.error("Google sign-in error:", error);
       setError(error?.message?.includes("not configured")
         ? "Google sign-in is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in API Keys."
