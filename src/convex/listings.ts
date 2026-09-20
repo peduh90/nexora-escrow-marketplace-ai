@@ -796,6 +796,11 @@ export const searchListings = query({
       results = results.filter((l: any) => l.condition === args.condition);
     }
 
+    // NEWEST FIRST — freshly published listings always surface at the top of
+    // the market (matches the getActiveListings feed ordering), so a seller
+    // who just publishes sees their product leading the marketplace.
+    results.sort((a: any, b: any) => b._creationTime - a._creationTime);
+
     // Resolve image URLs from storage or keep external URLs as-is
     return Promise.all(
       results.map(async (listing: any) => ({
@@ -849,6 +854,9 @@ export const searchFreelanceListings = query({
     if (args.maxPrice !== undefined) {
       results = results.filter((l: any) => l.price <= args.maxPrice!);
     }
+
+    // NEWEST FIRST — newest freelance services surface at the top.
+    results.sort((a: any, b: any) => b._creationTime - a._creationTime);
 
     const sliced = results.slice(0, args.limit ?? 60);
 
