@@ -15,6 +15,20 @@ import { getViewerKey } from "@/lib/viewer";
 import { buyerProtectionFee, rateLabel } from "@/lib/fees";
 import { setMeta, listingMeta } from "@/lib/seo";
 
+/**
+ * useQuery that degrades to `null` on error instead of re-throwing during
+ * render. A single failed query (bad id format from a stale share link, a
+ * transient backend error, an auth hiccup) must show the graceful
+ * "Product Not Found" screen — never the crash boundary.
+ */
+function useSafeQuery<T = any>(query: any, args: any): T | undefined | null {
+  try {
+    return useQuery(query, args) as T | undefined;
+  } catch {
+    return null;
+  }
+}
+
 /** Show the most relevant attributes per category */
 function CategoryAttributes({ category, attributes }: { category: string; attributes?: Record<string, string> }) {
   if (!attributes || Object.keys(attributes).length === 0) return null;
@@ -55,13 +69,18 @@ function CategoryAttributes({ category, attributes }: { category: string; attrib
 }
 
 export default function ProductDetails() {
-  const { id } = useParams();
+  // Guard the route param: a malformed/stale share link must produce the
+  // graceful "Product Not Found" screen — never a Convex client-side
+  // argument-validation crash that kills the whole page.
+  const { id: rawId } = useParams();
+  const id =
+    typeof rawId === "string" && rawId.trim().length > 0 ? rawId.trim() : undefined;
   const navigate = useNavigate();
   const { user } = useAuth();
-  const listing = useQuery(api.listings.getListing, id ? { listingId: id as any } : "skip");
+  const listing = useSafeQuery(api.listings.getListing, id ? { listingId: id as any } : "skip");
   // The seller's registered WhatsApp number for this listing (falls back to
   // platform support when the seller has no phone on file).
-  const sellerContact = useQuery(
+  const sellerContact = useSafeQuery(
     api.listings.getSellerWhatsApp,
     id ? { listingId: id as any } : "skip"
   );
@@ -75,7 +94,7 @@ export default function ProductDetails() {
   const startConversation = useMutation(api.messages.startConversation);
   // sendMessage removed - startConversation handles the first message internally
   const sendMessage = useMutation(api.messages.sendMessage);
-  const allListings = useQuery(api.listings.getActiveListings, { limit: 100 });
+  const allListings = useSafeQuery(api.listings.getActiveListings, { limit: 100 });
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [showOffer, setShowOffer] = useState(false);
@@ -93,7 +112,7 @@ export default function ProductDetails() {
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [mpesaError, setMpesaError] = useState("");
   // ── Unified payment engine (Airtel Money / Card) ──
-  const providerAvailability = useQuery(api.paymentStore.providerAvailability, {});
+  const providerAvailability = useSafeQuery(api.paymentStore.providerAvailability, {});
   const initiatePayment = useAction(api.payments.initiatePayment as any);
   const verifyUnifiedPayment = useAction(api.payments.verifyPayment as any);
   const [airtelPhone, setAirtelPhone] = useState("");
@@ -112,10 +131,10 @@ export default function ProductDetails() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [addressBookOpen, setAddressBookOpen] = useState(false);
   const [shareNote, setShareNote] = useState("");
-  const savedAddresses = useQuery(api.addresses.listAddresses, user ? {} : "skip");
+  const savedAddresses = useSafeQuery(api.addresses.listAddresses, user ? {} : "skip");
   const saveAddress = useMutation(api.addresses.saveAddress);
   // Phase 2: pickup hubs (#71) + recurring orders (#65)
-  const hubs = useQuery(api.hubs.listActiveHubs, {});
+  const hubs = useSafeQuery(api.hubs.listActiveHubs, {});
   const startRecurring = useMutation(api.recurring.startRecurring);
   const [collectAtHub, setCollectAtHub] = useState(false);
   const [selectedHubId, setSelectedHubId] = useState<string | null>(null);
@@ -161,7 +180,13 @@ export default function ProductDetails() {
       setOrderSuccess(true);
       return;
     }
-    const payload = JSON.parse(raw);
+    let payload: any;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      sessionStorage.removeItem(key);
+      return;
+    }
     sessionStorage.removeItem(key);
     let cancelled = false;
     (async () => {
@@ -215,7 +240,7 @@ export default function ProductDetails() {
     if (!listing) return;
     const result = await shareListing({
       title: listing.title,
-      price: listing.price,
+      price: price,
       sellerName: listing.sellerName,
       listingId: id as string,
       location: [listing.originTown, listing.originCounty].filter(Boolean).join(", "),
@@ -334,12 +359,29 @@ export default function ProductDetails() {
     );
   }
 
+  // ── Defensive data guard ─────────────────────────────────────────────
+  // Older/edited rows can carry weak or missing fields. Normalise once so
+  // no rendering path below can ever throw on undefined/null values.
+  const price = Number(listing.price) || 0;
+  const views = Number(listing.views) || 0;
+  const favorites = Number(listing.favorites) || 0;
+  const sellerReputation = Number(listing.sellerReputation) || 0;
+  const createdAt =
+    typeof listing.createdAt === "number" && listing.createdAt > 0
+      ? listing.createdAt
+      : Date.now();
+  const images = (Array.isArray(listing.images) ? listing.images : []).filter(
+    (img: any): img is string => typeof img === "string" && img.length > 0,
+  );
+  const mainImage = images[selectedImage] ?? images[0];
+
+  const originalPrice = Number((listing as any).originalPrice) || 0;
   const delivery = getDeliveryFee(listing.originCounty);
   // Rental (#67): the charged amount is days × rate + refundable deposit.
   // Wholesale (#63): bulk buyers pay the tier unit price for their quantity.
   const chargeBase = (() => {
     if (isRentalListing) {
-      if (!rentalPrice) return listing.price;
+      if (!rentalPrice) return price;
       return rentalPrice;
     }
     if ((listing as any).wholesale && quantity > 1) {
@@ -347,7 +389,7 @@ export default function ProductDetails() {
       const eligible = tiers.filter((t) => quantity >= t.minQty).sort((a, b) => b.minQty - a.minQty)[0];
       if (eligible) return eligible.price * quantity;
     }
-    return listing.price * quantity;
+    return price * quantity;
   })();
   const totalAmount = chargeBase;
   // Buyer protection fee — tiered per Nexora fee schedule (src/lib/fees.ts).
@@ -629,7 +671,7 @@ export default function ProductDetails() {
       const result = await startConversation({
         sellerId: listing.sellerId,
         listingId: listing._id as any,
-        firstMessage: `💰 Offer: KES ${Number(offerPrice).toLocaleString()} for "${listing.title}" (Listed at KES ${listing.price.toLocaleString()})`,
+        firstMessage: `💰 Offer: KES ${Number(offerPrice).toLocaleString()} for "${listing.title}" (Listed at KES ${price.toLocaleString()})`,
       });
       setShowOffer(false);
       setOfferPrice("");
@@ -652,7 +694,7 @@ export default function ProductDetails() {
       const result = await startConversation({
         sellerId: listing.sellerId,
         listingId: listing._id as any,
-        firstMessage: `Hi, I'm interested in "${listing.title}" (KES ${listing.price.toLocaleString()}). Is it still available?`,
+        firstMessage: `Hi, I'm interested in "${listing.title}" (KES ${price.toLocaleString()}). Is it still available?`,
       });
       if (result?.conversationId) {
         navigate(`/chat/${result.conversationId}`);
@@ -719,8 +761,8 @@ export default function ProductDetails() {
           {/* LEFT: Images */}
           <div>
             <div className="aspect-square rounded-2xl bg-white/[0.02] border border-white/5 relative overflow-hidden flex items-center justify-center mb-4">
-              {listing.images && listing.images.length > 0 ? (
-                <img src={listing.images[selectedImage]} alt={listing.title} className="w-full h-full object-cover" />
+              {mainImage ? (
+                <img src={mainImage} alt={listing.title} className="w-full h-full object-cover" />
               ) : (
                 <Package className="w-32 h-32 text-white/5" />
               )}
@@ -734,16 +776,16 @@ export default function ProductDetails() {
                   <Heart className={`w-4 h-4 ${saved ? "fill-red-400" : ""}`} />
                 </button>
               </div>
-              {listing.images && listing.images.length > 1 && (
+              {images && images.length > 1 && (
                 <div className="absolute bottom-4 right-4 text-xs text-white/30 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full">
-                  {selectedImage + 1} / {listing.images.length}
+                  {selectedImage + 1} / {images.length}
                 </div>
               )}
             </div>
             {/* Thumbnails */}
-            {listing.images && listing.images.length > 1 && (
+            {images && images.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {listing.images.map((img, i) => (
+                {images.map((img: string, i: number) => (
                   <button key={i} onClick={() => setSelectedImage(i)}
                     className={`w-20 h-20 rounded-lg overflow-hidden border shrink-0 transition-all ${selectedImage === i ? "border-nx-violet/50 ring-1 ring-nx-violet/30" : "border-white/5 hover:border-white/10"}`}>
                     <img src={img} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
@@ -774,9 +816,9 @@ export default function ProductDetails() {
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{listing.title}</h1>
               <div className="flex items-center gap-4 mb-3">
-                <span className="text-3xl font-bold text-white">KES {listing.price.toLocaleString()}</span>
-                {(listing as any).originalPrice && (listing as any).originalPrice > listing.price && (
-                  <span className="text-sm text-white/30 line-through">KES {(listing as any).originalPrice.toLocaleString()}</span>
+                <span className="text-3xl font-bold text-white">KES {price.toLocaleString()}</span>
+                {originalPrice > price && (
+                  <span className="text-sm text-white/30 line-through">KES {originalPrice.toLocaleString()}</span>
                 )}
                 {listing.negotiable && (
                   <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">Negotiable</span>
@@ -853,7 +895,7 @@ export default function ProductDetails() {
             </div>              {/* Seller Info */}
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
               {/* Gas seller branded banner */}
-              {listing.attributes?.BusinessName && listing.attributes?.BusinessName.includes("Gas") && (
+              {listing.attributes?.BusinessName?.includes("Gas") && (
                 <div className="flex items-center gap-2 mb-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
                   <span className="text-base font-extrabold text-emerald-400 tracking-tight">Gas! Gas! Gas!</span>
                   <span className="text-sm text-white/50">|</span>
@@ -871,10 +913,10 @@ export default function ProductDetails() {
                     {listing.sellerVerified && <CheckCircle2 className="w-4 h-4 text-nx-cyan shrink-0" />}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    {listing.sellerReputation > 0 && (
+                    {sellerReputation > 0 && (
                       <div className="flex items-center gap-0.5">
                         <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                        <span className="text-xs text-white/60">{listing.sellerReputation.toFixed(1)}</span>
+                        <span className="text-xs text-white/60">{sellerReputation.toFixed(1)}</span>
                       </div>
                     )}
                   </div>
@@ -901,9 +943,9 @@ export default function ProductDetails() {
                 <button
                   onClick={() => {
                     if (sellerPhone) {
-                      openWhatsApp(getWhatsAppSellerUrl(sellerPhone, listing.title, listing.price));
+                      openWhatsApp(getWhatsAppSellerUrl(sellerPhone, listing.title, price));
                     } else {
-                      openWhatsApp(getWhatsAppSupportUrl(`I'm interested in "${listing.title}" (KES ${listing.price.toLocaleString()}). Is it still available?`));
+                      openWhatsApp(getWhatsAppSupportUrl(`I'm interested in "${listing.title}" (KES ${price.toLocaleString()}). Is it still available?`));
                     }
                   }}
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"
@@ -921,7 +963,7 @@ export default function ProductDetails() {
             <div className="space-y-3">
               <button onClick={() => { if (!user) { navigate("/auth?returnTo=" + encodeURIComponent(window.location.pathname)); return; } setShowCheckout(true); }}
                 className="w-full py-3.5 rounded-xl bg-nx-violet hover:bg-nx-violet/80 text-white font-semibold text-sm transition-all flex items-center justify-center gap-2">
-                <ShoppingCart className="w-5 h-5" /> BUY NOW — KES {listing.price.toLocaleString()}
+                <ShoppingCart className="w-5 h-5" /> BUY NOW — KES {price.toLocaleString()}
               </button>
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => { if (!user) { navigate("/auth?returnTo=" + encodeURIComponent(window.location.pathname)); return; } setShowCheckout(true); }}
@@ -943,9 +985,9 @@ export default function ProductDetails() {
                 <button
                   onClick={() => {
                     if (sellerPhone) {
-                      openWhatsApp(getWhatsAppSellerUrl(sellerPhone, listing.title, listing.price));
+                      openWhatsApp(getWhatsAppSellerUrl(sellerPhone, listing.title, price));
                     } else {
-                      openWhatsApp(getWhatsAppSupportUrl(`I'm interested in "${listing.title}" (KES ${listing.price.toLocaleString()}). Is it still available?`));
+                      openWhatsApp(getWhatsAppSupportUrl(`I'm interested in "${listing.title}" (KES ${price.toLocaleString()}). Is it still available?`));
                     }
                   }}
                   className="py-3 rounded-xl bg-emerald-500/10 text-emerald-400 text-sm font-medium hover:bg-emerald-500/20 transition-colors flex items-center justify-center gap-2 border border-emerald-500/20"
@@ -956,9 +998,9 @@ export default function ProductDetails() {
               <button
                 onClick={() => {
                   if (sellerPhone) {
-                    openWhatsApp(getWhatsAppSellerUrl(sellerPhone, listing.title, listing.price));
+                    openWhatsApp(getWhatsAppSellerUrl(sellerPhone, listing.title, price));
                   } else {
-                    openWhatsApp(getWhatsAppSupportUrl(`I need help with: ${listing.title} (KES ${listing.price.toLocaleString()})`));
+                    openWhatsApp(getWhatsAppSupportUrl(`I need help with: ${listing.title} (KES ${price.toLocaleString()})`));
                   }
                 }}
                 className="w-full py-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-emerald-400 text-sm font-medium hover:bg-emerald-500/10 transition-colors flex items-center justify-center gap-2"
@@ -969,9 +1011,9 @@ export default function ProductDetails() {
 
             {/* Stats */}
             <div className="flex items-center gap-4 text-xs text-white/25">
-              <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {listing.views.toLocaleString()} views</span>
-              <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {listing.favorites} favorites</span>
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {timeAgo(listing.createdAt)}</span>
+              <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {views.toLocaleString()} views</span>
+              <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {favorites} favorites</span>
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {timeAgo(createdAt)}</span>
             </div>
           </div>
         </div>
@@ -1042,7 +1084,7 @@ export default function ProductDetails() {
               <h3 className="text-lg font-semibold text-white">Make an Offer</h3>
               <button onClick={() => setShowOffer(false)} className="p-1 text-white/30 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
-            <p className="text-xs text-white/30 mb-4">Listed price: KES {listing.price.toLocaleString()}</p>
+            <p className="text-xs text-white/30 mb-4">Listed price: KES {price.toLocaleString()}</p>
             <div className="mb-4">
               <label className="block text-xs font-medium text-white/60 mb-1.5">Your Offer (KES)</label>
               <input type="number" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} placeholder="Enter your offer"
@@ -1072,14 +1114,14 @@ export default function ProductDetails() {
             {/* Product summary */}
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 mb-4">
               <div className="w-14 h-14 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0 overflow-hidden">
-                {listing.images && listing.images[0] ? (
-                  <img src={listing.images[0]} alt="" className="w-full h-full object-cover" />
+                {images && images[0] ? (
+                  <img src={images[0]} alt="" className="w-full h-full object-cover" />
                 ) : <Package className="w-6 h-6 text-white/10" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">{listing.title}</p>
                 <p className="text-xs text-white/40">{listing.sellerName}</p>
-                <p className="text-sm font-bold text-white mt-0.5">KES {listing.price.toLocaleString()}</p>
+                <p className="text-sm font-bold text-white mt-0.5">KES {price.toLocaleString()}</p>
               </div>
             </div>
 

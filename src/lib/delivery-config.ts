@@ -80,9 +80,12 @@ export const DEFAULT_DELIVERY_ZONES: DeliveryZone[] = [
   { name: "Other Counties", county: "Other", fee: 1000, freeDelivery: false, estimatedDays: "3-7 business days" },
 ];
 
-export function getDeliveryFee(county: string): { fee: number; free: boolean; estimatedDays: string } {
+export function getDeliveryFee(county: string | undefined | null): { fee: number; free: boolean; estimatedDays: string } {
+  // Null-safe: a listing with a missing/legacy originCounty must never crash
+  // the product page — it just falls through to the default zone.
+  const wanted = (county ?? "").toLowerCase();
   const zone = DEFAULT_DELIVERY_ZONES.find(
-    (z) => z.county.toLowerCase() === county.toLowerCase()
+    (z) => z.county.toLowerCase() === wanted
   );
   if (zone) {
     return { fee: zone.fee, free: zone.freeDelivery, estimatedDays: zone.estimatedDays };

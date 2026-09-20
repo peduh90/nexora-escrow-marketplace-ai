@@ -622,8 +622,15 @@ export const getSellerWhatsApp = query({
       };
     }
 
-    // Fall back to the seller account's registered phone
-    const seller = await ctx.db.get(listing.sellerId as any);
+    // Fall back to the seller account's registered phone. Wrapped so a
+    // legacy/invalid sellerId (e.g. demo or system rows) can never fail the
+    // whole product page — it just means "no phone on file".
+    let seller: any = null;
+    try {
+      seller = await ctx.db.get(listing.sellerId as any);
+    } catch {
+      seller = null;
+    }
     const phone =
       seller && "phone" in seller && typeof (seller as any).phone === "string"
         ? (seller as any).phone
