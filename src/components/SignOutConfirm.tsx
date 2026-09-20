@@ -94,9 +94,10 @@ export function SignOutProvider({ children }: { children: ReactNode }) {
                 </div>
 
                 <p className="text-[12px] text-white/45 leading-relaxed mb-5">
-                  Everything from this session is cleared on this device. You can sign back in anytime —
-                  or register a different account with a different email. One email holds one Nexora
-                  account with one role.
+                  Only this device is cleared — <span className="text-white/70 font-medium">nothing is deleted from your account</span>.
+                  Your profile, store, listings, orders and wallet balance all stay safe, and the same
+                  email + password signs you right back in whenever you return. You can also register a
+                  different account with a different email — one email holds one Nexora account with one role.
                 </p>
 
                 <div className="flex gap-2.5">
