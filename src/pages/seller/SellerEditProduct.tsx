@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
 import { CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft } from "lucide-react";
+import { MIN_DESCRIPTION_CHARS } from "../../convex/verification";
 
 const steps = ["Category", "Details", "Specifications", "Images", "Location", "Pricing", "Preview"];
 
@@ -147,11 +148,10 @@ export default function SellerEditProduct({ freelanceMode = false }: { freelance
 
   const handleSave = async () => {
     if (!form.title || !form.price || !form.category || !form.county || !form.town || !id) return;
-    // Same genuine-listing bar as publishing — a fix-up edit must leave the
-    // listing qualifying for the seller's finish-registration gate.
+    // Same light anti-spam bar as publishing (non-empty description).
     const descLen = (form.description || "").replace(/\s+/g, " ").trim().length;
-    if (descLen < 60) {
-      alert("Please write a real description of at least 60 characters — this is what completes your seller registration.");
+    if (descLen < MIN_DESCRIPTION_CHARS) {
+      alert(`Please add a short description (at least ${MIN_DESCRIPTION_CHARS} characters).`);
       setStep(1);
       return;
     }
@@ -286,12 +286,12 @@ export default function SellerEditProduct({ freelanceMode = false }: { freelance
                   <input value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="e.g. Toyota Harrier 2021 Automatic"
                     className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" /></div>
                 <div><label className="text-xs text-white/40 mb-1.5 block">Description *</label>
-                  <textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={5} placeholder="Describe your product... (60+ characters)"
+                  <textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={5} placeholder="Describe your product..."
                     className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none resize-none" />
                   {(() => {
                     const len = (form.description || "").replace(/\s+/g, " ").trim().length;
-                    return len < 60 ? (
-                      <p className={`mt-1.5 text-[11px] ${len > 0 ? "text-amber-400" : "text-white/25"}`}>{len}/60 characters — a real description is required to save</p>
+                    return len < MIN_DESCRIPTION_CHARS ? (
+                      <p className={`mt-1.5 text-[11px] ${len > 0 ? "text-amber-400" : "text-white/25"}`}>Optional — add a few words so buyers know what they get</p>
                     ) : (
                       <p className="mt-1.5 text-[11px] text-emerald-400">✓ Looks good</p>
                     );

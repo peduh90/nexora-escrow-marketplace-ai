@@ -219,15 +219,14 @@ export const createListing = mutation({
       throw new ConvexError("Freelance listings must use a Freelance Marketplace category (writing, design, video, marketing, web/software, data, virtual assistance, education, business, AI & digital tools, digital products or other services).");
     }
 
-    // ── GENUINE-LISTING QUALITY BAR (enforced server-side) ──
-    // The seller finish-registration gate counts only listings with a real
-    // description (60+ chars). Enforce it here so a seller can never publish
-    // something the gate will not count — otherwise products go live while the
-    // seller is stuck on "One last step to finish registration" forever.
+    // ── LIGHT ANTI-SPAM BAR (enforced server-side) ──
+    // Keeps the description non-empty (blocks blank/junk posts) without any
+    // real length requirement — sellers can publish a few words. Kept in sync
+    // with MIN_DESCRIPTION_CHARS so the registration gate counts the listing.
     const trimmedDescription = (args.description || "").replace(/\s+/g, " ").trim();
     if (trimmedDescription.length < MIN_DESCRIPTION_CHARS) {
       throw new ConvexError(
-        `Please write a real description of at least ${MIN_DESCRIPTION_CHARS} characters — buyers (and escrow review) need the details. Currently: ${trimmedDescription.length}.`
+        `Please add a short description (at least ${MIN_DESCRIPTION_CHARS} characters) so buyers know what they get.`
       );
     }
 

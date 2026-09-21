@@ -21,7 +21,7 @@ import { getSessionUser } from "./users";
 // unlocked strictly by these milestones, never by clicks or raw signups.
 
 /** Minimum length for a "genuine" listing/task description (anti-spam). */
-export const MIN_DESCRIPTION_CHARS = 60;
+export const MIN_DESCRIPTION_CHARS = 10;
 /** A genuine employer must post at least this many distinct real offerings. */
 export const EMPLOYER_REQUIRED_JOBS = 5;
 
@@ -158,7 +158,7 @@ async function buildChecklist(ctx: any, user: any) {
         detail:
           listings.hasAny
             ? undefined
-            : "Publish a real offering with a full description (60+ characters).",
+            : "Publish a real offering with a short description (a few words is fine).",
         action: listings.hasAny ? undefined : "/seller/add-product",
       },
     );
@@ -180,7 +180,7 @@ async function buildChecklist(ctx: any, user: any) {
         key: "jobs",
         label: `Post ${EMPLOYER_REQUIRED_JOBS} legitimate, different jobs or services`,
         done: jobCount >= EMPLOYER_REQUIRED_JOBS,
-        detail: `${jobCount} of ${EMPLOYER_REQUIRED_JOBS} distinct offerings so far — each needs a real description (60+ characters).`,
+        detail: `${jobCount} of ${EMPLOYER_REQUIRED_JOBS} distinct offerings so far — each needs a short description.`,
         action: jobCount >= EMPLOYER_REQUIRED_JOBS ? undefined : "/employer/post-job",
       },
     );

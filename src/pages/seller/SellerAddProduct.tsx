@@ -8,6 +8,7 @@ import SellerLayout from "./SellerLayout";
 import { CATEGORIES as FALLBACK_CATEGORIES, SPECS_TEMPLATES } from "@/lib/categories";
 import { CATEGORY_BANNERS } from "@/lib/category-images";
 import { FREELANCE_CATEGORIES, getFreelanceCategory, getFreelanceCategoryIcon } from "@/lib/freelance-marketplace";
+import { MIN_DESCRIPTION_CHARS } from "../../convex/verification";
 import DocumentUpload, { type PickedFile } from "@/components/DocumentUpload";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 
@@ -259,10 +260,9 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
     if (!form.title.trim()) { setError("Please enter a listing title"); return; }
     if (!form.price || Number(form.price) <= 0) { setError("Please enter a valid price"); return; }
     if (!form.category) { setError("Please select a category"); return; }
-    // Genuine-listing quality bar — mirrors the server-side rule so the seller
-    // never publishes something the registration gate will not count.
-    if ((form.description || "").replace(/\s+/g, " ").trim().length < 60) {
-      setError("Please write a real description of at least 60 characters (what buyers get, condition, what's included...).");
+    // Light anti-spam bar — mirrors the server-side rule (non-empty is enough).
+    if ((form.description || "").replace(/\s+/g, " ").trim().length < MIN_DESCRIPTION_CHARS) {
+      setError(`Please add a short description (at least ${MIN_DESCRIPTION_CHARS} characters).`);
       return;
     }
     if (!isFreelanceMode) {
@@ -337,7 +337,7 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
       await createListing({
         marketplace: isFreelanceMode ? "freelance" : "product",
         title: form.title,
-        // The description is required verbatim (60+ chars, enforced above and
+        // The description is included verbatim (anti-spam length enforced above and
         // again server-side) — never auto-fabricated, so the listing always
         // counts toward the seller's finish-registration gate.
         description: form.description,
@@ -707,16 +707,18 @@ function PublishWizard({
                 <label className="text-xs text-white/40 mb-1.5 block font-medium">Description *</label>
                 <textarea value={form.description} onChange={(e) => update("description", e.target.value)} rows={5}
                   placeholder={isFreelanceMode
-                    ? "Describe the service — what the buyer gets, deliverables, your experience... (60+ characters)"
-                    : "Describe your product in detail — condition, features, what's included... (60+ characters)"}
+                    ? "Describe the service — what the buyer gets, deliverables, your experience..."
+                    : "Describe your product — condition, features, what's included..."}
                   className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-cyan/50 focus:outline-none resize-none" />
                 {(() => {
                   const len = (form.description || "").replace(/\s+/g, " ").trim().length;
                   return (
-                    <p className={`mt-1.5 text-[11px] ${len >= 60 ? "text-emerald-400" : len > 0 ? "text-amber-400" : "text-white/25"}`}>
-                      {len >= 60
+                    <p className={`mt-1.5 text-[11px] ${len >= MIN_DESCRIPTION_CHARS ? "text-emerald-400" : len > 0 ? "text-amber-400" : "text-white/25"}`}>
+                      {len >= MIN_DESCRIPTION_CHARS
                         ? "✓ Looks good — buyers can see the details"
-                        : `${len}/60 characters — a real description is required to publish`}
+                        : len > 0
+                          ? "Add a few more words so buyers know what they get (optional)"
+                          : "Optional — add any details buyers should know"}
                     </p>
                   );
                 })()}
@@ -915,12 +917,12 @@ function PublishWizard({
           {step < TOTAL_STEPS - 1 ? (
             <button
               onClick={() => {
-                // Details step: a genuine description is required before moving
-                // on (mirrors the server-side publish rule).
-                if (step === 2 && (form.description || "").replace(/\s+/g, " ").trim().length < 60) return;
+                // Details step: a short description is required before moving
+                // on (mirrors the server-side anti-spam rule).
+                if (step === 2 && (form.description || "").replace(/\s+/g, " ").trim().length < MIN_DESCRIPTION_CHARS) return;
                 setStep(step + 1);
               }}
-              disabled={step === 2 && (form.description || "").replace(/\s+/g, " ").trim().length < 60}
+              disabled={step === 2 && (form.description || "").replace(/\s+/g, " ").trim().length < MIN_DESCRIPTION_CHARS}
               className="px-6 py-2.5 rounded-xl bg-nx-cyan text-black text-sm font-semibold hover:bg-nx-cyan/80 transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
               Next <ChevronRight className="w-4 h-4" />
             </button>
