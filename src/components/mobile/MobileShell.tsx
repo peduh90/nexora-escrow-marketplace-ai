@@ -711,9 +711,9 @@ export function MobileBottomNav({ onExplore, onAccount }: { onExplore: () => voi
 
   const workPath = roleOrdersPath(role);
   const msgPath = user ? messagesPath(role) : "/auth";
-  // Home is the user's own dashboard (seller/freelancer/buyer…), NOT the
-  // marketplace — shopping lives in its own tab.
-  const homePath = user ? roleHome(role) : "/marketplace";
+  // Home is the user's own dashboard (seller/freelancer/buyer…). Signed-out
+  // users land on the public home page — shopping lives in its own tab.
+  const homePath = user ? roleHome(role) : "/";
   const workActive = (p: string) =>
     workPath !== "#" && (p === workPath || p.startsWith(workPath + "/") || (role === "seller" && p.startsWith("/seller/orders")));
   // Account lights up for panel sub-pages (products, KYC, wallet…) — the

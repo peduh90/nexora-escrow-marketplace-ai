@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Download, Share, Plus, WifiOff, RefreshCw, Shield, Smartphone } from "lucide-react";
 import {
@@ -242,6 +243,24 @@ function ConnectivityBar() {
   );
 }
 
+/* ═══ PWA LAUNCH ROUTE MIGRATION ═══ */
+/** Earlier builds shipped start_url "/marketplace?source=pwa", so devices that
+ *  installed the app back then still launch into the marketplace. `source=pwa`
+ *  is only ever appended by the manifest's start_url (never by users), so a
+ *  marketplace URL carrying it is a stale app-launch — send it home instead. */
+function LaunchRouteMigration() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("source") === "pwa" && window.location.pathname === "/marketplace") {
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
+
+  return null;
+}
+
 /* ═══ EXPORTED LAYER ═══ */
 export default function PwaLayer() {
   // Record engagement on meaningful navigation (used by the install gate).
@@ -257,6 +276,7 @@ export default function PwaLayer() {
 
   return (
     <>
+      <LaunchRouteMigration />
       <ConnectivityBar />
       <InstallBanner />
       <UpdateToast />
