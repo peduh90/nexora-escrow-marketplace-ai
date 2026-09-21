@@ -20,7 +20,7 @@
  * when the user taps Update.
  */
 
-const VERSION = "nx-v2"; // v2: regenerated maskable icons (proper safe-zone artwork)
+const VERSION = "nx-v3"; // v3: manifest start_url → home page (installed apps open Landing, not marketplace)
 const STATIC_CACHE = `nx-static-${VERSION}`;
 const PAGE_CACHE = `nx-pages-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
