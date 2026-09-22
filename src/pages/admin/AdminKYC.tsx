@@ -95,10 +95,9 @@ export default function AdminKYC() {
                     )}
                     · {app.county}, {app.town}
                   </p>
-                  {(app.registrationNumber || app.taxPin) && (
+                  {(app.registrationNumber) && (
                     <p className="text-[10px] text-white/25 mt-0.5">
-                      {app.registrationNumber && <>Reg: {app.registrationNumber} · </>}
-                      {app.taxPin && <>KRA PIN: {app.taxPin}</>}
+                      {app.registrationNumber && <>Reg: {app.registrationNumber}</>}
                     </p>
                   )}
                   {app.reviewNotes && <p className="text-[10px] text-white/20 mt-1">Notes: {app.reviewNotes}</p>}

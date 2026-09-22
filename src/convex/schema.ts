@@ -156,11 +156,10 @@ const schema = defineSchema(
       businessName: v.string(),
       businessType: v.string(),
       registrationNumber: v.optional(v.string()),
-      taxPin: v.optional(v.string()),
       county: v.string(),
       town: v.string(),
       phone: v.string(),
-      idDocumentUrl: v.string(),
+      idDocumentUrl: v.optional(v.string()),
       businessDocumentUrl: v.optional(v.string()),
       status: v.union(
         v.literal("pending"),

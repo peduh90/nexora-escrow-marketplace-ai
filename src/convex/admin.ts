@@ -662,11 +662,10 @@ export const submitKYC = mutation({
     businessName: v.string(),
     businessType: v.string(),
     registrationNumber: v.optional(v.string()),
-    taxPin: v.optional(v.string()),
     county: v.string(),
     town: v.string(),
     phone: v.string(),
-    idDocumentUrl: v.string(),
+    idDocumentUrl: v.optional(v.string()),
     businessDocumentUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -675,14 +674,9 @@ export const submitKYC = mutation({
 
     const now = Date.now();
 
-    // ── Registration & KRA PIN are OPTIONAL (small-scale sellers) ──
-    // Individual sellers and unregistered small traders only need their ID.
-    // Format-check only what was actually provided — never block a genuine
-    // seller for leaving these blank.
-    const taxPin = args.taxPin?.trim() || undefined;
-    if (taxPin && !/^[A-Z][0-9]{9}[A-Z]$/i.test(taxPin)) {
-      throw new ConvexError("That KRA PIN doesn't look right — it should be a letter followed by 9 digits and a letter (e.g. A123456789B), or leave it blank.");
-    }
+    // ── Registration is OPTIONAL (small-scale sellers) ──
+    // Individual sellers and unregistered small traders can verify with just
+    // their business details. Format-check only what was actually provided.
     const registrationNumber = args.registrationNumber?.trim() || undefined;
 
     // One pending application per seller — resubmitting replaces the old one.
@@ -694,7 +688,6 @@ export const submitKYC = mutation({
       await ctx.db.patch(pending._id, {
         ...args,
         registrationNumber,
-        taxPin,
         submittedAt: now,
       });
       return { success: true, applicationId: pending._id as string };
@@ -705,7 +698,6 @@ export const submitKYC = mutation({
       businessName: args.businessName,
       businessType: args.businessType,
       registrationNumber,
-      taxPin,
       county: args.county,
       town: args.town,
       phone: args.phone,

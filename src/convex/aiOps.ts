@@ -631,7 +631,6 @@ export const analyzeKYC = action({
     county: v.string(),
     phone: v.string(),
     registrationNumber: v.optional(v.string()),
-    taxPin: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const flags: string[] = [];
@@ -641,10 +640,6 @@ export const analyzeKYC = action({
     if (!args.registrationNumber && args.businessType !== "individual") {
       flags.push("Missing business registration number");
       riskScore += 15;
-    }
-    if (!args.taxPin) {
-      flags.push("Missing KRA PIN");
-      riskScore += 10;
     }
     if (args.businessName.length < 2) {
       flags.push("Business name too short");

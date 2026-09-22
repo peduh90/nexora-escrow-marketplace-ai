@@ -22,12 +22,10 @@ export default function SellerKYC() {
     businessName: "",
     businessType: "",
     registrationNumber: "",
-    taxPin: "",
     county: "",
     town: "",
     phone: "",
   });
-  const [idDoc, setIdDoc] = useState<File | null>(null);
   const [businessDoc, setBusinessDoc] = useState<File | null>(null);
 
   const myApplications = useQuery(api.admin.getMyKYCApplications);
@@ -69,24 +67,16 @@ export default function SellerKYC() {
       setStep(1);
       return;
     }
-    if (!idDoc) {
-      toast.error("Upload your National ID or Passport in step 2");
-      setStep(2);
-      return;
-    }
     setSubmitting(true);
     try {
-      const idDocumentUrl = await uploadDoc(idDoc);
       const businessDocumentUrl = businessDoc ? await uploadDoc(businessDoc) : undefined;
       await submitKYC({
         businessName: formData.businessName.trim(),
         businessType: formData.businessType,
         registrationNumber: formData.registrationNumber.trim() || undefined,
-        taxPin: formData.taxPin.trim() || undefined,
         county: formData.county,
         town: formData.town.trim(),
         phone: formData.phone.trim(),
-        idDocumentUrl,
         businessDocumentUrl,
       });
       toast.success("Verification submitted — the Nexora team will review it shortly");
@@ -127,7 +117,6 @@ export default function SellerKYC() {
     </div>
   );
 
-  const idDocRef = useRef<HTMLInputElement>(null);
   const bizDocRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -246,8 +235,8 @@ export default function SellerKYC() {
                   {formData.businessType === "individual" ? (
                     <div className="p-3 rounded-lg bg-nx-emerald/[0.04] border border-nx-emerald/15">
                       <p className="text-xs text-white/50 leading-relaxed">
-                        <span className="text-nx-emerald font-medium">Selling as an individual?</span> No business registration or KRA PIN is needed —
-                        small-scale sellers are welcome. Your National ID is all the verification required.
+                        <span className="text-nx-emerald font-medium">Selling as an individual?</span> No business registration is needed —
+                        small-scale sellers are welcome. Just fill in your business name, location and phone.
                       </p>
                     </div>
                   ) : (
@@ -258,12 +247,7 @@ export default function SellerKYC() {
                           placeholder="PVT-XXXXXXX — leave blank if not registered"
                           className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" />
                       </div>
-                      <div>
-                        <label className="text-xs text-white/40 mb-1.5 block">KRA PIN <span className="text-white/25">(optional)</span></label>
-                        <input value={formData.taxPin} onChange={(e) => setFormData({ ...formData, taxPin: e.target.value })}
-                          placeholder="A123456789B — leave blank if you don't have one"
-                          className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" />
-                      </div>
+
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-3">
@@ -293,8 +277,7 @@ export default function SellerKYC() {
 
               {step === 2 && (
                 <div className="space-y-4">
-                  {docInput("Upload National ID / Passport", "PDF, JPG, PNG (max 5MB) — required", idDoc, setIdDoc, idDocRef)}
-                  {docInput("Upload Business Registration Certificate", "PDF, JPG, PNG — optional but recommended", businessDoc, setBusinessDoc, bizDocRef)}
+                  {docInput("Upload Business Registration Certificate", "PDF, JPG, PNG (max 5MB) — optional but recommended", businessDoc, setBusinessDoc, bizDocRef)}
                 </div>
               )}
 
@@ -305,10 +288,8 @@ export default function SellerKYC() {
                       { label: "Business Name", value: formData.businessName || "Not provided" },
                       { label: "Business Type", value: formData.businessType || "Not provided" },
                       { label: "Registration No.", value: formData.businessType === "individual" ? "— not required for individual sellers" : formData.registrationNumber || "Not provided (optional)" },
-                      { label: "KRA PIN", value: formData.businessType === "individual" ? "— not required for individual sellers" : formData.taxPin || "Not provided (optional)" },
                       { label: "Location", value: `${formData.town || "?"}, ${formData.county || "?"}` },
                       { label: "Phone", value: formData.phone || "Not provided" },
-                      { label: "ID Document", value: idDoc ? idDoc.name : "Missing — required" },
                       { label: "Business Document", value: businessDoc ? businessDoc.name : "Not provided" },
                     ].map((f) => (
                       <div key={f.label} className="flex items-center justify-between">
