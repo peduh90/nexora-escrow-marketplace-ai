@@ -91,7 +91,7 @@ export default function AdminKYC() {
                   <p className="text-[11px] text-white/30">
                     {(app.businessType || "").replace("_", " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
                     {app.businessType === "individual" && (
-                      <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-nx-cyan/10 text-nx-cyan">ID-only seller</span>
+                      <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-nx-cyan/10 text-nx-cyan">Individual seller</span>
                     )}
                     · {app.county}, {app.town}
                   </p>

@@ -328,16 +328,16 @@ export const upsertTransportProfile = mutation({
     schedule: v.optional(v.string()),
     phone: v.optional(v.string()),
     image: v.optional(v.string()),
-    idDocumentUrl: v.optional(v.string()),
     vehicleDocumentUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const isMatatu = args.serviceType === "matatu";
     // Register first, verify before earning (#51 informal-commerce principle):
-    // documents are optional at registration so no one is scared away by a
-    // logbook upload wall. Admin verification is still mandatory before the
-    // provider can accept trips — that gate is enforced below, not here.
+    // registration is document-light so no one is scared away by an upload
+    // wall. No personal ID is ever collected. Admin verification is still
+    // mandatory before the provider can accept trips — that gate is enforced
+    // below, not here.
     if (isMatatu && (!args.routeCodes || args.routeCodes.length === 0)) {
       throw new ConvexError("Matatu operators must list at least one route code");
     }
@@ -362,10 +362,10 @@ export const upsertTransportProfile = mutation({
       schedule: args.schedule,
       phone: args.phone,
       image: args.image,
-      idDocumentUrl: args.idDocumentUrl,
       vehicleDocumentUrl: args.vehicleDocumentUrl,
-      // Registration completeness marker: documents can be added later, but a
-      // provider without documents stays "pending" and cannot accept trips.
+      // Registration completeness marker: vehicle papers can be added later,
+      // but a provider without them stays "pending" and cannot accept trips.
+      // No confidential personal documents are stored.
       // Any re-submission goes back to pending for fresh admin review.
       verificationStatus: "pending" as any,
       updatedAt: now,
@@ -901,7 +901,6 @@ export const adminGetTransportData = query({
         availability: p.availability,
         rating: p.ratingCount ? Math.round(((p.ratingSum || 0) / p.ratingCount) * 10) / 10 : null,
         completedTrips: p.completedTrips || 0,
-        idDocumentUrl: p.idDocumentUrl,
         vehicleDocumentUrl: p.vehicleDocumentUrl,
         createdAt: p.createdAt,
       })),

@@ -665,7 +665,6 @@ export const submitKYC = mutation({
     county: v.string(),
     town: v.string(),
     phone: v.string(),
-    idDocumentUrl: v.optional(v.string()),
     businessDocumentUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -701,7 +700,6 @@ export const submitKYC = mutation({
       county: args.county,
       town: args.town,
       phone: args.phone,
-      idDocumentUrl: args.idDocumentUrl,
       businessDocumentUrl: args.businessDocumentUrl,
       status: "pending",
       submittedAt: now,

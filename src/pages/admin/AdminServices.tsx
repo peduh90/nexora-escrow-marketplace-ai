@@ -209,7 +209,6 @@ export default function AdminServices() {
                     <p className="font-medium text-white capitalize">{p.serviceType} — {p.displayName}</p>
                     <p className="text-xs text-white/45 mt-0.5">{p.plateNumber || p.routeCodes?.join(", ") || "—"} · {p.town}, {p.county}</p>
                     <div className="mt-1.5 flex gap-3 text-[11px]">
-                      {p.idDocumentUrl && <a href={p.idDocumentUrl} target="_blank" rel="noreferrer" className="text-cyan-300 underline">View ID doc</a>}
                       {p.vehicleDocumentUrl && <a href={p.vehicleDocumentUrl} target="_blank" rel="noreferrer" className="text-cyan-300 underline">View vehicle doc</a>}
                     </div>
                   </div>

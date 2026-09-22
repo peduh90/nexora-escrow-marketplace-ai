@@ -45,7 +45,7 @@ function tryWhitelist(input: string, role?: string): string | null {
     return "**Escrow ni nini? (Kiswahili):**\n\nEscrow ni kama mdhamini wa kuaminika:\n1. **Unalipa** → pesa zako zinakingwa salama kwa Nexora\n2. **Muuzaji anatuma** bidhaa → Nexora inasafirisha\n3. **Unakagua** bidhaa → una saa 48 kuthibitisha\n4. **Unathibitisha** → pesa zinamwagwa kwa muuzaji\n\nIkiwa kuna tatizo: fungua **dispute**, AI inapitia uthibitisho, ota haki inapewa. Pesa zako **haziwahi** kwenda kwa muuzaji mpaka wewe uthibitisha mwenyewe.";
   }
   if (/jinsi ya kuuza|nataka kuuza|kuwa muuzaji|seller.*kiswahili/i.test(msg)) {
-    return "**Kuanza Kuuza kwenye Nexora (Kiswahili):**\n\n1. Ingia kwenye akaunti yako → bonyeza **Start Selling**\n2. Jaza taarifa: jina la biashara, eneo, namba ya simu\n3. Thibitisha utambulisho (**KYC**) — ID yako pamoja na selfie\n4. Ongeza bidhaa: picha za wazi, bei, maelezo\n5. Bidhaa yako huwekwa live dakika chache tu!\n\n**Unapopata faida:** zinazaingia kwenye **Wallet** yako. Kutoa: kima cha chini KES 100, kwa M-Pesa au benki, hakuna ada ya asilimia ya Nexora.";
+    return "**Kuanza Kuuza kwenye Nexora (Kiswahili):**\n\n1. Ingia kwenye akaunti yako → bonyeza **Start Selling**\n2. Jaza taarifa: jina la biashara, eneo, namba ya simu\n3. Kamilisha **uthibitisho (KYC)** — jina la biashara, eneo na namba ya simu tu\n4. Ongeza bidhaa: picha za wazi, bei, maelezo\n5. Bidhaa yako huwekwa live dakika chache tu!\n\n**Unapopata faida:** zinazaingia kwenye **Wallet** yako. Kutoa: kima cha chini KES 100, kwa M-Pesa au benki, hakuna ada ya asilimia ya Nexora.";
   }
 
   // ─── COMPREHENSIVE KNOWLEDGE BASE ───
@@ -808,13 +808,12 @@ The AI may summarize evidence and recommend outcomes, but must NEVER make unauth
 
 Explain:
 • Why verification is required (trust, security, compliance)
-• Individual verification (ID + selfie + phone)
-• Business verification (registration + KRA + representative ID)
-• Required documents and format
+• What's required: business name, type, county, town and phone
+• Optional: Business Registration Certificate and Registration Number
+• Business verification (business details; optional certificate)
 • Verification status and processing time (24-48 hours)
-• Common rejection reasons (blurry docs, expired, mismatched info)
+• Common rejection reasons (incomplete details, mismatched info)
 • How to correct and resubmit
-• Privacy and security of documents
 • How to contact support for help
 
 Never request unnecessary sensitive information through normal chat.

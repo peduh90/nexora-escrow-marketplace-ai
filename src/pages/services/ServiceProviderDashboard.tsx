@@ -195,7 +195,6 @@ export default function ServiceProviderDashboard() {
       routeCodes: "",
       schedule: "",
       phone: user?.phone || "",
-      idDocumentUrl: "",
       vehicleDocumentUrl: "",
     });
   }
@@ -222,14 +221,14 @@ export default function ServiceProviderDashboard() {
         schedule: tform.schedule || undefined,
         phone: tform.phone || undefined,
         // Documents are OPTIONAL at registration (no logbook fear): register
-        // now, add ID & vehicle papers later, admin verifies before trips.
-        idDocumentUrl: tform.idDocumentUrl?.trim() || undefined,
+        // now, add vehicle papers later, admin verifies before trips.
+        // No personal ID is ever collected — confidential documents stay private.
         vehicleDocumentUrl: tform.vehicleDocumentUrl?.trim() || undefined,
       });
       toast.success(
-        tform.idDocumentUrl?.trim() && tform.vehicleDocumentUrl?.trim()
-          ? "Submitted — Nexora admin will verify your documents"
-          : "Registered! Add ID & vehicle documents, then admin verification unlocks trips"
+        tform.vehicleDocumentUrl?.trim()
+          ? "Submitted — Nexora admin will verify your details"
+          : "Registered! Nexora admin verification unlocks trips"
       );
       setTForm(null);
     } catch (err: any) {
@@ -484,7 +483,6 @@ export default function ServiceProviderDashboard() {
                     <input value={tform.schedule} onChange={(e) => setTForm({ ...tform, schedule: e.target.value })} placeholder="Schedule e.g. 5:30am–9pm daily" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none" />
                   </>
                 )}
-                <input value={tform.idDocumentUrl} onChange={(e) => setTForm({ ...tform, idDocumentUrl: e.target.value })} placeholder="Link (URL) to your ID photo — optional, add later" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none sm:col-span-2" />
                 <input value={tform.vehicleDocumentUrl} onChange={(e) => setTForm({ ...tform, vehicleDocumentUrl: e.target.value })} placeholder="Link (URL) to vehicle logbook / inspection — optional" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none sm:col-span-2" />
               </div>
               <p className="text-[10px] text-white/35 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Optional now — required before trips. Reviewed by Nexora admin only, for verification and safety.</p>
@@ -502,10 +500,10 @@ export default function ServiceProviderDashboard() {
                   <div className="mt-1.5 flex items-center gap-3 text-xs">
                     {tp.verificationStatus === "verified" ? (
                       <span className="text-nx-cyan font-semibold flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" /> Verified</span>
-                    ) : tp.idDocumentUrl || tp.vehicleDocumentUrl ? (
-                      <span className="text-amber-300 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Documents under review</span>
+                    ) : tp.vehicleDocumentUrl ? (
+                      <span className="text-amber-300 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Details under review</span>
                     ) : (
-                      <span className="text-amber-300 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Add documents to unlock trips</span>
+                      <span className="text-amber-300 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Awaiting admin verification</span>
                     )}
                     {!!tp.ratingCount && <span className="text-amber-300 flex items-center gap-0.5"><Star className="w-3 h-3" /> {Math.round(((tp.ratingSum || 0) / tp.ratingCount) * 10) / 10}</span>}
                     <span className="text-white/40">{tp.completedTrips} trips</span>
