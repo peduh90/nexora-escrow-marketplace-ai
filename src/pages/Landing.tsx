@@ -179,9 +179,11 @@ export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Signed-in users tap "Get Started" → their own dashboard.
+  // Signed-in users tap "Get Started" → their own dashboard. Signed-out
+  // visitors go straight into the public marketplace — buyers NEVER need to
+  // register just to browse; sign-in is only asked for at checkout.
   const dashboardPath = () => {
-    if (!user) return "/auth";
+    if (!user) return "/marketplace";
     switch (user.role) {
       case "admin": return "/admin";
       case "seller": return "/seller";
@@ -299,7 +301,7 @@ export default function Landing() {
             <Sparkles className="w-7 h-7 text-white" />
             <p className="mt-3 text-base md:text-lg font-extrabold text-white tracking-tight">GET STARTED FREE</p>
             <p className="mt-1 text-[11px] md:text-xs text-white/85 leading-snug">
-              {user ? "Go to your dashboard" : "Join Nexora — pick how you'll use it"}
+              {user ? "Go to your dashboard" : "Shop instantly — no account needed"}
             </p>
             <ArrowRight className="absolute right-4 bottom-4 w-4 h-4 text-white/70 group-hover:translate-x-1 transition-transform" />
           </button>
@@ -509,7 +511,7 @@ export default function Landing() {
             {[
               {
                 icon: Sparkles, title: "Get Started Free",
-                desc: "Join Nexora and choose your path — buyer, seller, freelancer or employer",
+                desc: "Shop instantly, no account needed — sellers & service providers register here",
                 onClick: () => (user ? navigate(dashboardPath()) : navigate("/auth")),
                 cls: "from-nx-violet/20 to-nx-cyan/10 border-nx-violet/30 hover:border-nx-violet/50",
                 iconCls: "text-nx-violet",

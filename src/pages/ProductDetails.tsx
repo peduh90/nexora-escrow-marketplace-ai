@@ -961,12 +961,12 @@ export default function ProductDetails() {
 
             {/* Action Buttons */}
             <div className="space-y-3">
-              <button onClick={() => { if (!user) { navigate("/auth?returnTo=" + encodeURIComponent(window.location.pathname)); return; } setShowCheckout(true); }}
+              <button onClick={() => { if (!user) { navigate("/auth?intent=buy&returnTo=" + encodeURIComponent(window.location.pathname + window.location.search)); return; } setShowCheckout(true); }}
                 className="w-full py-3.5 rounded-xl bg-nx-violet hover:bg-nx-violet/80 text-white font-semibold text-sm transition-all flex items-center justify-center gap-2">
                 <ShoppingCart className="w-5 h-5" /> BUY NOW — KES {price.toLocaleString()}
               </button>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => { if (!user) { navigate("/auth?returnTo=" + encodeURIComponent(window.location.pathname)); return; } setShowCheckout(true); }}
+                <button onClick={() => { if (!user) { navigate("/auth?returnTo=" + encodeURIComponent(window.location.pathname + window.location.search)); return; } setShowCheckout(true); }}
                   className="py-3 rounded-xl bg-white/[0.03] border border-white/10 text-white/70 text-sm font-medium hover:bg-white/[0.05] transition-colors">
                   Add to Cart
                 </button>

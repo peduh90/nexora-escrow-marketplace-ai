@@ -52,24 +52,6 @@ interface AuthProps {
 // src/hooks/use-auth.ts — only this email may pass the admin login gate.
 const OWNER_EMAIL = "murimiedwin227@gmail.com";
 
-/**
- * ─── GOOGLE OAUTH INTENT BRIDGE ──────────────────────────────────────────
- *
- * Google's OAuth redirect does a FULL PAGE reload — every React state
- * (selected role, typed name) is wiped by the time the user lands back on
- * /auth. To preserve the account setup across the redirect, the form state
- * is parked in sessionStorage just before leaving for Google and consumed
- * by the profile-sync effect on return.
- *
- * This is what keeps "Continue with Google" equivalent to the email flow:
- * the chosen role is synced to the server on return (pendingRole until the
- * verification gate completes it — role lock, KYC and phone rules all apply
- * exactly as before), and the remembered referral code binds through the
- * same server-verified attributeReferral call.
- *
- * TTL of 30 minutes + consumed-on-read so stale intents can't leak into a
- * later, unrelated sign-in.
- */
 const GOOGLE_INTENT_KEY = "nx_google_intent";
 const GOOGLE_INTENT_TTL = 30 * 60 * 1000;
 
@@ -102,12 +84,6 @@ function consumeGoogleIntent(): { role?: string; name?: string; refCode?: string
   }
 }
 
-/**
- * "Continue with Google" button + divider. Authentication ONLY — the role
- * chosen on the cards above still decides the account type (bridged across
- * the OAuth redirect), and every verification gate (phone, KYC, escrow)
- * applies exactly as it does for email sign-up.
- */
 function GoogleAuthButton({ onClick, disabled, label = "Continue with Google" }: { onClick: () => void; disabled?: boolean; label?: string }) {
   return (
     <>
@@ -130,12 +106,6 @@ function GoogleAuthButton({ onClick, disabled, label = "Continue with Google" }:
   );
 }
 
-/**
- * Map any auth-stack error to a short, human message. Convex auth surfaces
- * expired codes / rate limits as opaque "[CONVEX ...] Server Error" strings,
- * and provider failures as ConvexError with structured `data` — users should
- * see neither raw.
- */
 function friendlyAuthError(err: unknown, fallback = "Something went wrong. Please try again."): string {
   const raw =
     err instanceof Error
@@ -171,9 +141,6 @@ function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/buyer") 
   return fallback;
 }
 
-/** True when the redirect target is a role's default dashboard. Anything else
- *  (e.g. /creator, /creator/agreement, /buyer/profile) is a caller-intent
- *  destination that must be honoured for EVERY role after auth. */
 function isRoleDashboardPath(p: string | null | undefined): boolean {
   if (!p) return false;
   return (
@@ -196,47 +163,48 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
   const { isLoading: authLoading, isAuthenticated, signIn, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  // After authentication settles, route to the dashboard that matches the
-  // persistent user role. Do NOT default authenticated users to /buyer.
   const redirect = resolveRedirectAfterAuth(searchParams.get("returnTo"), "/auth");
   const isAdminLogin = redirect === "/admin";
   const isSellerRegister = sellerFirst === true;
-  // Dedicated creator panel — the Creator Program counterpart of the seller
-  // panel: pressing "Apply as a creator" on /join lands straight on the
-  // creator account form, never the Choose Your Path cards. A returnTo that
-  // points into the creator program (/creator, /join) opens the same panel:
-  // a mobile user tapping "Creator Program" must not see buyer/seller cards.
   const isCreatorRegister =
     creatorFirst === true ||
     searchParams.get("creator") === "1" ||
     redirect === "/creator" ||
     redirect.startsWith("/creator/") ||
     redirect === "/join";
-  // Dedicated freelance panel — the Writer/Freelancer counterpart of the
-  // seller panel: no store, no role cards, straight to the freelance form.
   const isFreelanceRegister = searchParams.get("freelance") === "1" || freelanceFirst === true;
 
-  // Dedicated seller panel: the role is fixed to seller, so we start straight
-  // at the seller sign-up form instead of the "Choose Your Path" role cards.
-  // The freelance panel does the same for the Writer/Freelancer role.
+  // ─── CHECKOUT INTENT (?intent=buy) ───
+  // Buyers NEVER register from the role cards. A guest taps "BUY NOW" on a
+  // product and lands here with ?intent=buy&returnTo=/product/... — they get
+  // the buyer account form STRAIGHT AWAY (no supplier cards in between), and
+  // after verification they are returned to the exact product to finish
+  // checkout. Registration happens only when they actually want to buy.
+  const checkoutIntent = searchParams.get("intent") === "buy";
+
   const [step, setStep] = useState<AuthStep>(
     isAdminLogin
       ? "adminEmail"
-      : isSellerRegister || isFreelanceRegister || isCreatorRegister
+      : isSellerRegister || isFreelanceRegister || isCreatorRegister || checkoutIntent
       ? "signIn"
       : "roleSelect",
   );
   const [selectedRole, setSelectedRole] = useState<
     "buyer" | "seller" | "freelancer" | "employer" | "creator" | "service_provider" | null
   >(
-    isFreelanceRegister ? "freelancer" : isSellerRegister ? "seller" : isCreatorRegister ? "creator" : null,
+    checkoutIntent
+      ? "buyer"
+      : isFreelanceRegister
+      ? "freelancer"
+      : isSellerRegister
+      ? "seller"
+      : isCreatorRegister
+      ? "creator"
+      : null,
   );
-  // On the dedicated seller panel, toggle between creating an account and
-  // signing in to an existing one.
   const [sellerMode, setSellerMode] = useState<"register" | "login">("register");
-  // The dedicated seller panel renders the sign-in form (instead of account
-  // creation) whenever it is switched to login mode.
   const sellerPanelLogin = sellerFirst === true && !isAdminLogin && sellerMode === "login";
+
   const [otp, setOtp] = useState("");
 
   // ─── Duplicate-credential restriction ───
@@ -338,14 +306,8 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
   // read ONCE on mount — the redirect lands here with sessionStorage intact.
   const googleIntentRef = useRef<{ role?: string; name?: string; refCode?: string } | null>(consumeGoogleIntent());
 
-  // A returnTo pointing at the local services/transport provider registration
-  // must survive sign-up — landing in the buyer dashboard instead would break
-  // the "List My Service" / "Drive & Earn" promise. Declared before the auth
-  // effect because the effect's redirect decision depends on it.
   const providerReturn =
     redirect.startsWith("/services") || redirect.startsWith("/transport") ? redirect : null;
-  // "Offer a Service" intent from the main chooser / marketplace: a buyer-role
-  // account heading straight into the local service provider registration.
   const [providerIntent, setProviderIntent] = useState(false);
 
   useEffect(() => {
@@ -356,7 +318,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
 
     const role = user?.role ?? null;
 
-    // For admin, the OTP handler manages promotion + navigation.
     if (redirect === "/admin") {
       if (role === "admin") {
         navigate("/admin");
@@ -364,22 +325,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       return;
     }
 
-    // ── Google OAuth return: consume the parked intent ──
-    // The OAuth redirect wiped React state; the intent bridges the chosen
-    // role + name across it. The referral code inside the intent (and the
-    // localStorage-remembered one) binds through the SAME server-verified
-    // attributeReferral call the email flow uses — attribution is never lost
-    // during Google registration.
     const googleIntent = googleIntentRef.current;
     const googleRole = googleIntent?.role as (typeof selectedRole) | undefined;
     const googleName = googleIntent?.name || "";
 
-    // Session exists but the Nexora profile is missing or has no role yet (the
-    // OTP profile sync can race the auth token attach or fail on a backend
-    // error, leaving the user stuck on /auth or a role-missing spinner with a
-    // valid session). Repair it from the signup form state. Only sync when real
-    // signup data is present — never fabricate a role after a refresh wiped the
-    // form.
     const needsProfileRepair = !user || (!!user && !user.role);
     if (needsProfileRepair && !profileSyncRef.current && (selectedRole || fullName || password || googleIntent)) {
       profileSyncRef.current = true;
@@ -393,8 +342,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         password: password.trim() || undefined,
       })
         .then(async () => {
-          // Effect-based path (Google sign-in, recovered OTP sync): the account
-          // now exists, so bind referral attribution here too.
           if (activeRefCode) {
             try {
               const result = await attributeReferral({
@@ -415,17 +362,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       return;
     }
 
-    // Use the persistent role to decide where an authenticated user belongs.
-    // Do NOT assume /buyer while the profile is still loading: if the role is
-    // not known yet we stay here until the Convex profile query resolves.
-    // Exception 1: on the freelance join flow, an already-registered user who
-    // picked a card goes straight to the card's destination (e.g. an existing
-    // freelancer clicking "Find Work" lands in Find Work, not the dashboard).
-    // Exception 2: a caller-supplied returnTo that is NOT a role dashboard
-    // (e.g. /creator, /creator/agreement, /buyer/profile) must be honoured for
-    // EVERY role — it is where the user was heading before auth interrupted.
     const isRoleDashboard = isRoleDashboardPath(redirect);
-    // "/auth" is the "no returnTo requested" fallback — never an override.
     const returnToOverride =
       redirect !== "/auth" && !isRoleDashboard && redirect.startsWith("/") && !redirect.startsWith("//")
         ? redirect
@@ -448,10 +385,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       : role === "creator"
       ? "/creator"
       : role === "buyer"
-      ? // "Offer a Service" intent: a buyer-role account that came to register
-        // as a LOCAL SERVICE PROVIDER must land in the provider panel — not
-        // the buyer dashboard. ?register=1 opens the service chooser form.
-        (providerIntent || providerReturn
+      ? (providerIntent || providerReturn
           ? providerReturn ?? "/services/dashboard?register=1"
           : "/buyer")
       : null;
@@ -460,17 +394,11 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       return;
     }
 
-    // Only use a caller-supplied redirect when the role is known and the
-    // target looks like an internal path. Never fall back to /buyer blindly.
     if (role && typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")) {
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, user, navigate, redirect, fullName, phoneNumber, selectedRole, password, ensureUserProfile, activeRefCode, attributeReferral, providerIntent, providerReturn]); // googleIntentRef intentionally excluded: consumed once via profileSyncRef guard
+  }, [authLoading, isAuthenticated, user, navigate, redirect, fullName, phoneNumber, selectedRole, password, ensureUserProfile, activeRefCode, attributeReferral, providerIntent, providerReturn]);
 
-  // Guarded check: reject only when the password actually contains the email
-  // (full address or local part) or a meaningful name. An empty field must
-  // never trigger "includes('')" which is always true and falsely errors a
-  // perfectly valid password.
   const passwordContainsPersonalInfo = (
     passwordRaw: string,
     emailRaw: string | null,
@@ -503,24 +431,16 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
   };
 
   const isFreelanceRoute = redirect.startsWith("/freelance") || isFreelanceRegister;
-  // The /freelance/join flow (returnTo points inside freelance) — drives the
-  // card-specific redirect for already-registered users.
   const isFreelanceJoin = redirect.startsWith("/freelance") && !isFreelanceRegister;
 
-  // The dedicated freelance panel toggles between register and sign-in, like
-  // the seller panel does.
   const [freelanceMode, setFreelanceMode] = useState<"register" | "login">("register");
   const freelancePanelLogin = isFreelanceRegister && freelanceMode === "login";
-  // Register-vs-login context: the dedicated seller/freelance panels and any
-  // selected role are all "creating an account" surfaces.
   const isRegisterSurface =
     !sellerPanelLogin && !freelancePanelLogin && (selectedRole !== null || isSellerRegister || isFreelanceRegister);
 
-  // Does the typed email already belong to an existing account?
   const emailTaken =
     isRegisterSurface && dupInfo?.emailExists === true && !!emailDupCheck;
 
-  // Keep the live-check value in sync with what the user is typing (debounced).
   const typedEmailRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     const el = typedEmailRef.current;
@@ -538,13 +458,8 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       el.removeEventListener("input", onInput);
       if (t) clearTimeout(t);
     };
-    // Re-attach whenever the form surface changes — the email input mounts
-    // only after a role is selected (or a dedicated panel opens).
   }, [step, sellerPanelLogin, freelancePanelLogin]);
 
-  // "Become a Service Provider" intent from the freelance join cards: after a
-  // successful registration the new freelancer is routed straight into the
-  // publish wizard instead of the generic dashboard.
   const [publishIntent, setPublishIntent] = useState(false);
 
   const handleRoleSelect = (
@@ -557,7 +472,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     setStep("signIn");
   };
 
-  /** Freelance panel: flip between register and sign-in. */
   const setFreelancePanelMode = (mode: "register" | "login") => {
     setFreelanceMode(mode);
     setError(null);
@@ -573,7 +487,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     setPasswordError(null);
     setConfirmPasswordError(null);
 
-    // ---- Strong password validation (same policy for every panel) ----
     if (usePasswordAuth) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const currentForm = (event as any)?.currentTarget as HTMLFormElement | null;
@@ -590,11 +503,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       }
     }
 
-    // Restrict duplicate credentials: an email that already belongs to an
-    // account can NEVER create a second account. The OTP flow signs the
-    // person into their existing account instead — same credentials, same
-    // account, no duplicates. The card's wording switches to sign-in mode so
-    // nothing is surprising.
     if (emailTaken) {
       toast.info("Account found — we'll email you a sign-in code. No new account is created.");
     }
@@ -639,18 +547,12 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       const email = formDataGet(formData, "email") || "";
       setStep({ email });
 
-      // Wait for the Convex client to attach the auth token before syncing the
-      // profile. client.setAuth() runs in a React effect AFTER the auth state
-      // flips, so an immediate ensureUserProfile goes out unauthenticated and
-      // fails with "Not authenticated" (observed in the Convex logs).
       let waited = 0;
       while (!isAuthenticatedRef.current && waited < 50) {
         await new Promise((r) => setTimeout(r, 100));
         waited += 1;
       }
 
-      // Create/sync the persistent profile, retrying briefly in case the token
-      // attach is still settling. Any non-auth error is not retried.
       let syncError: unknown = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
@@ -673,11 +575,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         console.error("Account profile sync failed:", syncError);
       }
 
-      // ── Referral attribution: bind this new account to the creator whose ──
-      // link/code the visitor arrived with (via /join). The server re-verifies
-      // the tracked click and writes the relationship permanently — the client
-      // only reminds it of the code + visitor key. Best-effort; never blocks
-      // signup and never blocks navigation.
       if (activeRefCode) {
         try {
           const result = await attributeReferral({
@@ -690,21 +587,11 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         }
       }
 
-      // After creating/syncing the persistent profile, offer the SMS phone
-      // code first (one extra tap), then navigate to the panel that matches
-      // the role the user chose during signup. "Skip" continues immediately —
-      // registration is complete either way.
       if (selectedRole) {
-        // A caller-supplied returnTo that is not a role dashboard (e.g.
-        // /creator from the Creator Program join page) wins — that is where
-        // the user was heading before auth interrupted them.
         const returnToOverride =
           redirect !== "/auth" && !isRoleDashboardPath(redirect) && redirect.startsWith("/") && !redirect.startsWith("//")
             ? redirect
             : null;
-        // "Become a Service Provider" — send the brand-new freelancer straight
-        // into the publish wizard to create their first service. "Offer a
-        // Service" — send the new provider into local-service registration.
         const target =
           returnToOverride ??
           (selectedRole === "seller"
@@ -734,14 +621,8 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
 
       setIsLoading(false);
     } catch (error: any) {
-      // One mapper for everything: invalid/expired codes, the hourly
-      // failed-attempt limiter (10/hour per email), and provider delivery
-      // failures all previously leaked as raw Convex "Server Error" text.
       const msg = friendlyAuthError(error, "Couldn't verify the code. Tap \"Resend code\" for a fresh one.");
       setError(msg);
-      // Clear the stale entry so the same dead code can never be resubmitted
-      // (repeated resubmits trip Convex's rate limiter, which reads as the
-      // generic "Server Error" users were seeing).
       setOtp("");
       setIsLoading(false);
     }
@@ -750,10 +631,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError(null);
-    // Park the account setup across the OAuth full-page redirect so the
-    // profile-sync on return recreates exactly what the email flow does:
-    // chosen role (buyer/seller/freelancer/…), typed name, and the referral
-    // code (if any) for server-verified attribution after the account exists.
     parkGoogleIntent({
       role: selectedRole,
       name: fullName || null,
@@ -761,11 +638,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     });
     try {
       await signIn("google");
-      // Full-page redirect to Google happens inside signIn; the effect on
-      // return completes profile sync + referral attribution.
     } catch (error: any) {
-      // The user cancelled the Google chooser or the popup closed — clear the
-      // parked intent so it can't apply to a future, unrelated sign-in.
       try { sessionStorage.removeItem(GOOGLE_INTENT_KEY); } catch { /* noop */ }
       console.error("Google sign-in error:", error);
       setError(error?.message?.includes("not configured")
@@ -787,13 +660,11 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     }
   };
 
-  // ---- PASSWORD LOGIN ----
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showLogin, setShowLogin] = useState(false);
   const verifyLogin = useMutation(api.users.verifyLogin);
 
-  // ---- FORGOT / RESET PASSWORD ----
   const [resetEmail, setResetEmail] = useState("");
   const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -858,14 +729,11 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     }
   };
 
-
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    // ---- Client-side pre-check (login only validates, never enforces the
-    // signup strength policy — the server decides via the stored hash). ----
     if (loginPassword.trim().length === 0) {
       setError("Password is required.");
       setIsLoading(false);
@@ -876,20 +744,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       const result = await verifyLogin({ email: loginEmail, password: loginPassword });
       if (result?.success && (result as any).tokens?.token) {
         const tokens = (result as any).tokens as { token: string; refreshToken: string };
-        // Persist the auth session exactly like the Convex auth client does
-        // (tokens are namespaced by the Convex client address), then hard
-        // reload so ConvexAuthProvider picks the token up from storage and
-        // this becomes a REAL session — protected routes work because a
-        // session now exists, not just a verified credential.
         const ns = (import.meta.env.VITE_CONVEX_URL as string).replace(/[^a-zA-Z0-9]/g, "");
         localStorage.setItem(`__convexAuthJWT_${ns}`, tokens.token);
         localStorage.setItem(`__convexAuthRefreshToken_${ns}`, tokens.refreshToken);
 
-        // Navigate using the role returned from the backend, which is read from
-        // the persistent DB record. One role → one dashboard. A role-less
-        // account is NOT an error: it goes through any protected route, where
-        // the onboarding gate finishes its profile — including the account-type
-        // picker for accounts that never completed registration.
         const r = result.role as string | null | undefined;
         let target: string | null = null;
         if (r === "admin") target = "/admin";
@@ -900,10 +758,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         else if (r === "employer") target = "/employer";
         else if (r === "creator") target = "/creator";
         if (!target) {
-          // No role yet — the account exists but the profile was never
-          // completed. /buyer is RoleRouter-gated: the onboarding screen
-          // picks them up there (name/phone/account-type). The auth page
-          // itself can never activate a pending account.
           window.location.href = "/buyer";
           return;
         }
@@ -919,17 +773,11 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     }
   };
 
-  // --- Admin: Email → sends OTP ---
   const handleAdminEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminEmail) return;
     setIsLoading(true);
     setAdminError(null);
-    // The admin gate is for the platform owner ONLY. Reject any other email
-    // before an OTP is even sent — previously any email could pass both steps
-    // here, and the backend promotion call then created role-less stub
-    // accounts (the source of the "no role, pending forever" flood in the
-    // admin panel). Strangers get a clear message instead of a ghost account.
     if (adminEmail.trim().toLowerCase() !== OWNER_EMAIL) {
       setAdminError("This email is not registered as the platform administrator.");
       setIsLoading(false);
@@ -947,7 +795,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     }
   };
 
-  // --- Admin: OTP verify → auto-promote + redirect ---
   const handleAdminOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length !== 6) return;
@@ -958,13 +805,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       formData.set("email", adminEmail);
       formData.set("code", otp);
       await signIn("email-otp", formData);
-      // Wait for auth state to update
       await new Promise((r) => setTimeout(r, 1000));
       try { await checkAndPromoteAdmin({}); } catch {}
-      // Wait for promotion to propagate
       await new Promise((r) => setTimeout(r, 500));
       sessionStorage.setItem("admin2fa_verified", "true");
-      // Force full reload to ensure Convex auth state is fresh
       window.location.href = "/admin";
     } catch (err: any) {
       setAdminError("Invalid code. Please check and try again.");
@@ -974,8 +818,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     }
   };
 
-  // ===== ADMIN LOGIN — EMAIL + OTP (2FA) — owner only, NO Google sign-in: =====
-  // the control center must stay on the gated email+OTP path.
   if (isAdminLogin) {
     return (
       <div className="min-h-screen bg-[#05050A] flex flex-col items-center justify-center relative overflow-hidden">
@@ -991,7 +833,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             </button>
             <div className="mb-4 px-3 py-1.5 rounded-lg bg-nx-gold/10 text-nx-gold text-[10px] font-bold tracking-widest uppercase">ADMIN CONTROL CENTER</div>
 
-            {/* Step 1: Email */}
             {step === "adminEmail" && (
               <Card className="w-full border border-white/5 bg-nx-surface/80 backdrop-blur-xl">
                 <CardHeader className="text-center pt-6">
@@ -1011,7 +852,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
               </Card>
             )}
 
-            {/* Step 2: OTP (2FA) */}
             {step === "adminOtp" && (
               <Card className="w-full border border-white/5 bg-nx-surface/80 backdrop-blur-xl">
                 <CardHeader className="text-center pt-6">
@@ -1045,12 +885,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     );
   }
 
-  // ===== REGULAR BUYER/SELLER AUTH =====
-  // Toggle password-auth step on/off per panel. Enabled for all panels that
-  // create an account (buyer / seller / freelancer). The policy is the same one
-  // defined in src/lib/password-strength.ts and enforced server-side in
-  // src/convex/users.ts (verifyLogin + updatePassword).
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const usePasswordAuth = true;
 
   return (
@@ -1061,7 +895,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.03)_0%,transparent_70%)]" />
       </div>
 
-      {/* Page-level back navigation (top-left, always visible) */}
       <button
         onClick={() => {
           if (window.history.length > 1) {
@@ -1075,7 +908,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
 
-      {/* Dedicated seller-panel intro (no role cards) */}
       {isSellerRegister && !isAdminLogin && (
         <div className="relative z-10 w-full max-w-[440px] text-center mb-5">
           <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-lg bg-nx-violet/10 border border-nx-violet/20 text-nx-violet text-[10px] font-bold tracking-widest uppercase">
@@ -1095,7 +927,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
               Your store appears under <span className="text-white/50">Admin → Sellers</span> as soon as you register.
             </p>
           )}
-          {/* Register / Sign-in switch */}
           <div className="inline-flex items-center gap-1 mt-5 p-1 rounded-xl border border-white/10 bg-white/[0.03]">
             <button
               type="button"
@@ -1115,8 +946,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         </div>
       )}
 
-      {/* Dedicated freelance-panel intro (no role cards) — Writer/Freelancer
-          accounts live in Nexora Freelance, never in a seller store. */}
       {isFreelanceRegister && !isAdminLogin && (
         <div className="relative z-10 w-full max-w-[440px] text-center mb-5">
           <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold tracking-widest uppercase">
@@ -1136,7 +965,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
               Your account appears under <span className="text-white/50">Admin → Users</span> the moment you register.
             </p>
           )}
-          {/* Register / Sign-in switch */}
           <div className="inline-flex items-center gap-1 mt-5 p-1 rounded-xl border border-white/10 bg-white/[0.03]">
             <button
               type="button"
@@ -1169,44 +997,28 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             <div className="w-full max-w-[640px]">
               <div className="text-center mb-8">
                 <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{isFreelanceRoute ? "Join Nexora Freelance" : "Choose Your Path"}</h1>
-                <p className="text-white/40 text-sm">{isFreelanceRoute ? "How will you use Nexora Freelance?" : "How will you use Nexora Market?"}</p>
+                <p className="text-white/40 text-sm">{isFreelanceRoute ? "How will you use Nexora Freelance?" : "Register to SELL on Nexora Market — shopping is free and needs no account."}</p>
               </div>
               <div className={`grid grid-cols-1 md:grid-cols-2 gap-4`}>
+                {/* Buyer registration was REMOVED by design: anyone can browse and
+                    buy without an account — sign-up is only demanded at checkout
+                    (product page bounces to /auth?intent=buy&returnTo=...). The
+                    supplier (seller) pane is the first path here. */}
                 {!isFreelanceRoute && (
-                  <button onClick={() => handleRoleSelect("buyer")} className="group relative p-6 rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-sm hover:border-nx-cyan/30 hover:bg-nx-cyan/5 transition-all duration-300 text-left">
-                  <div className="w-14 h-14 rounded-xl bg-nx-cyan/10 flex items-center justify-center mb-4 group-hover:bg-nx-cyan/20 transition-colors">
-                    <ShoppingBag className="w-7 h-7 text-nx-cyan" />
+                  <button onClick={() => handleRoleSelect("seller")} className="group relative p-6 rounded-2xl border border-nx-violet/20 bg-nx-violet/[0.03] backdrop-blur-sm hover:border-nx-violet/40 hover:bg-nx-violet/[0.07] transition-all duration-300 text-left">
+                  <div className="w-14 h-14 rounded-xl bg-nx-violet/10 flex items-center justify-center mb-4 group-hover:bg-nx-violet/20 transition-colors">
+                    <Store className="w-7 h-7 text-nx-violet" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-1">I'm a Buyer</h3>
-                  <p className="text-white/40 text-sm leading-relaxed mb-4">Browse products, make secure purchases with escrow protection, track deliveries.</p>
+                  <h3 className="text-lg font-semibold text-white mb-1">Register as a Supplier</h3>
+                  <p className="text-white/40 text-sm leading-relaxed mb-4">Open your supplier store — list products, reach buyers across Kenya, get paid via M-Pesa.</p>
                   <div className="flex flex-col gap-1.5">
-                    {["Escrow-protected purchases", "AI fraud detection", "Insured delivery tracking"].map((f) => (
+                    {["List unlimited products", "Escrow-protected payments", "M-Pesa withdrawals"].map((f) => (
                       <div key={f} className="flex items-center gap-2 text-xs text-white/30">
-                        <Check className="w-3 h-3 text-nx-cyan/60" /><span>{f}</span>
+                        <Check className="w-3 h-3 text-nx-violet/60" /><span>{f}</span>
                       </div>
                     ))}
                   </div>
-                  <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-nx-cyan/50 transition-colors" />
-                  </button>
-                )}
-
-                {/* Marketplace Seller card: hidden on the freelance join flow —
-                    freelance roles stay separate from marketplace roles. */}
-                {!isFreelanceRoute && (
-                  <button onClick={() => handleRoleSelect("seller")} className="group relative p-6 rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-sm hover:border-nx-violet/30 hover:bg-nx-violet/5 transition-all duration-300 text-left">
-                    <div className="w-14 h-14 rounded-xl bg-nx-violet/10 flex items-center justify-center mb-4 group-hover:bg-nx-violet/20 transition-colors">
-                      <Store className="w-7 h-7 text-nx-violet" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white mb-1">I'm a Seller</h3>
-                    <p className="text-white/40 text-sm leading-relaxed mb-4">List products, manage orders, withdraw earnings. KYC verification required.</p>
-                    <div className="flex flex-col gap-1.5">
-                      {["KYC business verification", "Product management", "Analytics & earnings"].map((f) => (
-                        <div key={f} className="flex items-center gap-2 text-xs text-white/30">
-                          <Check className="w-3 h-3 text-nx-violet/60" /><span>{f}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-nx-violet/50 transition-colors" />
+                  <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-nx-violet/50 transition-colors" />
                   </button>
                 )}
 
@@ -1236,16 +1048,9 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                     → /join), keeping signup focused on marketplace roles. */}
               </div>
 
-              {/* Freelance join flow — the ONLY cards shown on /freelance/join.
-                  Nexora Freelance is a separate system with its own roles,
-                  distinct from the Marketplace Buyer/Seller system. A person who
-                  wants to offer digital services takes the "Become a Service
-                  Provider" path — they are registered as a freelancer, never as
-                  a Buyer or Seller, and land straight in the publish wizard. */}
               {isFreelanceRoute && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* FIND WORK → distinct freelancer role */}
                     <button onClick={() => handleRoleSelect("freelancer")} className="group relative p-6 rounded-2xl border border-emerald-500/10 bg-emerald-500/[0.02] backdrop-blur-sm hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all duration-300 text-left">
                       <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
                         <PenLine className="w-6 h-6 text-emerald-400" />
@@ -1261,7 +1066,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                       </div>
                     </button>
 
-                    {/* HIRE → distinct employer role (never the freelancer role) */}
                     <button onClick={() => handleRoleSelect("employer")} className="group relative p-6 rounded-2xl border border-amber-500/10 bg-amber-500/[0.02] backdrop-blur-sm hover:border-amber-500/30 hover:bg-amber-500/5 transition-all duration-300 text-left">
                       <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center mb-4 group-hover:bg-amber-500/20 transition-colors">
                         <Briefcase className="w-6 h-6 text-amber-400" />
@@ -1277,9 +1081,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                       </div>
                     </button>
 
-                    {/* BECOME A SERVICE PROVIDER → freelancer role with publish intent.
-                        Not a Buyer, not a Seller — a digital provider with a clear
-                        path: registration → profile → publish first service. */}
                     <button onClick={() => handleRoleSelect("freelancer", { publishIntent: true })} className="group relative p-6 rounded-2xl border border-nx-cyan/20 bg-nx-cyan/[0.03] backdrop-blur-sm hover:border-nx-cyan/40 hover:bg-nx-cyan/[0.07] transition-all duration-300 text-left">
                       <div className="w-12 h-12 rounded-xl bg-nx-cyan/10 flex items-center justify-center mb-4 group-hover:bg-nx-cyan/20 transition-colors">
                         <Wrench className="w-6 h-6 text-nx-cyan" />
@@ -1310,6 +1111,13 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
               </div>
               <div className="mt-6 text-center">
                 <button onClick={handleGuestLogin} className="text-xs text-white/20 hover:text-white/40 transition-colors">Continue as Guest →</button>
+              </div>
+              {/* Buyers NEVER register here — browsing and buying happen without
+                  an account; sign-in is only asked for at checkout. */}
+              <div className="mt-3 text-center">
+                <button onClick={() => navigate("/marketplace")} className="text-xs text-white/35 hover:text-nx-cyan transition-colors flex items-center gap-1 mx-auto">
+                  <ShoppingBag className="w-3 h-3" /> Just shopping? Browse the marketplace — no account needed →
+                </button>
               </div>
               <div className="mt-4 text-center">
                 <button onClick={() => setShowLogin(!showLogin)} className="text-xs text-nx-cyan hover:text-nx-cyan/80 transition-colors flex items-center gap-1 mx-auto">
@@ -1357,18 +1165,17 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  {!isSellerRegister && !isFreelanceRegister && !isCreatorRegister && (
+                  {!isSellerRegister && !isFreelanceRegister && !isCreatorRegister && !checkoutIntent && (
                     <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Change</button>
                   )}
                   <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : selectedRole === "employer" ? "bg-amber-500/10 text-amber-400" : selectedRole === "creator" ? "bg-fuchsia-500/10 text-fuchsia-300" : selectedRole === "service_provider" || providerIntent || providerReturn ? "bg-nx-cyan/15 text-nx-cyan" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "🏪 Seller" : selectedRole === "freelancer" ? "✍️ Freelancer" : selectedRole === "employer" ? "💼 Employer" : selectedRole === "creator" ? "📣 Creator" : selectedRole === "service_provider" || providerIntent || providerReturn ? "🔧 Service Provider" : "🛒 Buyer"}</span>
                 </div>
-                <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : selectedRole === "employer" ? "Create Employer Account" : selectedRole === "creator" ? "Create Creator Account" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Offer a Service on Nexora" : "Create Buyer Account"}</CardTitle>
-                <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : selectedRole === "employer" ? "Set up your employer account to post jobs and hire freelancers" : selectedRole === "creator" ? "Create your account, then apply to the Creator Program — your referral link and earnings live in the creator dashboard" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Create your account, then set up your service — salon, plumbing, boda, fundi & more" : "Create your account to start shopping securely"}</CardDescription>
+                <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : selectedRole === "employer" ? "Create Employer Account" : selectedRole === "creator" ? "Create Creator Account" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Offer a Service on Nexora" : checkoutIntent ? "Almost done — one quick account" : "Create Buyer Account"}</CardTitle>
+                <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : selectedRole === "employer" ? "Set up your employer account to post jobs and hire freelancers" : selectedRole === "creator" ? "Create your account, then apply to the Creator Program — your referral link and earnings live in the creator dashboard" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Create your account, then set up your service — salon, plumbing, boda, fundi & more" : checkoutIntent ? "Your order is saved — create your account to complete your purchase securely with escrow" : "Create your account to start shopping securely"}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <GoogleAuthButton onClick={handleGoogleLogin} disabled={isLoading} label={selectedRole === "seller" ? "Sign up with Google" : "Continue with Google"} />
 
-                {/* ---- PASSWORD STEP (strong policy, same across all panels) ---- */}
                 {usePasswordAuth && (
                   <>
                     <PasswordField
@@ -1434,7 +1241,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             </Card>
           )}
 
-          {/* ─── FORGOT PASSWORD: step 1 — request code ─── */}
           {step === "forgotEmail" && (
             <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
@@ -1457,7 +1263,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             </Card>
           )}
 
-          {/* ─── FORGOT PASSWORD: step 2 — enter code + new password ─── */}
           {step === "forgotCode" && (
             <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
@@ -1524,7 +1329,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             </Card>
           )}
 
-          {/* Dedicated freelance panel — login mode */}
           {freelancePanelLogin && (
             <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-emerald-500/5">
               <CardHeader className="text-center pt-6">
@@ -1561,7 +1365,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             </Card>
           )}
 
-          {/* Dedicated seller panel — login mode */}
           {sellerPanelLogin && (
             <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
@@ -1598,7 +1401,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             </Card>
           )}
 
-          {/* SMS phone verification (post-signup, skippable) */}
           {smsStage !== "idle" && (
             <Card className="w-full max-w-[420px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
@@ -1643,7 +1445,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             </Card>
           )}
 
-          {/* email OTP card */}
           {typeof step === "object" && (
             <Card className="w-full max-w-[420px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
@@ -1662,10 +1463,6 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                   </div>
                   {error && <p className="text-sm text-red-400 text-center">{error}</p>}
                   <p className="text-sm text-white/30 text-center">Didn't receive a code?{" "}<Button variant="link" className="p-0 h-auto text-nx-violet hover:text-nx-violet/80" disabled={resendIn > 0 || resendBusy} onClick={async () => {
-                      // REAL resend: calls signIn again with just the email,
-                      // generating + emailing a fresh 6-digit code. The old
-                      // "Try again" just bounced back to the email form and
-                      // left users with no working way to get another code.
                       setResendBusy(true);
                       setError(null);
                       try {
