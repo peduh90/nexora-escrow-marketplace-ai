@@ -10,6 +10,7 @@ import {
   Truck, Briefcase, Store, Package, ShoppingCart, Sparkles,
   Wrench, Bike, Car, TruckIcon, Boxes, Printer, Droplets, Flame, Leaf, Hammer,
   BookOpen, Baby, Dog, LineChart, Siren, Home, Tv, BabyIcon, SprayCan,
+  PenLine, BadgeCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import ParticleCanvas from "@/components/canvas/ParticleCanvas";
@@ -78,10 +79,10 @@ function ProductCard({ listing }: { listing: any }) {
           <span className="text-[10px] text-white/40 truncate">{listing.sellerName || "Seller"}</span>
           <div className="flex items-center gap-2">
             {listing.sellerVerified && (
-              <span className="text-[8px] px-1 py-0.5 rounded bg-emerald-400/10 text-emerald-400 font-medium">✓ Verified</span>
+              <span className="text-[8px] px-1 py-0.5 rounded bg-emerald-400/10 text-emerald-400 font-medium inline-flex items-center gap-0.5"><BadgeCheck className="w-2.5 h-2.5" /> Verified</span>
             )}
             {listing.escrowProtection && (
-              <span className="text-[8px] px-1 py-0.5 rounded bg-nx-violet/10 text-nx-violet font-medium">🛡 Escrow</span>
+              <span className="text-[8px] px-1 py-0.5 rounded bg-nx-violet/10 text-nx-violet font-medium inline-flex items-center gap-0.5"><ShieldCheck className="w-2.5 h-2.5" /> Escrow</span>
             )}
           </div>
         </div>
@@ -142,7 +143,7 @@ function LatestProductsSection() {
                       <div className="flex items-center justify-between mt-1.5">
                         <div className="flex items-center gap-1">
                           <span className="text-[11px] text-white/15">{item.seller}</span>
-                          {item.verified && <span className="text-nx-emerald text-[10px]">✓</span>}
+                          {item.verified && <BadgeCheck className="text-nx-emerald text-[10px] w-2.5 h-2.5 inline" />}
                         </div>
                         <span className="text-[10px] text-white/10 flex items-center gap-1"><MapPin className="w-2.5 h-2.5" />{item.loc.split(",")[0]}</span>
                       </div>
@@ -190,7 +191,8 @@ export default function Landing() {
       case "freelancer": return "/freelance/dashboard";
       case "employer": return "/employer";
       case "creator": return "/creator";
-      case "driver": return "/seller";
+      case "driver": return "/transport/dashboard";
+      case "service_provider": return "/services/dashboard";
       default: return "/buyer";
     }
   };
@@ -808,7 +810,7 @@ export default function Landing() {
               <div className="group relative p-6 rounded-2xl border border-amber-400/10 bg-gradient-to-br from-amber-400/5 to-transparent hover:border-amber-400/25 transition-all">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-12 h-12 rounded-xl bg-amber-400/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <span className="text-lg">🔧</span>
+                    <Wrench className="w-6 h-6 text-amber-400" />
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white">Customer</h3>
@@ -833,7 +835,7 @@ export default function Landing() {
               <div className="group relative p-6 rounded-2xl border border-amber-400/10 bg-gradient-to-br from-amber-400/5 to-transparent hover:border-amber-400/25 transition-all">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-12 h-12 rounded-xl bg-amber-400/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <span className="text-lg">🏍️</span>
+                    <Bike className="w-6 h-6 text-amber-400" />
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white">Service Provider / Driver</h3>
@@ -867,7 +869,7 @@ export default function Landing() {
               <div className="group relative p-6 rounded-2xl border border-emerald-500/10 bg-gradient-to-br from-emerald-500/5 to-transparent hover:border-emerald-500/20 transition-all">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <span className="text-lg">✍️</span>
+                    <PenLine className="w-6 h-6 text-emerald-400" />
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white">Writer / Freelancer</h3>
@@ -892,7 +894,7 @@ export default function Landing() {
               <div className="group relative p-6 rounded-2xl border border-amber-500/10 bg-gradient-to-br from-amber-500/5 to-transparent hover:border-amber-500/20 transition-all">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <span className="text-lg">💼</span>
+                    <Briefcase className="w-6 h-6 text-amber-400" />
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white">Employer</h3>
@@ -913,6 +915,28 @@ export default function Landing() {
               </div>
             </FadeIn>
           </div>
+
+          {/* AI Tasker — escrow-protected AI-assisted tasks, open to every role */}
+          <FadeIn delay={0.32}>
+            <button
+              onClick={() => navigate("/ai-tasker")}
+              className="group w-full mt-5 flex items-center gap-4 p-5 rounded-2xl border border-nx-violet/20 bg-gradient-to-br from-nx-violet/[0.07] to-transparent hover:border-nx-violet/40 transition-all text-left"
+            >
+              <span className="w-12 h-12 rounded-xl bg-nx-violet/15 border border-nx-violet/25 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <Sparkles className="w-6 h-6 text-nx-violet" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="flex items-center gap-2">
+                  <span className="text-base font-bold text-white">AI Tasker</span>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-nx-violet/15 text-nx-violet">NEW</span>
+                </span>
+                <span className="block text-xs text-white/40 mt-0.5">
+                  Post any task or earn as a tasker — AI writes it up, escrow protects the payment
+                </span>
+              </span>
+              <ChevronRight className="w-4 h-4 text-white/25 group-hover:text-nx-violet group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+          </FadeIn>
 
           <FadeIn delay={0.35}>
             <p className="text-center text-[11px] text-white/25 mt-6">
@@ -977,11 +1001,13 @@ export default function Landing() {
               </div>
             ))}
           </div>
-          <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">              <p className="text-[11px] text-white/15">&copy; 2025 Nexora Market. All rights reserved. HQ: Nairobi, Kenya. | <a href="/freelance" className="hover:text-white/30 transition-colors">Freelance Marketplace</a></p>
+          <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">              <p className="text-[11px] text-white/15">&copy; 2026 Nexora Market. All rights reserved. HQ: Nairobi, Kenya. | <a href="/freelance" className="hover:text-white/30 transition-colors">Freelance Marketplace</a></p>
             <div className="flex items-center gap-4 text-[11px] text-white/15">
               <a href="/privacy" className="hover:text-white/30 transition-colors">Privacy</a>
               <a href="/terms" className="hover:text-white/30 transition-colors">Terms</a>
-              <a href="/privacy" className="hover:text-white/30 transition-colors">Security</a>
+              <a href="/services" className="hover:text-white/30 transition-colors">Services</a>
+              <a href="/transport" className="hover:text-white/30 transition-colors">Transport</a>
+              <a href="/ai-tasker" className="hover:text-white/30 transition-colors">AI Tasker</a>
             </div>
           </div>
         </div>

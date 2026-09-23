@@ -1,6 +1,7 @@
 import AdminLayout from "./AdminLayout";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import {
   Plus, Edit3, Trash2, GripVertical, Eye, EyeOff, Loader2,
@@ -111,7 +112,7 @@ export default function AdminCategories() {
     setLoading(true);
     try {
       const result = await seedDefaults();
-      alert(result.message || "Done");
+      toast.success(result.message || "Done");
     } catch (err: any) {
       console.error(err);
     } finally {

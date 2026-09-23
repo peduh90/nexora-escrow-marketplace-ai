@@ -877,7 +877,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             )}
 
             <div className="mt-4 text-center">
-              <button onClick={() => navigate("/")} className="text-xs text-white/20 hover:text-white/40 transition-colors">← Back to home</button>
+              <button onClick={() => navigate("/")} className="inline-flex items-center gap-1 text-xs text-white/20 hover:text-white/40 transition-colors"><ArrowLeft className="w-3 h-3" /> Back to home</button>
             </div>
           </div>
         </div>
@@ -1121,7 +1121,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
               </div>
               <div className="mt-4 text-center">
                 <button onClick={() => setShowLogin(!showLogin)} className="text-xs text-nx-cyan hover:text-nx-cyan/80 transition-colors flex items-center gap-1 mx-auto">
-                  {showLogin ? "← Back to sign up" : "Already have an account? Sign in"}
+                  {showLogin ? "Back to sign up" : "Already have an account? Sign in"}
                 </button>
               </div>
               {showLogin && (
@@ -1168,7 +1168,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                   {!isSellerRegister && !isFreelanceRegister && !isCreatorRegister && !checkoutIntent && (
                     <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Change</button>
                   )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : selectedRole === "employer" ? "bg-amber-500/10 text-amber-400" : selectedRole === "creator" ? "bg-fuchsia-500/10 text-fuchsia-300" : selectedRole === "service_provider" || providerIntent || providerReturn ? "bg-nx-cyan/15 text-nx-cyan" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "🏪 Seller" : selectedRole === "freelancer" ? "✍️ Freelancer" : selectedRole === "employer" ? "💼 Employer" : selectedRole === "creator" ? "📣 Creator" : selectedRole === "service_provider" || providerIntent || providerReturn ? "🔧 Service Provider" : "🛒 Buyer"}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : selectedRole === "employer" ? "bg-amber-500/10 text-amber-400" : selectedRole === "creator" ? "bg-fuchsia-500/10 text-fuchsia-300" : selectedRole === "service_provider" || providerIntent || providerReturn ? "bg-nx-cyan/15 text-nx-cyan" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "Seller" : selectedRole === "freelancer" ? "Freelancer" : selectedRole === "employer" ? "Employer" : selectedRole === "creator" ? "Creator" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Service Provider" : "Buyer"}</span>
                 </div>
                 <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : selectedRole === "employer" ? "Create Employer Account" : selectedRole === "creator" ? "Create Creator Account" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Offer a Service on Nexora" : checkoutIntent ? "Almost done — one quick account" : "Create Buyer Account"}</CardTitle>
                 <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : selectedRole === "employer" ? "Set up your employer account to post jobs and hire freelancers" : selectedRole === "creator" ? "Create your account, then apply to the Creator Program — your referral link and earnings live in the creator dashboard" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Create your account, then set up your service — salon, plumbing, boda, fundi & more" : checkoutIntent ? "Your order is saved — create your account to complete your purchase securely with escrow" : "Create your account to start shopping securely"}</CardDescription>
@@ -1333,7 +1333,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-emerald-500/5">
               <CardHeader className="text-center pt-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">✍️ Freelancer Sign In</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">Freelancer Sign In</span>
                 </div>
                 <CardTitle className="text-xl text-white">Welcome back, Freelancer</CardTitle>
                 <CardDescription className="text-white/40">Enter your email and password to access your freelance account</CardDescription>
@@ -1369,7 +1369,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
             <Card className="w-full max-w-[440px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-nx-violet/10 text-nx-violet">🏪 Seller Sign In</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-nx-violet/10 text-nx-violet">Seller Sign In</span>
                 </div>
                 <CardTitle className="text-xl text-white">Welcome back, Seller</CardTitle>
                 <CardDescription className="text-white/40">Enter your email and password to access your store</CardDescription>
@@ -1404,7 +1404,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
           {smsStage !== "idle" && (
             <Card className="w-full max-w-[420px] border border-white/5 bg-nx-surface/80 backdrop-blur-xl shadow-2xl shadow-nx-violet/5">
               <CardHeader className="text-center pt-6">
-                <div className="w-12 h-12 rounded-full bg-emerald-400/10 flex items-center justify-center mx-auto mb-3 text-xl">📱</div>
+                <div className="w-12 h-12 rounded-full bg-emerald-400/10 flex items-center justify-center mx-auto mb-3"><Phone className="w-6 h-6 text-emerald-400" /></div>
                 <CardTitle className="text-xl text-white">
                   {smsStage === "awaiting" ? "Enter the SMS code" : "Verify your phone"}
                 </CardTitle>

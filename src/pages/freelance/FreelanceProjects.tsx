@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
   ArrowLeft, FolderOpen, Clock, CheckCircle2, AlertCircle,
-  MessageSquare, DollarSign, Loader2, Shield, FileText, X, Upload,
+  MessageSquare, DollarSign, Loader2, Shield, FileText, X, Upload, RotateCcw,
 } from "lucide-react";
 
 type Tab = "active" | "submitted" | "completed" | "all";
@@ -201,7 +201,7 @@ function WriterProjectCard({ proj }: { proj: ProjectRow }) {
           {proj.lastReview && proj.lastReview.action !== "submitted" && (
             <div className={`p-3 rounded-lg border ${proj.lastReview.action === "approved" ? "bg-nx-emerald/5 border-nx-emerald/20" : "bg-amber-400/5 border-amber-400/20"}`}>
               <p className="text-[10px] uppercase tracking-wider text-white/25 mb-1">
-                {proj.lastReview.action === "approved" ? "✅ Approved" : "🔁 Revision requested"}
+                <span className="inline-flex items-center gap-1">{proj.lastReview.action === "approved" ? <><CheckCircle2 className="w-3 h-3" /> Approved</> : <><RotateCcw className="w-3 h-3" /> Revision requested</>}</span>
               </p>
               <p className="text-xs text-white/60 whitespace-pre-wrap">{proj.lastReview.note || "—"}</p>
             </div>

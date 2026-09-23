@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router";
 import { useQuery, useMutation, useAction } from "convex/react";
+import { toast } from "sonner";
 import { api } from "../convex/_generated/api";
 import { getDeliveryFee } from "@/lib/delivery-config";
 import { useAuth } from "@/hooks/use-auth"
@@ -195,7 +196,7 @@ export default function ProductDetails() {
         if (cancelled) return;
         if (status.status !== "paid") {
           if (status.status === "failed") {
-            alert("Your card payment failed — no order was created. Please try again.");
+            toast.error("Your card payment failed — no order was created. Please try again.");
           }
           return;
         }
@@ -655,7 +656,7 @@ export default function ProductDetails() {
       setOrderSuccess(true);
       setShowCheckout(false);
     } catch (err: any) {
-      alert(err.message || "Failed to place order. Please try again.");
+      toast.error(err.message || "Failed to place order. Please try again.");
     } finally {
       setOrdering(false);
     }
@@ -681,7 +682,7 @@ export default function ProductDetails() {
         navigate("/chat");
       }
     } catch (err: any) {
-      alert(err.message || "Failed to send offer.");
+      toast.error(err.message || "Failed to send offer.");
     }
   };
 
@@ -702,7 +703,7 @@ export default function ProductDetails() {
         navigate("/chat");
       }
     } catch (err: any) {
-      alert(err.message || "Failed to start conversation.");
+      toast.error(err.message || "Failed to start conversation.");
     }
   };
 
@@ -890,7 +891,7 @@ export default function ProductDetails() {
                 <Truck className="w-4 h-4 text-nx-cyan" />
                 <span className="text-sm font-medium text-white">Delivery</span>
               </div>
-              <p className="text-xs text-white/40">Delivery is handled by Nexora Market. Select your delivery location at checkout.</p>
+              <p className="text-xs text-white/40"><Truck className="w-3.5 h-3.5 shrink-0" /> Delivery is handled by Nexora Market. Select your delivery location at checkout.</p>
               <p className="text-xs text-white/30 mt-1">Estimated: {delivery.estimatedDays}</p>
             </div>              {/* Seller Info */}
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
@@ -1203,7 +1204,7 @@ export default function ProductDetails() {
                   ))}
                 </div>
               )}
-              <p className="text-[11px] text-white/20">🚚 Delivery is handled by Nexora Market. Landmarks help your rider find you fast.</p>
+              <p className="text-[11px] text-white/20 flex items-center gap-1.5"><Truck className="w-3.5 h-3.5 shrink-0" /> Delivery is handled by Nexora Market. Landmarks help your rider find you fast.</p>
 
               {/* Pickup hubs (#71): collect instead of door delivery */}
               {hubs && hubs.length > 0 && (
@@ -1383,7 +1384,7 @@ export default function ProductDetails() {
               <div className="flex justify-between text-white font-bold pt-2 border-t border-white/5"><span>Total</span><span>KES {grandTotal.toLocaleString()}</span></div>
             </div>
 
-            <p className="text-[11px] text-white/20 mb-4">🛡️ Payment is held in escrow until you confirm delivery.</p>
+            <p className="text-[11px] text-white/20 mb-4 flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 shrink-0" /> Payment is held in escrow until you confirm delivery.</p>
 
             <button onClick={handleBuyNow} disabled={ordering || !deliveryCounty || !deliveryTown || !deliveryAddress || (paymentMethod === "mpesa" && mpesaStep !== "idle") || (paymentMethod === "airtel_money" && upStep !== "idle" && upStep !== "error")}
               className="w-full py-3 rounded-xl bg-nx-violet text-white font-semibold text-sm hover:bg-nx-violet/80 transition-colors disabled:opacity-30 flex items-center justify-center gap-2">

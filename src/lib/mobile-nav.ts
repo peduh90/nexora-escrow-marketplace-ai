@@ -72,6 +72,7 @@ export function roleHome(role?: string | null): string {
     case "freelancer": return "/freelance/dashboard";
     case "employer": return "/employer";
     case "creator": return "/creator";
+    case "service_provider": return "/services/dashboard";
     case "driver": return "/transport/dashboard";
     default: return "/auth";
   }
@@ -83,7 +84,8 @@ export function roleOrdersPath(role?: string | null): string {
     case "seller": return "/seller/orders";
     case "freelancer": return "/freelance/projects";
     case "employer": return "/employer/projects";
-    case "driver": return "/transport/dashboard";
+    case "service_provider":
+    case "driver": return "/services/bookings";
     default: return "/buyer/orders";
   }
 }
@@ -94,7 +96,8 @@ export function roleWorkLabel(role?: string | null): string {
     case "seller": return "Orders";
     case "freelancer": return "Work";
     case "employer": return "Jobs";
-    case "driver": return "Jobs";
+    case "service_provider":
+    case "driver": return "Bookings";
     default: return "Orders";
   }
 }
@@ -218,10 +221,21 @@ export function accountSections(role?: string | null): Array<{
         ],
       },
     ],
+    service_provider: [
+      {
+        title: "My service",
+        links: [
+          { label: "Service dashboard", path: "/services/dashboard", icon: "wrench", desc: "Profile, prices & availability" },
+          { label: "My bookings", path: "/services/bookings", icon: "package" },
+          { label: "Register transport", path: "/transport/register", icon: "truck", desc: "Also drive or deliver" },
+        ],
+      },
+    ],
     driver: [
       {
         title: "Transport",
         links: [
+          { label: "Driver dashboard", path: "/transport/dashboard", icon: "truck" },
           { label: "My bookings", path: "/services/bookings", icon: "package" },
         ],
       },
@@ -246,6 +260,7 @@ export function dashboardLabel(role?: string | null): string {
     case "freelancer": return "Freelancer Dashboard";
     case "employer": return "Employer Dashboard";
     case "creator": return "Creator Dashboard";
+    case "service_provider": return "Service Dashboard";
     case "driver": return "Driver Dashboard";
     case "admin": return "Admin Panel";
     default: return "My Dashboard";
@@ -258,6 +273,7 @@ function dashboardDesc(role?: string | null): string | undefined {
     case "freelancer": return "Projects, applications & services";
     case "employer": return "Jobs, applicants & spending";
     case "creator": return "Referrals, earnings & tools";
+    case "service_provider": return "Your service, bookings & availability";
     case "driver": return "Bookings & trips";
     case "admin": return "Full platform control";
     default: return "Your overview & quick actions";
@@ -269,6 +285,7 @@ export function roleOrdersLabel(role?: string | null): string {
     case "seller": return "Orders received";
     case "freelancer": return "My projects";
     case "employer": return "Active work";
+    case "service_provider":
     case "driver": return "My bookings";
     default: return "My orders";
   }
@@ -279,6 +296,10 @@ export function messagesPath(role?: string | null): string {
     case "seller": return "/seller/messages";
     case "freelancer": return "/freelance/messages";
     case "employer": return "/employer/messages";
+    // Local service providers and drivers use the shared chat inbox — their
+    // panels have no dedicated messages screen yet.
+    case "service_provider": return "/chat";
+    case "driver": return "/chat";
     default: return "/chat";
   }
 }
@@ -306,6 +327,8 @@ export function settingsPath(role?: string | null): string {
   switch (role) {
     case "seller": return "/seller/settings";
     case "freelancer": return "/freelance/settings";
+    // All other roles (incl. service providers & drivers) manage their
+    // account in the shared account settings screen.
     default: return "/buyer/settings";
   }
 }

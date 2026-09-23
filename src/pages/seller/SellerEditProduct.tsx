@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useQuery, useMutation } from "convex/react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import SellerLayout from "./SellerLayout";
@@ -151,7 +152,7 @@ export default function SellerEditProduct({ freelanceMode = false }: { freelance
     // Same light anti-spam bar as publishing (non-empty description).
     const descLen = (form.description || "").replace(/\s+/g, " ").trim().length;
     if (descLen < MIN_DESCRIPTION_CHARS) {
-      alert(`Please add a short description (at least ${MIN_DESCRIPTION_CHARS} characters).`);
+      toast.error(`Please add a short description (at least ${MIN_DESCRIPTION_CHARS} characters).`);
       setStep(1);
       return;
     }
@@ -178,7 +179,7 @@ export default function SellerEditProduct({ freelanceMode = false }: { freelance
       navigate(backTarget);
     } catch (err) {
       console.error("Failed to update:", err);
-      alert("Failed to update product. Please try again.");
+      toast.error("Failed to update product. Please try again.");
     } finally {
       setSaving(false);
     }

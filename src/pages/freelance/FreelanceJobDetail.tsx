@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { useQuery, useMutation } from "convex/react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import FreelanceNav from "./FreelanceNav";
@@ -108,7 +109,7 @@ export default function FreelanceJobDetail() {
     try {
       await acceptApplication({ applicationId: applicationId as any });
     } catch (err: any) {
-      alert(err.message || "Failed to accept application.");
+      toast.error(err.message || "Failed to accept application.");
     } finally {
       setAcceptingId(null);
     }

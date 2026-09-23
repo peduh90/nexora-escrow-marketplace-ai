@@ -9,7 +9,7 @@ import AIChat from "@/components/AIChat";
 import { getWhatsAppSupportUrl, openWhatsApp } from "@/lib/whatsapp";
 import {
   Shield, LayoutDashboard, Search, Briefcase, FolderOpen, Users,
-  Wallet, Settings, LogOut, ChevronLeft, ChevronRight, PenTool,
+  Wallet, Settings, LogOut, ChevronLeft, ChevronRight, PenTool, PenLine,
   MessageSquare, Star, FileText, TrendingUp, Bell, Home,
   ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, Loader2, Phone,
 } from "lucide-react";
@@ -148,7 +148,7 @@ export default function FreelanceDashboard() {
           {/* Welcome — this is the WRITER dashboard. Employers have their own
               dashboard at /employer and never land here. */}
           <div>
-            <h1 className="text-2xl font-bold text-white">✍️ Writer Dashboard</h1>
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2.5"><PenLine className="w-6 h-6 text-emerald-400" /> Writer Dashboard</h1>
             <p className="text-sm text-white/40 mt-1">
               Welcome back, {user?.name || "there"}. Here's your freelance overview.
             </p>

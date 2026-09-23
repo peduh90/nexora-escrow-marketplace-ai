@@ -13,7 +13,7 @@ import {
   Palette, Ticket, Factory, Tv, PawPrint, BookOpen, Music, GraduationCap,
   Bike, Bus, Droplets, Zap, Car, Hammer, Printer, Camera, Plug, Leaf,
   PenLine, Code2, Headphones, Bot, Download, CircleDashed, LayoutGrid,
-  CarFront, PartyPopper,
+  CarFront, PartyPopper, Utensils, Home as HomeIcon, Scissors,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOutConfirm } from "@/components/SignOutConfirm";
@@ -46,6 +46,9 @@ const ICONS: Record<string, any> = {
   code: Code2, headphones: Headphones, bot: Bot, download: Download,
   "circle-dashed": CircleDashed, "layout-grid": LayoutGrid,
   "car-front": CarFront, "party-popper": PartyPopper,
+  /* Category icons referenced by mobile-nav's CATEGORY_ICONS — registered
+     here so every chip renders its real icon (no silent fallback). */
+  utensils: Utensils, home: HomeIcon, scissors: Scissors,
 };
 
 /* ─── Panel page titles — most specific match first ─── */

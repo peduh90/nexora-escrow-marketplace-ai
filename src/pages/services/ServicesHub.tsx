@@ -6,7 +6,7 @@ import NavigationBar from "@/components/layout/NavigationBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import SupportDock from "@/components/SupportDock";
 import {
-  ArrowLeft, MapPin, Search, Star, Navigation, Loader2,
+  ArrowLeft, MapPin, Search, Star, Navigation, Loader2, Bike,
 } from "lucide-react";
 import { KENYA_COUNTIES } from "@/lib/kenya-locations";
 import { categoryImage } from "@/lib/categoryImages";
@@ -305,7 +305,7 @@ export default function ServicesHub() {
 
         {/* Transport cross-link */}
         <div className="mt-8 rounded-2xl border border-nx-violet/20 bg-nx-violet/[0.05] p-5 flex flex-col sm:flex-row sm:items-center gap-3">
-          <span className="text-2xl">🏍️</span>
+          <Bike className="w-8 h-8 text-nx-violet shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-bold text-white">Need a ride instead?</p>
             <p className="text-xs text-white/45 mt-0.5">Boda, taxi, tuk-tuk & delivery — see the fare before you request.</p>

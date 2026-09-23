@@ -48,7 +48,7 @@ export default function EmployerDashboard() {
           {!collapsed && (
             <div className="text-center">
               <p className="text-[10px] text-nx-amber-400/60 uppercase tracking-wider font-medium">Current Mode</p>
-              <span className="text-2xl block mt-0.5">💼</span>
+              <Briefcase className="w-6 h-6 text-nx-amber-400 mx-auto mt-0.5" />
               <p className="text-xs font-semibold text-nx-amber-400 mt-0.5">Employer</p>
             </div>
           )}
@@ -156,7 +156,7 @@ export default function EmployerDashboard() {
         {/* Dashboard Content */}
         <div className="p-4 md:p-6 space-y-6 pb-28 md:pb-24 lg:pb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">💼 Employer Dashboard</h1>
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2.5"><Briefcase className="w-6 h-6 text-nx-amber-400" /> Employer Dashboard</h1>
             <p className="text-sm text-white/40 mt-1">Post jobs, hire writers, review work, release escrow payments</p>
           </div>
 

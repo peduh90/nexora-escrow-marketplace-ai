@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import NavigationBar from "@/components/layout/NavigationBar";
@@ -8,6 +9,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import SupportDock from "@/components/SupportDock";
 import {
   Megaphone, Loader2, MapPin, Clock, Handshake, MessageSquare, X, Plus, BadgeCheck, Package, Wrench, Building2,
+  ShoppingBasket, Landmark,
 } from "lucide-react";
 
 // ─── Phase 2: Community Requests (#88/#89) ──────────────────────────────────
@@ -15,10 +17,10 @@ import {
 // with offers, buyer picks. Simple English, mobile-first.
 
 const KIND_TABS = [
-  { id: "all", label: "All requests" },
-  { id: "product", label: "🛒 Products" },
-  { id: "service", label: "🔧 Services" },
-  { id: "procurement", label: "🏢 Business & Bulk" },
+  { id: "all", label: "All requests", icon: null },
+  { id: "product", label: "Products", icon: ShoppingBasket },
+  { id: "service", label: "Services", icon: Wrench },
+  { id: "procurement", label: "Business & Bulk", icon: Landmark },
 ] as const;
 
 export default function CommunityRequests() {
@@ -62,7 +64,7 @@ export default function CommunityRequests() {
       await fn();
       return true;
     } catch (err: any) {
-      alert(err?.message || "Something went wrong");
+      toast.error(err?.message || "Something went wrong");
       return false;
     } finally {
       setBusy(false);
@@ -131,17 +133,21 @@ export default function CommunityRequests() {
 
         {/* Tabs */}
         <div className="flex gap-1.5">
-          {KIND_TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-3.5 py-2 rounded-lg text-xs font-medium border transition-colors ${
-                tab === t.id ? "bg-nx-cyan/10 border-nx-cyan/30 text-nx-cyan" : "bg-white/[0.02] border-white/8 text-white/45 hover:text-white/70"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+          {KIND_TABS.map((t) => {
+            const TabIcon = t.icon;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium border transition-colors ${
+                  tab === t.id ? "bg-nx-cyan/10 border-nx-cyan/30 text-nx-cyan" : "bg-white/[0.02] border-white/8 text-white/45 hover:text-white/70"
+                }`}
+              >
+                {TabIcon && <TabIcon className="w-3.5 h-3.5" />}
+                {t.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Post form */}
@@ -154,9 +160,9 @@ export default function CommunityRequests() {
             <input value={pTitle} onChange={(e) => setPTitle(e.target.value)} placeholder="e.g. Looking for a second-hand fridge under KSh 20,000" className="w-full rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none focus:border-nx-cyan/50" />
             <div className="grid sm:grid-cols-2 gap-3">
               <select value={pKind} onChange={(e) => setPKind(e.target.value as any)} className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none">
-                <option value="product">🛒 A product to buy</option>
-                <option value="service">🔧 A service provider</option>
-                <option value="procurement">🏢 Business / bulk supply (B2B)</option>
+                <option value="product">A product to buy</option>
+                <option value="service">A service provider</option>
+                <option value="procurement">Business / bulk supply (B2B)</option>
               </select>
               <input value={pBudget} onChange={(e) => setPBudget(e.target.value)} type="number" placeholder="Your budget in KES (optional)" className="rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 text-sm outline-none" />
               {pKind === "procurement" && (

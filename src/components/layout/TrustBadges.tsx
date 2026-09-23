@@ -1,4 +1,4 @@
-import { Shield, Lock, Award, Building2, CheckCircle2, Globe, Users, Zap } from "lucide-react";
+import { Shield, Lock, Award, Building2, CheckCircle2, Globe, Users, Zap, Star } from "lucide-react";
 
 export function TrustBanner() {
   return (
@@ -93,7 +93,7 @@ export function SellerTrustCard({
           </div>
           <div className="flex items-center gap-1 mt-0.5">
             {Array.from({ length: 5 }).map((_, i) => (
-              <span key={i} className={`text-xs ${i < Math.floor(reputation) ? "text-nx-gold" : "text-white/10"}`}>★</span>
+              <Star key={i} className={`w-3 h-3 ${i < Math.floor(reputation) ? "text-nx-gold fill-nx-gold" : "text-white/10"}`} />
             ))}
             <span className="text-[10px] text-white/30 ml-1">{reputation.toFixed(1)}</span>
           </div>

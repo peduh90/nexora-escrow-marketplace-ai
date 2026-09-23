@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { useQuery, useMutation, useAction } from "convex/react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { getWhatsAppSupportUrl, getWhatsAppSellerUrl, openWhatsApp } from "@/lib/whatsapp";
@@ -18,7 +19,7 @@ import { shortKES } from "@/lib/fees";
 import FreelanceNav from "./FreelanceNav";
 import {
   Shield, Heart, Share2, MessageSquare, Star, CheckCircle2,
-  Truck, Package, X, Loader2, Send, MessageCircle, Briefcase, Wrench, FileText,
+  Truck, Package, X, Loader2, Send, MessageCircle, Briefcase, Wrench, FileText, Lock,
 } from "lucide-react";
 
 export default function FreelanceServiceDetail() {
@@ -139,7 +140,7 @@ export default function FreelanceServiceDetail() {
         navigate("/chat");
       }
     } catch (err: any) {
-      alert(err.message || "Failed to start conversation.");
+      toast.error(err.message || "Failed to start conversation.");
     }
   };
 
@@ -674,7 +675,7 @@ export default function FreelanceServiceDetail() {
                 ? `Pay KES ${grandTotal.toLocaleString()} via M-Pesa`
                 : `Book & Pay KES ${grandTotal.toLocaleString()}`}
             </button>
-            <p className="text-[11px] text-white/20 text-center mt-2">🛡️ Funds are held in escrow until you approve the work.</p>
+            <p className="text-[11px] text-white/20 text-center mt-2 inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 shrink-0" /> Funds are held in escrow until you approve the work.</p>
           </div>
         </div>
       )}

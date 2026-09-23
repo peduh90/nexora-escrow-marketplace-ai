@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import AvatarPicker from "@/components/AvatarPicker";
 import { FREELANCE_CATEGORIES } from "@/lib/freelance-marketplace";
 import {
-  ArrowLeft, Save, Loader2, CheckCircle2, X, Plus, Phone,
+  ArrowLeft, Save, Loader2, CheckCircle2, X, Plus, Phone, PenLine, Briefcase, RefreshCw,
 } from "lucide-react";
 
 const ALL_SKILLS = [
@@ -110,7 +110,7 @@ export default function FreelanceSettings() {
               {(["freelancer", "employer", "both"] as const).map((mode) => (
                 <button key={mode} onClick={() => setRoleMode(mode)}
                   className={`p-3 rounded-xl text-center transition-colors ${roleMode === mode ? "bg-nx-violet/20 text-nx-violet border border-nx-violet/30" : "bg-white/[0.03] text-white/40 border border-white/5 hover:border-white/10"}`}>
-                  <span className="text-lg block mb-1">{mode === "freelancer" ? "✍️" : mode === "employer" ? "💼" : "🔄"}</span>
+                  {(() => { const ModeIcon = mode === "freelancer" ? PenLine : mode === "employer" ? Briefcase : RefreshCw; return <ModeIcon className="w-5 h-5 mx-auto mb-1" />; })()}
                   <span className="text-xs font-medium capitalize">{mode === "both" ? "Both" : mode === "freelancer" ? "I want to work" : "I want to hire"}</span>
                 </button>
               ))}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useMutation } from "convex/react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import DocumentUpload, { type PickedFile } from "@/components/DocumentUpload";
@@ -83,7 +84,7 @@ export default function FreelancePostTask() {
       setTimeout(() => navigate("/employer/jobs"), 1500);
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || "Failed to create task. Please try again.");
+      toast.error(err?.message || "Failed to create task. Please try again.");
     } finally {
       setSubmitting(false);
     }

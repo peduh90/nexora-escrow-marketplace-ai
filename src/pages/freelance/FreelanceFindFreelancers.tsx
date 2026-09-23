@@ -236,8 +236,8 @@ export default function FreelanceFindFreelancers() {
                 {/* What they do — category badges */}
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {fl.isAiTasker && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-300 border border-indigo-400/20">
-                      🤖 AI Tasker
+                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-300 border border-indigo-400/20">
+                      <Bot className="w-3 h-3" /> AI Tasker
                     </span>
                   )}
                   {(fl.categories || []).slice(0, 3).map((c: string) => (

@@ -59,11 +59,14 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
               <Store className="w-4 h-4" />
             </button>
             <h1 className="text-sm font-semibold text-white hidden sm:block">{getPageLabel()}</h1>
-            {/* Search */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 w-64">
+            {/* Search — submits into the marketplace so it is never a dead control */}
+            <form
+              onSubmit={(e) => { e.preventDefault(); const q = (e.currentTarget.elements.namedItem("q") as HTMLInputElement)?.value.trim(); navigate(q ? `/marketplace?q=${encodeURIComponent(q)}` : "/marketplace"); }}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 w-64"
+            >
               <Search className="w-3.5 h-3.5 text-white/20" />
-              <input type="text" placeholder="Search..." className="bg-transparent text-xs text-white placeholder:text-white/20 focus:outline-none flex-1" />
-            </div>
+              <input type="text" name="q" placeholder="Search the marketplace…" className="bg-transparent text-xs text-white placeholder:text-white/20 focus:outline-none flex-1" />
+            </form>
           </div>
 
           <div className="flex items-center gap-2">

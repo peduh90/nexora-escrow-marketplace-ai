@@ -109,11 +109,11 @@ export default function AIChat({ panel, stacked }: { panel?: ChatPanel; stacked?
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const welcome = panel === "seller"
-        ? "Hey! 👋 I'm your NexoraAI selling copilot. I can help you create listings, analyze pricing, manage orders, and grow your store.\n\nUnaweza kuuliza kwa Kiswahili pia! What do you need help with?"
+        ? "Hey! I'm your NexoraAI selling copilot. I can help you create listings, analyze pricing, manage orders, and grow your store.\n\nUnaweza kuuliza kwa Kiswahili pia! What do you need help with?"
         : panel === "admin"
-        ? "🛡️ NexoraAI Command Center active. I can help you monitor the platform, resolve disputes, analyze performance, and manage operations.\n\nWhat would you like to review?"
+        ? "NexoraAI Command Center active. I can help you monitor the platform, resolve disputes, analyze performance, and manage operations.\n\nWhat would you like to review?"
         : panel === "services"
-        ? "Hey! 👋 Welcome to Nexora Services & Transport. I can help you register as a provider, book a fundi, arrange boda/delivery, and keep every job escrow-protected.\n\nKaribu! Uliza kwa Kiswahili au English — what do you need?"
+        ? "Hey! Welcome to Nexora Services & Transport. I can help you register as a provider, book a fundi, arrange boda/delivery, and keep every job escrow-protected.\n\nKaribu! Uliza kwa Kiswahili au English — what do you need?"
         : panel === "market"
         ? "Hey! 👋 I'm NexoraAI — I can help you find products, post what you need, buy in bulk, and pay safely with escrow.\n\nKaribu! Uliza kwa Kiswahili au English — what are you looking for?"
         : "Hey! 👋 I'm NexoraAI — your smart marketplace assistant. I can help you find products, compare prices, track orders, and more.\n\nKaribu! Unaweza kuuliza kwa Kiswahili, Sheng au English.\n\nWhat are you looking for?";
@@ -323,7 +323,7 @@ export default function AIChat({ panel, stacked }: { panel?: ChatPanel; stacked?
                     className="px-1.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/10 text-[9px] font-bold tracking-wide transition-colors"
                     title="Voice input language: English ⇄ Kiswahili"
                   >
-                    {voiceLang === "en-KE" ? "🇰🇪 SW" : "🇬🇧 EN"}
+                    {voiceLang === "en-KE" ? "SW" : "EN"}
                   </button>
                 )}
                 <button onClick={clearChat} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors" title="Clear chat">

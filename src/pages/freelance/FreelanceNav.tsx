@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { getDashboardPath } from "@/components/RoleRouter";
 import { Shield, Briefcase, ArrowLeft } from "lucide-react";
 
 /**
@@ -73,19 +74,7 @@ export default function FreelanceNav({
 
         {isAuthenticated && user ? (
           <button
-            onClick={() =>
-              navigate(
-                user.role === "freelancer"
-                  ? "/freelance/dashboard"
-                  : user.role === "seller" || user.role === "driver"
-                  ? "/seller"
-                  : user.role === "employer"
-                  ? "/employer"
-                  : user.role === "admin"
-                  ? "/admin"
-                  : "/buyer",
-              )
-            }
+            onClick={() => navigate(getDashboardPath((user as any)?.role))}
             className="px-3.5 py-2 rounded-lg bg-nx-violet text-white text-xs font-semibold hover:bg-nx-violet/80 transition-colors shrink-0"
           >
             Dashboard

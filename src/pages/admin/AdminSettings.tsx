@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import AdminLayout from "./AdminLayout";
 import AvatarPicker from "@/components/AvatarPicker";
@@ -68,7 +69,7 @@ function PickupHubsTab() {
 
   async function save() {
     if (!form.name?.trim() || !form.county?.trim() || !form.town?.trim()) {
-      alert("Name, county and town are required");
+      toast.error("Name, county and town are required");
       return;
     }
     setBusy(true);
@@ -100,7 +101,7 @@ function PickupHubsTab() {
       }
       setForm(null);
     } catch (err: any) {
-      alert(err.message || "Failed to save hub");
+      toast.error(err.message || "Failed to save hub");
     } finally {
       setBusy(false);
     }
@@ -154,7 +155,7 @@ function PickupHubsTab() {
               </div>
               <button onClick={() => setForm({ ...h, fee: h.fee ?? "", active: h.active !== false })} className="px-3 py-1.5 rounded-lg border border-white/10 text-[11px] text-white/60 hover:text-white">Edit</button>
               <button
-                onClick={async () => { try { await updateHub({ hubId: h._id, name: h.name, county: h.county, town: h.town, landmark: h.landmark, directions: h.directions, phone: h.phone, hours: h.hours, fee: h.fee ?? 0, active: h.active === false }); } catch (err: any) { alert(err.message); } }}
+                onClick={async () => { try { await updateHub({ hubId: h._id, name: h.name, county: h.county, town: h.town, landmark: h.landmark, directions: h.directions, phone: h.phone, hours: h.hours, fee: h.fee ?? 0, active: h.active === false }); } catch (err: any) { toast.error(err.message); } }}
                 title={h.active === false ? "Activate" : "Deactivate"}
                 className="p-2 rounded-lg text-white/30 hover:text-white"
               >
@@ -192,7 +193,7 @@ function FeatureFlagsTab() {
     try {
       await setFlag({ key, enabled });
     } catch (err: any) {
-      alert(err.message || "Failed to update flag");
+      toast.error(err.message || "Failed to update flag");
     } finally {
       setBusy(null);
     }

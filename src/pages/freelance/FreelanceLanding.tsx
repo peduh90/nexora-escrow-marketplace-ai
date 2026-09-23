@@ -600,7 +600,7 @@ export default function FreelanceLanding() {
             <button onClick={() => navigate("/privacy")} className="hover:text-white/50 transition-colors">Privacy</button>
             <button onClick={() => navigate("/terms")} className="hover:text-white/50 transition-colors">Terms</button>
           </div>
-          <p className="text-[10px] text-white/15">© 2025 Nexora Market. All rights reserved.</p>
+          <p className="text-[10px] text-white/15">© 2026 Nexora Market. All rights reserved.</p>
         </div>
       </footer>
     </div>

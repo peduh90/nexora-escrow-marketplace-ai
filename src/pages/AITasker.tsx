@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { categoryIcon, categoryTint } from "@/lib/categoryIcons";
 import {
   Sparkles, Send, Loader2, Wallet, Check, Handshake,
-  PackageCheck, MapPin, Clock, Users,
+  PackageCheck, MapPin, Clock, Users, Bot, Lock, Languages, Star, Lightbulb,
 } from "lucide-react";
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -84,7 +84,7 @@ function PosterSide() {
       const d = await aiDraft({ blurb, location: form.location || undefined });
       setForm((f) => ({ ...f, title: d.title, description: d.description, category: d.category }));
       toast.success("AI drafted your task — review and adjust");
-      if (d.budgetHint) toast(d.budgetHint, { icon: "💡" });
+      if (d.budgetHint) toast(d.budgetHint, { icon: <Lightbulb className="w-4 h-4 text-amber-300" /> });
     } catch (e) { toast.error(errMsg(e)); } finally { setAiBusy(false); }
   };
 
@@ -217,7 +217,7 @@ function PosterTaskCard({ task }: { task: any }) {
               <div className="min-w-0">
                 <p className="text-sm font-medium text-white">{o.taskerName} · <span className="text-emerald-300">{fmtKes(o.amount)}</span>{o.days ? ` · ${o.days}d` : ""}</p>
                 <p className="text-xs text-white/50 mt-0.5">{o.message}</p>
-                {o.taskerRating != null && <p className="text-[10px] text-amber-300 mt-1">★ {o.taskerRating.toFixed(1)}</p>}
+                {o.taskerRating != null && <p className="text-[10px] text-amber-300 mt-1 flex items-center gap-1"><Star className="w-3 h-3 fill-amber-300" /> {o.taskerRating.toFixed(1)}</p>}
               </div>
               {o.status === "pending" && task.status === "open" && !task.taskerId && (
                 <Button size="sm" disabled={busy} onClick={() => run(() => acceptOffer({ offerId: o._id }), "Offer accepted — now secure the escrow")} className="bg-emerald-500 hover:bg-emerald-500/85 text-white text-xs shrink-0">Accept</Button>
@@ -471,15 +471,23 @@ export default function AITaskerPage() {
         {/* Header */}
         <div className="rounded-3xl border border-nx-violet/20 bg-gradient-to-br from-nx-violet/[0.12] via-transparent to-transparent p-6 md:p-8 mb-6">
           <div className="flex items-center gap-3 mb-2">
-            <span className="w-11 h-11 rounded-xl bg-nx-violet/20 border border-nx-violet/30 flex items-center justify-center text-xl">🤖</span>
+            <span className="w-11 h-11 rounded-xl bg-nx-violet/20 border border-nx-violet/30 flex items-center justify-center">
+              <Bot className="w-6 h-6 text-nx-violet" />
+            </span>
             <div>
               <h1 className="text-2xl md:text-3xl font-black tracking-tight">AI Tasker</h1>
               <p className="text-white/50 text-sm">Your AI-assisted task marketplace — escrow protected, Kenya first.</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 mt-4 text-[11px] text-white/50">
-            {["✍️ AI writes your task or proposal", "🔒 Funds held in escrow until you approve", "🇰🇪 English · Kiswahili · Sheng"].map((f) => (
-              <span key={f} className="px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.04]">{f}</span>
+          <div className="flex flex-wrap gap-2 mt-4">
+            {[
+              { icon: Sparkles, text: "AI writes your task or proposal" },
+              { icon: Lock, text: "Funds held in escrow until you approve" },
+              { icon: Languages, text: "English · Kiswahili · Sheng" },
+            ].map((f) => (
+              <span key={f.text} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.04] text-[11px] text-white/50">
+                <f.icon className="w-3.5 h-3.5 text-nx-violet" /> {f.text}
+              </span>
             ))}
           </div>
         </div>
