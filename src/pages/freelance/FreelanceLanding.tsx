@@ -252,7 +252,7 @@ export default function FreelanceLanding() {
                 onClick={publishCta}
                 className="mt-4 px-5 py-2.5 rounded-xl bg-nx-violet text-white text-sm font-semibold hover:bg-nx-violet/85 transition-colors"
               >
-                {canPublish ? "Publish the first service" : "Become a Service Provider"}
+                {canPublish ? "Publish the first service" : "Sell Digital Products"}
               </button>
             </div>
           ) : (
@@ -465,7 +465,7 @@ export default function FreelanceLanding() {
                 onClick={publishCta}
                 className="mt-5 px-5 py-2.5 rounded-xl bg-nx-violet text-white text-sm font-semibold hover:bg-nx-violet/85 transition-colors"
               >
-                {canPublish ? "Offer the first service" : "Become a Service Provider"}
+                {canPublish ? "Offer the first service" : "Sell Digital Products"}
               </button>
             </div>
           ) : (
@@ -552,14 +552,14 @@ export default function FreelanceLanding() {
             {/* Become a provider band */}
             <div className="relative overflow-hidden rounded-2xl border border-white/5 p-6 md:p-8 bg-gradient-to-br from-nx-cyan/10 via-transparent to-transparent">
               <div className="flex items-center gap-2 text-nx-cyan text-[11px] font-semibold tracking-widest uppercase mb-2">
-                <Sparkles className="w-4 h-4" /> Become a Service Provider
+                <Sparkles className="w-4 h-4" /> Sell Digital Products
               </div>
               <h2 className="text-xl md:text-2xl font-bold text-white mb-2">
                 Sell your skills on Nexora
               </h2>
               <p className="text-sm text-white/40 leading-relaxed">
                 Writers, designers, developers, video editors, tutors and AI-setup experts:
-                publish services, set your prices, and get paid through escrow on delivery.
+                publish services or digital products, set your prices, and get paid through escrow on delivery.
               </p>
               <div className="flex flex-wrap gap-3 mt-5">
                 <button onClick={() => (canPublish ? navigate("/freelance/publish") : joinFreelance("/freelance/publish"))}

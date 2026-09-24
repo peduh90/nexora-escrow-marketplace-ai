@@ -76,7 +76,7 @@ export default function DigitalServicesRail() {
                 onClick={() => navigate("/freelance/join?returnTo=%2Ffreelance%2Fpublish")}
                 className="mt-4 px-5 py-2.5 rounded-xl bg-nx-violet text-white text-sm font-semibold hover:bg-nx-violet/85 transition-colors"
               >
-                Become a Service Provider
+                Sell Digital Products
               </button>
             </div>
           </FadeIn>

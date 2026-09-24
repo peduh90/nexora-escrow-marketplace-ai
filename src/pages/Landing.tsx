@@ -533,8 +533,8 @@ export default function Landing() {
                 iconCls: "text-amber-300",
               },
               {
-                icon: Briefcase, title: "Work & Hire",
-                desc: "Freelance jobs only — writers, designers & employers, escrow-paid",
+                icon: Briefcase, title: "Digital Market",
+                desc: "Freelancing & digital products — writers, designers & employers, escrow-paid",
                 onClick: () => navigate("/freelance"),
                 cls: "from-nx-violet/12 to-transparent border-nx-violet/25 hover:border-nx-violet/45",
                 iconCls: "text-nx-violet",
@@ -857,11 +857,11 @@ export default function Landing() {
             </FadeIn>
           </div>
 
-          {/* ── 3. WORK & HIRE (Freelance only — Writer/Freelancer & Employer) ── */}
+          {/* ── 3. DIGITAL MARKET (Nexora Freelance — freelancing + digital products) ── */}
           <FadeIn delay={0.3}>
             <div className="flex items-center gap-2 mb-4">
               <Briefcase className="w-4 h-4 text-nx-violet" />
-              <p className="text-sm font-bold text-white tracking-wide">Work &amp; Hire <span className="text-white/30 font-normal">— Nexora Freelance: writers, digital pros &amp; employers</span></p>
+              <p className="text-sm font-bold text-white tracking-wide">Digital Market <span className="text-white/30 font-normal">— freelancing &amp; digital products on Nexora Freelance</span></p>
             </div>
           </FadeIn>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
