@@ -470,6 +470,66 @@ export const suspendUser = mutation({
 // ─── LISTING MANAGEMENT ───
 
 /** Admin: get all listings */
+/**
+ * Admin: assign (or correct) a user's primary role. For accounts stuck in
+ * registration (crash mid-signup, interrupted profile sync, legacy stubs) the
+ * owner can finish their account here: role is set, the account is activated,
+ * and any pendingRole is cleared. Admin itself is deliberately NOT assignable
+ * from this UI — admin comes only from the owner-email bootstrap path.
+ */
+export const adminSetUserRole = mutation({
+  args: { userId: v.string(), role: v.string() },
+  handler: async (ctx, args) => {
+    const { user: admin } = await requireAdmin(ctx);
+    const target = (await ctx.db.get(args.userId as any)) as any;
+    if (!target) throw new ConvexError("User not found");
+    if (target.email === ADMIN_EMAIL) {
+      throw new ConvexError("The platform owner account's role is managed by the system");
+    }
+    if ((target as any).role === "admin") {
+      throw new ConvexError("Admin accounts cannot be re-assigned here");
+    }
+
+    const allowed = ["buyer", "seller", "freelancer", "employer", "creator", "service_provider", "driver"] as const;
+    if (!(allowed as readonly string[]).includes(args.role)) {
+      throw new ConvexError("Unknown account type.");
+    }
+
+    const previousRole = typeof target.role === "string" && target.role ? target.role : null;
+    await ctx.db.patch(target._id, {
+      role: args.role as any,
+      accountStatus: "active" as const,
+      pendingRole: undefined,
+    });
+
+    await auditLog(
+      ctx,
+      admin._id,
+      admin.name || admin.email || "admin",
+      previousRole ? `role changed: ${previousRole} → ${args.role}` : `role assigned: ${args.role}`,
+      "user",
+      String(target._id),
+      `${target.name || target.email} is now a ${args.role}`,
+    );
+
+    // Tell the user their account is ready — the live subscription picks the
+    // new role up on their next render, no re-login needed.
+    await ctx.db.insert("notifications", {
+      userId: target._id,
+      type: "account",
+      title: "Account updated",
+      message: previousRole
+        ? `An administrator updated your account type from ${previousRole} to ${args.role}.`
+        : `Your Nexora ${args.role} account is ready. Welcome aboard!`,
+      read: false,
+      link: "/",
+      createdAt: Date.now(),
+    });
+
+    return { success: true, role: args.role, previousRole };
+  },
+});
+
 export const getAllListings = query({
   args: {},
   handler: async (ctx) => {

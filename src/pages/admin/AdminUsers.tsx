@@ -121,10 +121,17 @@ const ROLE_COLORS: Record<string, string> = {
   buyer: "bg-white/5 text-white/50",
 };
 
+/** The 7 self-service platform roles an admin can assign. Admin itself is
+ *  never assignable from the UI — it comes only from the owner-email path. */
+const ASSIGNABLE_ROLES = [
+  "buyer", "seller", "freelancer", "employer", "creator", "service_provider", "driver",
+] as const;
+
 export default function AdminUsers() {
   const navigate = useNavigate();
   const allUsers = useQuery(api.admin.getAllUsers);
   const setUserSuspended = useMutation(api.admin.setUserSuspended);
+  const adminSetUserRole = useMutation(api.admin.adminSetUserRole);
   // ?q= deep-link support — the AdminLayout topbar search navigates here.
   const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -132,6 +139,41 @@ export default function AdminUsers() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [suspending, setSuspending] = useState<{ id: string; name: string } | null>(null);
   const [reason, setReason] = useState("");
+  // Role assignment: confirm dialog for accounts that already have a role,
+  // one-tap direct for stuck/role-less registrations.
+  const [rolePick, setRolePick] = useState<{ user: UserRow; role: string } | null>(null);
+
+  const handleRoleChange = async (user: UserRow, role: string) => {
+    if (!role || role === user.role) return;
+    const hadRole = !!user.role && user.role !== "";
+    if (hadRole) {
+      setRolePick({ user, role });
+      return;
+    }
+    setBusyId(user._id);
+    try {
+      await adminSetUserRole({ userId: user._id, role });
+      toast.success(`${user.name || user.email} is now a ${role}`);
+    } catch (err: any) {
+      toast.error(err?.message || "Could not assign role");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const confirmRoleChange = async () => {
+    if (!rolePick) return;
+    setBusyId(rolePick.user._id);
+    try {
+      const res = await adminSetUserRole({ userId: rolePick.user._id, role: rolePick.role });
+      toast.success(`${rolePick.user.name || rolePick.user.email}: ${(res as any)?.previousRole ?? "no role"} → ${rolePick.role}`);
+      setRolePick(null);
+    } catch (err: any) {
+      toast.error(err?.message || "Could not change role");
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   // Guest/anonymous accounts are already excluded server-side — these rows
   // ARE the database truth the stats and table both render from.
@@ -344,7 +386,28 @@ export default function AdminUsers() {
                           );
                         }
                         const r = primaryRole(user);
-                        return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${ROLE_COLORS[r] ?? "bg-white/5 text-white/30"}`}>{r === "—" ? "no role" : r}</span>);
+                        // Owner-controllable role picker. For accounts stuck in
+                        // registration this is how they get finished; for active
+                        // accounts it changes the primary role (with confirm).
+                        if (isOwnerAccount) {
+                          return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${ROLE_COLORS[r] ?? "bg-white/5 text-white/30"}`}>{r}</span>);
+                        }
+                        return (
+                          <select
+                            value={user.role || ""}
+                            disabled={busyId === user._id}
+                            onChange={(e) => handleRoleChange(user, e.target.value)}
+                            className={`text-[10px] px-1.5 py-1 rounded font-medium border-0 outline-none cursor-pointer appearance-none ${
+                              ROLE_COLORS[r] ?? "bg-white/5 text-white/40"
+                            } disabled:opacity-50`}
+                            title={user.role ? "Change primary role" : "Assign a role to finish this registration"}
+                          >
+                            <option value="">— assign role…</option>
+                            {ASSIGNABLE_ROLES.map((role) => (
+                              <option key={role} value={role}>{role}</option>
+                            ))}
+                          </select>
+                        );
                       })()}
                     </td>
                     <td className="px-4 py-3.5 hidden lg:table-cell">
@@ -451,6 +514,38 @@ export default function AdminUsers() {
               <p className="text-[11px] text-white/15 mt-1">Try another card or clear the search</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Role-change confirmation dialog (only when a role already exists) */}
+      {rolePick && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={() => !busyId && setRolePick(null)}>
+          <div className="w-full max-w-sm rounded-2xl border border-amber-400/15 bg-[#0A0A12] p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-bold text-white mb-1">Change primary role?</h3>
+            <p className="text-[11px] text-white/35 mb-4">
+              {rolePick.user.name || rolePick.user.email} moves from
+              <span className="text-white/70 font-medium"> {rolePick.user.role || "no role"} </span>
+              to
+              <span className="text-nx-violet font-medium"> {rolePick.role}</span>. Their access changes immediately and they are notified.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setRolePick(null)}
+                disabled={!!busyId}
+                className="flex-1 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 text-white/50 text-sm font-medium hover:bg-white/[0.06] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRoleChange}
+                disabled={!!busyId}
+                className="flex-1 py-2.5 rounded-lg bg-nx-violet text-white text-sm font-semibold hover:bg-nx-violet/85 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {busyId ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Change role
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
