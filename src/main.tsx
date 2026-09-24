@@ -289,7 +289,9 @@ createRoot(document.getElementById("root")!).render(
 
               {/* Freelance Marketplace — services & digital tools, jobs, tools.
                   /freelance/join is the "Get Started Free" flow: new visitors
-                  choose Find Work, Hire, or Become a Service Provider. */}
+                  choose Find Work, Hire, or Sell Digital Products (freelancer
+                  seller). There is NO service_provider role in the digital
+                  market — service providers are LOCAL services only. */}
               <Route path="/freelance" element={<FreelanceLanding />} />
               <Route path="/freelance/join" element={<AuthPage redirectAfterAuth="/freelance/dashboard" />} />
               <Route path="/freelance/service/:id" element={<FreelanceServiceDetail />} />

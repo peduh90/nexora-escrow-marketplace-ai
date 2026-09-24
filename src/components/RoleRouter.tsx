@@ -135,10 +135,10 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
     // account was created).
     const ROLE_CHOICES: Array<{ role: string; label: string; icon: any; tint: string; desc: string }> = [
       { role: "buyer", label: "Buyer", icon: ShoppingBag, tint: "text-nx-cyan bg-nx-cyan/10", desc: "Shop with escrow protection" },
-      { role: "seller", label: "Product Seller", icon: Store, tint: "text-nx-violet bg-nx-violet/10", desc: "List products, run a store" },
+      { role: "seller", label: "Seller (Digital & Physical)", icon: Store, tint: "text-nx-violet bg-nx-violet/10", desc: "Run a store — physical & digital/freelancing products" },
       { role: "freelancer", label: "Freelancer", icon: PenLine, tint: "text-emerald-400 bg-emerald-500/10", desc: "Digital work — incl. AI tasking" },
       { role: "employer", label: "Employer", icon: Briefcase, tint: "text-amber-400 bg-amber-500/10", desc: "Post jobs & hire talent" },
-      { role: "service_provider", label: "Service Provider", icon: Wrench, tint: "text-nx-cyan bg-nx-cyan/10", desc: "Local services — salon, plumber, fundi" },
+      { role: "service_provider", label: "Service Provider (LOCAL only)", icon: Wrench, tint: "text-nx-cyan bg-nx-cyan/10", desc: "On-site services — salon, plumber, fundi. NOT digital products" },
       { role: "driver", label: "Transport Provider", icon: Truck, tint: "text-orange-400 bg-orange-500/10", desc: "Rides, delivery & moving" },
     ];
 

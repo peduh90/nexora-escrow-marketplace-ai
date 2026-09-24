@@ -81,12 +81,13 @@ export default function FreelanceLanding() {
 
   const publishCta = () => {
     if (canPublish) {
-      navigate(role === "seller" ? "/seller/add-product" : "/freelance/publish");
-    } else if (isAuthenticated) {
-      // Signed in as buyer/employer/admin — publishing needs a freelancer or
-      // provider account, so route through the freelance join flow.
-      joinFreelance("/freelance/publish");
+      // Freelancers AND digital sellers both publish into the DIGITAL market
+      // here (seller role is allowed on /freelance/publish). Sellers also keep
+      // their physical store at /seller/add-product.
+      navigate("/freelance/publish");
     } else {
+      // Signed out or a non-publishing role — route through the freelance
+      // join flow ("Sell Digital Products" registers them as a seller).
       joinFreelance("/freelance/publish");
     }
   };

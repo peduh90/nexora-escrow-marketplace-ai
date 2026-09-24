@@ -395,7 +395,16 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
         navigate("/seller", { replace: true });
         setTimeout(() => window.location.reload(), 50);
       } else {
-        navigate("/freelance/services", { replace: true });
+        // A digital seller (role = seller) publishing their FIRST digital
+        // product has now finished registration — land them on the seller
+        // panel where the gate is satisfied. Pure freelancers keep the
+        // freelance services board.
+        if (user?.role === "seller") {
+          navigate("/seller", { replace: true });
+          setTimeout(() => window.location.reload(), 50);
+        } else {
+          navigate("/freelance/services", { replace: true });
+        }
       }
     } catch (err: any) {
       setError(err.message || "Failed to publish. Please try again.");
@@ -404,8 +413,9 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
     }
   };
 
-  // Freelance providers are NOT Marketplace Sellers and never see the seller
-  // shell — the publish flow renders standalone with its own header.
+  // In freelance mode the publish flow renders standalone with its own header
+  // (no seller shell) — digital sellers still finish on /seller once their
+  // first product is live.
   if (forcedFreelance) {
     return (
       <div className="min-h-screen bg-[#05050A] px-4 py-8 pb-28 md:pb-8">

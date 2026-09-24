@@ -923,13 +923,13 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
           </h1>
           <p className="text-sm text-white/40 leading-relaxed">
             {sellerMode === "register"
-              ? "Register your store and start selling — your store is visible to the admin team the moment you sign up."
+              ? "Register your store and start selling — physical products AND digital/freelancing products, all in one seller account."
               : "Sign in to manage products, orders and earnings."}
           </p>
           {sellerMode === "register" && (
             <p className="text-[11px] text-white/25 mt-2 leading-relaxed">
               <Shield className="inline w-3 h-3 mr-1 text-nx-gold" />
-              Your store appears under <span className="text-white/50">Admin → Sellers</span> as soon as you register.
+              Your registration finishes when you upload and publish your first product — until then your seller panel stays on the checklist.
             </p>
           )}
           <div className="inline-flex items-center gap-1 mt-5 p-1 rounded-xl border border-white/10 bg-white/[0.03]">
@@ -1014,10 +1014,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                   <div className="w-14 h-14 rounded-xl bg-nx-violet/10 flex items-center justify-center mb-4 group-hover:bg-nx-violet/20 transition-colors">
                     <Store className="w-7 h-7 text-nx-violet" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-1">Register as a Supplier</h3>
-                  <p className="text-white/40 text-sm leading-relaxed mb-4">Open your supplier store — list products, reach buyers across Kenya, get paid via M-Pesa.</p>
+                  <h3 className="text-lg font-semibold text-white mb-1">Register as a Seller</h3>
+                  <p className="text-white/40 text-sm leading-relaxed mb-4">Open your store — sell physical products AND digital/freelancing products to buyers across Kenya, get paid via M-Pesa.</p>
                   <div className="flex flex-col gap-1.5">
-                    {["List unlimited products", "Escrow-protected payments", "M-Pesa withdrawals"].map((f) => (
+                    {["Physical + digital products in one store", "Escrow-protected payments", "M-Pesa withdrawals"].map((f) => (
                       <div key={f} className="flex items-center gap-2 text-xs text-white/30">
                         <Check className="w-3 h-3 text-nx-violet/60" /><span>{f}</span>
                       </div>
@@ -1035,8 +1035,8 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                     <div className="w-14 h-14 rounded-xl bg-nx-cyan/10 flex items-center justify-center mb-4 group-hover:bg-nx-cyan/20 transition-colors">
                       <Wrench className="w-7 h-7 text-nx-cyan" />
                     </div>
-                    <h3 className="text-lg font-semibold text-white mb-1">Offer a Service</h3>
-                    <p className="text-white/40 text-sm leading-relaxed mb-4">Salon, plumber, electrician, boda, fundi — get customers near you.</p>
+                    <h3 className="text-lg font-semibold text-white mb-1">Offer a Local Service</h3>
+                    <p className="text-white/40 text-sm leading-relaxed mb-4">Salon, plumber, electrician, boda, fundi — on-site local work only (digital products belong to Sellers).</p>
                     <div className="flex flex-col gap-1.5">
                       {["No KYC — register in 2 minutes", "Set your own prices & hours", "Get paid to your wallet, escrow-protected"].map((f) => (
                         <div key={f} className="flex items-center gap-2 text-xs text-white/30">

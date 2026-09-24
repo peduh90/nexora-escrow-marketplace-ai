@@ -68,18 +68,19 @@ const isSuspended = (u: UserRow) => u.accountStatus === "suspended";
 
 /** Filter tabs — each maps to the SAME predicate its stat card uses. */
 type FilterKey =
-  | "all" | "buyer" | "seller" | "freelancer" | "employer"
+  | "all" | "buyer" | "seller" | "seller_pending" | "freelancer" | "employer"
   | "service_provider" | "driver" | "digital_seller" | "ai_tasking"
   | "creator" | "suspended" | "admin" | "no_role" | "stuck";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "buyer", label: "Buyers" },
-  { key: "seller", label: "Product Sellers" },
+  { key: "seller", label: "Sellers (products + digital)" },
+  { key: "seller_pending", label: "Sellers — no product yet" },
   { key: "digital_seller", label: "Digital Sellers" },
   { key: "freelancer", label: "Freelancers" },
   { key: "employer", label: "Employers" },
-  { key: "service_provider", label: "Service Providers" },
+  { key: "service_provider", label: "Service Providers (local)" },
   { key: "driver", label: "Transport Providers" },
   { key: "ai_tasking", label: "AI Tasking" },
   { key: "creator", label: "Creators" },
@@ -89,12 +90,18 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "stuck", label: "Not completed" },
 ];
 
+/** Seller registration is NOT finished until the seller has uploaded AND
+ *  published at least one genuine listing (server-computed flag). */
+const isSellerAwaitingFirstProduct = (u: UserRow) =>
+  primaryRole(u) === "seller" && u.registrationComplete === false;
+
 function matchesFilter(u: UserRow, f: FilterKey): boolean {
   const role = primaryRole(u);
   switch (f) {
     case "all": return true;
     case "buyer": return role === "buyer";
     case "seller": return role === "seller";
+    case "seller_pending": return isSellerAwaitingFirstProduct(u);
     case "digital_seller": return isDigitalSeller(u);
     case "freelancer": return role === "freelancer" || role === "ai_tasker";
     case "employer": return role === "employer";
@@ -126,6 +133,21 @@ const ROLE_COLORS: Record<string, string> = {
 const ASSIGNABLE_ROLES = [
   "buyer", "seller", "freelancer", "employer", "creator", "service_provider", "driver",
 ] as const;
+
+/** Admin-facing names. `seller` covers the WHOLE store economy — physical
+ *  goods AND digital/freelancing products — so an admin never mistakes a
+ *  digital seller for a service provider. service_provider is on-site/local
+ *  work only (salon, plumber, fundi) and must not be used for digital
+ *  signups. */
+const ROLE_LABELS: Record<string, string> = {
+  buyer: "buyer",
+  seller: "seller — digital & physical store",
+  freelancer: "freelancer",
+  employer: "employer",
+  creator: "creator",
+  service_provider: "service provider — LOCAL services only",
+  driver: "driver / transport",
+};
 
 export default function AdminUsers() {
   const navigate = useNavigate();
@@ -194,6 +216,8 @@ export default function AdminUsers() {
       admins: byRole("admin"),
       noRole: byRole("—"),
       stuck: users.filter(isStuckRegistration).length,
+      // Seller registration gate: active sellers with no published product.
+      sellersAwaitingFirstProduct: users.filter(isSellerAwaitingFirstProduct).length,
       // Attributes (overlap roles — NOT added into the role total)
       digitalSellers: users.filter(isDigitalSeller).length,
       aiTasking: users.filter(doesAiTasking).length,
@@ -243,10 +267,11 @@ export default function AdminUsers() {
   const roleCards: { label: string; value: number; color: string; key: FilterKey }[] = [
     { label: "Total Users", value: stats.total, color: "#8B5CF6", key: "all" },
     { label: "Buyers", value: stats.buyers, color: "#06B6D4", key: "buyer" },
-    { label: "Product Sellers", value: stats.productSellers, color: "#10B981", key: "seller" },
+    { label: "Sellers (products + digital)", value: stats.productSellers, color: "#10B981", key: "seller" },
+    { label: "Sellers — awaiting 1st product", value: stats.sellersAwaitingFirstProduct, color: "#FBBF24", key: "seller_pending" },
     { label: "Freelancers", value: stats.freelancers, color: "#34D399", key: "freelancer" },
     { label: "Employers", value: stats.employers, color: "#F59E0B", key: "employer" },
-    { label: "Service Providers", value: stats.serviceProviders, color: "#22D3EE", key: "service_provider" },
+    { label: "Service Providers (local)", value: stats.serviceProviders, color: "#22D3EE", key: "service_provider" },
     { label: "Transport Providers", value: stats.transportProviders, color: "#38BDF8", key: "driver" },
     { label: "Admins", value: stats.admins, color: "#FBBF24", key: "admin" },
     { label: "Not completed", value: stats.stuck, color: "#94A3B8", key: "stuck" },
@@ -386,13 +411,37 @@ export default function AdminUsers() {
                           );
                         }
                         const r = primaryRole(user);
+                        // Seller registration status (server-computed): a seller
+                        // only completes registration after publishing a product.
+                        const sellerBadge =
+                          r === "seller" && user.registrationComplete === false ? (
+                            <span
+                              className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-400/10 text-amber-300 whitespace-nowrap"
+                              title="Seller registration is not finished — this account still has to upload and publish its first product"
+                            >
+                              no product yet
+                            </span>
+                          ) : r === "seller" && user.registrationComplete === true ? (
+                            <span
+                              className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-emerald-400/10 text-emerald-300 whitespace-nowrap"
+                              title={`${user.publishedListings ?? 1} published product(s) — seller registration complete`}
+                            >
+                              published
+                            </span>
+                          ) : null;
                         // Owner-controllable role picker. For accounts stuck in
                         // registration this is how they get finished; for active
                         // accounts it changes the primary role (with confirm).
                         if (isOwnerAccount) {
-                          return (<span className={`text-[10px] px-2 py-0.5 rounded font-medium ${ROLE_COLORS[r] ?? "bg-white/5 text-white/30"}`}>{r}</span>);
+                          return (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${ROLE_COLORS[r] ?? "bg-white/5 text-white/30"}`}>{ROLE_LABELS[r] ?? r}</span>
+                              {sellerBadge}
+                            </span>
+                          );
                         }
                         return (
+                          <span className="inline-flex items-center gap-1.5">
                           <select
                             value={user.role || ""}
                             disabled={busyId === user._id}
@@ -404,9 +453,11 @@ export default function AdminUsers() {
                           >
                             <option value="">— assign role…</option>
                             {ASSIGNABLE_ROLES.map((role) => (
-                              <option key={role} value={role}>{role}</option>
+                              <option key={role} value={role}>{ROLE_LABELS[role] ?? role}</option>
                             ))}
                           </select>
+                          {sellerBadge}
+                          </span>
                         );
                       })()}
                     </td>
@@ -524,9 +575,9 @@ export default function AdminUsers() {
             <h3 className="text-sm font-bold text-white mb-1">Change primary role?</h3>
             <p className="text-[11px] text-white/35 mb-4">
               {rolePick.user.name || rolePick.user.email} moves from
-              <span className="text-white/70 font-medium"> {rolePick.user.role || "no role"} </span>
+              <span className="text-white/70 font-medium"> {rolePick.user.role ? (ROLE_LABELS[rolePick.user.role] ?? rolePick.user.role) : "no role"} </span>
               to
-              <span className="text-nx-violet font-medium"> {rolePick.role}</span>. Their access changes immediately and they are notified.
+              <span className="text-nx-violet font-medium"> {ROLE_LABELS[rolePick.role] ?? rolePick.role}</span>. Their access changes immediately and they are notified.
             </p>
             <div className="flex gap-2">
               <button

@@ -286,10 +286,24 @@ export const getAllUsers = query({
         adminTotpSecret: _ats,
         ...safeUser
       } = u as any;
+      // Seller registration completion: a seller only FINISHES registration
+      // by uploading + publishing at least one genuine listing (active, with a
+      // real 60+ char description) — the same bar the seller dashboard gate
+      // uses, so Admin and the seller panel can never disagree.
+      const publishedListings = userListings.filter(
+        (l: any) =>
+          l.status === "active" &&
+          typeof l.description === "string" &&
+          l.description.replace(/\s+/g, " ").trim().length >= 60,
+      ).length;
+      const isSeller = safeUser.role === "seller" || safeUser.pendingRole === "seller";
       return {
         ...safeUser,
         listingCount: userListings.length,
         orderCount: userEscrows.length,
+        publishedListings,
+        // undefined for non-sellers so the UI can show seller-only status.
+        registrationComplete: isSeller ? publishedListings > 0 : undefined,
         // Marketplace breakdown for the admin sellers panel.
         productListings: productListings.length,
         freelanceListings: freelanceListings.length,
