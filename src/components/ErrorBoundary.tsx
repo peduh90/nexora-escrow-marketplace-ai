@@ -19,6 +19,20 @@ interface ErrorBoundaryState {
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false, error: null };
 
+  /** Rolling-window catch counter. If the same boundary keeps catching
+   *  (error → resetKeys remount → same error), remounting children again
+   *  only produces an infinite "Maximum update depth" loop. After 3 rapid
+   *  catches we STOP resetting and hold the recovery screen — one tap on
+   *  Reload/home is then the only way forward. */
+  private catchTimestamps: number[] = [];
+
+  private isLooping(): boolean {
+    const now = Date.now();
+    this.catchTimestamps = this.catchTimestamps.filter((t) => now - t < 5_000);
+    this.catchTimestamps.push(now);
+    return this.catchTimestamps.length > 3;
+  }
+
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
@@ -59,10 +73,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   componentDidUpdate(prevProps: ErrorBoundaryProps) {
     if (
       this.state.hasError &&
+      !this.isLooping() &&
       this.props.resetKeys &&
       prevProps.resetKeys &&
       this.props.resetKeys.some((k, i) => k !== prevProps.resetKeys?.[i])
     ) {
+      // Genuinely new route → safe to retry the subtree once. Rapid repeated
+      // errors never reach here (see isLooping) — they hold the fallback
+      // instead of remount-looping.
+      this.catchTimestamps = [];
       this.setState({ hasError: false, error: null });
     }
   }

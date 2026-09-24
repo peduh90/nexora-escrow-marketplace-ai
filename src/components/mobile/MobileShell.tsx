@@ -771,11 +771,17 @@ export function MobileBottomNav({ onExplore, onAccount }: { onExplore: () => voi
               <span className={`text-[10px] font-medium leading-none transition-colors ${active ? "text-nx-violet" : "text-white/35"}`}>
                 {tab.label}
               </span>
+              {/* Per-tab indicator (NOT a shared layoutId): a conditional
+                  shared-layout element remounts on every active-tab change
+                  and under React StrictMode that thrash can loop framer-motion
+                  into "Maximum update depth exceeded". A local spring gives
+                  the same pop without the shared-layout machinery. */}
               {active && (
                 <motion.span
-                  layoutId="nx-tab-dot"
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2.5px] rounded-full bg-nx-violet"
+                  initial={{ scaleX: 0.4, opacity: 0 }}
+                  animate={{ scaleX: 1, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2.5px] rounded-full bg-nx-violet origin-center"
                 />
               )}
             </button>
