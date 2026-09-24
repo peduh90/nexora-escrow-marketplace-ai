@@ -262,7 +262,7 @@ export const getAllUsers = query({
     // Creator program: application/approval state per user.
     const creatorRecords = await ctx.db.query("referralCreators").collect();
 
-    return users.map((u) => {
+    const result = users.map((u) => {
       const userListings = listings.filter((l) => l.sellerId === u._id);
       // Marketplace split: physical product listings vs digital (freelance)
       // listings — legacy rows without the field count as product listings.
@@ -320,6 +320,15 @@ export const getAllUsers = query({
         creatorStatus: (creatorRecords.find((c: any) => (c as any).userId === u._id) as any)?.status,
       };
     });
+
+    // Newest first — freshly registered accounts surface at the top of every
+    // admin user table (Users, Sellers) so the owner sees new signups without
+    // scrolling. `_creationTime` is Convex's server write time (always set);
+    // joinedAt/lastLoginAt are best-effort fallbacks for legacy rows.
+    return result.sort((a: any, b: any) =>
+      (b._creationTime ?? b.joinedAt ?? b.lastLoginAt ?? 0) -
+      (a._creationTime ?? a.joinedAt ?? a.lastLoginAt ?? 0),
+    );
   },
 });
 
@@ -918,7 +927,11 @@ export const getAllFreelanceProfiles = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    return await ctx.db.query("freelanceProfiles").collect();
+    const profiles = await ctx.db.query("freelanceProfiles").collect();
+    // Newest first, consistent with the user tables.
+    return profiles.sort((a: any, b: any) =>
+      (b._creationTime ?? 0) - (a._creationTime ?? 0),
+    );
   },
 });
 
