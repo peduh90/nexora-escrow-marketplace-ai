@@ -19,18 +19,16 @@ interface ErrorBoundaryState {
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false, error: null };
 
-  /** Rolling-window catch counter. If the same boundary keeps catching
-   *  (error → resetKeys remount → same error), remounting children again
-   *  only produces an infinite "Maximum update depth" loop. After 3 rapid
-   *  catches we STOP resetting and hold the recovery screen — one tap on
-   *  Reload/home is then the only way forward. */
-  private catchTimestamps: number[] = [];
+  /**
+   * Route reset bookkeeping. An error boundary is allowed to retry a child
+   * when the route changes, but retrying the same route immediately can cause
+   * React's maximum-update-depth guard to fire. Keep the attempted signature
+   * so each route is retried at most once.
+   */
+  private lastResetSignature: string | null = null;
 
-  private isLooping(): boolean {
-    const now = Date.now();
-    this.catchTimestamps = this.catchTimestamps.filter((t) => now - t < 5_000);
-    this.catchTimestamps.push(now);
-    return this.catchTimestamps.length > 3;
+  private resetSignature(): string {
+    return (this.props.resetKeys || []).map((key) => String(key)).join("|");
   }
 
   static getDerivedStateFromError(error: Error) {
@@ -39,6 +37,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("[ErrorBoundary]", error, info.componentStack);
+    // Mark the current route as attempted. If the same route immediately
+    // throws again after a reset, componentDidUpdate must not reset it again.
+    this.lastResetSignature = this.resetSignature();
     this.autoRecoverFromStaleChunk(error);
   }
 
@@ -71,19 +72,19 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidUpdate(prevProps: ErrorBoundaryProps) {
-    if (
-      this.state.hasError &&
-      !this.isLooping() &&
-      this.props.resetKeys &&
-      prevProps.resetKeys &&
-      this.props.resetKeys.some((k, i) => k !== prevProps.resetKeys?.[i])
-    ) {
-      // Genuinely new route → safe to retry the subtree once. Rapid repeated
-      // errors never reach here (see isLooping) — they hold the fallback
-      // instead of remount-looping.
-      this.catchTimestamps = [];
-      this.setState({ hasError: false, error: null });
+    if (!this.state.hasError || !this.props.resetKeys) return;
+
+    const currentSignature = this.resetSignature();
+    const previousSignature = (prevProps.resetKeys || []).map((key) => String(key)).join("|");
+    if (currentSignature === previousSignature || currentSignature === this.lastResetSignature) {
+      return;
     }
+
+    // A genuinely new route is safe to retry once. Record the route before
+    // clearing the boundary: if its child immediately crashes again, the
+    // same signature is now known and cannot trigger another nested reset.
+    this.lastResetSignature = currentSignature;
+    this.setState({ hasError: false, error: null });
   }
 
   render() {
