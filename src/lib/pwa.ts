@@ -43,7 +43,20 @@ export async function registerServiceWorker(): Promise<void> {
   if (window.location.protocol !== "https:" && !window.location.hostname.includes("localhost")) return;
 
   try {
-    const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    const reg = await navigator.serviceWorker.register("/sw.js", {
+      scope: "/",
+      // Never let an intermediary/browser HTTP cache hide a newly deployed
+      // worker; the worker's own versioned caches still protect the app.
+      updateViaCache: "none",
+    });
+
+    // A worker can already be waiting when this page loads (for example after
+    // the user closed the tab before tapping Update). Surface it immediately
+    // instead of waiting for the next update event.
+    if (reg.waiting && navigator.serviceWorker.controller) {
+      waitingWorker = reg.waiting;
+      emitUpdateState();
+    }
 
     // An update is waiting while a new SW is installed but the old one still
     // controls the page. Surface it; never auto-reload (active transactions!).
