@@ -390,12 +390,16 @@ export const createOrder = mutation({
       v.literal("mpesa"),
       v.literal("airtel_money"),
       v.literal("card"),
+      v.literal("flutterwave"),
     ),
     // Unified payment engine (payments.ts): NX-TX-... reference of a payment
     // row that must already be VERIFIED server-side (status === "paid").
     // Required when paymentMethod is "airtel_money" or "card" — the escrow
     // will not fund without it. Works for "mpesa" too (preferred path).
     paymentReference: v.optional(v.string()),
+    // Flutterwave checkout is prepared before redirect and funded only after
+    // the provider transaction is verified. M-Pesa and wallet callers omit it.
+    paymentEscrowId: v.optional(v.string()),
     // Delivery fee shown at checkout — charged in the wallet path so the
     // buyer pays exactly the total displayed before confirmation.
     deliveryFee: v.optional(v.number()),
@@ -440,6 +444,53 @@ export const createOrder = mutation({
     const seller = (await ctx.db.get(args.sellerId as any)) as any;
     if (seller && seller.accountStatus === "suspended") {
       throw new ConvexError("This store is currently unavailable — please contact support.");
+    }
+
+    // Flutterwave's hosted redirect requires an existing pending Nexora order.
+    // The order is never treated as funded and the listing is never sold until
+    // a verified payment passes the gate below.
+    let paymentEscrowId = args.paymentEscrowId as any;
+    if (args.paymentMethod === "flutterwave" && !paymentEscrowId) {
+      const commissionPreview = await resolveFee(ctx.db, (listing as any).marketplace === "freelance" ? "freelance" : "product", "seller_commission", args.amount);
+      const protectionPreview = await resolveFee(ctx.db, (listing as any).marketplace === "freelance" ? "freelance" : "product", "buyer_protection", args.amount);
+      const deliveryPreview = typeof args.deliveryFee === "number" && args.deliveryFee > 0 ? Math.round(args.deliveryFee) : 0;
+      paymentEscrowId = await ctx.db.insert("escrows", {
+        buyerId: buyer._id,
+        sellerId: args.sellerId,
+        amount: args.amount,
+        currency: "KES",
+        status: "created",
+        title: listing.title,
+        description: `Payment pending for ${listing.title}`,
+        conditions: "Buyer confirms delivery within 7 days",
+        inspectionPeriodHours: 168,
+        releaseCondition: "Buyer confirms receipt",
+        transportRequired: deliveryPreview > 0,
+        transportFee: deliveryPreview || undefined,
+        deliveryAddress: args.deliveryAddress,
+        deliveryCounty: args.deliveryCounty,
+        deliveryTown: args.deliveryTown,
+        deliveryArea: args.deliveryArea,
+        deliveryLandmark: args.deliveryLandmark,
+        deliveryBuilding: args.deliveryBuilding,
+        deliveryFloorUnit: args.deliveryFloorUnit,
+        deliveryInstructions: args.deliveryInstructions,
+        deliveryPin: args.deliveryPin,
+        deliveryAddressId: args.deliveryAddressId,
+        recipientName: args.recipientName,
+        recipientPhone: args.recipientPhone,
+        recipientCounty: args.recipientCounty,
+        recipientTown: args.recipientTown,
+        giftNote: args.giftNote,
+        originCounty: listing.originCounty,
+        originTown: listing.originTown,
+        createdAt: Date.now(),
+        commissionRate: commissionPreview.breakdown.rate * 100,
+        platformFee: commissionPreview.breakdown.fee,
+        buyerFeeRate: protectionPreview.breakdown.rate * 100,
+        buyerFee: protectionPreview.breakdown.fee,
+        marketplace: (listing as any).marketplace === "freelance" ? "freelance" : "product",
+      });
     }
 
     // ── Nexora fee engine (src/convex/fees.ts) ──
@@ -511,6 +562,19 @@ export const createOrder = mutation({
     // The escrow funds only from a paymentTransactions row that the BACKEND
     // verified as paid (payments.verifyPayment / webhook / reconciliation).
     // A tampered client can never create an escrow out of thin air.
+    if (args.paymentMethod === "flutterwave" && !args.paymentReference) {
+      return {
+        escrowId: paymentEscrowId,
+        amount: args.amount,
+        sellerCommission: platformFee,
+        sellerCommissionRate: sellerCommission.rate * 100,
+        buyerProtectionFee: buyerFeeAmount,
+        buyerProtectionRate: buyerProtection.rate * 100,
+        totalPaid: totalAmount,
+        paymentPending: true,
+      };
+    }
+
     if (args.paymentReference) {
       const payment = await ctx.db
         .query("paymentTransactions")
@@ -524,6 +588,27 @@ export const createOrder = mutation({
       }
       if (payment.payerToken && identity.subject !== payment.payerToken) {
         throw new ConvexError("Payment verification does not match this account.");
+      }
+      if (payment.provider === "flutterwave") {
+        if (!payment.orderId) throw new ConvexError("Flutterwave payment is not linked to a Nexora order.");
+        if (payment.orderId !== String(paymentEscrowId || "")) {
+          throw new ConvexError("Flutterwave payment belongs to a different pending order.");
+        }
+        if (payment.buyerId !== buyer._id || payment.sellerId !== args.sellerId) {
+          throw new ConvexError("Flutterwave payment parties do not match this order.");
+        }
+        const expectedTotal = args.amount + buyerFeeAmount + deliveryFeeAmount;
+        if (Number(payment.amount) !== Number(args.amount) ||
+            Number(payment.feeBreakdown?.totalCharged ?? payment.feeSnapshot?.totalCharge) !== expectedTotal ||
+            payment.currency !== "KES") {
+          throw new ConvexError("Flutterwave payment does not match this order's immutable fee breakdown.");
+        }
+        const pendingEscrow = await ctx.db.get(paymentEscrowId as any) as any;
+        if (!pendingEscrow || pendingEscrow.status !== "created" ||
+            pendingEscrow.buyerId !== buyer._id || pendingEscrow.sellerId !== args.sellerId ||
+            Number(pendingEscrow.amount) !== Number(args.amount)) {
+          throw new ConvexError("Pending Nexora order is invalid or already funded.");
+        }
       }
       if (payment.escrowId) {
         throw new ConvexError("This payment has already been used for an order.");
@@ -573,7 +658,7 @@ export const createOrder = mutation({
       });
     }
 
-    const escrowId = await ctx.db.insert("escrows", {
+    const escrowFields = {
       buyerId: buyer._id,
       sellerId: args.sellerId,
       amount: args.amount,
@@ -609,12 +694,22 @@ export const createOrder = mutation({
       buyerFeeRate: buyerProtection.rate * 100,
       buyerFee: buyerFeeAmount,
       marketplace,
-    });
+    };
+
+    let escrowId: any;
+    if (args.paymentMethod === "flutterwave" && paymentEscrowId) {
+      escrowId = paymentEscrowId;
+      await ctx.db.patch(escrowId, { ...escrowFields, status: "funded", fundedAt: Date.now() } as any);
+    } else {
+      escrowId = await ctx.db.insert("escrows", { ...escrowFields, status: "funded", fundedAt: Date.now() } as any);
+    }
 
     // Bind the unified payment row to the escrow it funds (one-time use).
     if (unifiedPaymentId) {
       await ctx.db.patch(unifiedPaymentId, {
         escrowId: String(escrowId),
+        escrowStatus: "funded",
+        payoutStatus: "not_due",
         updatedAt: Date.now(),
       } as any);
     }

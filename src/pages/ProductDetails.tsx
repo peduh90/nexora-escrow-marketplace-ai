@@ -107,7 +107,7 @@ export default function ProductDetails() {
   const [deliveryCounty, setDeliveryCounty] = useState("");
   const [deliveryTown, setDeliveryTown] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "mpesa" | "airtel_money" | "card">("wallet");
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "mpesa" | "airtel_money" | "card" | "flutterwave">("wallet");
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [mpesaStep, setMpesaStep] = useState<"idle" | "sending" | "waiting" | "confirming" | "done" | "error">("idle");
   const [mpesaPhone, setMpesaPhone] = useState("");
@@ -207,8 +207,9 @@ export default function ProductDetails() {
           deliveryCounty: payload.deliveryCounty,
           deliveryTown: payload.deliveryTown,
           deliveryAddress: payload.deliveryAddress,
-          paymentMethod: "card",
+          paymentMethod: "flutterwave",
           paymentReference: ref,
+          paymentEscrowId: payload.paymentEscrowId,
           deliveryFee: payload.deliveryFee,
           deliveryArea: payload.deliveryArea,
           deliveryLandmark: payload.deliveryLandmark,
@@ -494,8 +495,8 @@ export default function ProductDetails() {
       return;
     }
 
-    // ── Unified payment engine: Airtel Money & Card ──
-    if (paymentMethod === "airtel_money" || paymentMethod === "card") {
+    // ── Unified payment engine: Airtel Money, legacy cards & Flutterwave Kenya ──
+    if (paymentMethod === "airtel_money" || paymentMethod === "card" || paymentMethod === "flutterwave") {
       const provider = paymentMethod;
       if (provider === "airtel_money" && !airtelPhone) {
         setUpError("Please enter your Airtel Money number.");
@@ -506,7 +507,7 @@ export default function ProductDetails() {
         setUpError(
           provider === "airtel_money"
             ? "Airtel Money is coming soon — not configured yet."
-            : "Card payments are coming soon — not configured yet.",
+            : "Flutterwave is not available until its server credentials are configured.",
         );
         return;
       }
@@ -514,23 +515,46 @@ export default function ProductDetails() {
       setUpStep("sending");
       setUpError("");
       try {
+        const pendingOrder = provider === "flutterwave"
+          ? await createOrder({
+              listingId: listing._id,
+              sellerId: listing.sellerId,
+              amount: totalAmount,
+              deliveryCounty,
+              deliveryTown,
+              deliveryAddress,
+              paymentMethod: "flutterwave",
+              deliveryFee: collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee,
+              deliveryArea: deliveryArea || undefined,
+              deliveryLandmark: deliveryLandmark || undefined,
+              deliveryBuilding: deliveryBuilding || undefined,
+              deliveryFloorUnit: deliveryFloorUnit || undefined,
+              deliveryInstructions: deliveryInstructions || undefined,
+              deliveryPin: deliveryPin || undefined,
+              deliveryAddressId: selectedAddressId ?? undefined,
+              ...(isGift ? { recipientName: recipientName || undefined, recipientPhone: recipientPhone || undefined, recipientCounty: recipientCounty || undefined, recipientTown: recipientTown || undefined, giftNote: giftNote || undefined } : {}),
+            })
+          : null;
         const initiated = await initiatePayment({
           provider,
           purpose: "order",
           amount: totalAmount,
+          orderId: pendingOrder ? String(pendingOrder.escrowId) : undefined,
+          sellerId: provider === "flutterwave" ? listing.sellerId : undefined,
+          customerEmail: user.email || undefined,
           marketplace: (listing as any).marketplace === "freelance" ? "freelance" : "product",
           msisdn: provider === "airtel_money" ? airtelPhone : undefined,
           listingTitle: listing.title,
           extraCharge:
             (collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee) || 0,
           redirectUrl:
-            provider === "card"
+            provider === "card" || provider === "flutterwave"
               ? `${window.location.origin}/product/${listing._id}?paid=1`
                : undefined,
         });
 
-        // ── Card: hosted checkout — stash order payload, open Flutterwave ──
-        if (provider === "card" && initiated.checkoutUrl) {
+        // ── Hosted checkout: stash order payload, open provider checkout ──
+        if ((provider === "card" || provider === "flutterwave") && initiated.checkoutUrl) {
           sessionStorage.setItem(
             "nx_pending_order:" + initiated.reference,
             JSON.stringify({
@@ -540,6 +564,7 @@ export default function ProductDetails() {
               deliveryCounty,
               deliveryTown,
               deliveryAddress,
+              paymentEscrowId: pendingOrder ? String(pendingOrder.escrowId) : undefined,
               deliveryFee: collectAtHub && selectedHub ? (selectedHub.fee ?? 0) : deliveryFee,
               deliveryArea: deliveryArea || undefined,
               deliveryLandmark: deliveryLandmark || undefined,
@@ -1310,6 +1335,10 @@ export default function ProductDetails() {
                   <p className="text-[11px] text-white/30">{providerAvailability && !providerAvailability.airtel_money ? "Coming soon" : "Pay via Airtel Money push"}</p>
                 </div>
               </label>
+              <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${paymentMethod === "flutterwave" ? "border-nx-violet/30 bg-nx-violet/5" : "border-white/5 bg-white/[0.02]"} ${providerAvailability && !providerAvailability.flutterwave?.configured ? "opacity-50" : ""}`}>
+                <input type="radio" name="payment" value="flutterwave" checked={paymentMethod === "flutterwave"} onChange={() => setPaymentMethod("flutterwave")} className="text-nx-violet" disabled={providerAvailability && !providerAvailability.flutterwave?.configured} />
+                <div className="flex-1"><p className="text-sm text-white">Flutterwave Kenya</p><p className="text-[11px] text-white/30">{!providerAvailability?.flutterwave?.configured ? "Not configured" : providerAvailability.flutterwave.status === "live_active" ? "M-Pesa, card & bank transfer · LIVE" : providerAvailability.flutterwave.status === "account_not_verified" ? "Account verification required" : "Test mode · LIVE gated"}</p></div>
+              </label>
               <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${paymentMethod === "card" ? "border-nx-violet/30 bg-nx-violet/5" : "border-white/5 bg-white/[0.02]"} ${providerAvailability && !providerAvailability.card ? "opacity-50" : ""}`}>
                 <input type="radio" name="payment" value="card" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} className="text-nx-violet" />
                 <div>
@@ -1330,9 +1359,9 @@ export default function ProductDetails() {
             )}
 
             {/* Card notice */}
-            {paymentMethod === "card" && (
+            {(paymentMethod === "card" || paymentMethod === "flutterwave") && (
               <div className="mb-4 p-3 rounded-lg text-sm bg-nx-cyan/5 border border-nx-cyan/10 text-nx-cyan flex items-center gap-2">
-                <Lock className="w-4 h-4" /> You'll complete payment on a secure hosted page — your card details never touch Nexora.
+                <Lock className="w-4 h-4" /> Complete payment on Flutterwave's secure hosted page. Your payment details never touch Nexora.
               </div>
             )}
 
@@ -1388,7 +1417,7 @@ export default function ProductDetails() {
 
             <button onClick={handleBuyNow} disabled={ordering || !deliveryCounty || !deliveryTown || !deliveryAddress || (paymentMethod === "mpesa" && mpesaStep !== "idle") || (paymentMethod === "airtel_money" && upStep !== "idle" && upStep !== "error")}
               className="w-full py-3 rounded-xl bg-nx-violet text-white font-semibold text-sm hover:bg-nx-violet/80 transition-colors disabled:opacity-30 flex items-center justify-center gap-2">
-              {ordering ? <><Loader2 className="w-4 h-4 animate-spin" /> {paymentMethod === "airtel_money" && upStep === "waiting" ? "Waiting for Airtel Money..." : mpesaStep === "waiting" ? "Waiting for M-Pesa..." : "Processing..."}</> : paymentMethod === "mpesa" ? `Pay KES ${grandTotal.toLocaleString()} via M-Pesa` : paymentMethod === "airtel_money" ? `Pay KES ${grandTotal.toLocaleString()} via Airtel Money` : paymentMethod === "card" ? `Pay KES ${grandTotal.toLocaleString()} by Card` : `Pay KES ${grandTotal.toLocaleString()}`}
+              {ordering ? <><Loader2 className="w-4 h-4 animate-spin" /> {paymentMethod === "airtel_money" && upStep === "waiting" ? "Waiting for Airtel Money..." : mpesaStep === "waiting" ? "Waiting for M-Pesa..." : "Processing..."}</> : paymentMethod === "mpesa" ? `Pay KES ${grandTotal.toLocaleString()} via M-Pesa` : paymentMethod === "airtel_money" ? `Pay KES ${grandTotal.toLocaleString()} via Airtel Money` : paymentMethod === "card" ? `Pay KES ${grandTotal.toLocaleString()} by Card` : paymentMethod === "flutterwave" ? `Pay KES ${grandTotal.toLocaleString()} with Flutterwave` : `Pay KES ${grandTotal.toLocaleString()}`}
             </button>
           </div>
         </div>

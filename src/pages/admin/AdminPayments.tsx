@@ -26,7 +26,8 @@ const statusMeta: Record<string, { label: string; color: string; bg: string }> =
 const providerMeta: Record<string, { label: string; icon: typeof CreditCard; color: string }> = {
   mpesa: { label: "M-Pesa", icon: Smartphone, color: "text-emerald-400" },
   airtel_money: { label: "Airtel Money", icon: Smartphone, color: "text-red-400" },
-  card: { label: "Card (Visa/Mastercard)", icon: Landmark, color: "text-nx-cyan" },
+  card: { label: "Card (legacy Flutterwave)", icon: Landmark, color: "text-nx-cyan" },
+  flutterwave: { label: "Flutterwave Kenya", icon: Landmark, color: "text-emerald-400" },
 };
 
 const unifiedStatusMeta: Record<string, { label: string; color: string; bg: string }> = {
@@ -35,6 +36,9 @@ const unifiedStatusMeta: Record<string, { label: string; color: string; bg: stri
   paid: { label: "Paid ✓", color: "text-emerald-400", bg: "bg-emerald-400/10" },
   failed: { label: "Failed", color: "text-red-400", bg: "bg-red-400/10" },
   cancelled: { label: "Cancelled", color: "text-white/40", bg: "bg-white/5" },
+  expired: { label: "Expired", color: "text-amber-400", bg: "bg-amber-400/10" },
+  reversed: { label: "Reversed", color: "text-red-400", bg: "bg-red-400/10" },
+  disputed: { label: "Disputed", color: "text-amber-400", bg: "bg-amber-400/10" },
   refunded: { label: "Refunded", color: "text-nx-cyan", bg: "bg-nx-cyan/10" },
   partially_refunded: { label: "Partial refund", color: "text-nx-cyan", bg: "bg-nx-cyan/10" },
 };
@@ -48,6 +52,7 @@ export default function AdminPayments() {
   // ── Unified payment engine (M-Pesa / Airtel Money / Card) ──
   const unified = useQuery(api.paymentStore.listTransactions, { limit: 100 });
   const unifiedStats = useQuery(api.paymentStore.paymentStats, {});
+  const webhookEvents = useQuery(api.paymentStore.listWebhookEvents, { limit: 50 });
   const refundTx = useMutation(api.paymentStore.requestRefund);
   const executeRefund = useAction(api.payments.executeRefund as any);
   const reconcile = useAction(api.payments.reconcilePending as any);
@@ -131,7 +136,7 @@ export default function AdminPayments() {
 
         {/* Provider breakdown */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          {["mpesa", "airtel_money", "card"].map((p) => {
+          {["mpesa", "airtel_money", "card", "flutterwave"].map((p) => {
             const meta = providerMeta[p];
             const stat = unifiedStats?.byProvider?.[p];
             const Icon = meta.icon;
@@ -155,7 +160,7 @@ export default function AdminPayments() {
           <div className="py-8 flex flex-col items-center text-center">
             <CreditCard className="w-6 h-6 text-white/10 mb-2" />
             <p className="text-xs text-white/30">No unified payment attempts yet</p>
-            <p className="text-[10px] text-white/20 mt-1">M-Pesa, Airtel Money and card checkouts will appear here</p>
+            <p className="text-[10px] text-white/20 mt-1">M-Pesa remains sandbox/LIVE capable independently; Flutterwave appears after server configuration</p>
           </div>
         ) : (
           <div className="rounded-lg border border-white/5 overflow-hidden">
@@ -163,11 +168,12 @@ export default function AdminPayments() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/5 bg-white/[0.02]">
-                    <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase">Reference</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase">Reference / Tx</th>
                     <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase">Provider</th>
                     <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase">Amount</th>
                     <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase">Status</th>
-                    <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase hidden md:table-cell">Escrow</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase hidden md:table-cell">Order / Escrow</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-medium text-white/30 uppercase hidden lg:table-cell">Reconciliation</th>
                     <th className="text-right px-3 py-2 text-[10px] font-medium text-white/30 uppercase">Action</th>
                   </tr>
                 </thead>
@@ -179,7 +185,7 @@ export default function AdminPayments() {
                     const refundable = t.status === "paid" && !(t.refundedAmount >= (t.feeSnapshot?.totalCharge ?? t.amount));
                     return (
                       <tr key={t._id} className="border-b border-white/[0.03] last:border-0">
-                        <td className="px-3 py-2.5 text-[11px] text-white/60 font-mono">{t.reference.slice(0, 18)}…</td>
+                        <td className="px-3 py-2.5 text-[11px] text-white/60 font-mono"><p>{t.reference}</p><p className="text-[9px] text-white/25 mt-0.5">tx {t.providerTransactionId || "pending"}</p></td>
                         <td className="px-3 py-2.5 text-xs">
                           <span className={`flex items-center gap-1.5 ${meta.color}`}><Icon className="w-3.5 h-3.5" /> {meta.label}</span>
                         </td>
@@ -189,7 +195,8 @@ export default function AdminPayments() {
                           {t.status === "paid" && t.escrowId && <p className="text-[10px] text-white/25 mt-0.5">escrow #{String(t.escrowId).slice(-6)}</p>}
                           {t.failureReason && <p className="text-[10px] text-red-400/60 mt-0.5 max-w-[180px] truncate">{t.failureReason}</p>}
                         </td>
-                        <td className="px-3 py-2.5 text-[11px] text-white/40 hidden md:table-cell">{t.escrowId ? "linked" : t.status === "paid" ? <span className="text-amber-400">unlinked</span> : "—"}</td>
+                        <td className="px-3 py-2.5 text-[11px] text-white/40 hidden md:table-cell"><p>{t.orderId || "—"}</p><p className="text-[9px] text-white/25">{t.escrowId ? `escrow ${String(t.escrowId).slice(-6)}` : t.status === "paid" ? "unlinked" : "—"}</p></td>
+                        <td className="px-3 py-2.5 text-[11px] text-white/40 hidden lg:table-cell"><p>{t.providerStatus || "awaiting provider"}</p><p className="text-[9px] text-white/25">{t.verifiedAt ? "server verified" : t.webhookReceivedAt ? "webhook seen" : "not verified"}</p></td>
                         <td className="px-3 py-2.5 text-right">
                           {refundable ? (
                             <button onClick={() => handleRefund(t)} disabled={refunding === t._id}
