@@ -154,6 +154,14 @@ export default function TransportPage() {
             <h1 className="text-xl md:text-2xl font-bold">Transport & Rides</h1>
             <p className="text-xs text-white/40 mt-0.5">See the price first. Pay safely after the ride.</p>
           </div>
+          {!user && (
+            <button
+              onClick={() => navigate("/auth?returnTo=" + encodeURIComponent("/transport/register"))}
+              className="ml-auto shrink-0 px-4 py-2 rounded-xl bg-nx-violet text-white text-xs font-semibold hover:bg-nx-violet/85 inline-flex items-center gap-1.5"
+            >
+              <Bike className="w-4 h-4" /> Drive & Earn — Register
+            </button>
+          )}
         </div>
 
         {/* Tabs */}

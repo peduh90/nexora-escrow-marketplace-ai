@@ -158,7 +158,7 @@ export default function ServiceProviderDashboard() {
     }
     setBusy(true);
     try {
-      await upsertService({
+      const res = await upsertService({
         displayName: form.displayName,
         category: form.category,
         serviceType: form.serviceType,
@@ -173,7 +173,13 @@ export default function ServiceProviderDashboard() {
         image: form.image || undefined,
         workingHours: form.workingHours || undefined,
       });
-      toast.success("Service saved");
+      // First publish vs update get different guidance — a brand-new provider
+      // should know verification is coming and that they're already visible.
+      if ((res as any)?.created) {
+        toast.success("Service published! Nexora admin will verify it shortly — customers can already find and book you.");
+      } else {
+        toast.success("Service saved");
+      }
       setForm(null);
     } catch (err: any) {
       toast.error(err?.message || "Could not save");

@@ -374,16 +374,19 @@ createRoot(document.getElementById("root")!).render(
               {/* Buyer routes (buyer role only — sellers/admins get bounced to their own panel) */}
               <Route path="/buyer" element={<RoleRouter allowedRoles={["buyer", "creator"]}><BuyerDashboard /></RoleRouter>} />
               <Route path="/buyer/orders" element={<RoleRouter allowedRoles={["buyer", "creator"]}><BuyerOrders /></RoleRouter>} />
-              <Route path="/buyer/wallet" element={<RoleRouter allowedRoles={["buyer", "creator"]}><BuyerWallet /></RoleRouter>} />
+              {/* Wallet, profile, notifications & settings are shared account
+                  screens — every role needs them, incl. local service
+                  providers and drivers (their dashboards link here). */}
+              <Route path="/buyer/wallet" element={<RoleRouter allowedRoles={["buyer", "creator", "seller", "freelancer", "employer", "service_provider", "driver"]}><BuyerWallet /></RoleRouter>} />
               <Route path="/buyer/disputes" element={<RoleRouter allowedRoles={["buyer", "creator"]}><BuyerDisputes /></RoleRouter>} />
               {/* Account editing is for EVERY signed-in role — buyers, sellers,
                   freelancers, employers, transport & service providers. */}
-              <Route path="/buyer/profile" element={<RoleRouter allowedRoles={["buyer", "creator", "seller", "freelancer", "employer"]}><BuyerProfile /></RoleRouter>} />
-              <Route path="/buyer/notifications" element={<RoleRouter allowedRoles={["buyer", "creator"]}><BuyerNotifications /></RoleRouter>} />
+              <Route path="/buyer/profile" element={<RoleRouter allowedRoles={["buyer", "creator", "seller", "freelancer", "employer", "service_provider", "driver"]}><BuyerProfile /></RoleRouter>} />
+              <Route path="/buyer/notifications" element={<RoleRouter allowedRoles={["buyer", "creator", "seller", "freelancer", "employer", "service_provider", "driver"]}><BuyerNotifications /></RoleRouter>} />
               <Route path="/buyer/marketplace" element={<RoleRouter allowedRoles={["buyer", "creator"]}><Marketplace /></RoleRouter>} />
               <Route path="/buyer/jobs" element={<RoleRouter allowedRoles={["buyer", "creator"]}><FreelanceJobs /></RoleRouter>} />
               <Route path="/buyer/deliveries" element={<RoleRouter allowedRoles={["buyer", "creator"]}><BuyerDeliveries /></RoleRouter>} />
-              <Route path="/buyer/settings" element={<RoleRouter allowedRoles={["buyer", "creator"]}><BuyerSettings /></RoleRouter>} />
+              <Route path="/buyer/settings" element={<RoleRouter allowedRoles={["buyer", "creator", "seller", "freelancer", "employer", "service_provider", "driver"]}><BuyerSettings /></RoleRouter>} />
 
               {/* Seller routes (seller role only — public /seller/:userId profile stays open) */}
               <Route path="/seller" element={<RoleRouter allowedRoles={["seller"]}><SellerDashboard /></RoleRouter>} />
