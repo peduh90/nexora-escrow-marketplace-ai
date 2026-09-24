@@ -1060,10 +1060,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                       <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
                         <PenLine className="w-6 h-6 text-emerald-400" />
                       </div>
-                      <h3 className="text-base font-semibold text-white mb-1">Find Work</h3>
-                      <p className="text-white/40 text-xs leading-relaxed mb-3">Apply to jobs and projects. Get paid securely in escrow.</p>
+                      <h3 className="text-base font-semibold text-white mb-1">Find Digital Work</h3>
+                      <p className="text-white/40 text-xs leading-relaxed mb-3">Find online projects and digital services — writing, design, development, video and AI work.</p>
                       <div className="flex flex-col gap-1">
-                        {["Browse & apply to jobs", "Escrow-protected earnings", "M-Pesa withdrawals"].map((f) => (
+                        {["Browse digital projects", "Escrow-protected earnings", "M-Pesa withdrawals"].map((f) => (
                           <div key={f} className="flex items-center gap-1.5 text-[11px] text-white/30">
                             <Check className="w-3 h-3 text-emerald-500/60" /><span>{f}</span>
                           </div>
@@ -1075,10 +1075,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                       <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center mb-4 group-hover:bg-amber-500/20 transition-colors">
                         <Briefcase className="w-6 h-6 text-amber-400" />
                       </div>
-                      <h3 className="text-base font-semibold text-white mb-1">Hire a Freelancer</h3>
-                      <p className="text-white/40 text-xs leading-relaxed mb-3">Post jobs, review proposals, pay only on delivery.</p>
+                      <h3 className="text-base font-semibold text-white mb-1">Hire Digital Talent</h3>
+                      <p className="text-white/40 text-xs leading-relaxed mb-3">Hire online specialists for digital work, remote projects and ready-made services.</p>
                       <div className="flex flex-col gap-1">
-                        {["Post jobs & tasks", "Review proposals", "Escrow-protected payments"].map((f) => (
+                        {["Post digital projects", "Review talent profiles", "Escrow-protected payments"].map((f) => (
                           <div key={f} className="flex items-center gap-1.5 text-[11px] text-white/30">
                             <Check className="w-3 h-3 text-amber-500/60" /><span>{f}</span>
                           </div>

@@ -170,7 +170,7 @@ export default function FreelanceLanding() {
             <Sparkles className="w-9 h-9 text-nx-violet mb-4 group-hover:scale-110 transition-transform" />
             <h3 className="text-lg font-bold text-white leading-tight">GET STARTED FREE</h3>
             <p className="text-xs text-white/50 mt-1.5 leading-relaxed">
-              Create your account — Freelancer, Employer or Digital Provider.
+              Create your account — find digital work, hire digital talent or sell digital products.
             </p>
             <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-nx-violet">
               Join Nexora <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
@@ -183,12 +183,12 @@ export default function FreelanceLanding() {
             className="group rounded-2xl border border-white/8 bg-white/[0.03] p-6 text-left hover:border-nx-emerald/40 hover:bg-nx-emerald/[0.06] hover:-translate-y-1 transition-all duration-300"
           >
             <Briefcase className="w-9 h-9 text-nx-emerald mb-4 group-hover:scale-110 transition-transform" />
-            <h3 className="text-lg font-bold text-white leading-tight">FIND WORK</h3>
+            <h3 className="text-lg font-bold text-white leading-tight">FIND DIGITAL WORK</h3>
             <p className="text-xs text-white/50 mt-1.5 leading-relaxed">
-              Browse jobs & apply — get paid in escrow, withdraw to M-Pesa.
+              Browse online projects and digital services — get paid in escrow, withdraw to M-Pesa.
             </p>
             <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-nx-emerald">
-              Browse jobs <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              Browse digital work <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </span>
           </button>
 
@@ -198,12 +198,12 @@ export default function FreelanceLanding() {
             className="group rounded-2xl border border-white/8 bg-white/[0.03] p-6 text-left hover:border-nx-gold/40 hover:bg-nx-gold/[0.06] hover:-translate-y-1 transition-all duration-300"
           >
             <Users className="w-9 h-9 text-nx-gold mb-4 group-hover:scale-110 transition-transform" />
-            <h3 className="text-lg font-bold text-white leading-tight">HIRE A FREELANCER</h3>
+            <h3 className="text-lg font-bold text-white leading-tight">HIRE DIGITAL TALENT</h3>
             <p className="text-xs text-white/50 mt-1.5 leading-relaxed">
-              Browse verified writers, designers & developers — open a profile, hire in escrow.
+              Browse verified writers, designers & developers for online work — open a profile and hire in escrow.
             </p>
             <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-nx-gold">
-              Meet the freelancers <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              Meet digital talent <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </span>
           </button>
 
