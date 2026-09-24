@@ -20,8 +20,10 @@ import { getSessionUser } from "./users";
 // privileges. Referral commissions for seller/freelancer/employer bonuses are
 // unlocked strictly by these milestones, never by clicks or raw signups.
 
-/** Minimum length for a "genuine" listing/task description (anti-spam). */
-export const MIN_DESCRIPTION_CHARS = 10;
+/** Minimum length for a "genuine" listing/task description. A seller only has
+ *  to UPLOAD and PUBLISH one real item to finish registration — we do not judge
+ *  the quality or length of their words, so 1 usable character is accepted. */
+export const MIN_DESCRIPTION_CHARS = 1;
 /** A genuine employer must post at least this many distinct real offerings. */
 export const EMPLOYER_REQUIRED_JOBS = 5;
 

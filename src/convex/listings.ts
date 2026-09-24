@@ -226,7 +226,7 @@ export const createListing = mutation({
     const trimmedDescription = (args.description || "").replace(/\s+/g, " ").trim();
     if (trimmedDescription.length < MIN_DESCRIPTION_CHARS) {
       throw new ConvexError(
-        `Please add a short description (at least ${MIN_DESCRIPTION_CHARS} characters) so buyers know what they get.`
+        `Please add a short description (at least ${MIN_DESCRIPTION_CHARS} character${MIN_DESCRIPTION_CHARS === 1 ? "" : "s"}) so buyers know what they get.`
       );
     }
 

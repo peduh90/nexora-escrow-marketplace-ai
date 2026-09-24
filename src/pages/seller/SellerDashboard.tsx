@@ -33,8 +33,9 @@ export default function SellerDashboard() {
   // ─── FINISH-REGISTRATION GATE ───
   // A seller who has not published ANY product/service yet sees only this
   // screen — the dashboard itself unlocks with the first genuine listing.
-  // The flag is computed server-side from real listings (60+ char
-  // descriptions), so an empty or draft store never passes.
+  // The flag is computed server-side from real published listings (active with
+  // at least one usable character of description), so an empty or draft store
+  // never passes — but a seller is never blocked for writing "Nice phone".
   const hasPublished =
     verification === undefined ? undefined : (verification as any)?.hasPublishedListing === true;
   if (hasPublished === false) {
@@ -65,7 +66,7 @@ export default function SellerDashboard() {
       },
     ];
     const thinListings = (listings ?? []).filter(
-      (l) => l.status === "active" && (!l.description || l.description.replace(/\s+/g, " ").trim().length < 60),
+      (l) => l.status === "active" && (!l.description || l.description.replace(/\s+/g, " ").trim().length < 1),
     );
     return (
       <SellerLayout>
@@ -121,9 +122,9 @@ export default function SellerDashboard() {
             {(thinListings.length > 0 || (listings ?? []).some((l) => l.status !== "active")) && (
               <div className="mt-4 p-3 rounded-xl bg-amber-400/[0.04] border border-amber-300/15">
                 <p className="text-xs text-amber-200/80 leading-relaxed">
-                  You have {listings?.length ?? 0} listing{((listings?.length ?? 0) !== 1) ? "s" : ""}, but {thinListings.length > 0 ? `${thinListings.length === 1 ? "its description is" : "their descriptions are"} too short to count (60+ characters needed)` : "none are active"}.{" "}
+                  You have {listings?.length ?? 0} listing{((listings?.length ?? 0) !== 1) ? "s" : ""}, but {thinListings.length > 0 ? `${thinListings.length === 1 ? "it has no description yet" : "they have no description yet"} — one word is enough` : "none are active"}.{" "}
                   <button onClick={() => navigate("/seller/products")} className="text-amber-300 underline underline-offset-2 hover:text-amber-200">
-                    Open My Products and complete {thinListings.length > 0 ? "the description" : "and activate one"}
+                    Open My Products and {thinListings.length > 0 ? "add the description" : "activate one"}
                   </button>{" "}
                   — your dashboard opens instantly after that.
                 </p>

@@ -287,14 +287,14 @@ export const getAllUsers = query({
         ...safeUser
       } = u as any;
       // Seller registration completion: a seller only FINISHES registration
-      // by uploading + publishing at least one genuine listing (active, with a
-      // real 60+ char description) — the same bar the seller dashboard gate
-      // uses, so Admin and the seller panel can never disagree.
+      // by uploading + publishing at least one genuine listing (active, with at
+      // least one usable character of description — same bar the seller
+      // dashboard gate uses, so Admin and the seller panel never disagree).
       const publishedListings = userListings.filter(
         (l: any) =>
           l.status === "active" &&
           typeof l.description === "string" &&
-          l.description.replace(/\s+/g, " ").trim().length >= 60,
+          l.description.replace(/\s+/g, " ").trim().length >= 1,
       ).length;
       const isSeller = safeUser.role === "seller" || safeUser.pendingRole === "seller";
       return {
