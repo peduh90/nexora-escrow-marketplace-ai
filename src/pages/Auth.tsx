@@ -66,6 +66,11 @@ function parkGoogleIntent(intent: { role?: string | null; name?: string | null; 
   }
 }
 
+// The ONLY reliable "this is a Google handback" signal for /oauth/return: the
+// ConvexAuthProvider strips ?code= from the URL before that page mounts. Parked
+// right before the redirect; consumed (removed) by /oauth/return on arrival.
+export const GOOGLE_OAUTH_PENDING_KEY = "nx_google_oauth_pending";
+
 function consumeGoogleIntent(): { role?: string; name?: string; refCode?: string } | null {
   try {
     const raw = sessionStorage.getItem(GOOGLE_INTENT_KEY);
@@ -670,13 +675,27 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       name: fullName || null,
       refCode: activeRefCode || getRememberedReferralCode() || null,
     });
+    // Mark the handback BEFORE leaving the app. On /oauth/return the provider
+    // strips ?code= from the URL before that page mounts, so the pending flag
+    // is the only reliable "this is an OAuth return" signal (used to show an
+    // actionable error instead of an infinite spinner when the handback fails).
+    try {
+      sessionStorage.setItem("nx_google_oauth_pending", "1");
+    } catch {
+      /* non-fatal */
+    }
     try {
       // The OAuth callback 302s the browser back to the app (NOT the Convex
       // site origin) so the SPA can consume the one-time code. The return
       // page then replays the code and routes by role.
       await signIn("google", { redirectTo: `${window.location.origin}/oauth/return` });
     } catch (error: any) {
-      try { sessionStorage.removeItem(GOOGLE_INTENT_KEY); } catch { /* noop */ }
+      try {
+        sessionStorage.removeItem(GOOGLE_INTENT_KEY);
+        sessionStorage.removeItem("nx_google_oauth_pending");
+      } catch {
+        /* noop */
+      }
       console.error("Google sign-in error:", error);
       setError(googleAuthErrorMessage(error));
       setIsLoading(false);
