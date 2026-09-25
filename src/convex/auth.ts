@@ -7,6 +7,25 @@ import { emailOtp } from "./auth/emailOtp";
 
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
+  // After Google consent the OAuth callback 302s the browser to the app so it
+  // can consume the one-time sign-in code. Without an explicit redirectTo the
+  // library falls back to SITE_URL (the Convex site origin), which serves no
+  // SPA — users then land on "No matching routes found". Only our app origins
+  // are allowed; everything else falls back to the default (SITE_URL).
+  callbacks: {
+    async redirect({ redirectTo }) {
+      if (
+        typeof redirectTo === "string" &&
+        (redirectTo === "/oauth/return" ||
+          /^https:\/\/([a-z0-9-]+\.)?(freebuff\.app|freebuff\.com|daytona\.work|vly\.sh)(\/|$)/i.test(
+            redirectTo,
+          ))
+      ) {
+        return redirectTo;
+      }
+      throw new Error(`Invalid redirectTo ${redirectTo}`);
+    },
+  },
   providers: [
     // Credentials are passed explicitly (the documented @auth/core pattern) so
     // provider materialization does not depend on module-load-time env

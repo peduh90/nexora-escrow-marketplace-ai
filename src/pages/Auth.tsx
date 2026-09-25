@@ -671,7 +671,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       refCode: activeRefCode || getRememberedReferralCode() || null,
     });
     try {
-      await signIn("google");
+      // The OAuth callback 302s the browser back to the app (NOT the Convex
+      // site origin) so the SPA can consume the one-time code. The return
+      // page then replays the code and routes by role.
+      await signIn("google", { redirectTo: `${window.location.origin}/oauth/return` });
     } catch (error: any) {
       try { sessionStorage.removeItem(GOOGLE_INTENT_KEY); } catch { /* noop */ }
       console.error("Google sign-in error:", error);

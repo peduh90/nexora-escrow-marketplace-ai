@@ -14,6 +14,8 @@ import "./index.css";
 
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
+// OAuth return target: Google redirects here with the one-time sign-in code.
+const OAuthReturn = lazy(() => import("./pages/OAuthReturn.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 // Creator / Referral program
@@ -276,6 +278,9 @@ createRoot(document.getElementById("root")!).render(
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Landing />} />
+              {/* OAuth handback: consumes the one-time Convex sign-in code
+                  (?code=...) and routes the user to their role dashboard. */}
+              <Route path="/oauth/return" element={<OAuthReturn />} />
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/auth" element={<AuthPage redirectAfterAuth="/buyer" />} />
               {/* Dedicated seller registration/sign-in panel — skips the "Choose Your Path" role cards */}
