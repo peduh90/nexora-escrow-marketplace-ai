@@ -106,15 +106,44 @@ function GoogleAuthButton({ onClick, disabled, label = "Continue with Google" }:
   );
 }
 
+/** Convex Auth / Auth.js surface failures in several shapes (Error, string,
+ * `{ data: { code, message } }`, or a Response), so every handler must read the
+ * text through this helper before deciding what to tell the user. */
+function authErrorText(err: unknown): string {
+  if (!err) return "";
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  const anyErr = err as any;
+  if (typeof anyErr?.data?.message === "string") return anyErr.data.message;
+  if (typeof anyErr?.data === "string") return anyErr.data;
+  if (typeof anyErr?.message === "string") return anyErr.message;
+  if (typeof anyErr?.error === "string") return anyErr.error;
+  if (typeof anyErr?.error?.message === "string") return anyErr.error.message;
+  return "";
+}
+
+/** Turns a Google OAuth failure into an actionable message instead of an
+ * opaque `[CONVEX...]` string. The most common breakage is the callback URI
+ * not being registered in the Google OAuth client. */
+function googleAuthErrorMessage(err: unknown): string {
+  const lower = authErrorText(err).toLowerCase();
+  if (lower.includes("not configured") || lower.includes("missing") || lower.includes("provider not found")) {
+    return "Google sign-in is not configured yet. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET in API Keys.";
+  }
+  if (lower.includes("redirect_uri") || lower.includes("redirect uri")) {
+    return "Google rejected the redirect. Register https://<your-convex-deployment>.convex.site/api/auth/callback/google as an Authorized redirect URI in the Google OAuth client.";
+  }
+  if (lower.includes("invalid_client") || lower.includes("unauthorized_client") || lower.includes("invalid credentials")) {
+    return "Google rejected the client ID or secret. Check AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET in API Keys.";
+  }
+  if (lower.includes("access_denied") || lower.includes("cancelled") || lower.includes("canceled")) {
+    return "Google sign-in was cancelled. Please try again.";
+  }
+  return friendlyAuthError(err, "Google sign-in failed. Please try again or use email sign-in.");
+}
+
 function friendlyAuthError(err: unknown, fallback = "Something went wrong. Please try again."): string {
-  const raw =
-    err instanceof Error
-      ? err.message
-      : typeof (err as any)?.data === "object" && (err as any)?.data?.message
-      ? String((err as any).data.message)
-      : typeof err === "string"
-      ? err
-      : "";
+  const raw = authErrorText(err);
   if ((err as any)?.data?.code === "email_delivery_failed") {
     return (err as any).data.message as string;
   }
@@ -646,9 +675,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     } catch (error: any) {
       try { sessionStorage.removeItem(GOOGLE_INTENT_KEY); } catch { /* noop */ }
       console.error("Google sign-in error:", error);
-      setError(error?.message?.includes("not configured")
-        ? "Google sign-in is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in API Keys."
-        : friendlyAuthError(error, "Google sign-in failed. Please try again or use email sign-in."));
+      setError(googleAuthErrorMessage(error));
       setIsLoading(false);
     }
   };
