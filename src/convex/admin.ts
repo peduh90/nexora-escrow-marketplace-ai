@@ -5,19 +5,10 @@ import { getSessionUser } from "./users";
 
 const ADMIN_EMAIL = "murimiedwin227@gmail.com";
 
-/**
- * A "real" platform user: has a real email and is not a guest/anonymous
- * account. Used consistently across the admin dashboard and user lists so the
- * two never disagree on totals.
- */
-function isRealUser(u: any): boolean {
-  return (
-    typeof u.email === "string" &&
-    u.email.includes("@") &&
-    u.name !== "Guest User" &&
-    !u.email.toLowerCase().includes("anonymous")
-  );
-}
+// Every row in `users` is part of the admin account directory. In particular,
+// partial/auth-library accounts may not have an email, role, or completion
+// status yet; requiring those fields here made real signups disappear from
+// User Management and made the displayed total smaller than the users table.
 
 /** Helper: verify the current user is an admin.
  * STRICTLY read-only: this runs inside queries, and Convex queries must never
@@ -117,7 +108,7 @@ export const getDashboardStats = query({
     // anonymous) so the dashboard matches the User Management page. Sellers
     // include accounts still completing verification (pendingRole === "seller")
     // so a brand-new seller registration is visible to the admin immediately.
-    const realUsers = users.filter(isRealUser);
+    const realUsers = users;
     const isSellerAccount = (u: any) =>
       u.role === "seller" || !!u.businessName || u.pendingRole === "seller";
     // Buyers are ONLY accounts with the real buyer role — role-less pending
@@ -239,16 +230,16 @@ export const getDashboardStats = query({
 
 // ─── USER MANAGEMENT ───
 
-/** Admin: get all users with computed stats.
- * Guest/anonymous accounts are excluded so this list always matches the
- * dashboard and User Management counts. Sensitive credential fields (password
- * hashes, auth account ids, admin 2FA secrets) are stripped before the records
- * leave the server — the admin UI never needs them. */
+/** Admin: get every user account with computed stats.
+ * Partial registrations and auth-library rows are included so admins can see
+ * and complete them. Sensitive credential fields (password hashes, auth
+ * account ids, admin 2FA secrets) are stripped before records leave the
+ * server — the admin UI never needs them. */
 export const getAllUsers = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const users = (await ctx.db.query("users").collect()).filter(isRealUser);
+    const users = await ctx.db.query("users").collect();
     const listings = await ctx.db.query("listings").collect();
     const escrows = await ctx.db.query("escrows").collect();
     // Phase 2/3: surface service & transport provider status in User Management.
@@ -354,7 +345,9 @@ export const getUserCounts = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const all = await ctx.db.query("users").collect();
-    const realUsers = all.filter(isRealUser);
+    // Use the same complete account set as getAllUsers. Sidebar badges must
+    // never disagree with the visible user directory.
+    const realUsers = all;
     const freelanceProfiles = await ctx.db.query("freelanceProfiles").collect();
     // A freelancer is a PERSON, not just a completed profile: count every
     // account with the freelancer role (the freelance join flow assigns it
@@ -1080,7 +1073,7 @@ export const getCommandCenter = query({
 
     const now = Date.now();
     const DAY = 86400000;
-    const realUsers = users.filter(isRealUser);
+    const realUsers = users;
     const flProfileUserIds = new Set<string>(
       freelanceProfiles.map((p: any) => (p as any).userId)
     );
