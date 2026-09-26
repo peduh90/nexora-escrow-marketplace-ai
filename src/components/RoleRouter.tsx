@@ -1,5 +1,8 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, ShieldAlert, CheckCircle2, Circle, ArrowRight, ShoppingBag, Store, PenLine, Briefcase, Wrench, Truck, Sparkles } from "lucide-react";
+import { Loader2, ShieldAlert, CheckCircle2, Circle, ArrowRight, ShoppingBag, Store, PenLine, Briefcase, Wrench, Truck, Sparkles, AlertCircle } from "lucide-react";
+// Same validator the server enforces in completeVerification — instant
+// feedback here means "Finish verification" can never surprise the user.
+import { kenyanPhoneError, normalizeKenyanPhone } from "@/lib/kenyan-phone";
 import { Navigate } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -119,7 +122,15 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
       !!reqs.find((r: any) => r.key === key)?.met || extra;
     const emailMet = reqMet("email", false);
     const nameMet = reqMet("name", effName.length > 1);
-    const phoneMet = reqMet("phone", effPhone.replace(/[^0-9]/g, "").length >= 9);
+    // Phone mirrors the server's strict Kenyan validation exactly:
+    //  - a stored number that LOOKS done (≥9 digits) but fails the strict
+    //    check keeps its input visible with the precise reason, and
+    //  - a locally typed number counts as met only when the server would
+    //    accept it (normalizeKenyanPhone succeeds).
+    const storedPhoneValid = !!reqs.find((r: any) => r.key === "phone")?.met;
+    const livePhoneError = effPhone ? kenyanPhoneError(effPhone) : null;
+    const livePhoneOk = !!effPhone && !!normalizeKenyanPhone(effPhone);
+    const phoneMet = storedPhoneValid && !phoneInput ? true : livePhoneOk;
     // The requested role counts as met when the server has it recorded —
     // either persisted as pendingRole/role, or just picked in the picker
     // below (the pick fires setPendingRole immediately).
@@ -195,6 +206,9 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
                 (r.key === "name" && nameMet) ||
                 (r.key === "phone" && phoneMet);
               const showNameInput = !rowMet && r.key === "name";
+              // The phone input stays visible whenever the effective phone is
+              // not strictly valid — a stored-but-rejected number can always
+              // be corrected right here instead of dead-ending the seller.
               const showPhoneInput = !rowMet && r.key === "phone";
               return (
                 <div
@@ -235,14 +249,34 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
                     />
                   )}
                   {showPhoneInput && (
-                    <input
-                      type="tel"
-                      value={effPhone}
-                      onChange={(e) => setPhoneInput(e.target.value)}
-                      placeholder="M-Pesa number, e.g. 07XX XXX XXX"
-                      autoComplete="tel"
-                      className="mt-2.5 w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/40"
-                    />
+                    <>
+                      <input
+                        type="tel"
+                        value={effPhone}
+                        onChange={(e) => setPhoneInput(e.target.value)}
+                        placeholder="M-Pesa number, e.g. 0712 345 678"
+                        autoComplete="tel"
+                        className={`mt-2.5 w-full px-3 py-2 rounded-lg bg-white/[0.03] border text-sm text-white placeholder:text-white/20 focus:outline-none ${
+                          effPhone && livePhoneError
+                            ? "border-red-400/40 focus:border-red-400/60"
+                            : "border-white/10 focus:border-nx-violet/40"
+                        }`}
+                      />
+                      {/* Precise reason while typing — same rules the server
+                          enforces, so Finish verification never surprises. */}
+                      {effPhone && livePhoneError && (
+                        <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-red-400">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                          {livePhoneError}
+                        </p>
+                      )}
+                      {!effPhone && typeof r.detail === "string" && r.detail && (
+                        <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-amber-300/90">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                          {r.detail}
+                        </p>
+                      )}
+                    </>
                   )}
                   {/* Account-type picker: this is the ONLY remaining way for a
                       pending account to choose its role — the auth form's

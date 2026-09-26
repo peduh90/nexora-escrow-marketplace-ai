@@ -543,6 +543,19 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     if (emailTaken) {
       toast.info("Account found — we'll email you a sign-in code. No new account is created.");
     }
+
+    // Validate the phone BEFORE the code is sent — a malformed number must be
+    // rejected with the precise reason now, not after the OTP round-trip when
+    // it silently poisons the profile and blocks verification later.
+    const formPhoneRaw = new FormData(event.currentTarget).get("phone") as string | null;
+    if (formPhoneRaw && formPhoneRaw.trim()) {
+      const phoneProblem = kenyanPhoneError(formPhoneRaw);
+      if (phoneProblem) {
+        setError(phoneProblem);
+        setIsLoading(false);
+        return;
+      }
+    }
     try {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
@@ -1285,7 +1298,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                       ⚠️ An account with this email already exists. Continuing will sign you in to it — the same email can't create a second account.
                     </p>
                   )}
-                  <div className="relative"><Phone className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="phone" placeholder="Phone number (e.g. 0712 345 678)" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50" disabled={isLoading} required /></div>
+                  <div className="relative"><Phone className="absolute left-3 top-3 h-4 w-4 text-white/30" /><Input name="phone" placeholder="Phone number (e.g. 0712 345 678)" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className={`pl-9 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-nx-violet/50 ${phoneNumber && kenyanPhoneError(phoneNumber) ? "border-red-400/50" : ""}`} aria-invalid={!!(phoneNumber && kenyanPhoneError(phoneNumber))} disabled={isLoading} required /></div>
+                  {phoneNumber && kenyanPhoneError(phoneNumber) && (
+                    <p className="text-xs text-red-400 bg-red-500/5 border border-red-400/20 rounded-lg px-3 py-2">{kenyanPhoneError(phoneNumber)}</p>
+                  )}
                   {error && <p className="text-sm text-red-400">{error}</p>}
                   <Button type="submit" className="w-full bg-nx-violet hover:bg-nx-violet/80 text-white h-11" disabled={isLoading}>
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Send Verification Code <ArrowRight className="ml-2 h-4 w-4" /></>}

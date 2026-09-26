@@ -15,7 +15,9 @@ const MAX_ATTEMPTS = 5;
 
 /** Normalize any Kenyan phone format to 2547XXXXXXXX. */
 export function normalizeKePhone(raw: string): string | null {
-  const d = (raw || "").replace(/[^0-9]/g, "");
+  let d = (raw || "").replace(/[^0-9]/g, "");
+  // "254" + "0" + subscriber (2540712345678) → drop the redundant 0.
+  if (d.startsWith("2540")) d = "254" + d.slice(4);
   if (d.startsWith("254") && d.length === 12) return d;
   if (d.startsWith("0") && d.length === 10) return `254${d.slice(1)}`;
   if ((d.startsWith("7") || d.startsWith("1")) && d.length === 9) return `254${d}`;

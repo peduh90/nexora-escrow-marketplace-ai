@@ -40,6 +40,10 @@ export function normalizeKenyanPhone(input: string): string | null {
   // "00254..." → strip the international dial-out prefix.
   if (d.startsWith("00254")) d = d.slice(2);
 
+  // "254" + "0" + subscriber (a common copy-paste of "0"-local numbers into
+  // an international wrapper, e.g. 2540712345678) → drop the redundant 0.
+  if (d.startsWith("2540")) d = "254" + d.slice(4);
+
   // Leading single 0 (local format): drop it, then expect subscriber next.
   if (d.startsWith("0")) d = d.slice(1);
 

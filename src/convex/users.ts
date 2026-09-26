@@ -7,7 +7,21 @@ import type { AllowedRole } from "./roles";
 // Shared with the client (src/lib/kenyan-phone.ts): one strict validator
 // gates registration on BOTH sides — instant feedback in the form,
 // authoritative enforcement on the server.
-import { kenyanPhoneError } from "../lib/kenyan-phone";
+import { kenyanPhoneError, normalizeKenyanPhone } from "../lib/kenyan-phone";
+
+/**
+ * Normalize ANY accepted Kenyan phone format to the canonical 2547XXXXXXXX
+ * form on every write. When the input doesn't match a Kenyan mobile format
+ * (a foreign number, a landline, etc.) the raw trimmed input is kept so no
+ * data is ever lost — the strict kenyanPhoneError gate still decides whether
+ * that raw value may complete registration.
+ */
+function normalizePhoneOrKeep(raw: string | undefined): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  return normalizeKenyanPhone(trimmed) ?? trimmed;
+}
 import type { Id } from "./_generated/dataModel";
 
 /**
@@ -617,6 +631,10 @@ export const ensureUserProfile = mutation({
     const incomingPasswordHash =
       incomingPassword.length > 0 ? await hashStoredPassword(incomingPassword) : undefined;
 
+    // Phone normalization: every signup/onboarding path stores the canonical
+    // 2547XXXXXXXX form so downstream gates all agree on what "valid" means.
+    const normalizedPhone = normalizePhoneOrKeep(args.phone);
+
     // A verified email is the hard proof of registration on every auth path
     // (email-OTP sign-up, password sign-up, Google) — the identity only exists
     // after the code was confirmed. When name + phone are also present (the
@@ -626,8 +644,8 @@ export const ensureUserProfile = mutation({
     // accounts that slip through with missing data.
     const verifiedEmail = typeof identity.email === "string" && identity.email.includes("@");
     const resolvedPhone =
-      typeof args.phone === "string" && args.phone.trim()
-        ? args.phone
+      typeof normalizedPhone === "string" && normalizedPhone.trim()
+        ? normalizedPhone
         : user && typeof (user as any).phone === "string"
         ? (user as any).phone
         : undefined;
@@ -650,7 +668,7 @@ export const ensureUserProfile = mutation({
       user = await ctx.db.insert("users", {
         name: args.name || identity.name || identity.email?.split("@")[0] || "User",
         email: identity.email,
-        phone: typeof args.phone === "string" ? args.phone : undefined,
+        phone: normalizedPhone,
         role: (activateNow && targetRole ? targetRole : undefined) as any,
         pendingRole: activateNow ? undefined : targetRole ?? undefined,
         accountStatus: (activateNow ? "active" : "pending") as any,
@@ -693,8 +711,16 @@ export const ensureUserProfile = mutation({
       if (args.name !== undefined && u.name !== args.name) {
         await ctx.db.patch(u._id, { name: args.name });
       }
-      if (typeof args.phone === "string" && u.phone !== args.phone) {
-        await ctx.db.patch(u._id, { phone: args.phone });
+      // Store the normalized form when the input is a recognizable format;
+      // never wipe an existing phone just because this sync carried no phone.
+      if (
+        typeof args.phone === "string" &&
+        args.phone.trim().length > 0 &&
+        typeof normalizedPhone === "string" &&
+        normalizedPhone.length > 0 &&
+        u.phone !== normalizedPhone
+      ) {
+        await ctx.db.patch(u._id, { phone: normalizedPhone });
       }
       if (args.businessName !== undefined && u.businessName !== args.businessName) {
         await ctx.db.patch(u._id, { businessName: args.businessName });
@@ -797,7 +823,16 @@ export const getOnboardingStatus = query({
     const u = user as any;
     const hasEmail = typeof u.email === "string" && u.email.includes("@");
     const hasName = typeof u.name === "string" && u.name.trim().length > 0;
-    const hasPhone = typeof u.phone === "string" && u.phone.replace(/[^0-9]/g, "").length >= 9;
+    // MIRROR the authoritative registration gate (kenyanPhoneError in
+    // completeVerification). A stored number that is >= 9 digits but not a
+    // valid Kenyan mobile (a landline, a malformed paste, a foreign number)
+    // must NOT report "met" — otherwise the onboarding screen hides the phone
+    // input while "Finish verification" keeps refusing, and the account can
+    // never complete registration (the exact seller deadlock).
+    const phoneMet =
+      typeof u.phone === "string" &&
+      u.phone.trim().length > 0 &&
+      kenyanPhoneError(u.phone) === null;
 
     const requestedRole =
       typeof u.pendingRole === "string" && u.pendingRole
@@ -806,10 +841,18 @@ export const getOnboardingStatus = query({
           ? u.role
           : null;
 
-    const requirements: Array<{ key: string; label: string; met: boolean }> = [
+    const requirements: Array<{ key: string; label: string; met: boolean; detail?: string }> = [
       { key: "email", label: "Verified email account", met: hasEmail },
       { key: "name", label: "Full name on profile", met: hasName },
-      { key: "phone", label: "Phone number (M-Pesa & delivery)", met: hasPhone },
+      {
+        key: "phone",
+        label: "Phone number (M-Pesa & delivery)",
+        met: phoneMet,
+        // Tell the seller exactly why their stored number is rejected.
+        detail: !phoneMet && typeof u.phone === "string" && u.phone.trim().length > 0
+          ? kenyanPhoneError(u.phone) ?? undefined
+          : undefined,
+      },
       { key: "role", label: "Chosen account type", met: !!requestedRole },
     ];
     const isComplete = requirements.every((r) => r.met);
@@ -872,12 +915,15 @@ export const completeVerification = mutation({
 
     const u = user as any;
 
-    // Apply any profile updates submitted with the completion step.
+    // Apply any profile updates submitted with the completion step. Phones are
+    // normalized (07… / +254… / 00254… → 2547XXXXXXXX) before being stored so
+    // M-Pesa, wallet and delivery flows all see one canonical form.
     if (typeof args.name === "string" && args.name.trim() && args.name !== u.name) {
       await ctx.db.patch(u._id, { name: args.name.trim() });
     }
-    if (typeof args.phone === "string" && args.phone.trim() && args.phone !== u.phone) {
-      await ctx.db.patch(u._id, { phone: args.phone.trim() });
+    const normalizedIncoming = normalizePhoneOrKeep(args.phone);
+    if (normalizedIncoming && normalizedIncoming !== u.phone) {
+      await ctx.db.patch(u._id, { phone: normalizedIncoming });
     }
 
     const fresh = (await ctx.db.get(u._id)) as any;
@@ -885,7 +931,7 @@ export const completeVerification = mutation({
     const hasEmail = typeof fresh.email === "string" && fresh.email.includes("@");
     const hasName = typeof fresh.name === "string" && fresh.name.trim().length > 0;
     const hasPhone =
-      typeof fresh.phone === "string" && fresh.phone.replace(/[^0-9]/g, "").length >= 9;
+      typeof fresh.phone === "string" && fresh.phone.trim().length > 0;
 
     const requestedRole =
       typeof fresh.pendingRole === "string" && fresh.pendingRole
@@ -908,10 +954,13 @@ export const completeVerification = mutation({
     }
     // Strict Kenyan mobile validation — fake/malformed numbers can never
     // complete registration (server is authoritative; the client mirrors it
-    // via src/lib/kenyan-phone.ts — same rules).
+    // via src/lib/kenyan-phone.ts — same rules, so the onboarding screen
+    // surfaces the same error with an editable input instead of a dead end).
     const phoneProblem = kenyanPhoneError(String(fresh.phone ?? ""));
     if (phoneProblem) {
-      throw new ConvexError(phoneProblem);
+      throw new ConvexError(
+        `${phoneProblem} Open the phone field above and correct your number.`,
+      );
     }
 
     // Admin role is never self-assigned here; the admin email path handles it.
@@ -1430,8 +1479,12 @@ export const updateProfile = mutation({
     if (!user) throw new ConvexError("User not found");
 
     const updates: Record<string, any> = {};
+    // Phones: store the canonical 2547XXXXXXXX form whenever the input is a
+    // recognizable Kenyan mobile; otherwise keep the raw trimmed input (the
+    // registration gate will still refuse non-Kenyan numbers).
+    const profilePhone = normalizePhoneOrKeep(args.phone);
+    if (profilePhone !== undefined) updates.phone = profilePhone;
     if (args.name !== undefined) updates.name = args.name;
-    if (args.phone !== undefined) updates.phone = args.phone;
     if (args.whatsapp !== undefined) updates.whatsapp = args.whatsapp;
     if (args.county !== undefined) updates.county = args.county;
     if (args.town !== undefined) updates.town = args.town;

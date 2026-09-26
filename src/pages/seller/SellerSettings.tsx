@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import SellerLayout from "./SellerLayout";
 import AvatarPicker from "@/components/AvatarPicker";
 import { api } from "../../convex/_generated/api";
+import { kenyanPhoneError } from "@/lib/kenyan-phone";
 import { Settings, Shield, Bell, CreditCard, User, Lock, Globe, Palette, Phone } from "lucide-react";
 
 const sections = [
@@ -25,13 +26,25 @@ function AccountSection({ user }: { user: any }) {
   const updateProfile = useMutation(api.users.updateProfile);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Live Kenyan phone validation — mirrors the server rules so a bad number
+  // is caught before saving (and after a save failure shows the exact reason).
+  const phoneProblem = phone.trim() ? kenyanPhoneError(phone) : null;
 
   const handleSave = async () => {
+    setError(null);
+    if (phone.trim() && phoneProblem) {
+      setError(phoneProblem);
+      return;
+    }
     setSaving(true);
     try {
-      await updateProfile({ name, phone });
+      await updateProfile({ name, phone: phone.trim() || undefined });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      // Surface server-side rejections (previously swallowed → silent failure).
+      setError(err?.message || "Could not save your changes. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -66,9 +79,16 @@ function AccountSection({ user }: { user: any }) {
       <div>
         <label className="text-xs text-white/40 mb-1.5 block">Phone</label>
         <input value={phone} onChange={e => setPhone(e.target.value)}
-          placeholder="+254 7XX XXX XXX"
-          className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none" />
+          placeholder="0712 345 678 or +254712345678"
+          aria-invalid={!!phoneProblem}
+          className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:border-nx-violet/50 focus:outline-none aria-invalid:border-red-400/50" />
+        {phoneProblem && (
+          <p className="mt-1.5 text-[11px] text-red-400">{phoneProblem}</p>
+        )}
       </div>
+      {error && (
+        <p className="text-sm text-red-400">{error}</p>
+      )}
       <button onClick={handleSave} disabled={saving || !name.trim()}
         className="px-4 py-2 rounded-lg bg-nx-violet text-white text-sm font-medium hover:bg-nx-violet/80 transition-colors disabled:opacity-50 flex items-center gap-2">
         <span className={saved ? "text-emerald-400" : ""}>{saved ? "✓ Saved" : "Save Changes"}</span>
