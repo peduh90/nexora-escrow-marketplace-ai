@@ -24,6 +24,10 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
+// Single source of truth for role → panel routing (also used by OAuthReturn
+// and RoleRouter): admin→/admin, seller→/seller, driver→/transport/dashboard,
+// service_provider→/services/dashboard, freelancer→/freelance/dashboard, …
+import { getDashboardPath } from "@/components/RoleRouter";
 import { isPasswordValid } from "@/lib/password-strength";
 import { PasswordField } from "@/components/ui/password-field";
 import { getVisitorKey } from "@/lib/visitor-key";
@@ -403,31 +407,31 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         : null;
     const freelanceJoinReturn =
       isFreelanceJoin && role && redirect.startsWith("/freelance") ? redirect : null;
+    // returnToOverride (a specific deep link) always wins; otherwise each
+    // role lands on ITS OWN panel. Routing reads the DB record's role, so a
+    // seller signing in never falls through to the buyer default just because
+    // the form they used was buyer-flavoured. getDashboardPath is the same map
+    // RoleRouter/OAuthReturn use: admin→/admin, seller→/seller,
+    // driver→/transport/dashboard (drivers previously sank into /seller),
+    // service_provider→/services/dashboard, freelancer→/freelance/dashboard.
     const roleTarget =
       returnToOverride
         ? returnToOverride
-        : role === "admin"
-        ? "/admin"
-        : role === "seller" || role === "driver"
-        ? "/seller"
-        : role === "service_provider"
-        ? providerReturn ?? "/services/dashboard"
-        : role === "freelancer"
-        ? freelanceJoinReturn ?? "/freelance/dashboard"
-        : role === "employer"
-      ? freelanceJoinReturn ?? "/employer"
-      : role === "creator"
-      ? "/creator"
-      : role === "buyer"
-      ? (providerIntent || providerReturn
-          ? providerReturn ?? "/services/dashboard?register=1"
-          : "/buyer")
-      : null;
-    if (roleTarget) {
+        : getDashboardPath(role ?? null);
+    if (roleTarget && !roleTarget.startsWith("/auth")) {
       navigate(roleTarget);
       return;
     }
 
+    // Role not resolved yet (profile still syncing): if this page came from a
+    // role-specific registration card, park the user on /buyer — its
+    // RoleRouter gate shows the onboarding steps, and once verification
+    // completes the SAME gate routes to the true panel. Never bounce a
+    // signed-in user back to the sign-in screen.
+    if (redirect === "/auth") {
+      navigate("/buyer");
+      return;
+    }
     if (role && typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")) {
       navigate(redirect);
     }
@@ -815,20 +819,22 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         localStorage.setItem(`__convexAuthJWT_${ns}`, tokens.token);
         localStorage.setItem(`__convexAuthRefreshToken_${ns}`, tokens.refreshToken);
 
+        // Route by the DATABASE record, never by the form the user signed in
+        // from. verifyLogin resolves role server-side (and repairs missing
+        // ones from provider profiles); pendingRole carries a registration
+        // that never finished. A driver goes to the transport dashboard (it
+        // used to be dumped into the seller panel) and an account with no
+        // role yet lands on /buyer, whose RoleRouter onboarding gate collects
+        // name/phone/role inline — then completeVerification assigns the real
+        // role and the same gate sends them to the correct panel.
         const r = result.role as string | null | undefined;
-        let target: string | null = null;
-        if (r === "admin") target = "/admin";
-        else if (r === "seller" || r === "driver") target = "/seller";
-        else if (r === "service_provider") target = "/services/dashboard";
-        else if (r === "freelancer") target = "/freelance/dashboard";
-        else if (r === "buyer") target = "/buyer";
-        else if (r === "employer") target = "/employer";
-        else if (r === "creator") target = "/creator";
-        if (!target) {
-          window.location.href = "/buyer";
-          return;
-        }
-        window.location.href = target;
+        const wantedRole =
+          r ||
+          (typeof (result as any).pendingRole === "string" && (result as any).pendingRole
+            ? ((result as any).pendingRole as string)
+            : null);
+        const target = getDashboardPath(wantedRole);
+        window.location.href = target.startsWith("/auth") ? "/buyer" : target;
         return;
       }
       setError("Invalid email or password. Please check your details.");

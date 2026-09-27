@@ -540,6 +540,10 @@ export const verifyLogin = mutation({
       email: (resolved ?? u).email,
       name: (resolved ?? u).name,
       role: finalRole,
+      pendingRole:
+        typeof (resolved ?? u).pendingRole === "string" && (resolved ?? u).pendingRole
+          ? (resolved ?? u).pendingRole
+          : null,
       tokens: (session as any)?.tokens ?? null,
     };
   },
@@ -750,13 +754,20 @@ export const ensureUserProfile = mutation({
         // Still pending — record the requested role and stay unverified.
         // Pending users CAN change their requested role; active users cannot
         // (the role is locked once assigned).
-        // CRITICAL: only touch pendingRole when THIS call actually carried a
-        // role request. The use-auth self-heal fires ensureUserProfile({})
-        // with no args on every page load for role-less accounts — that sync
-        // must never wipe a pendingRole the user already picked (it used to,
-        // erasing "seller" and leaving the account with neither a role nor a
-        // requested one, un-recoverable from the onboarding screen).
-        if (typeof args.role === "string" && args.role && (targetRole ?? undefined) !== u.pendingRole) {
+        // CRITICAL: a role-less sync must never OVERWRITE the account type
+        // the user already requested. Two such syncs exist: the use-auth
+        // self-heal fires ensureUserProfile({}) with no args on every page
+        // load, and signing IN through a role-specific form (e.g. the buyer
+        // checkout card) sends that FORM's role as args.role. Overwriting
+        // pendingRole here is what erased "seller" down to "buyer" and sent
+        // every role to the buyer panel after login. Fill it only when no
+        // pendingRole exists yet; an active account's role is locked anyway.
+        if (
+          typeof args.role === "string" &&
+          args.role &&
+          !u.pendingRole &&
+          (targetRole ?? undefined) !== u.pendingRole
+        ) {
           await ctx.db.patch(u._id, { pendingRole: targetRole ?? undefined });
         }
       } else if (!u.role && targetRole) {
@@ -814,6 +825,68 @@ export const backfillAccountStatus = internalMutation({
  * When all checks pass the pendingRole is copied into role and accountStatus
  * flips to "active" — the frontend then routes to the correct panel.
  */
+
+/**
+ * Role-specific registration requirements. EVERY role proves email + name +
+ * phone + chosen account type; these rows add what THAT role needs to run:
+ *  - seller: a store/business name (what customers see) + county & town for
+ *    delivery and pickup;
+ *  - employer: a company / organisation name;
+ *  - service_provider & driver: the county & town they operate in.
+ * The onboarding screen renders an input for every unmet row and
+ * completeVerification re-checks them server-side before activation.
+ */
+function roleSpecificRequirements(
+  u: any,
+  effectiveRole: string,
+): Array<{ key: string; label: string; met: boolean; detail?: string }> {
+  const county = typeof u.county === "string" ? u.county.trim() : "";
+  const town = typeof u.town === "string" ? u.town.trim() : "";
+  const businessName = typeof u.businessName === "string" ? u.businessName.trim() : "";
+
+  if (effectiveRole === "seller") {
+    const bizOk = businessName.length >= 2;
+    const locOk = county.length > 0 && town.length > 0;
+    return [
+      {
+        key: "seller_business",
+        label: "Business / store name",
+        met: bizOk,
+        detail: bizOk ? undefined : "Open the field above and enter the store name customers will see.",
+      },
+      {
+        key: "seller_location",
+        label: "County & town (delivery)",
+        met: locOk,
+        detail: locOk ? undefined : "Open the fields above and pick your county and town.",
+      },
+    ];
+  }
+  if (effectiveRole === "employer") {
+    const bizOk = businessName.length >= 2;
+    return [
+      {
+        key: "seller_business",
+        label: "Company / organisation name",
+        met: bizOk,
+        detail: bizOk ? undefined : "Open the field above and enter your company or organisation name.",
+      },
+    ];
+  }
+  if (effectiveRole === "service_provider" || effectiveRole === "driver") {
+    const locOk = county.length > 0 && town.length > 0;
+    return [
+      {
+        key: "provider_location",
+        label: effectiveRole === "driver" ? "County & town (where you drive)" : "County & town (service area)",
+        met: locOk,
+        detail: locOk ? undefined : "Open the fields above and pick your county and town.",
+      },
+    ];
+  }
+  return [];
+}
+
 export const getOnboardingStatus = query({
   args: {},
   handler: async (ctx) => {
@@ -841,6 +914,8 @@ export const getOnboardingStatus = query({
           ? u.role
           : null;
 
+    // Universal steps every role completes, then the role-specific ones so
+    // registration asks exactly what the chosen account type needs.
     const requirements: Array<{ key: string; label: string; met: boolean; detail?: string }> = [
       { key: "email", label: "Verified email account", met: hasEmail },
       { key: "name", label: "Full name on profile", met: hasName },
@@ -854,6 +929,9 @@ export const getOnboardingStatus = query({
           : undefined,
       },
       { key: "role", label: "Chosen account type", met: !!requestedRole },
+      ...(typeof requestedRole === "string" && requestedRole
+        ? roleSpecificRequirements(u, requestedRole)
+        : []),
     ];
     const isComplete = requirements.every((r) => r.met);
 
@@ -863,7 +941,14 @@ export const getOnboardingStatus = query({
       requestedRole,
       requirements,
       isComplete,
-      profile: { name: u.name || "", email: u.email || "", phone: u.phone || "" },
+      profile: {
+        name: u.name || "",
+        email: u.email || "",
+        phone: u.phone || "",
+        businessName: u.businessName || "",
+        county: u.county || "",
+        town: u.town || "",
+      },
     };
   },
 });
@@ -905,6 +990,9 @@ export const completeVerification = mutation({
   args: {
     name: v.optional(v.string()),
     phone: v.optional(v.string()),
+    businessName: v.optional(v.string()),
+    county: v.optional(v.string()),
+    town: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -924,6 +1012,18 @@ export const completeVerification = mutation({
     const normalizedIncoming = normalizePhoneOrKeep(args.phone);
     if (normalizedIncoming && normalizedIncoming !== u.phone) {
       await ctx.db.patch(u._id, { phone: normalizedIncoming });
+    }
+    // Role-specific registration fields: business/store name (seller,
+    // employer) and the Kenya county/town (seller delivery, provider and
+    // driver service area). Trimmed; only written when the caller sent them.
+    if (typeof args.businessName === "string" && args.businessName.trim()) {
+      await ctx.db.patch(u._id, { businessName: args.businessName.trim() });
+    }
+    if (typeof args.county === "string" && args.county.trim()) {
+      await ctx.db.patch(u._id, { county: args.county.trim() });
+    }
+    if (typeof args.town === "string" && args.town.trim()) {
+      await ctx.db.patch(u._id, { town: args.town.trim() });
     }
 
     const fresh = (await ctx.db.get(u._id)) as any;
@@ -961,6 +1061,17 @@ export const completeVerification = mutation({
       throw new ConvexError(
         `${phoneProblem} Open the phone field above and correct your number.`,
       );
+    }
+
+    // ── Role-specific requirements (mirror getOnboardingStatus) ──
+    // The server is authoritative: even if a tampered client hid these steps,
+    // activation is refused until the chosen role's own data is on file.
+    for (const req of roleSpecificRequirements(fresh, requestedRole)) {
+      if (!req.met) {
+        throw new ConvexError(
+          req.detail || `Complete the "${req.label}" step to finish registration.`,
+        );
+      }
     }
 
     // Admin role is never self-assigned here; the admin email path handles it.
