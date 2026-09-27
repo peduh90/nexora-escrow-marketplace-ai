@@ -417,6 +417,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     const roleTarget =
       returnToOverride
         ? returnToOverride
+        // A freelancer/employer arriving from a /freelance deep link returns
+        // there instead of the bare dashboard.
+        : freelanceJoinReturn
+        ? freelanceJoinReturn
         : getDashboardPath(role ?? null);
     if (roleTarget && !roleTarget.startsWith("/auth")) {
       navigate(roleTarget);
@@ -608,15 +612,23 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       }
 
       let syncError: unknown = null;
+      // The role the DATABASE holds for this account after the sync — the
+      // authoritative routing source. For an existing user signing in this is
+      // their real role (whatever form they typed into); for a signup that
+      // just activated it is the role they picked.
+      let resolvedRole: string | null = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          await ensureUserProfile({
+          const syncResult = (await ensureUserProfile({
             name: fullName || undefined,
             phone: phoneNumber || undefined,
             role: selectedRole || undefined,
             businessName: selectedRole === "seller" ? fullName || undefined : undefined,
             password: password.trim(),
-          });
+          })) as any;
+          if (typeof syncResult?.role === "string" && syncResult.role) {
+            resolvedRole = syncResult.role as string;
+          }
           syncError = null;
           break;
         } catch (err: any) {
@@ -641,38 +653,67 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         }
       }
 
-      if (selectedRole) {
-        const returnToOverride =
-          redirect !== "/auth" && !isRoleDashboardPath(redirect) && redirect.startsWith("/") && !redirect.startsWith("//")
-            ? redirect
-            : null;
-        const target =
-          returnToOverride ??
-          (selectedRole === "seller"
-            ? publishIntent
-              ? "/freelance/publish"
-              : "/seller"
-            : selectedRole === "service_provider"
-            ? providerReturn ?? "/services/dashboard?register=1"
-            : selectedRole === "freelancer"
-            ? publishIntent
-              ? "/freelance/publish"
-              : "/freelance/dashboard"
-            : selectedRole === "employer"
-            ? "/employer"
-            : selectedRole === "creator"
-            ? "/creator"
-            : providerIntent || providerReturn
-            ? providerReturn ?? "/services/dashboard?register=1"
-            : "/buyer");
-        setPendingTarget(target);
-        if (phoneNumber.trim()) {
+      // ── Post-OTP routing (priority order) ──
+      //   1. An explicit returnTo deep link (e.g. checkout ?returnTo=/product/x).
+      //   2. The DB record's role — existing accounts land on THEIR panel, and
+      //      signups that just activated go straight there too. This is the fix
+      //      for "everyone gets sent to the buyer panel": the form's role
+      //      (selectedRole) no longer overrides the account's real role.
+      //   3. The signup intent (selectedRole) for accounts still pending — the
+      //      panel's RoleRouter gate collects the role-specific registration
+      //      steps, then routes to the correct panel on completion.
+      const returnToOverride =
+        redirect !== "/auth" && !isRoleDashboardPath(redirect) && redirect.startsWith("/") && !redirect.startsWith("//")
+          ? redirect
+          : null;
+      const intentTarget = !selectedRole
+        ? null
+        : selectedRole === "seller"
+        ? publishIntent
+          ? "/freelance/publish"
+          : "/seller"
+        : selectedRole === "service_provider"
+        ? providerReturn ?? "/services/dashboard?register=1"
+        : selectedRole === "freelancer"
+        ? publishIntent
+          ? "/freelance/publish"
+          : "/freelance/dashboard"
+        : selectedRole === "employer"
+        ? "/employer"
+        : selectedRole === "creator"
+        ? "/creator"
+        : providerIntent || providerReturn
+        ? providerReturn ?? "/services/dashboard?register=1"
+        : "/buyer";
+      const dbRole =
+        resolvedRole || (typeof user?.role === "string" && user.role ? (user.role as string) : null);
+      const dbTarget = dbRole ? getDashboardPath(dbRole) : null;
+
+      const target =
+        returnToOverride ??
+        (publishIntent && (dbRole === "seller" || dbRole === "freelancer")
+          ? "/freelance/publish"
+          : dbTarget && !dbTarget.startsWith("/auth")
+          ? dbTarget
+          : intentTarget);
+
+      if (target) {
+        if (returnToOverride || (dbRole && dbTarget && !dbTarget.startsWith("/auth"))) {
+          // Existing account (or fully-activated signup): straight to the
+          // panel. The optional SMS phone offer is a signup-time nicety and
+          // must not sit between a signing-in user and their dashboard.
+          try { navigate(target); } catch {}
+        } else if (phoneNumber.trim()) {
+          // Still-pending signup with a phone on the form: offer SMS
+          // verification, then continue to the intended panel.
+          setPendingTarget(target);
           setSmsPhone(phoneNumber.trim());
           setSmsStage("offer");
           setIsLoading(false);
           return;
+        } else {
+          try { navigate(target); } catch {}
         }
-        try { navigate(target); } catch {}
       }
 
       setIsLoading(false);

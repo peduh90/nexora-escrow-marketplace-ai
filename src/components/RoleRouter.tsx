@@ -3,6 +3,9 @@ import { Loader2, ShieldAlert, CheckCircle2, Circle, ArrowRight, ShoppingBag, St
 // Same validator the server enforces in completeVerification — instant
 // feedback here means "Finish verification" can never surprise the user.
 import { kenyanPhoneError, normalizeKenyanPhone } from "@/lib/kenyan-phone";
+// Kenya's 47 counties + their towns back the role-specific registration
+// fields (seller delivery area, provider/driver service area).
+import { KENYA_COUNTIES } from "@/lib/kenya-locations";
 import { Navigate } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -37,6 +40,11 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
   // them in, so "Finish verification" stayed disabled forever.)
   const [nameInput, setNameInput] = useState<string | null>(null);
   const [phoneInput, setPhoneInput] = useState<string | null>(null);
+  // Role-specific registration fields: store/company name (seller, employer)
+  // and the county & town (seller delivery, provider/driver service area).
+  const [bizInput, setBizInput] = useState<string | null>(null);
+  const [countyInput, setCountyInput] = useState<string | null>(null);
+  const [townInput, setTownInput] = useState<string | null>(null);
   // Local mirror of the requested account type while the picker is open —
   // optimistically shows the selection before the server round-trip lands.
   const [rolePicked, setRolePicked] = useState<string | null>(null);
@@ -118,6 +126,9 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
     // Effective values: local edits win over the stored profile.
     const effName = (nameInput ?? onboarding.profile?.name ?? "").trim();
     const effPhone = (phoneInput ?? onboarding.profile?.phone ?? "").trim();
+    const effBiz = (bizInput ?? onboarding.profile?.businessName ?? "").trim();
+    const effCounty = countyInput ?? onboarding.profile?.county ?? "";
+    const effTown = townInput ?? onboarding.profile?.town ?? "";
     const reqMet = (key: string, extra: boolean) =>
       !!reqs.find((r: any) => r.key === key)?.met || extra;
     const emailMet = reqMet("email", false);
@@ -136,7 +147,21 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
     // below (the pick fires setPendingRole immediately).
     const effRole = onboarding.requestedRole ?? rolePicked;
     const roleMet = reqMet("role", !!effRole);
-    const allMet = emailMet && nameMet && phoneMet && roleMet;
+    // Role-specific rows are met when the server says so OR the live inputs
+    // now hold what the server would accept (same rule as name/phone above).
+    // A role with no such requirement (buyer, freelancer, creator) counts as
+    // met — only seller/employer/service_provider/driver see these steps.
+    const hasRow = (key: string) => !!reqs.find((r: any) => r.key === key);
+    const bizMet = hasRow("seller_business")
+      ? reqMet("seller_business", effBiz.trim().length >= 2)
+      : true;
+    const locationMet =
+      hasRow("seller_location") || hasRow("provider_location")
+        ? reqMet("seller_location", !!effCounty && !!effTown) ||
+          reqMet("provider_location", !!effCounty && !!effTown)
+        : true;
+    const allMet =
+      emailMet && nameMet && phoneMet && roleMet && bizMet && locationMet;
 
     // ── Account-type picker ──
     // Registration on Nexora REQUIRES choosing what you do — the role is the
@@ -171,6 +196,9 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
         const result = await completeVerification({
           name: effName || undefined,
           phone: effPhone || undefined,
+          businessName: effBiz || undefined,
+          county: effCounty || undefined,
+          town: effTown || undefined,
         });
         if (result?.role) {
           // Reload so the auth hook picks up the newly assigned role.
@@ -204,8 +232,13 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
               const rowMet =
                 r.met ||
                 (r.key === "name" && nameMet) ||
-                (r.key === "phone" && phoneMet);
+                (r.key === "phone" && phoneMet) ||
+                (r.key === "seller_business" && bizMet) ||
+                ((r.key === "seller_location" || r.key === "provider_location") && locationMet);
               const showNameInput = !rowMet && r.key === "name";
+              const showBizInput = !rowMet && r.key === "seller_business";
+              const showLocationInput =
+                !rowMet && (r.key === "seller_location" || r.key === "provider_location");
               // The phone input stays visible whenever the effective phone is
               // not strictly valid — a stored-but-rejected number can always
               // be corrected right here instead of dead-ending the seller.
@@ -247,6 +280,53 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
                       autoComplete="name"
                       className="mt-2.5 w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/40"
                     />
+                  )}
+                  {showBizInput && (
+                    <input
+                      type="text"
+                      value={effBiz}
+                      onChange={(e) => setBizInput(e.target.value)}
+                      placeholder={
+                        onboarding.requestedRole === "employer"
+                          ? "Company / organisation name, e.g. Wanjiku Holdings"
+                          : "Business / store name, e.g. Georean Motors"
+                      }
+                      autoComplete="organization"
+                      className="mt-2.5 w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/40"
+                    />
+                  )}
+                  {showLocationInput && (
+                    <div className="mt-2.5 grid grid-cols-2 gap-2">
+                      <select
+                        value={effCounty}
+                        onChange={(e) => {
+                          setCountyInput(e.target.value);
+                          // A fresh county invalidates any town pick.
+                          setTownInput("");
+                        }}
+                        className="px-2.5 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:outline-none focus:border-nx-violet/40"
+                      >
+                        <option value="">County…</option>
+                        {KENYA_COUNTIES.map((c) => (
+                          <option key={c.name} value={c.name} className="bg-[#0A0A12]">
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={effTown}
+                        onChange={(e) => setTownInput(e.target.value)}
+                        disabled={!effCounty}
+                        className="px-2.5 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white focus:outline-none focus:border-nx-violet/40 disabled:opacity-40"
+                      >
+                        <option value="">Town…</option>
+                        {(KENYA_COUNTIES.find((c) => c.name === effCounty)?.towns ?? []).map((t) => (
+                          <option key={t.name} value={t.name} className="bg-[#0A0A12]">
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   )}
                   {showPhoneInput && (
                     <>

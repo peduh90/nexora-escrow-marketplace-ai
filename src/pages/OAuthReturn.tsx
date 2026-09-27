@@ -159,9 +159,16 @@ export default function OAuthReturn() {
     const role = (user.role as string | undefined) ?? intentRef.current?.role;
     // Pending / role-less accounts go to a protected panel: RoleRouter's
     // verification gate collects name/phone/role inline before rendering it.
+    // A stored pendingRole is the registration the user already started —
+    // route there so the gate collects THAT role's steps (seller store
+    // details, provider service area, …) instead of defaulting to buyer.
     // (getDashboardPath returns an /auth path for null/unknown roles — /auth
     // cannot onboard a signed-in pending account, so fall back to /buyer.)
-    const target = getDashboardPath(role ?? null);
+    const pendingRole =
+      typeof (user as any).pendingRole === "string" && (user as any).pendingRole
+        ? ((user as any).pendingRole as string)
+        : null;
+    const target = getDashboardPath(role ?? pendingRole ?? null);
     navigate(target.startsWith("/auth") ? "/buyer" : target, { replace: true });
   }, [isLoading, isAuthenticated, user, stuck, replayFailed, navigate]);
 
