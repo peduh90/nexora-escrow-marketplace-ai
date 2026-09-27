@@ -396,7 +396,8 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
 
           {onboarding.requestedRole === "seller" && (
             <p className="text-[11px] text-white/30 mt-4">
-              Your store details are saved — finish the steps above to open your seller panel.
+              Your store details are saved — finish the steps above to open your seller
+              panel, then publish your first product to complete registration.
             </p>
           )}
 

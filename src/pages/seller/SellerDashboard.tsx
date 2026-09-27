@@ -53,7 +53,7 @@ export default function SellerDashboard() {
         action: "/buyer/settings",
       },
       {
-        label: "Business location set",
+        label: "Business location set (county & town)",
         done: reqDone("profile"),
         detail: req("profile")?.detail as string | undefined,
         action: (req("profile")?.action as string | undefined) ?? "/seller/store",

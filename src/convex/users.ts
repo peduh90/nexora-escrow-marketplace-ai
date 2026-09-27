@@ -658,6 +658,28 @@ export const ensureUserProfile = mutation({
       !!(typeof args.name === "string" && args.name.trim()) &&
       !!(typeof resolvedPhone === "string" && resolvedPhone.replace(/[^0-9]/g, "").length >= 9);
 
+    // Role-specific registration data must ALSO be on file before an account
+    // activates without the onboarding gate: a seller needs store name +
+    // county/town, an employer a company name, providers/drivers a service
+    // area. The signup forms don't collect county/town, so those roles finish
+    // registration through the RoleRouter gate (which collects exactly these
+    // fields) — registration is respective to the chosen role. Buyers,
+    // freelancers and creators have no extra fields and activate as before.
+    const roleDataComplete = (() => {
+      if (!targetRole) return false;
+      const effective = {
+        county: typeof (user as any)?.county === "string" ? (user as any).county : "",
+        town: typeof (user as any)?.town === "string" ? (user as any).town : "",
+        businessName:
+          typeof args.businessName === "string" && args.businessName.trim()
+            ? args.businessName
+            : typeof (user as any)?.businessName === "string"
+            ? (user as any).businessName
+            : "",
+      };
+      return roleSpecificRequirements(effective, targetRole).every((r) => r.met);
+    })();
+
     if (!user) {
       // New accounts start PENDING with no role: no panel access until the
       // registration/verification process completes (see completeVerification).
@@ -668,7 +690,8 @@ export const ensureUserProfile = mutation({
       // A role must exist before activation — there is NO default role, so a
       // signup that never picked one stays pending until verification.
       const activateNow =
-        identity.email === ADMIN_EMAIL || (profileComplete && !!targetRole);
+        identity.email === ADMIN_EMAIL ||
+        (profileComplete && roleDataComplete && !!targetRole);
       user = await ctx.db.insert("users", {
         name: args.name || identity.name || identity.email?.split("@")[0] || "User",
         email: identity.email,
@@ -734,7 +757,7 @@ export const ensureUserProfile = mutation({
       // account keeps its pendingRole (updated if the user re-submits); an
       // active account keeps its assigned role unless admin action changes it.
       if ((u as any).accountStatus !== "active") {
-        if (profileComplete && targetRole) {
+        if (profileComplete && roleDataComplete && targetRole) {
           // Everything the verification gate asks for is already proven
           // (verified email + name + phone) — activate now instead of
           // bouncing the user through the second verification screen. This

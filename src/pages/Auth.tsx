@@ -432,14 +432,14 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
     // RoleRouter gate shows the onboarding steps, and once verification
     // completes the SAME gate routes to the true panel. Never bounce a
     // signed-in user back to the sign-in screen.
-    if (redirect === "/auth") {
+    if (redirect === "/auth" && typeof step !== "object") {
       navigate("/buyer");
       return;
     }
     if (role && typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")) {
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, user, navigate, redirect, fullName, phoneNumber, selectedRole, password, ensureUserProfile, activeRefCode, attributeReferral, providerIntent, providerReturn]);
+  }, [authLoading, isAuthenticated, user, navigate, redirect, step, fullName, phoneNumber, selectedRole, password, ensureUserProfile, activeRefCode, attributeReferral, providerIntent, providerReturn]);
 
   const passwordContainsPersonalInfo = (
     passwordRaw: string,
