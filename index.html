@@ -43,6 +43,34 @@
 
 <body>
   <div id="root"></div>
+  <script>
+    /* ── SW white-screen self-heal ──────────────────────────────────────
+       A stale service-worker cache can break the module graph BEFORE React
+       mounts (pure white screen — no in-app recovery is possible). If the
+       app has not mounted shortly after load, arm a one-shot reload for the
+       moment a new service worker takes control, and nudge the worker to
+       update immediately. Runs at most once per browser session. */
+    (function () {
+      try {
+        window.addEventListener("load", function () {
+          setTimeout(function () {
+            if (document.documentElement.hasAttribute("data-nx-alive")) return;
+            if (sessionStorage.getItem("nx-sw-heal")) return;
+            if (!("serviceWorker" in navigator)) return;
+            sessionStorage.setItem("nx-sw-heal", "1");
+            navigator.serviceWorker.addEventListener(
+              "controllerchange",
+              function () { location.reload(); },
+              { once: true }
+            );
+            navigator.serviceWorker.getRegistration().then(function (reg) {
+              if (reg) reg.update().catch(function () {});
+            }).catch(function () {});
+          }, 2500);
+        });
+      } catch (e) {}
+    })();
+  </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 

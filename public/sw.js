@@ -20,7 +20,7 @@
  * when the user taps Update.
  */
 
-const VERSION = "nx-v4"; // v4: refresh cached app bundles after the freelance join-card update
+const VERSION = "nx-v5"; // v5: never cache unhashed dev modules (/src/*, deps) — a stale module graph white-screened panels after edits
 const STATIC_CACHE = `nx-static-${VERSION}`;
 const PAGE_CACHE = `nx-pages-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -41,7 +41,12 @@ self.addEventListener("install", (event) => {
     (async () => {
       const cache = await caches.open(STATIC_CACHE);
       await Promise.allSettled(PRECACHE_URLS.map((url) => cache.add(new Request(url, { cache: "reload" }))));
-      // Do NOT skipWaiting here — the app decides when (see message handler).
+      // v5 EMERGENCY ONLY: v4 cache-first cached unhashed dev modules and
+      // white-screened panels on a stale module graph — v5 must take control
+      // immediately instead of politely waiting. Future versions revert to
+      // the app-driven "Update" toast flow (no skipWaiting here).
+      if (VERSION === "nx-v5") self.skipWaiting();
+      // Do NOT skipWaiting in later versions — the app decides when.
     })(),
   );
 });
@@ -56,6 +61,29 @@ self.addEventListener("activate", (event) => {
           .filter((n) => n.startsWith("nx-") && n !== STATIC_CACHE && n !== PAGE_CACHE)
           .map((n) => caches.delete(n)),
       );
+      // v5: purge any dev-module entries the buggy v4 cache-first rule stored
+      // (unhashed /src/* modules change on every edit — serving them stale
+      // white-screens the app with a broken module graph).
+      for (const name of [STATIC_CACHE, PAGE_CACHE]) {
+        try {
+          const cache = await caches.open(name);
+          const keys = await cache.keys();
+          await Promise.all(
+            keys
+              .filter((req) => {
+                try {
+                  const u = new URL(req.url);
+                  return (
+                    u.pathname.startsWith("/src/") ||
+                    u.pathname.startsWith("/node_modules/") ||
+                    u.pathname.startsWith("/@")
+                  );
+                } catch { return false; }
+              })
+              .map((req) => cache.delete(req)),
+          );
+        } catch { /* cache unavailable */ }
+      }
       if (self.registration.navigationPreload) {
         try { await self.registration.navigationPreload.enable(); } catch { /* not supported */ }
       }
@@ -94,9 +122,33 @@ function isForbidden(url) {
 
 function isStaticAsset(url) {
   return (
+    url.pathname.match(/\.(js|css|woff2?|ttf|otf|png|jpe?g|webp|avif|svg|ico)$/) !== null
+  );
+}
+
+/** Immutable (content-hashed) bundles — the ONLY things safe to cache-first. */
+function isImmutableAsset(url) {
+  return (
     url.pathname.startsWith("/assets/") ||
-    url.pathname.match(/\.(js|css|woff2?|ttf|otf|png|jpe?g|webp|avif|svg|ico)$/) !== null ||
     url.pathname.startsWith("/icons/")
+  );
+}
+
+/**
+ * Dev-server modules are UNHASHED and change on every edit — a cache-first
+ * copy of them corrupts the app (mixed old/new modules, import chain fails
+ * before React mounts → BLANK WHITE screen that no error boundary can catch).
+ * Never intercept anything that looks like a dev module: the dev server must
+ * always answer fresh.
+ */
+function isDevModule(url) {
+  return (
+    url.pathname.startsWith("/@") ||                 // /@vite/, /@fs/, /@id/, /@react-refresh
+    url.pathname.startsWith("/src/") ||              // unhashed app modules (dev)
+    url.pathname.startsWith("/node_modules/") ||     // pre-bundled deps (dev)
+    url.searchParams.has("t") ||                     // Vite cache-busting timestamp
+    url.searchParams.has("import") ||
+    /hot-update\.(js|json)$/.test(url.pathname)
   );
 }
 
@@ -123,6 +175,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (isForbidden(url)) return;
+  if (isDevModule(url)) return; // dev modules: never serve from cache
 
   // 1) Navigations: network-first with offline fallback.
   if (request.mode === "navigate") {
@@ -130,13 +183,21 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 2) Static assets: cache-first (hashed filenames are immutable).
-  if (isStaticAsset(url)) {
+  // 2) Immutable hashed bundles: cache-first (filename changes with content).
+  if (isImmutableAsset(url)) {
     event.respondWith(cacheFirst(request, STATIC_CACHE));
     return;
   }
 
-  // 3) Public documents/pages (shareable deep links): network-first.
+  // 3) Other static files (unhashed: /sw.js, root images, fonts):
+  //    stale-while-revalidate — fast from cache but ALWAYS refreshed in the
+  //    background, so an edit can never leave a stale copy behind again.
+  if (isStaticAsset(url)) {
+    event.respondWith(staleWhileRevalidate(request, STATIC_CACHE));
+    return;
+  }
+
+  // 4) Public documents/pages (shareable deep links): network-first.
   event.respondWith(networkFirst(request, PAGE_CACHE));
 });
 

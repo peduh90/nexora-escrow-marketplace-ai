@@ -242,6 +242,10 @@ function LegacyDashboardRedirect() {
 function RouteSyncer() {
   const location = useLocation();
   useEffect(() => {
+    // Signals the index.html SW self-heal that React mounted fine — the
+    // one-shot "reload when a new service worker takes control" guard only
+    // arms when this marker is missing (white screen before mount).
+    document.documentElement.setAttribute("data-nx-alive", "1");
     window.parent.postMessage(
       { type: "iframe-route-change", path: location.pathname },
       "*",
