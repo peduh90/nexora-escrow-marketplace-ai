@@ -27,9 +27,14 @@ export default function ServiceProviderDashboard() {
   const location = useLocation();
   // ?register=1 or the /services/register path — arrive here straight from
   // "Offer a Service" registration: the service chooser form opens
-  // immediately instead of a confusing empty panel.
+  // immediately instead of a confusing empty panel. /transport/register (or
+  // any /transport URL with ?register=1) is the driver's equivalent: open
+  // the DRIVER registration form instead.
   const registerIntent =
     searchParams.get("register") === "1" || location.pathname === "/services/register";
+  const transportRegisterIntent =
+    location.pathname === "/transport/register" ||
+    (location.pathname.startsWith("/transport") && searchParams.get("register") === "1");
   const { user } = useAuth();
   const myService = useQuery(api.services.getMyService);
   const myTransport = useQuery(api.transport.getMyTransport);
@@ -64,15 +69,27 @@ export default function ServiceProviderDashboard() {
   // New provider arriving from "Offer a Service" (?register=1) or
   // /services/register: open the service chooser automatically once their
   // (empty) profile query has loaded, so registration can't dead-end on an
-  // empty panel.
+  // empty panel. Drivers arriving via /transport/register open the DRIVER
+  // registration form the same way.
   const autoOpenedRef = useRef(false);
   useEffect(() => {
+    if (
+      transportRegisterIntent &&
+      !autoOpenedRef.current &&
+      myTransport !== undefined &&
+      !tp &&
+      !tform
+    ) {
+      autoOpenedRef.current = true;
+      startTransportReg();
+      return;
+    }
     if (registerIntent && !autoOpenedRef.current && myService !== undefined && !svc && !form) {
       autoOpenedRef.current = true;
       startEdit();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [registerIntent, myService, svc, form]);
+  }, [transportRegisterIntent, registerIntent, myService, myTransport, svc, tp, form, tform]);
 
   async function run(fn: () => Promise<any>, ok: string) {
     setBusy(true);

@@ -176,6 +176,11 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
       { role: "employer", label: "Employer", icon: Briefcase, tint: "text-amber-400 bg-amber-500/10", desc: "Post jobs & hire talent" },
       { role: "service_provider", label: "Service Provider (LOCAL only)", icon: Wrench, tint: "text-nx-cyan bg-nx-cyan/10", desc: "On-site services — salon, plumber, fundi. NOT digital products" },
       { role: "driver", label: "Transport Provider", icon: Truck, tint: "text-orange-400 bg-orange-500/10", desc: "Rides, delivery & moving" },
+      // Creator MUST be pickable here: /join sends creators through
+      // /auth/creator, but a pending account that lost its role selection
+      // (or arrives via any panel gate) could never re-pick creator before —
+      // the account was stuck on this screen forever.
+      { role: "creator", label: "Creator", icon: Sparkles, tint: "text-fuchsia-300 bg-fuchsia-500/10", desc: "Referral program — earn by sharing Nexora" },
     ];
 
     const handlePickRole = async (role: string) => {

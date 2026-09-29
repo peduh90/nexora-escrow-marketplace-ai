@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   ArrowRight, Loader2, Shield, ShoppingBag, Store, ChevronRight, Check,
   Lock, Globe, Zap, Phone, User, ArrowLeft, KeyRound, Mail, PenLine,
-  Wrench, MonitorSmartphone, Briefcase,
+  Wrench, MonitorSmartphone, Briefcase, Bike,
 } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -228,7 +228,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       : "roleSelect",
   );
   const [selectedRole, setSelectedRole] = useState<
-    "buyer" | "seller" | "freelancer" | "employer" | "creator" | "service_provider" | null
+    "buyer" | "seller" | "freelancer" | "employer" | "creator" | "service_provider" | "driver" | null
   >(
     checkoutIntent
       ? "buyer"
@@ -505,7 +505,7 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
   const [publishIntent, setPublishIntent] = useState(false);
 
   const handleRoleSelect = (
-    role: "buyer" | "seller" | "freelancer" | "employer" | "creator" | "service_provider",
+    role: "buyer" | "seller" | "freelancer" | "employer" | "creator" | "service_provider" | "driver",
     opts?: { publishIntent?: boolean; providerIntent?: boolean },
   ) => {
     setSelectedRole(role);
@@ -682,6 +682,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         ? "/employer"
         : selectedRole === "creator"
         ? "/creator"
+        // Drivers register from /transport ("Drive & Earn"): route to the
+        // transport dashboard where the registration form opens.
+        : selectedRole === "driver"
+        ? providerReturn ?? "/transport/dashboard"
         : providerIntent || providerReturn
         ? providerReturn ?? "/services/dashboard?register=1"
         : "/buyer";
@@ -1157,6 +1161,29 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                   </button>
                 )}
 
+                {/* Drive & Earn — the TRANSPORT path (boda, tuk-tuk, taxi,
+                    matatu, delivery). Its OWN role: driver. Without this card
+                    the transport panel had NO signup entry at all: the
+                    "Drive & Earn" button sent visitors to /auth, where no
+                    driver path existed and they dead-ended on this screen. */}
+                {!isFreelanceRoute && (
+                  <button onClick={() => handleRoleSelect("driver")} className="group relative p-6 rounded-2xl border border-orange-400/20 bg-orange-500/[0.03] backdrop-blur-sm hover:border-orange-400/40 hover:bg-orange-500/[0.07] transition-all duration-300 text-left">
+                    <div className="w-14 h-14 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4 group-hover:bg-orange-500/20 transition-colors">
+                      <Bike className="w-7 h-7 text-orange-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-1">Drive &amp; Earn — Transport</h3>
+                    <p className="text-white/40 text-sm leading-relaxed mb-4">Boda, tuk-tuk, taxi, matatu or delivery — register once, take trips, get paid via M-Pesa.</p>
+                    <div className="flex flex-col gap-1.5">
+                      {["Documents optional at registration", "Fares secured in escrow", "Admin verifies before trips"].map((f) => (
+                        <div key={f} className="flex items-center gap-2 text-xs text-white/30">
+                          <Check className="w-3 h-3 text-orange-400/60" /><span>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/10 group-hover:text-orange-400/50 transition-colors" />
+                  </button>
+                )}
+
                 {/* Creator Program intentionally has NO card on Choose Your
                     Path — creators join through the nav menu (Creator Program
                     → /join), keeping signup focused on marketplace roles. */}
@@ -1286,10 +1313,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                   {!isSellerRegister && !isFreelanceRegister && !isCreatorRegister && !checkoutIntent && (
                     <button onClick={() => setStep("roleSelect")} className="text-white/30 hover:text-white/60 text-xs transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Change</button>
                   )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : selectedRole === "employer" ? "bg-amber-500/10 text-amber-400" : selectedRole === "creator" ? "bg-fuchsia-500/10 text-fuchsia-300" : selectedRole === "service_provider" || providerIntent || providerReturn ? "bg-nx-cyan/15 text-nx-cyan" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "Seller" : selectedRole === "freelancer" ? "Freelancer" : selectedRole === "employer" ? "Employer" : selectedRole === "creator" ? "Creator" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Service Provider" : "Buyer"}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${selectedRole === "seller" ? "bg-nx-violet/10 text-nx-violet" : selectedRole === "freelancer" ? "bg-emerald-500/10 text-emerald-400" : selectedRole === "employer" ? "bg-amber-500/10 text-amber-400" : selectedRole === "creator" ? "bg-fuchsia-500/10 text-fuchsia-300" : selectedRole === "driver" ? "bg-orange-500/10 text-orange-300" : selectedRole === "service_provider" || providerIntent || providerReturn ? "bg-nx-cyan/15 text-nx-cyan" : "bg-nx-cyan/10 text-nx-cyan"}`}>{selectedRole === "seller" ? "Seller" : selectedRole === "freelancer" ? "Freelancer" : selectedRole === "employer" ? "Employer" : selectedRole === "creator" ? "Creator" : selectedRole === "driver" ? "Transport Provider" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Service Provider" : "Buyer"}</span>
                 </div>
-                <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : selectedRole === "employer" ? "Create Employer Account" : selectedRole === "creator" ? "Create Creator Account" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Offer a Service on Nexora" : checkoutIntent ? "Almost done — one quick account" : "Create Buyer Account"}</CardTitle>
-                <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : selectedRole === "employer" ? "Set up your employer account to post jobs and hire freelancers" : selectedRole === "creator" ? "Create your account, then apply to the Creator Program — your referral link and earnings live in the creator dashboard" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Create your account, then set up your service — salon, plumbing, boda, fundi & more" : checkoutIntent ? "Your order is saved — create your account to complete your purchase securely with escrow" : "Create your account to start shopping securely"}</CardDescription>
+                <CardTitle className="text-xl text-white">{selectedRole === "seller" ? "Create Seller Account" : selectedRole === "freelancer" ? "Create Freelancer Account" : selectedRole === "employer" ? "Create Employer Account" : selectedRole === "creator" ? "Create Creator Account" : selectedRole === "driver" ? "Drive & Earn — Driver Registration" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Offer a Service on Nexora" : checkoutIntent ? "Almost done — one quick account" : "Create Buyer Account"}</CardTitle>
+                <CardDescription className="text-white/40">{selectedRole === "seller" ? "Set up your seller account to start listing products" : selectedRole === "freelancer" ? "Set up your account to start freelancing" : selectedRole === "employer" ? "Set up your employer account to post jobs and hire freelancers" : selectedRole === "creator" ? "Create your account, then apply to the Creator Program — your referral link and earnings live in the creator dashboard" : selectedRole === "driver" ? "Create your account, then register your boda, tuk-tuk, taxi, matatu or delivery vehicle" : selectedRole === "service_provider" || providerIntent || providerReturn ? "Create your account, then set up your service — salon, plumbing, boda, fundi & more" : checkoutIntent ? "Your order is saved — create your account to complete your purchase securely with escrow" : "Create your account to start shopping securely"}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <GoogleAuthButton onClick={handleGoogleLogin} disabled={isLoading} label={selectedRole === "seller" ? "Sign up with Google" : "Continue with Google"} />
