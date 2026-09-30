@@ -38,7 +38,7 @@
   <meta name="author" content="Nexora Market Ltd" />
   <meta name="keywords" content="marketplace, escrow, Kenya, Nairobi, buy sell, M-Pesa, safe transactions, AI fraud detection, verified sellers, secure payments" />
   <link rel="canonical" href="https://nexoramarketplace.freebuff.app" />
-  <script type="module" crossorigin src="/assets/index-DSFUfZP-.js"></script>
+  <script type="module" crossorigin src="/assets/index-CPoSyYdT.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/react-vendor-Bh-bSdlF.js">
   <link rel="modulepreload" crossorigin href="/assets/framer-motion-34OMExZL.js">
   <link rel="modulepreload" crossorigin href="/assets/radix-ui-CTkJI4k3.js">
@@ -48,6 +48,34 @@
 
 <body>
   <div id="root"></div>
+  <script>
+    /* ── SW white-screen self-heal ──────────────────────────────────────
+       A stale service-worker cache can break the module graph BEFORE React
+       mounts (pure white screen — no in-app recovery is possible). If the
+       app has not mounted shortly after load, arm a one-shot reload for the
+       moment a new service worker takes control, and nudge the worker to
+       update immediately. Runs at most once per browser session. */
+    (function () {
+      try {
+        window.addEventListener("load", function () {
+          setTimeout(function () {
+            if (document.documentElement.hasAttribute("data-nx-alive")) return;
+            if (sessionStorage.getItem("nx-sw-heal")) return;
+            if (!("serviceWorker" in navigator)) return;
+            sessionStorage.setItem("nx-sw-heal", "1");
+            navigator.serviceWorker.addEventListener(
+              "controllerchange",
+              function () { location.reload(); },
+              { once: true }
+            );
+            navigator.serviceWorker.getRegistration().then(function (reg) {
+              if (reg) reg.update().catch(function () {});
+            }).catch(function () {});
+          }, 2500);
+        });
+      } catch (e) {}
+    })();
+  </script>
 </body>
 
 </html>
