@@ -411,17 +411,28 @@ export const deleteListing = mutation({
  * listings from the requested marketplace are returned.
  */
 async function getActiveListingsForMarketplace(ctx: any, marketplace: MarketplaceValue, limit: number) {
-  const allActive = await ctx.db
-    .query("listings")
-    .withIndex("by_status", (q: any) => q.eq("status", "active"))
-    .order("desc")
-    .take(limit);
-
-  const scoped = allActive.filter((l: any) => normalizeMarketplace(l.marketplace) === marketplace);
+  // Paginate newest-first so listings from the *other* marketplace can never
+  // crowd this marketplace's newest rows out of the first page of results
+  // (take(limit) across both marketplaces then filtering starved the feed).
+  const scoped: any[] = [];
+  let cursor: string | null = null;
+  let isDone = false;
+  while (!isDone && scoped.length < limit) {
+    const page: any = await ctx.db
+      .query("listings")
+      .withIndex("by_status", (q: any) => q.eq("status", "active"))
+      .order("desc")
+      .paginate({ numItems: 200, cursor });
+    for (const l of page.page) {
+      if (normalizeMarketplace(l.marketplace) === marketplace) scoped.push(l);
+    }
+    cursor = page.continueCursor;
+    isDone = page.isDone;
+  }
 
   // Resolve image URLs from storage or keep external URLs as-is
   return Promise.all(
-    scoped.map(async (listing: any) => ({
+    scoped.slice(0, limit).map(async (listing: any) => ({
       ...listing,
       images: await resolveListingImages(ctx, listing.images),
       documents: await resolveListingDocuments(ctx, listing.documents),
