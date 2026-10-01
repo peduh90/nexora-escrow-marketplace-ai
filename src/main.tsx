@@ -95,6 +95,7 @@ const SellerProfilePage = lazy(() => import("./pages/SellerProfile.tsx"));
 import MobileShell from "@/components/mobile/MobileShell";
 import PwaLayer from "@/components/pwa/PwaLayer";
 import { SignOutProvider } from "@/components/SignOutConfirm";
+import { installBfcacheAuthGuard } from "@/lib/sign-out";
 import { initPwa } from "@/lib/pwa";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 const TermsPage = lazy(() => import("./pages/Terms.tsx"));
@@ -246,6 +247,10 @@ function RouteSyncer() {
     // one-shot "reload when a new service worker takes control" guard only
     // arms when this marker is missing (white screen before mount).
     document.documentElement.setAttribute("data-nx-alive", "1");
+    // Back/forward-cache restores resurrect the whole JS heap — including any
+    // in-memory auth token from BEFORE a sign-out. Force such pages to reload
+    // so route guards re-check the (cleared) session with the backend.
+    installBfcacheAuthGuard();
     window.parent.postMessage(
       { type: "iframe-route-change", path: location.pathname },
       "*",

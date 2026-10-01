@@ -706,7 +706,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
           // Existing account (or fully-activated signup): straight to the
           // panel. The optional SMS phone offer is a signup-time nicety and
           // must not sit between a signing-in user and their dashboard.
-          try { navigate(target); } catch {}
+          // Hard navigation, not SPA replace: a fresh page load guarantees
+          // no query results cached under the PREVIOUS session can be shown
+          // for even a frame after the identity switches.
+          try { window.location.replace(target); } catch {}
         } else if (phoneNumber.trim()) {
           // Still-pending signup with a phone on the form: offer SMS
           // verification, then continue to the intended panel.
@@ -716,7 +719,10 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
           setIsLoading(false);
           return;
         } else {
-          try { navigate(target); } catch {}
+          // Hard navigation, not SPA replace: a fresh page load guarantees
+          // no query results cached under the PREVIOUS session can be shown
+          // for even a frame after the identity switches.
+          try { window.location.replace(target); } catch {}
         }
       }
 

@@ -42,8 +42,12 @@ export function wipeLocalUserData(): void {
   try {
     for (const key of Object.keys(localStorage)) {
       if (KEEP_LOCAL_KEYS.has(key)) continue;
-      // Our own namespace plus any Convex auth-token storage.
-      if (key.startsWith("nx_") || /convex/i.test(key)) {
+      // Our own namespaces (`nx_` + `nexora:` draft keys) plus any Convex
+      // auth-token storage (`__convexAuthJWT_*` / `__convexAuthRefreshToken_*`
+      // are keyed with the deployment address, which always contains
+      // "convex"). Anything user-scoped — drafts, searches, referral memory,
+      // session tokens — goes; only whitelisted device-level keys survive.
+      if (key.startsWith("nx_") || key.startsWith("nexora:") || /convex/i.test(key)) {
         localStorage.removeItem(key);
       }
     }
@@ -64,11 +68,44 @@ export function wipeLocalUserData(): void {
  * never return to an authenticated screen.
  */
 export async function absoluteSignOut(signOutFn: () => Promise<unknown>): Promise<void> {
-  try {
-    await signOutFn();
-  } catch {
-    /* session may already be gone — cleanup continues regardless */
-  }
+  // The revoke must never be able to block the cleanup. On a flaky or idle
+  // connection signOut() can stay pending indefinitely (the Convex client's
+  // action call has no timeout of its own), which used to freeze this
+  // function mid-flight — the wipe and the reload below never ran, so the
+  // page simply came back as the previous account ("logout doesn't log out").
+  // Race the revoke against a hard deadline: the client-side wipe is what
+  // actually ends the session on this device, and these tokens are the only
+  // copy the browser holds — once gone, the session is unusable here even if
+  // the server-side revoke was skipped.
+  await Promise.race([
+    (async () => {
+      try {
+        await signOutFn();
+      } catch {
+        /* session may already be gone — cleanup continues regardless */
+      }
+    })(),
+    new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+  ]);
   wipeLocalUserData();
   window.location.replace("/?signedout=1");
+}
+
+/**
+ * Back/forward-cache can restore a page as a complete frozen JS heap —
+ * in-memory React state, the Convex client's auth token, everything — without
+ * re-running mount. After a sign-out, pressing Back could therefore resurrect
+ * the previous account's panel with a still-valid token until the next real
+ * navigation. Any restored page is force-reloaded so it re-reads the (now
+ * cleared) auth storage and the route guards re-verify identity against the
+ * backend. Idempotent — safe to call from effects that run repeatedly.
+ */
+export function installBfcacheAuthGuard(): void {
+  if ((window as any).__nxBfcacheGuard) return;
+  (window as any).__nxBfcacheGuard = true;
+  window.addEventListener("pageshow", (event) => {
+    if ((event as PageTransitionEvent).persisted) {
+      window.location.reload();
+    }
+  });
 }
