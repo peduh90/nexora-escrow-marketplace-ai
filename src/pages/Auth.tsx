@@ -28,6 +28,7 @@ import { api } from "@/convex/_generated/api";
 // and RoleRouter): admin→/admin, seller→/seller, driver→/transport/dashboard,
 // service_provider→/services/dashboard, freelancer→/freelance/dashboard, …
 import { getDashboardPath } from "@/components/RoleRouter";
+import { adoptAuthTokens } from "@/lib/adopt-auth-tokens";
 import { isPasswordValid } from "@/lib/password-strength";
 import { PasswordField } from "@/components/ui/password-field";
 import { getVisitorKey } from "@/lib/visitor-key";
@@ -377,7 +378,13 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         phone: phoneNumber || undefined,
         role: syncRole,
         businessName: syncRole === "seller" ? syncName || undefined : undefined,
-        password: password.trim() || undefined,
+        // NO password here. This is a repair sync for an account that already
+        // exists; it must never carry a password, because the server would
+        // (correctly) refuse to change one and the old build silently replaced
+        // the stored hash — the account kept working until the next sign-in
+        // rejected the user's real password. Registration sets the first
+        // password through the sign-up submit below; changes go through
+        // "Forgot password" / account settings.
       })
         .then(async () => {
           if (activeRefCode) {
@@ -866,9 +873,12 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
       const result = await verifyLogin({ email: loginEmail, password: loginPassword });
       if (result?.success && (result as any).tokens?.token) {
         const tokens = (result as any).tokens as { token: string; refreshToken: string };
-        const ns = (import.meta.env.VITE_CONVEX_URL as string).replace(/[^a-zA-Z0-9]/g, "");
-        localStorage.setItem(`__convexAuthJWT_${ns}`, tokens.token);
-        localStorage.setItem(`__convexAuthRefreshToken_${ns}`, tokens.refreshToken);
+        // Hand the new session to the RUNNING auth provider, not just to
+        // localStorage. Writing the keys alone left the provider's in-memory
+        // token (and every query it had already authenticated) pointing at the
+        // PREVIOUS account until a full reload — which is how "sign out of A,
+        // sign in as B" could end up querying as A.
+        adoptAuthTokens(tokens, import.meta.env.VITE_CONVEX_URL as string);
 
         // Route by the DATABASE record, never by the form the user signed in
         // from. verifyLogin resolves role server-side (and repairs missing
@@ -888,7 +898,14 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
         window.location.href = target.startsWith("/auth") ? "/buyer" : target;
         return;
       }
-      setError("Invalid email or password. Please check your details.");
+      // The server only answers success:false when the credentials really are
+      // wrong — a failed session hand-off reports its own code so a correct
+      // password is never shown as a rejected one.
+      setError(
+        (result as any)?.code === "session_failed"
+          ? String((result as any).error)
+          : "Invalid email or password. Please check your details.",
+      );
       setLoginPassword("");
     } catch (err: any) {
       setError(friendlyAuthError(err, "Login failed. Please check your details and try again."));

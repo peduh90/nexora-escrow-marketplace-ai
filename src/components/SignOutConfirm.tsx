@@ -37,7 +37,7 @@ export function SignOutProvider({ children }: { children: ReactNode }) {
 
   const confirm = async () => {
     setBusy(true);
-    await absoluteSignOut(signOut);
+    await absoluteSignOut(signOut, import.meta.env.VITE_CONVEX_URL as string);
     // Navigation happens via hard reload inside absoluteSignOut — this line
     // only runs if the reload was blocked (rare), so just close the panel.
     setBusy(false);

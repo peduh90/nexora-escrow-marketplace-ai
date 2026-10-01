@@ -1,5 +1,9 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v, ConvexError } from "convex/values";
+import {
+  matchRowsByEmail,
+  shouldCreateInitialPasswordHash,
+} from "../lib/password-credential";
 import { query, mutation, internalMutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { ALLOWED_ROLES, resolveRole, resolveRoleForAdminFlow, ADMIN_EMAIL } from "./roles";
@@ -158,6 +162,40 @@ const OWNED_TABLE_FIELDS: Array<[string, string[]]> = [
   ["aiAuditLog", ["userId"]],
   ["fraudAlerts", ["userId"]],
 ];
+
+/**
+ * Every `users` row that belongs to this email address, matched
+ * CASE-INSENSITIVELY.
+ *
+ * The `email` index is an exact-match index, so a lookup with the casing the
+ * user happened to type misses whenever the stored row differs ("Ells@x.com"
+ * vs "ells@x.com"). Email addresses are case-insensitive in practice, and a
+ * miss here produced the single most misleading failure in the login flow: a
+ * 100% correct password reported as "Invalid email or password." Only when
+ * both index probes miss do we fall back to a bounded scan, so the common path
+ * stays an index lookup.
+ */
+async function findUserRowsByEmail(ctx: any, emailRaw: string): Promise<any[]> {
+  const email = typeof emailRaw === "string" ? emailRaw.trim() : "";
+  if (!email) return [];
+
+  const byExact = async (value: string): Promise<any[]> =>
+    (await ctx.db
+      .query("users")
+      .withIndex("email", (q: any) => q.eq("email", value))
+      .collect()) as any[];
+
+  let rows = await byExact(email);
+  const lower = email.toLowerCase();
+  if (rows.length === 0 && lower !== email) {
+    rows = await byExact(lower);
+  }
+  if (rows.length === 0) {
+    const sample = (await ctx.db.query("users").take(500)) as any[];
+    rows = matchRowsByEmail(sample, lower);
+  }
+  return rows;
+}
 
 /**
  * Merge every user row sharing `email` into a single canonical account.
@@ -410,27 +448,55 @@ export const verifyLogin = mutation({
       return { success: false, error: "Invalid email or password." };
     }
 
-    // Resolve + merge duplicate accounts for this email BEFORE the password
-    // check: the password may live on one row while the role and listings live
-    // on another (the "seller data disappears after login" bug).
-    const user = await mergeDuplicateAccountsByEmail(ctx, args.email.trim());
+    // Collect EVERY row that belongs to this email, then verify the submitted
+    // password against them BEFORE anything is merged or deleted.
+    //
+    // Two rules this restores:
+    //  1. Email addresses are case-insensitive. The index is exact, so a
+    //     correctly-typed password used to be rejected purely because the
+    //     stored casing differed ("Invalid email or password." for a password
+    //     that was right).
+    //  2. A duplicate row may hold the credential that actually authenticates
+    //     while the canonical row holds a different (stale) one. Verifying
+    //     first — and carrying the proven hash onto the surviving account —
+    //     means a merge can never throw away the only working password.
+    const rows = await findUserRowsByEmail(ctx, args.email);
 
-    if (!user) {
+    if (rows.length === 0) {
       return { success: false, error: "Invalid email or password." };
     }
 
-    const u = user as any;
+    // Do not reveal whether the email exists. A stored value must be a real
+    // PBKDF2 record; plaintext storage is never accepted as a login.
+    let matchedRow: any = null;
+    for (const row of rows) {
+      const stored = (row as any).passwordHash;
+      if (typeof stored !== "string" || !stored.startsWith("pbkdf2:")) continue;
+      if (await verifyStoredPasswordHash(stored, args.password)) {
+        matchedRow = row;
+        break;
+      }
+    }
 
-    // Do not reveal whether the email exists.
-    // Reject new plaintext password storage: a stored value equal to the
-    // plaintext password is not a valid hash and must not be accepted.
-    const validPassword =
-      typeof u.passwordHash === "string" &&
-      u.passwordHash.startsWith("pbkdf2:") &&
-      (await verifyStoredPasswordHash(u.passwordHash, args.password));
-
-    if (!validPassword) {
+    if (!matchedRow) {
       return { success: false, error: "Invalid email or password." };
+    }
+
+    // Now that the credential is proven, collapse duplicate rows for this
+    // email into one account, then make sure the surviving account carries the
+    // hash that just authenticated — a merge must never leave the account
+    // holding a hash nobody can log in with.
+    const user = await mergeDuplicateAccountsByEmail(ctx, matchedRow.email);
+    if (!user) {
+      return { success: false, error: "Invalid email or password." };
+    }
+    const u = user as any;
+    if (
+      (matchedRow as any)._id !== u._id &&
+      typeof (matchedRow as any).passwordHash === "string" &&
+      u.passwordHash !== (matchedRow as any).passwordHash
+    ) {
+      await ctx.db.patch(u._id, { passwordHash: (matchedRow as any).passwordHash });
     }
 
     // ---- Role repair on login ------------------------------------------
@@ -526,13 +592,36 @@ export const verifyLogin = mutation({
     // the internal auth:store mutation (type "signIn"), creating an
     // authSessions row and issuing access + refresh tokens. The string path
     // mirrors the library's callSignIn and avoids an import cycle.
-    const session = await ctx.runMutation("auth:store" as any, {
-      args: {
-        type: "signIn",
-        userId: (resolved ?? u)._id,
-        generateTokens: true,
-      },
-    });
+    //
+    // The caller's own session (if this device still carries one from a
+    // previous account) is replaced, never reused: the library deletes the
+    // incoming session and mints a new one bound to THIS user id. The login is
+    // decided entirely by the credentials in this request.
+    let session: any = null;
+    try {
+      session = await ctx.runMutation("auth:store" as any, {
+        args: {
+          type: "signIn",
+          userId: (resolved ?? u)._id,
+          generateTokens: true,
+        },
+      });
+    } catch (err) {
+      console.error("[verifyLogin] session creation failed:", err);
+    }
+
+    const tokens = (session as any)?.tokens ?? null;
+    if (!tokens?.token) {
+      // The password WAS correct — saying otherwise is the one thing that must
+      // never happen, because it sends the user round the "wrong password /
+      // account broken" loop instead of the real fix (retry).
+      return {
+        success: false,
+        code: "session_failed",
+        error:
+          "Your password is correct, but we couldn't start your session. Please try signing in again.",
+      };
+    }
 
     return {
       success: true,
@@ -544,7 +633,7 @@ export const verifyLogin = mutation({
         typeof (resolved ?? u).pendingRole === "string" && (resolved ?? u).pendingRole
           ? (resolved ?? u).pendingRole
           : null,
-      tokens: (session as any)?.tokens ?? null,
+      tokens,
     };
   },
 });
@@ -706,14 +795,23 @@ export const ensureUserProfile = mutation({
         await activateNewUser(ctx, user as any, targetRole);
       }
     } else {
-      // If no password is ever submitted, preserve the existing accessible credential
-      // so a user cannot be silently locked out by a profile sync that omits password.
+      // A profile sync is NOT a password-change channel.
+      //
+      // It used to overwrite the stored hash whenever the caller passed ANY
+      // `password` string that did not match — silently, with no proof of the
+      // current password. The account kept working (its session was already
+      // valid), so the damage only surfaced at the NEXT login: "I signed in
+      // fine, signed out, and now my correct password is rejected." That is
+      // the whole failure: the form's password field (Auth.tsx passes the
+      // sign-up form state on the post-sign-in sync) became the account's
+      // credential without anyone choosing it.
+      //
+      // Here we only CREATE the first password for an account that has none.
+      // Changing an existing one goes through the audited channels —
+      // resetPassword (emailed code) and updatePassword (current password) —
+      // so no verification is weakened by this.
       const existingPasswordHash = (user as any).passwordHash;
-      if (
-        incomingPassword.length > 0 &&
-        (!existingPasswordHash ||
-          !(await verifyStoredPasswordHash(existingPasswordHash, incomingPassword)))
-      ) {
+      if (shouldCreateInitialPasswordHash(existingPasswordHash, incomingPassword)) {
         await ctx.db.patch((user as any)._id, { passwordHash: incomingPasswordHash });
       }
       const u = user as any;

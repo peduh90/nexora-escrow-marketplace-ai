@@ -26,6 +26,8 @@
  * account cleanly; this wipe guarantees the old session cannot influence it.
  */
 
+import { clearStoredAuthSession } from "./adopt-auth-tokens";
+
 /** Device-level keys that survive sign-out (appearance, PWA, attribution). */
 const KEEP_LOCAL_KEYS = new Set([
   "nx_theme",
@@ -67,7 +69,10 @@ export function wipeLocalUserData(): void {
  * `location.replace` keeps the signed-out page out of history, so Back can
  * never return to an authenticated screen.
  */
-export async function absoluteSignOut(signOutFn: () => Promise<unknown>): Promise<void> {
+export async function absoluteSignOut(
+  signOutFn: () => Promise<unknown>,
+  convexUrl?: string,
+): Promise<void> {
   // The revoke must never be able to block the cleanup. On a flaky or idle
   // connection signOut() can stay pending indefinitely (the Convex client's
   // action call has no timeout of its own), which used to freeze this
@@ -87,6 +92,17 @@ export async function absoluteSignOut(signOutFn: () => Promise<unknown>): Promis
     })(),
     new Promise<void>((resolve) => setTimeout(resolve, 3000)),
   ]);
+  // Drop the stored tokens explicitly and broadcast the removal, so the auth
+  // provider that is still running in this tab forgets Account A immediately —
+  // not only after the reload below. Without this the in-memory token survived
+  // the wipe and any mutation fired before the reload went out as A.
+  if (convexUrl) {
+    try {
+      clearStoredAuthSession(convexUrl);
+    } catch {
+      /* storage unavailable — the wipe below still runs */
+    }
+  }
   wipeLocalUserData();
   window.location.replace("/?signedout=1");
 }
