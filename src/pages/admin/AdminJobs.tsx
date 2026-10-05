@@ -18,6 +18,12 @@ export default function AdminJobs() {
   const allTasks = useQuery(api.admin.getAllFreelanceTasks);
   const allProjects = useQuery(api.admin.getAllFreelanceProjects);
   const allApps = useQuery(api.admin.getAllFreelanceApplications);
+  // Flow A employment vacancies are a SEPARATE entity (jobPosts) and are shown
+  // in their own section so admin never conflates a vacancy with a freelance
+  // project — including who the employer is (individual vs business).
+  const allVacancies = useQuery(api.admin.getAllJobPosts);
+
+  const vacancies = allVacancies ?? [];
 
   const tasks = allTasks ?? [];
   const projects = allProjects ?? [];
@@ -104,7 +110,70 @@ export default function AdminJobs() {
         )}
       </div>
 
-      {/* Job posts */}
+      {/* Employment vacancies (Flow A) — real jobPosts rows */}
+        <div className="rounded-xl border border-white/5 bg-[#0A0A12] overflow-hidden">
+          <div className="p-4 flex items-center gap-2 border-b border-white/5">
+            <Users className="w-4 h-4 text-amber-400" />
+            <h2 className="text-sm font-semibold text-white">Employment vacancies ({vacancies.length})</h2>
+          </div>
+          {vacancies.length === 0 ? (
+            <div className="py-12 flex flex-col items-center">
+              <Briefcase className="w-8 h-8 text-white/10 mb-3" />
+              <p className="text-sm text-white/30">No employment vacancies yet</p>
+              <p className="text-[11px] text-white/15 mt-1">
+                These appear when an employer posts a job from their dashboard
+              </p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Vacancy</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden md:table-cell">Employer</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase hidden md:table-cell">Type</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Pay</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Applicants</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-medium text-white/30 uppercase">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.03]">
+                {vacancies.map((j: any) => (
+                  <tr key={j._id} className="hover:bg-white/[0.01] transition-colors">
+                    <td className="px-4 py-3.5">
+                      <p className="text-sm text-white/70">{j.title}</p>
+                      <p className="text-[10px] text-white/25">{j.location}, {j.county} · {j.category}</p>
+                    </td>
+                    <td className="px-4 py-3.5 hidden md:table-cell">
+                      <p className="text-xs text-white/60">{j.posterName}</p>
+                      <p className="text-[10px] text-white/30 capitalize">
+                        {j.employerType || "individual"}
+                        {j.companyName ? ` · ${j.companyName}` : ""}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3.5 hidden md:table-cell">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-white/30">
+                        {String(j.employmentType || "open").replace("_", " ")}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-white/60">
+                      {j.salaryMin || j.salaryMax
+                        ? `KES ${(j.salaryMin ?? j.salaryMax).toLocaleString()}`
+                        : "Negotiable"}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-white/40">{j.applicants || 0}</td>
+                    <td className="px-4 py-3.5">
+                      <span className={`text-[10px] px-2 py-0.5 rounded ${statusStyles[j.status] || "bg-white/5 text-white/30"}`}>
+                        {j.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Freelance projects / tasks */}
       <div className="rounded-xl border border-white/5 bg-[#0A0A12] overflow-hidden">
         <div className="p-4 flex items-center gap-2 border-b border-white/5">
           <Briefcase className="w-4 h-4 text-nx-violet" />

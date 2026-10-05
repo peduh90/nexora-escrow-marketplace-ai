@@ -32,13 +32,42 @@ interface ApplicationRow {
 export default function EmployerJobs() {
   const navigate = useNavigate();
   const myTasks = useQuery(api.freelance.getMyTasks);
+  // Flow A vacancies live in a DIFFERENT table from freelance tasks — the
+  // employer sees both here, each with its own real applicants.
+  const myVacancies = useQuery(api.employment.getMyEmploymentJobs);
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const acceptApplication = useMutation(api.freelance.acceptApplication);
+  const updateApplicationStatus = useMutation(api.employment.updateApplicationStatus);
+  const setJobStatus = useMutation(api.employment.setJobStatus);
+  const [expandedVacancy, setExpandedVacancy] = useState<string | null>(null);
+  const vacancyApps = useQuery(
+    api.employment.getJobApplications,
+    expandedVacancy ? ({ jobId: expandedVacancy as any } as const) : "skip",
+  );
 
   const tasks = myTasks ?? [];
+  const vacancies = myVacancies ?? [];
+
+  const handleVacancyStatus = async (applicationId: string, status: any) => {
+    setError("");
+    try {
+      await updateApplicationStatus({ applicationId: applicationId as any, status });
+    } catch (err: any) {
+      setError(err.message || "Failed to update the application.");
+    }
+  };
+
+  const handleVacancyState = async (jobId: string, status: any) => {
+    setError("");
+    try {
+      await setJobStatus({ jobId: jobId as any, status });
+    } catch (err: any) {
+      setError(err.message || "Failed to update the job.");
+    }
+  };
 
   // Load applications for the expanded task (the query is skipped for others).
   const appsForExpanded = useQuery(
@@ -71,7 +100,83 @@ export default function EmployerJobs() {
         </div>
 
         <div className="p-4 md:p-6 space-y-5 pb-28 md:pb-6">
-          {tasks.length === 0 ? (
+          {/* ── Employment vacancies (Flow A) ── */}
+          {vacancies.length > 0 && (
+            <div className="rounded-xl border border-amber-400/15 bg-amber-500/[0.03] p-4">
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-amber-400" /> Employment vacancies
+              </h2>
+              <p className="text-[11px] text-white/30 mt-0.5">
+                Real vacancies job seekers apply to through Browse Jobs.
+              </p>
+              <div className="mt-3 space-y-2.5">
+                {vacancies.map((job: any) => (
+                  <div key={job._id} className="rounded-lg border border-white/8 bg-white/[0.02] p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => setExpandedVacancy(expandedVacancy === job._id ? null : job._id)}
+                        className="text-sm font-medium text-white hover:text-amber-300 transition-colors text-left"
+                      >
+                        {job.title}
+                      </button>
+                      <span className="text-[11px] text-white/35">{job.applicants ?? 0} applied</span>
+                      <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] border border-white/10 bg-white/[0.04] text-white/50 capitalize">
+                        {job.status}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/35 mt-1">
+                      {job.byline} · {job.location}, {job.county}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-2.5">
+                      <button
+                        onClick={() => handleVacancyState(job._id, job.status === "open" ? "closed" : "open")}
+                        className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/[0.03] text-[11px] text-white/55 hover:text-white transition-colors"
+                      >
+                        {job.status === "open" ? "Close job" : "Reopen job"}
+                      </button>
+                      <button
+                        onClick={() => navigate(`/employment/jobs/${job._id}`)}
+                        className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/[0.03] text-[11px] text-white/55 hover:text-white transition-colors"
+                      >
+                        View public page
+                      </button>
+                    </div>
+                    {expandedVacancy === job._id && (
+                      <div className="mt-3 space-y-2">
+                        {vacancyApps === undefined ? (
+                          <p className="text-[11px] text-white/40 flex items-center gap-1.5">
+                            <Loader2 className="w-3 h-3 animate-spin" /> Loading applicants…
+                          </p>
+                        ) : (vacancyApps ?? []).length === 0 ? (
+                          <p className="text-[11px] text-white/40">No applications yet.</p>
+                        ) : (
+                          (vacancyApps ?? []).map((a: any) => (
+                            <div key={a._id} className="rounded-lg border border-white/8 bg-white/[0.02] p-2.5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-semibold text-white">{a.applicantName}</span>
+                                <span className="text-[10px] text-white/35">{a.applicantRole}</span>
+                                <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] border border-white/10 bg-white/[0.04] text-white/50 capitalize">
+                                  {a.status}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-white/55 mt-1.5">{a.message}</p>
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                <button onClick={() => handleVacancyStatus(a._id, "shortlisted")} className="px-2 py-1 rounded border border-nx-cyan/30 bg-nx-cyan/10 text-[10px] text-nx-cyan">Shortlist</button>
+                                <button onClick={() => handleVacancyStatus(a._id, "accepted")} className="px-2 py-1 rounded border border-emerald-500/30 bg-emerald-500/10 text-[10px] text-emerald-400">Accept</button>
+                                <button onClick={() => handleVacancyStatus(a._id, "rejected")} className="px-2 py-1 rounded border border-white/10 bg-white/[0.03] text-[10px] text-white/50">Reject</button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tasks.length === 0 && vacancies.length === 0 ? (
             <div className="text-center py-16 rounded-xl bg-white/[0.02] border border-white/5">
               <Briefcase className="w-12 h-12 text-white/10 mx-auto mb-3" />
               <p className="text-sm text-white/40 font-medium">You haven't posted any jobs yet</p>

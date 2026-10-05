@@ -43,6 +43,13 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
   // Role-specific registration fields: store/company name (seller, employer)
   // and the county & town (seller delivery, provider/driver service area).
   const [bizInput, setBizInput] = useState<string | null>(null);
+  // Employer identity (Part 3): Individual / Business / Organization. An
+  // individual NEVER has to supply a company — the company field only appears
+  // for business/organization employers, and stays optional there too.
+  const [employerTypeInput, setEmployerTypeInput] = useState<
+    "individual" | "business" | "organization" | null
+  >(null);
+  const [companyInput, setCompanyInput] = useState<string | null>(null);
   const [countyInput, setCountyInput] = useState<string | null>(null);
   const [townInput, setTownInput] = useState<string | null>(null);
   // Local mirror of the requested account type while the picker is open —
@@ -152,6 +159,13 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
     // A role with no such requirement (buyer, freelancer, creator) counts as
     // met — only seller/employer/service_provider/driver see these steps.
     const hasRow = (key: string) => !!reqs.find((r: any) => r.key === key);
+    const storedEmployerType = onboarding.profile?.employerType as string | undefined;
+    const effEmployerType = employerTypeInput ?? (storedEmployerType as any) ?? null;
+    const effCompany = (companyInput ?? onboarding.profile?.companyName ?? "").trim();
+    const employerTypeMet = hasRow("employer_type") ? !!effEmployerType : true;
+    // Company name is NEVER required — not for individuals, not even for
+    // businesses. It is purely a display nicety on the job page.
+    const companyMet = true;
     const bizMet = hasRow("seller_business")
       ? reqMet("seller_business", effBiz.trim().length >= 2)
       : true;
@@ -161,7 +175,8 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
           reqMet("provider_location", !!effCounty && !!effTown)
         : true;
     const allMet =
-      emailMet && nameMet && phoneMet && roleMet && bizMet && locationMet;
+      emailMet && nameMet && phoneMet && roleMet && bizMet && locationMet &&
+      employerTypeMet && companyMet;
 
     // ── Account-type picker ──
     // Registration on Nexora REQUIRES choosing what you do — the role is the
@@ -204,6 +219,8 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
           businessName: effBiz || undefined,
           county: effCounty || undefined,
           town: effTown || undefined,
+          employerType: effEmployerType ?? undefined,
+          companyName: effCompany || undefined,
         });
         if (result?.role) {
           // Reload so the auth hook picks up the newly assigned role.
@@ -239,6 +256,7 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
                 (r.key === "name" && nameMet) ||
                 (r.key === "phone" && phoneMet) ||
                 (r.key === "seller_business" && bizMet) ||
+                (r.key === "employer_type" && employerTypeMet) ||
                 ((r.key === "seller_location" || r.key === "provider_location") && locationMet);
               const showNameInput = !rowMet && r.key === "name";
               const showBizInput = !rowMet && r.key === "seller_business";
@@ -362,6 +380,50 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
                         </p>
                       )}
                     </>
+                  )}
+                  {/* Employer identity: Individual / Business / Organization.
+                      Picking Individual removes the company field entirely —
+                      "I need a house help" must never require a company. */}
+                  {r.key === "employer_type" && !rowMet && (
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      {[
+                        { value: "individual" as const, label: "Individual", desc: "Me / my household" },
+                        { value: "business" as const, label: "Business", desc: "Shop or company" },
+                        { value: "organization" as const, label: "Organization", desc: "NGO / group" },
+                      ].map((opt) => {
+                        const active = effEmployerType === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setEmployerTypeInput(opt.value)}
+                            className={`p-2.5 rounded-lg border text-left transition-all ${
+                              active
+                                ? "border-amber-400/50 bg-amber-500/10"
+                                : "border-white/5 bg-white/[0.02] hover:border-white/20"
+                            }`}
+                          >
+                            <div className="text-xs font-medium text-white">{opt.label}</div>
+                            <p className="text-[10px] text-white/30 mt-0.5 leading-snug">{opt.desc}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {effEmployerType && effEmployerType !== "individual" && (
+                    <div className="mt-2.5">
+                      <input
+                        type="text"
+                        value={effCompany}
+                        onChange={(e) => setCompanyInput(e.target.value)}
+                        placeholder="Company / organisation name (optional)"
+                        autoComplete="organization"
+                        className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-violet/40"
+                      />
+                      <p className="text-[10px] text-white/30 mt-1.5">
+                        Optional — you can post jobs without it.
+                      </p>
+                    </div>
                   )}
                   {/* Account-type picker: this is the ONLY remaining way for a
                       pending account to choose its role — the auth form's

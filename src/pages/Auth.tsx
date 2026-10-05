@@ -1245,28 +1245,16 @@ function Auth({ redirectAfterAuth, sellerFirst, freelanceFirst, creatorFirst }: 
                       </div>
                     </button>
 
-                    {/* Freelancer-seller — the DIGITAL market path. There is NO
-                        service_provider role in the digital market: digital
-                        sellers register as sellers and finish registration by
-                        uploading + publishing their first product. */}
-                    <button onClick={() => handleRoleSelect("seller", { publishIntent: true })} className="group relative p-6 rounded-2xl border border-nx-cyan/20 bg-nx-cyan/[0.03] backdrop-blur-sm hover:border-nx-cyan/40 hover:bg-nx-cyan/[0.07] transition-all duration-300 text-left">
-                      <div className="w-12 h-12 rounded-xl bg-nx-cyan/10 flex items-center justify-center mb-4 group-hover:bg-nx-cyan/20 transition-colors">
-                        <ShoppingBag className="w-6 h-6 text-nx-cyan" />
-                      </div>
-                      <h3 className="text-base font-semibold text-white mb-1">Sell Digital Products</h3>
-                      <p className="text-white/40 text-xs leading-relaxed mb-3">Freelancer-seller: upload & publish digital products — ebooks, courses, templates, designs.</p>
-                      <div className="flex flex-col gap-1">
-                        {["Upload & publish your first product", "Store + escrow-protected sales", "M-Pesa withdrawals"].map((f) => (
-                          <div key={f} className="flex items-center gap-1.5 text-[11px] text-white/30">
-                            <Check className="w-3 h-3 text-nx-cyan/60" /><span>{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </button>
+                    {/* ── Part 2: freelance onboarding is EXACTLY two paths ──
+                        Writer/Freelancer and Employer. The "sell products"
+                        seller card is deliberately ABSENT here: digital sellers
+                        belong to Marketplace registration (/auth/seller), and
+                        showing it inside the freelance flow is how a
+                        Marketplace Seller ended up in the freelance system. */}
                   </div>
                   <div className="mt-5 flex items-center justify-center gap-2 text-[11px] text-white/25">
                     <MonitorSmartphone className="w-3.5 h-3.5" />
-                    <span>Freelancer-sellers sell physical &amp; digital products — registration completes once your first product is live.</span>
+                    <span>Freelance accounts are Writer/Freelancer or Employer — your Marketplace role is never changed by joining here.</span>
                   </div>
                 </>
               )}

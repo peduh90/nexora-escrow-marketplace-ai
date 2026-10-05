@@ -2,6 +2,10 @@ import { v, ConvexError } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { getSessionUser } from "./users";
+// Part 9: ONE SELLER SUBMISSION = ONE PRODUCT. The same validator the seller
+// form runs before submitting also runs here, so a tampered client cannot
+// smuggle five products into a single listing record.
+import { findMultiItemListing, MAX_LISTING_PHOTOS } from "../lib/single-item-listing";
 import { MIN_DESCRIPTION_CHARS } from "./verification";
 
 /**
@@ -241,6 +245,19 @@ export const createListing = mutation({
           `This listing was rejected: "${illegal}" is not allowed on Nexora. Nexora only allows legitimate services and authorized software/tool subscriptions.`
         );
       }
+    }
+
+    // ── ONE LISTING = ONE ITEM (server-authoritative) ──
+    const multiItem = findMultiItemListing({
+      title: args.title,
+      description: args.description,
+      images: args.images ?? [],
+    });
+    if (multiItem) throw new ConvexError(multiItem);
+    if ((args.images ?? []).length > MAX_LISTING_PHOTOS) {
+      throw new ConvexError(
+        `A single listing holds up to ${MAX_LISTING_PHOTOS} photos of the same item.`,
+      );
     }
 
     const now = Date.now();

@@ -984,13 +984,23 @@ function roleSpecificRequirements(
     ];
   }
   if (effectiveRole === "employer") {
-    const bizOk = businessName.length >= 2;
+    // ── Part 3: an employer is NOT a company ──
+    // The ONLY employer requirement is declaring WHO is hiring:
+    // Individual (no company), Business, or Organization/NGO. Company name
+    // stays optional and is only ever a display nicety — "Jane needs a house
+    // help" must never be forced into a company-registration workflow.
+    const hasType =
+      u.employerType === "individual" ||
+      u.employerType === "business" ||
+      u.employerType === "organization";
     return [
       {
-        key: "seller_business",
-        label: "Company / organisation name",
-        met: bizOk,
-        detail: bizOk ? undefined : "Open the field above and enter your company or organisation name.",
+        key: "employer_type",
+        label: "Who is hiring? (Individual, Business or Organization)",
+        met: hasType,
+        detail: hasType
+          ? undefined
+          : "Pick Individual if you are hiring for yourself or your household — no company needed.",
       },
     ];
   }
@@ -1069,6 +1079,9 @@ export const getOnboardingStatus = query({
         businessName: u.businessName || "",
         county: u.county || "",
         town: u.town || "",
+        employerType: u.employerType || "",
+        companyName: u.companyName || "",
+        employerDisplay: u.employerDisplay || "",
       },
     };
   },
@@ -1114,6 +1127,12 @@ export const completeVerification = mutation({
     businessName: v.optional(v.string()),
     county: v.optional(v.string()),
     town: v.optional(v.string()),
+    // Employer identity (Part 3). `employerType` is the only REQUIRED employer
+    // field; companyName stays optional so an individual never has to invent
+    // a company.
+    employerType: v.optional(v.union(v.literal("individual"), v.literal("business"), v.literal("organization"))),
+    companyName: v.optional(v.string()),
+    employerDisplay: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -1145,6 +1164,23 @@ export const completeVerification = mutation({
     }
     if (typeof args.town === "string" && args.town.trim()) {
       await ctx.db.patch(u._id, { town: args.town.trim() });
+    }
+    if (
+      args.employerType === "individual" ||
+      args.employerType === "business" ||
+      args.employerType === "organization"
+    ) {
+      await ctx.db.patch(u._id, { employerType: args.employerType });
+      // An individual employer must never keep a stale company label.
+      if (args.employerType === "individual") {
+        await ctx.db.patch(u._id, { companyName: undefined });
+      }
+    }
+    if (typeof args.companyName === "string" && args.companyName.trim()) {
+      await ctx.db.patch(u._id, { companyName: args.companyName.trim() });
+    }
+    if (typeof args.employerDisplay === "string" && args.employerDisplay.trim()) {
+      await ctx.db.patch(u._id, { employerDisplay: args.employerDisplay.trim() });
     }
 
     const fresh = (await ctx.db.get(u._id)) as any;

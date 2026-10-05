@@ -9,6 +9,7 @@ import { CATEGORIES as FALLBACK_CATEGORIES, SPECS_TEMPLATES } from "@/lib/catego
 import { CATEGORY_BANNERS } from "@/lib/category-images";
 import { FREELANCE_CATEGORIES, getFreelanceCategory, getFreelanceCategoryIcon } from "@/lib/freelance-marketplace";
 import { MIN_DESCRIPTION_CHARS } from "../../convex/verification";
+import { findMultiItemListing } from "@/lib/single-item-listing";
 import DocumentUpload, { type PickedFile } from "@/components/DocumentUpload";
 import { ChevronRight, ChevronLeft, Check, Package, X, ImagePlus, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 
@@ -269,6 +270,16 @@ export default function SellerAddProduct({ freelanceMode: freelanceModeProp = fa
       if (!form.county.trim()) { setError("Please select a county"); return; }
       if (!form.town.trim()) { setError("Please select a town"); return; }
     }
+    // ONE SUBMISSION = ONE PRODUCT (Part 9). This wizard has a single title,
+    // price and photo set — it can only ever create ONE record. The same
+    // validator runs again in createListing, so this front-end check is a
+    // courtesy, not the only defence.
+    const multiItem = findMultiItemListing({
+      title: form.title,
+      description: form.description || "",
+      images: (form.images || []).map((img: any) => (typeof img === "string" ? img : img?.preview ?? "")),
+    });
+    if (multiItem) { setError(multiItem); return; }
 
     setPublishing(true);
     try {

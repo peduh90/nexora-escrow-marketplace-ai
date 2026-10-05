@@ -2,7 +2,7 @@ import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin } from "@/components/RequireAdmin";
-import { RoleRouter } from "@/components/RoleRouter";
+import { RoleRouter, getDashboardPath } from "@/components/RoleRouter";
 import { useAuth } from "@/hooks/use-auth";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
@@ -80,6 +80,14 @@ const EmployerProjects = lazy(() => import("./pages/employer/EmployerProjects.ts
 const FreelanceFindWork = lazy(() => import("./pages/freelance/FreelanceFindWork.tsx"));
 const FreelanceFindFreelancers = lazy(() => import("./pages/freelance/FreelanceFindFreelancers.tsx"));
 const FreelancePostTask = lazy(() => import("./pages/freelance/FreelancePostTask.tsx"));
+// Post-a-Job: the Employee / Freelancer / Service Provider chooser (Part 8)
+// and the three real flows it branches into.
+const EmployerPostJob = lazy(() => import("./pages/employer/EmployerPostJob.tsx"));
+const EmployerPostEmploymentJob = lazy(() => import("./pages/employer/EmployerPostEmploymentJob.tsx"));
+const EmployerPostServiceRequest = lazy(() => import("./pages/employer/EmployerPostServiceRequest.tsx"));
+// Flow A discovery — real `jobPosts` rows, real applications.
+const EmploymentJobs = lazy(() => import("./pages/jobs/EmploymentJobs.tsx"));
+const EmploymentJobDetail = lazy(() => import("./pages/jobs/EmploymentJobDetail.tsx"));
 const FreelanceProjects = lazy(() => import("./pages/freelance/FreelanceProjects.tsx"));
 const FreelanceApplications = lazy(() => import("./pages/freelance/FreelanceApplications.tsx"));
 const FreelanceServices = lazy(() => import("./pages/freelance/FreelanceServices.tsx"));
@@ -225,17 +233,11 @@ function LegacyDashboardRedirect() {
   const { isLoading, isAuthenticated, role } = useAuth();
   if (isLoading) return <RouteLoading />;
   if (!isAuthenticated) return <Navigate to="/auth?returnTo=/dashboard" replace />;
-  const target =
-    role === "admin"
-      ? "/admin"
-      : role === "seller"
-      ? "/seller"
-      : role === "freelancer"
-      ? "/freelance/dashboard"
-      : role === "employer"
-      ? "/employer"
-      : "/buyer";
-  return <Navigate to={target} replace />;
+  // Part 1/2: NEVER fall back to /buyer here. An employer, freelancer, service
+  // provider or driver used to be silently dumped into the buyer panel by this
+  // `else` branch. getDashboardPath is the single role→panel map (it returns
+  // /auth for an unknown/roleless role, which is the safe outcome).
+  return <Navigate to={getDashboardPath(role)} replace />;
 }
 
 
@@ -319,7 +321,14 @@ createRoot(document.getElementById("root")!).render(
                   the writer/freelancer panel. /employer/jobs is the applicant
                   management screen for the employer's own job posts. */}
               <Route path="/employer" element={<RoleRouter allowedRoles={["employer"]}><EmployerDashboard /></RoleRouter>} />
-              <Route path="/employer/post-job" element={<RoleRouter allowedRoles={["employer"]}><FreelancePostTask /></RoleRouter>} />
+              {/* Post a Job — the chooser first, then the matching flow. */}
+              <Route path="/employer/post-job" element={<RoleRouter allowedRoles={["employer"]}><EmployerPostJob /></RoleRouter>} />
+              <Route path="/employer/post-job/employment" element={<RoleRouter allowedRoles={["employer"]}><EmployerPostEmploymentJob /></RoleRouter>} />
+              <Route path="/employer/post-job/freelance" element={<RoleRouter allowedRoles={["employer"]}><FreelancePostTask /></RoleRouter>} />
+              <Route path="/employer/post-job/service" element={<RoleRouter allowedRoles={["employer"]}><EmployerPostServiceRequest /></RoleRouter>} />
+              {/* Flow A job discovery — public board of REAL vacancies. */}
+              <Route path="/employment/jobs" element={<EmploymentJobs />} />
+              <Route path="/employment/jobs/:id" element={<EmploymentJobDetail />} />
               <Route path="/employer/jobs" element={<RoleRouter allowedRoles={["employer"]}><EmployerJobs /></RoleRouter>} />
               <Route path="/employer/projects" element={<RoleRouter allowedRoles={["employer"]}><EmployerProjects /></RoleRouter>} />
               <Route path="/employer/messages" element={<RoleRouter allowedRoles={["employer"]}><FreelanceMessages /></RoleRouter>} />

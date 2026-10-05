@@ -82,6 +82,22 @@ const schema = defineSchema(
       // Seller-specific
       businessName: v.optional(v.string()),
       businessType: v.optional(v.string()),
+      // ── Employer identity (Part 3: an employer is NOT a company) ──
+      // Who is hiring: an ordinary person, a registered business, or an
+      // NGO/organisation. `individual` NEVER requires companyName — only
+      // `business` / `organization` optionally carry one for display.
+      employerType: v.optional(v.union(
+        v.literal("individual"),
+        v.literal("business"),
+        v.literal("organization"),
+      )),
+      // Optional legal/display name for business & organization employers.
+      // Never a requirement — an individual employer is the common case
+      // ("I need a house help", "I need a gardener").
+      companyName: v.optional(v.string()),
+      // Free-text headline shown on jobs, e.g. "Household", "Farm",
+      // "Shop". Optional for every employer type.
+      employerDisplay: v.optional(v.string()),
       // Seller store profile (set from the seller Store page, shown on the
       // public seller profile page)
       storeDescription: v.optional(v.string()),
@@ -472,18 +488,62 @@ const schema = defineSchema(
       views: v.number(),
       createdAt: v.number(),
       updatedAt: v.optional(v.number()),
+      // ── Employment vacancy fields (Flow A) ──
+      // jobPosts is the EMPLOYMENT entity. It is deliberately separate from
+      // freelanceTasks (freelance projects) and serviceRequests (service
+      // bookings) — three flows, three tables, never mixed.
+      employmentType: v.optional(v.union(
+        v.literal("full_time"),
+        v.literal("part_time"),
+        v.literal("contract"),
+        v.literal("temporary"),
+        v.literal("internship"),
+        v.literal("casual"),
+        v.literal("commission"),
+        v.literal("other"),
+      )),
+      responsibilities: v.optional(v.array(v.string())),
+      requiredSkills: v.optional(v.array(v.string())),
+      experienceRequired: v.optional(v.string()),
+      salaryMin: v.optional(v.number()),
+      salaryMax: v.optional(v.number()),
+      paymentFrequency: v.optional(v.union(
+        v.literal("per_hour"),
+        v.literal("per_day"),
+        v.literal("per_week"),
+        v.literal("per_month"),
+        v.literal("per_project"),
+        v.literal("negotiable"),
+      )),
+      positions: v.optional(v.number()),
+      startDate: v.optional(v.number()),
+      workingHours: v.optional(v.string()),
+      applicationMethod: v.optional(v.string()),
+      employerType: v.optional(v.union(
+        v.literal("individual"),
+        v.literal("business"),
+        v.literal("organization"),
+      )),
+      companyName: v.optional(v.string()),
+      employerDisplay: v.optional(v.string()),
     })
       .index("by_poster", ["posterId"])
       .index("by_type", ["type"])
       .index("by_status", ["status"])
       .index("by_category", ["category"])
-      .index("by_county", ["county"]),
+      .index("by_county", ["county"])
+      .index("by_employer_type", ["employerType"])
+      .index("by_created", ["createdAt"]),
 
     // Job applications
     jobApplications: defineTable({
       jobId: v.string(),
+      jobTitle: v.optional(v.string()),
+      employerId: v.optional(v.string()),
       applicantId: v.string(),
       applicantName: v.string(),
+      applicantRole: v.optional(v.string()),
+      applicantPhone: v.optional(v.string()),
       message: v.string(),
       proposedBudget: v.optional(v.number()),
       status: v.union(
@@ -492,6 +552,10 @@ const schema = defineSchema(
         v.literal("accepted"),
         v.literal("rejected"),
       ),
+      // Employer decision record — keeps "accepted" auditable and lets the
+      // applicant see WHY their application was closed.
+      reviewNote: v.optional(v.string()),
+      reviewedAt: v.optional(v.number()),
       createdAt: v.number(),
     })
       .index("by_job", ["jobId"])

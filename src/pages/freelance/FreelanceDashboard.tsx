@@ -19,6 +19,7 @@ import {
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/freelance/dashboard" },
   { icon: Search, label: "Find Work", path: "/freelance/find-work" },
+  { icon: Briefcase, label: "Browse Jobs", path: "/employment/jobs" },
   { icon: FolderOpen, label: "My Projects", path: "/freelance/projects" },
   { icon: FileText, label: "My Applications", path: "/freelance/applications" },
   { icon: PenTool, label: "My Services", path: "/freelance/services" },

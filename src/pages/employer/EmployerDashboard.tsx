@@ -59,6 +59,7 @@ export default function EmployerDashboard() {
           {[
             { icon: Briefcase, label: "Dashboard", path: "/employer" },
             { icon: Plus, label: "Post a Job", path: "/employer/post-job" },
+            { icon: Search, label: "Browse Jobs (market)", path: "/employment/jobs" },
             { icon: Search, label: "Find Freelancers", path: "/freelance/find-freelancers" },
             { icon: Users, label: "Job Applicants", path: "/employer/jobs" },
             { icon: FolderOpen, label: "Projects & Review", path: "/employer/projects" },
