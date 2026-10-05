@@ -1130,7 +1130,18 @@ export const completeVerification = mutation({
     // Employer identity (Part 3). `employerType` is the only REQUIRED employer
     // field; companyName stays optional so an individual never has to invent
     // a company.
-    employerType: v.optional(v.union(v.literal("individual"), v.literal("business"), v.literal("organization"))),
+    // "" is tolerated (and ignored) for older clients that mirror
+    // getOnboardingStatus's empty-string profile value — without it a cached
+    // bundle sends employerType: "" and the whole mutation dies with a
+    // non-Convex "Server Error" before the handler runs.
+    employerType: v.optional(
+      v.union(
+        v.literal("individual"),
+        v.literal("business"),
+        v.literal("organization"),
+        v.literal(""),
+      ),
+    ),
     companyName: v.optional(v.string()),
     employerDisplay: v.optional(v.string()),
   },

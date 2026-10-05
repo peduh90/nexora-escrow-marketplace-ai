@@ -159,8 +159,19 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
     // A role with no such requirement (buyer, freelancer, creator) counts as
     // met — only seller/employer/service_provider/driver see these steps.
     const hasRow = (key: string) => !!reqs.find((r: any) => r.key === key);
-    const storedEmployerType = onboarding.profile?.employerType as string | undefined;
-    const effEmployerType = employerTypeInput ?? (storedEmployerType as any) ?? null;
+    // getOnboardingStatus reports `employerType: ""` for every account that
+    // never chose one (creator, buyer, seller, …). An empty string must never
+    // be treated as a chosen value — sending employerType: "" to
+    // completeVerification fails the server's argument validator and the whole
+    // step dies with a generic "Server Error" even though every row shows Done.
+    const rawStoredEmployerType = onboarding.profile?.employerType as string | undefined;
+    const storedEmployerType =
+      rawStoredEmployerType === "individual" ||
+      rawStoredEmployerType === "business" ||
+      rawStoredEmployerType === "organization"
+        ? rawStoredEmployerType
+        : null;
+    const effEmployerType = employerTypeInput ?? storedEmployerType;
     const effCompany = (companyInput ?? onboarding.profile?.companyName ?? "").trim();
     const employerTypeMet = hasRow("employer_type") ? !!effEmployerType : true;
     // Company name is NEVER required — not for individuals, not even for
@@ -219,7 +230,14 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
           businessName: effBiz || undefined,
           county: effCounty || undefined,
           town: effTown || undefined,
-          employerType: effEmployerType ?? undefined,
+          // Only ever send a literal the server accepts — omit the field
+          // entirely (undefined = absent) when no employer type was chosen.
+          employerType:
+            effEmployerType === "individual" ||
+            effEmployerType === "business" ||
+            effEmployerType === "organization"
+              ? effEmployerType
+              : undefined,
           companyName: effCompany || undefined,
         });
         if (result?.role) {
