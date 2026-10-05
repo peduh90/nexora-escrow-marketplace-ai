@@ -1,4 +1,5 @@
 import { v, ConvexError } from "convex/values";
+import { getSessionUser } from "./users";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { api, internal } from "./_generated/api";
@@ -844,8 +845,16 @@ export const getMyApplications = query({
 export const acceptApplication = mutation({
   args: { applicationId: v.id("freelanceApplications") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError("Not authenticated");
+    // Ownership is resolved from the SESSION'S OWN user record (id first),
+    // exactly like every other mutation in this file.
+    //
+    // It used to look the user up by `identity.email`. That is wrong twice
+    // over: a session without an email claim (which is what the password login
+    // path mints) resolves nothing, so the employer could NEVER accept — the
+    // hire step was a dead end; and when an email has several rows, `.first()`
+    // can resolve a DIFFERENT account than the one that owns the task.
+    const user = await getSessionUser(ctx);
+    if (!user) throw new ConvexError("Not authenticated");
 
     const application = await ctx.db.get(args.applicationId);
     if (!application) throw new ConvexError("Application not found");
@@ -853,11 +862,9 @@ export const acceptApplication = mutation({
     const task = await ctx.db.get(application.taskId as any);
     if (!task || !("employerId" in task)) throw new ConvexError("Task not found");
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
-      .first();
-    if (!user || (task as any).employerId !== user._id) throw new ConvexError("Not authorized");
+    if ((task as any).employerId !== user._id) {
+      throw new ConvexError("Only the employer who posted this project can accept applicants");
+    }
 
     // Accept this application
     await ctx.db.patch(args.applicationId, { status: "accepted" });
