@@ -1,8 +1,9 @@
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import AdminLayout from "./AdminLayout";
-import { MessageSquare, Eye, ChevronUp } from "lucide-react";
+import { MessageSquare, Eye, ChevronUp, Send, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function AdminMessages() {
   // REAL platform-wide conversation feed. (Previously this used the
@@ -11,7 +12,11 @@ export default function AdminMessages() {
   const allConversations = useQuery(api.admin.getAllConversations);
   const allUsers = useQuery(api.admin.getAllUsers);
   const allMessages = useQuery(api.admin.getAllMessages);
+  const adminSendMessage = useMutation(api.admin.adminSendMessage);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState<string>("");
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   const conversations = allConversations ?? [];
   const users = allUsers ?? [];
@@ -47,9 +52,32 @@ export default function AdminMessages() {
               const thread = (allMessages ?? [])
                 .filter((m: any) =>
                   (m.senderId === c.buyerId && m.receiverId === c.sellerId) ||
-                  (m.senderId === c.sellerId && m.receiverId === c.buyerId)
+                  (m.senderId === c.sellerId && m.receiverId === c.buyerId) ||
+                  (m.senderId === "admin" && m.receiverId === c.buyerId) ||
+                  (m.senderId === "admin" && m.receiverId === c.sellerId) ||
+                  (m.senderId === c.buyerId && m.receiverId === "admin") ||
+                  (m.senderId === c.sellerId && m.receiverId === "admin")
                 )
                 .sort((a: any, b: any) => a.createdAt - b.createdAt);
+
+              const handleReply = async () => {
+                if (!replyText.trim() || !c._id || sending) return;
+                setSending(true);
+                try {
+                  await adminSendMessage({
+                    userId: c.buyerId,
+                    content: replyText.trim(),
+                    conversationId: c._id,
+                  });
+                  toast.success("Message sent to user");
+                  setReplyText("");
+                  setReplyingTo(null);
+                } catch (err: any) {
+                  toast.error(err?.message || "Failed to send message");
+                } finally {
+                  setSending(false);
+                }
+              };
               return (
                 <div key={c._id} className="px-5 py-3.5 hover:bg-white/[0.01] transition-colors">
                   <div className="flex items-center gap-3">
@@ -84,17 +112,54 @@ export default function AdminMessages() {
                         <p className="text-xs text-white/25">No individual messages recorded yet — only the conversation summary.</p>
                       ) : (
                         <div className="space-y-2 max-h-64 overflow-y-auto">
-                          {thread.map((m: any) => (
-                            <div key={m._id} className="flex items-start gap-2">
-                              <span className={`text-[10px] font-semibold shrink-0 w-14 ${m.senderId === c.buyerId ? "text-nx-cyan" : "text-nx-violet"}`}>
-                                {m.senderId === c.buyerId ? "Buyer" : "Seller"}
-                              </span>
-                              <p className="text-[11px] text-white/60 flex-1">{m.content}</p>
-                              <span className="text-[9px] text-white/15 shrink-0">{new Date(m.createdAt).toLocaleTimeString()}</span>
-                            </div>
-                          ))}
+                          {thread.map((m: any) => {
+                            const isAdminMsg = m.senderId === "admin" || m.receiverId === "admin";
+                            return (
+                              <div key={m._id} className="flex items-start gap-2">
+                                <span className={`text-[10px] font-semibold shrink-0 w-14 ${
+                                  m.senderId === c.buyerId ? "text-nx-cyan" :
+                                  m.senderId === c.sellerId ? "text-nx-violet" :
+                                  "text-nx-gold"
+                                }`}>
+                                  {m.senderId === c.buyerId ? "Buyer" :
+                                   m.senderId === c.sellerId ? "Seller" :
+                                   "Admin"}
+                                </span>
+                                <p className="text-[11px] text-white/60 flex-1">{m.content}</p>
+                                <span className="text-[9px] text-white/15 shrink-0">{new Date(m.createdAt).toLocaleTimeString()}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
+                      {/* Admin Reply Box */}
+                      <div className="mt-4 pt-3 border-t border-white/5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[10px] uppercase tracking-wider text-nx-gold/70 font-semibold">Reply as Admin</span>
+                          <span className="text-[9px] text-white/20">→ {buyerName} / {sellerName}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={replyingTo === c._id ? replyText : ""}
+                            onChange={(e) => {
+                              setReplyText(e.target.value);
+                              if (!replyingTo) setReplyingTo(c._id);
+                            }}
+                            onFocus={() => setReplyingTo(c._id)}
+                            placeholder="Type a message as admin..."
+                            className="flex-1 bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-nx-gold/40"
+                          />
+                          <button
+                            onClick={handleReply}
+                            disabled={!replyText.trim() || sending}
+                            className="p-2 rounded-lg bg-nx-gold/10 text-nx-gold hover:bg-nx-gold/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Send reply"
+                          >
+                            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

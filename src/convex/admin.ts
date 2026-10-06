@@ -851,6 +851,132 @@ export const getAllMessages = query({
   },
 });
 
+/**
+ * Admin: send a message to any user as the platform admin.
+ * This creates a conversation if one doesn't exist, or replies in an
+ * existing thread. The admin acts as a platform representative.
+ */
+export const adminSendMessage = mutation({
+  args: {
+    userId: v.string(),
+    content: v.string(),
+    listingId: v.optional(v.string()),
+    conversationId: v.optional(v.id("conversations")),
+  },
+  handler: async (ctx, args) => {
+    const { user: admin } = await requireAdmin(ctx);
+
+    // Verify target user exists
+    const targetUser = await ctx.db.get(args.userId as any);
+    if (!targetUser) throw new ConvexError("User not found");
+
+    const now = Date.now();
+
+    // Determine the conversation to use
+    let convoId: string;
+    let convo: any;
+
+    if (args.conversationId) {
+      // Reply in existing conversation
+      convo = await ctx.db.get(args.conversationId as any);
+      if (!convo) throw new ConvexError("Conversation not found");
+      convoId = convo._id;
+
+      // Update last message
+      await ctx.db.patch(convoId as any, {
+        lastMessage: args.content,
+        lastMessageAt: now,
+      });
+    } else if (args.listingId) {
+      // Find or create conversation for this listing
+      const existing = await ctx.db
+        .query("conversations")
+        .withIndex("by_buyer", (q) => q.eq("buyerId", args.userId))
+        .collect();
+
+      const existingConvo = existing.find(
+        (c) => c.listingId === args.listingId
+      );
+
+      if (existingConvo) {
+        convoId = existingConvo._id;
+        convo = existingConvo;
+        await ctx.db.patch(convoId as any, {
+          lastMessage: args.content,
+          lastMessageAt: now,
+        });
+      } else {
+        // Create new conversation — admin as buyer, user as seller
+        convoId = await ctx.db.insert("conversations", {
+          buyerId: admin._id,
+          sellerId: args.userId,
+          listingId: args.listingId,
+          lastMessage: args.content,
+          lastMessageAt: now,
+          unreadBuyer: 0,
+          unreadSeller: 1,
+          createdAt: now,
+        });
+        convo = await ctx.db.get(convoId as any);
+      }
+    } else {
+      // No listing — find existing conversation between admin and user
+      const existing = await ctx.db
+        .query("conversations")
+        .withIndex("by_buyer", (q) => q.eq("buyerId", admin._id))
+        .collect();
+
+      const existingConvo = existing.find(
+        (c) => c.sellerId === args.userId
+      );
+
+      if (existingConvo) {
+        convoId = existingConvo._id;
+        convo = existingConvo;
+        await ctx.db.patch(convoId as any, {
+          lastMessage: args.content,
+          lastMessageAt: now,
+        });
+      } else {
+        // Create new conversation
+        convoId = await ctx.db.insert("conversations", {
+          buyerId: admin._id,
+          sellerId: args.userId,
+          lastMessage: args.content,
+          lastMessageAt: now,
+          unreadBuyer: 0,
+          unreadSeller: 1,
+          createdAt: now,
+        });
+        convo = await ctx.db.get(convoId as any);
+      }
+    }
+
+    // Insert the message — admin is sender, user is receiver
+    await ctx.db.insert("messages", {
+      senderId: admin._id,
+      receiverId: args.userId,
+      listingId: args.listingId || convo?.listingId || undefined,
+      content: args.content,
+      read: false,
+      createdAt: now,
+    });
+
+    // Notify the user about the admin message
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      type: "message",
+      title: "Message from Nexora Admin",
+      message: args.content.slice(0, 120),
+      read: false,
+      link: "/chat",
+      createdAt: now,
+    });
+
+    return { success: true, conversationId: convoId };
+  },
+});
+
 // ─── JOB MANAGEMENT ───
 
 /** Admin: get all job posts */
