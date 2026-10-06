@@ -49,23 +49,21 @@ export default function AdminMessages() {
               const buyerName = buyer?.name || buyer?.email || "Buyer";
               const sellerName = seller?.name || seller?.businessName || seller?.email || "Seller";
               const isExpanded = expandedId === c._id;
+              // Admin acts as buyerId in admin-created conversations. Thread = all
+              // messages between the two conversation participants (admin + user).
               const thread = (allMessages ?? [])
                 .filter((m: any) =>
                   (m.senderId === c.buyerId && m.receiverId === c.sellerId) ||
-                  (m.senderId === c.sellerId && m.receiverId === c.buyerId) ||
-                  (m.senderId === "admin" && m.receiverId === c.buyerId) ||
-                  (m.senderId === "admin" && m.receiverId === c.sellerId) ||
-                  (m.senderId === c.buyerId && m.receiverId === "admin") ||
-                  (m.senderId === c.sellerId && m.receiverId === "admin")
+                  (m.senderId === c.sellerId && m.receiverId === c.buyerId)
                 )
-                .sort((a: any, b: any) => a.createdAt - b.createdAt);
-
-              const handleReply = async () => {
+                .sort((a: any, b: any) => a.createdAt - b.createdAt);                  const handleReply = async () => {
                 if (!replyText.trim() || !c._id || sending) return;
                 setSending(true);
                 try {
+                  // Admin created this conversation as the buyer; the other
+                  // participant (the user we want to reach) is the seller.
                   await adminSendMessage({
-                    userId: c.buyerId,
+                    userId: c.sellerId,
                     content: replyText.trim(),
                     conversationId: c._id,
                   });
