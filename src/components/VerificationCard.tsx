@@ -29,6 +29,9 @@ export default function VerificationCard({ variant = "dark" }: { variant?: "dark
   if (!isBusiness) {
     // Buyers: light-touch — basic verification only.
     const done = status.basicDone;
+    // Fully registered users don't need to see verification chrome — the
+    // card only exists to drive unfinished steps.
+    if (done) return null;
     return (
       <div className={`rounded-xl border p-5 ${done ? "border-emerald-400/20 bg-emerald-500/[0.05]" : "border-amber-400/20 bg-amber-500/[0.05]"}`}>
         <div className="flex items-start gap-3">
@@ -65,6 +68,10 @@ export default function VerificationCard({ variant = "dark" }: { variant?: "dark
 
   const fullyDone = status.businessVerified;
   const pendingReqs = status.requirements.filter((r: any) => !r.done);
+
+  // All checks passed (or a non-business account with nothing left to do):
+  // hide the card — a completed checklist is redundant on the dashboard.
+  if (fullyDone) return null;
 
   return (
     <div className={`rounded-xl border p-5 ${fullyDone ? "border-emerald-400/20 bg-emerald-500/[0.05]" : "border-nx-violet/25 bg-nx-violet/[0.06]"}`}>
