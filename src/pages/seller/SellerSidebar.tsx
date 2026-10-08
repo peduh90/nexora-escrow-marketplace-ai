@@ -32,6 +32,7 @@ export default function SellerSidebar() {
     { icon: MessageSquare, label: "Messages", path: "/seller/messages" },
     { icon: TrendingUp, label: "Offers", path: "/seller/offers" },
     { icon: Users, label: "Customers", path: "/seller/customers" },
+    { icon: Users, label: "My Team", path: "/seller/my-team" },
     { icon: Wallet, label: "Wallet", path: "/seller/earnings" },
     { icon: Download, label: "Withdrawals", path: "/seller/withdrawals" },
     { icon: Truck, label: "Delivery", path: "/seller/delivery" },

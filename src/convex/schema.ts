@@ -14,6 +14,7 @@ export const roleValidator = v.union(
   v.literal("super_admin"),
   v.literal("marketplace_admin"),
   v.literal("finance_admin"),
+  v.literal("data_entry"),
 );
 export type Role = Infer<typeof roleValidator>;
 
@@ -30,6 +31,7 @@ export const ALL_ROLES = [
   "super_admin",
   "marketplace_admin",
   "finance_admin",
+  "data_entry",
 ] as const;
 
 export type AnyRole = (typeof ALL_ROLES)[number];

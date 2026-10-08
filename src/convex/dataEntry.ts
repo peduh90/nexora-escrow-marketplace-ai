@@ -19,7 +19,7 @@ async function requireAdmin(ctx: any) {
   if ((fresh as any).role !== "admin" && !isOwner) {
     throw new ConvexError("Unauthorized: admin only");
   }
-  return { user: fresh, identity };
+  return fresh as any;
 }
 
 // ─── PERMISSIONS ───────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ async function requireWorkerAccessToSeller(
 ): Promise<any> {
   const staff = await ctx.db
     .query("sellerStaff")
-    .withIndex("by_worker", (q) => q.eq("workerId", workerId))
+    .withIndex("by_worker", (q: any) => q.eq("workerId", workerId))
     .first();
   if (!staff) throw new ConvexError("No staff relationship found");
   if (staff.sellerId !== sellerId) throw new ConvexError("Not authorized for this seller");
@@ -100,6 +100,28 @@ async function insertAudit(
 }
 
 // ─── INVITATIONS ───────────────────────────────────────────────────────────
+
+/**
+ * Listing docs store image storage keys; readers need real URLs. Mirrors
+ * listings.resolveListingImages (storage key → signed URL, else pass through
+ * http URLs).
+ */
+async function resolveListingImages(ctx: any, images: string[] | undefined): Promise<string[]> {
+  const out: string[] = [];
+  for (const img of images || []) {
+    try {
+      const url = await ctx.storage.getUrl(img);
+      if (url) { out.push(url); continue; }
+    } catch { /* not a storage key */ }
+    if (typeof img === "string" && img.startsWith("http")) out.push(img);
+  }
+  return out;
+}
+
+async function listingWithUrls(ctx: any, listing: any) {
+  if (!listing) return null;
+  return { ...listing, images: await resolveListingImages(ctx, listing.images) };
+}
 
 export const myPendingInvitations = query({
   args: {},
@@ -221,7 +243,11 @@ export const createInvitation = mutation({
 });
 
 export const getInvitation = query({
-  args: { invitationId: v.id("sellerStaffInvitations") },
+  args: {
+    invitationId: v.id("sellerStaffInvitations"),
+    inviteeEmail: v.optional(v.string()),
+    inviteePhone: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx);
     if (!user) throw new ConvexError("Not authenticated");
@@ -277,6 +303,14 @@ export const acceptInvitation = mutation({
     });
 
     await ctx.db.patch(args.invitationId, { status: "accepted" });
+
+    // The worker panel is gated on the data_entry role. Accepting an
+    // invitation is the explicit, audited moment this account becomes a
+    // data-entry worker — one account, one role, per the platform rule
+    // (internalEnsureDataEntryRole exists for admin-driven repairs).
+    if (user.role !== "data_entry") {
+      await ctx.db.patch(user._id, { role: "data_entry" });
+    }
 
     await insertAudit(
       ctx,
@@ -787,10 +821,11 @@ export const createDelegatedProduct = mutation({
     await requireWorkerAccessToSeller(ctx, worker._id, args.sellerId);
 
     if (args.jobId) {
-      const job = await ctx.db.get(args.jobId);
+      const job = await ctx.db.get(args.jobId as any);
       if (!job) throw new ConvexError("Job not found");
-      if (job.sellerId !== args.sellerId) throw new ConvexError("Job does not belong to this seller");
-      if (job.acceptedWorkerId !== worker._id) throw new ConvexError("You are not the accepted worker for this job");
+      const jobAny = job as any;
+      if (jobAny.sellerId !== args.sellerId) throw new ConvexError("Job does not belong to this seller");
+      if (jobAny.acceptedWorkerId !== worker._id) throw new ConvexError("You are not the accepted worker for this job");
     }
     if (args.assignmentId) {
       const a = await ctx.db.get(args.assignmentId);
@@ -804,7 +839,7 @@ export const createDelegatedProduct = mutation({
     }
 
     const now = Date.now();
-    const seller = await ctx.db.get(args.sellerId);
+    const seller = (await ctx.db.get(args.sellerId as any)) as any;
     if (!seller) throw new ConvexError("Seller not found");
 
     const la = args.listingArgs as any;
@@ -982,7 +1017,7 @@ export const myPendingReviewProducts = query({
     const pending = products.filter((p: any) => p.status === "pending_seller_review");
     return Promise.all(
       pending.map(async (p: any) => {
-        const listing = await ctx.db.get(p.listingId);
+        const listing = await listingWithUrls(ctx, await ctx.db.get(p.listingId));
         return { ...p, listing };
       }),
     );
@@ -999,7 +1034,7 @@ export const myWorkerProducts = query({
       .collect();
     return Promise.all(
       products.map(async (p: any) => {
-        const listing = await ctx.db.get(p.listingId as any);
+        const listing = await listingWithUrls(ctx, await ctx.db.get(p.listingId as any));
         const worker = await ctx.db.get(p.workerId as any);
         return { ...p, listing, workerName: (worker as any)?.name || (worker as any)?.email || "Worker" };
       }),
@@ -1025,7 +1060,7 @@ export const reviewProduct = mutation({
     if (dep.sellerId !== seller._id) throw new ConvexError("Not your product");
     if (dep.status !== "pending_seller_review") throw new ConvexError("Product is not pending review");
 
-    const statusMap = {
+    const statusMap: Record<string, "approved" | "rejected" | "changes_requested"> = {
       approve: "approved",
       reject: "rejected",
       changes_requested: "changes_requested",
@@ -1050,7 +1085,7 @@ export const reviewProduct = mutation({
     }
 
     if (newStatus === "approved" && dep.jobId) {
-      const job = await ctx.db.get(dep.jobId);
+      const job = (await ctx.db.get(dep.jobId as any)) as any;
       if (job && job.publishMode === "auto") {
         await ctx.db.patch(args.productEntryId, { status: "published" });
         await ctx.db.patch(dep.listingId, { status: "active" });
@@ -1128,6 +1163,51 @@ export const publishApprovedProduct = mutation({
 
 // ─── SELLER: EDIT WORKER DRAFT ─────────────────────────────────────────────
 
+/**
+ * Shared listing-patch builder for worker-draft edits (seller review loop and
+ * the worker's own revision pass). Returns raw field updates — callers add
+ * timestamps/status and persist.
+ */
+function buildListingUpdates(la: any): Record<string, unknown> {
+  const updates: Record<string, unknown> = {};
+  if (la.title !== undefined) updates.title = la.title;
+  if (la.description !== undefined) updates.description = la.description;
+  if (la.price !== undefined) updates.price = la.price;
+  if (la.subcategory !== undefined) updates.subcategory = la.subcategory;
+  if (la.condition !== undefined) updates.condition = la.condition;
+  if (la.attributes !== undefined) updates.attributes = la.attributes;
+  if (la.negotiable !== undefined) updates.negotiable = la.negotiable;
+  if (la.originalPrice !== undefined) updates.originalPrice = la.originalPrice;
+
+  if (la.wholesale !== undefined || la.moq !== undefined || la.tierPrices !== undefined) {
+    updates.wholesale =
+      la.wholesale && la.moq && la.moq >= 2 && la.tierPrices && la.tierPrices.length > 0 &&
+      la.tierPrices.every((t: any) => t.minQty >= 2 && t.price > 0)
+        ? true
+        : undefined;
+    updates.moq = la.wholesale && la.moq && la.moq >= 2 ? Math.round(la.moq) : undefined;
+    updates.tierPrices =
+      la.wholesale && la.tierPrices && la.tierPrices.length > 0
+        ? la.tierPrices
+            .filter((t: any) => t.minQty >= 2 && t.price > 0)
+            .map((t: any) => ({ minQty: Math.round(t.minQty), price: Math.round(t.price) }))
+            .sort((a: any, b: any) => a.minQty - b.minQty)
+        : undefined;
+  }
+
+  if (la.rental !== undefined || la.ratePerDay !== undefined || la.depositAmount !== undefined || la.minRentalDays !== undefined) {
+    updates.rental =
+      la.rental && la.ratePerDay && la.ratePerDay > 0 && la.depositAmount !== undefined && la.depositAmount >= 0
+        ? true
+        : undefined;
+    updates.ratePerDay = la.rental && la.ratePerDay && la.ratePerDay > 0 ? Math.round(la.ratePerDay) : undefined;
+    updates.depositAmount = la.rental && la.depositAmount !== undefined && la.depositAmount >= 0 ? Math.round(la.depositAmount) : undefined;
+    updates.minRentalDays = la.rental && la.minRentalDays && la.minRentalDays >= 1 ? Math.round(la.minRentalDays) : undefined;
+  }
+
+  return updates;
+}
+
 export const editWorkerDraft = mutation({
   args: {
     sellerId: v.string(),
@@ -1159,45 +1239,12 @@ export const editWorkerDraft = mutation({
       throw new ConvexError("Only draft or changes_requested products can be edited by seller");
     }
 
-    const la = args.listingArgs as any;
-    const updates: Record<string, unknown> = {};
-    if (la.title !== undefined) updates.title = la.title;
-    if (la.description !== undefined) updates.description = la.description;
-    if (la.price !== undefined) updates.price = la.price;
-    if (la.subcategory !== undefined) updates.subcategory = la.subcategory;
-    if (la.condition !== undefined) updates.condition = la.condition;
-    if (la.attributes !== undefined) updates.attributes = la.attributes;
-    if (la.negotiable !== undefined) updates.negotiable = la.negotiable;
-    if (la.originalPrice !== undefined) updates.originalPrice = la.originalPrice;
-
-    if (la.wholesale !== undefined || la.moq !== undefined || la.tierPrices !== undefined) {
-      updates.wholesale =
-        la.wholesale && la.moq && la.moq >= 2 && la.tierPrices && la.tierPrices.length > 0 &&
-        la.tierPrices.every((t: any) => t.minQty >= 2 && t.price > 0)
-          ? true
-          : undefined;
-      updates.moq = la.wholesale && la.moq && la.moq >= 2 ? Math.round(la.moq) : undefined;
-      updates.tierPrices =
-        la.wholesale && la.tierPrices && la.tierPrices.length > 0
-          ? la.tierPrices
-              .filter((t: any) => t.minQty >= 2 && t.price > 0)
-              .map((t: any) => ({ minQty: Math.round(t.minQty), price: Math.round(t.price) }))
-              .sort((a: any, b: any) => a.minQty - b.minQty)
-          : undefined;
-    }
-
-    if (la.rental !== undefined || la.ratePerDay !== undefined || la.depositAmount !== undefined || la.minRentalDays !== undefined) {
-      updates.rental =
-        la.rental && la.ratePerDay && la.ratePerDay > 0 && la.depositAmount !== undefined && la.depositAmount >= 0
-          ? true
-          : undefined;
-      updates.ratePerDay = la.rental && la.ratePerDay && la.ratePerDay > 0 ? Math.round(la.ratePerDay) : undefined;
-      updates.depositAmount = la.rental && la.depositAmount !== undefined && la.depositAmount >= 0 ? Math.round(la.depositAmount) : undefined;
-      updates.minRentalDays = la.rental && la.minRentalDays && la.minRentalDays >= 1 ? Math.round(la.minRentalDays) : undefined;
-    }
-
+    const updates = buildListingUpdates(args.listingArgs as any);
     updates.updatedAt = Date.now();
-    await ctx.db.patch(args.productEntryId, updates);
+    // Listing fields live on the listing document — the tracking row only
+    // carries workflow state, so patching title/price onto it would be a
+    // no-op the seller never sees.
+    await ctx.db.patch(dep.listingId, updates);
 
     const listing2 = await ctx.db.get(dep.listingId);
     if (!listing2) throw new ConvexError("Listing not found after update");
@@ -1218,6 +1265,111 @@ export const editWorkerDraft = mutation({
   },
 });
 
+// ─── WORKER: SELLERS I WORK FOR ──────────────────────────────────────────────
+
+/**
+ * The sellers this data-entry worker has active staff access to. The product
+ * entry workspace needs this list so a worker can pick which store they are
+ * entering a product for.
+ */
+export const mySellers = query({
+  args: {},
+  handler: async (ctx) => {
+    const worker = await requireDataEntryWorker(ctx);
+    const rows = await ctx.db
+      .query("sellerStaff")
+      .withIndex("by_worker", (q: any) => q.eq("workerId", worker._id))
+      .collect();
+    const active = rows.filter((r: any) => r.status === "active");
+    return Promise.all(
+      active.map(async (r: any) => {
+        const seller = (await ctx.db.get(r.sellerId as any)) as any;
+        return {
+          staffId: r._id,
+          sellerId: r.sellerId,
+          permissions: r.permissions ?? [],
+          businessName: seller?.businessName || seller?.name || "Seller",
+          kycStatus: seller?.kycStatus,
+        };
+      }),
+    );
+  },
+});
+
+// ─── WORKER: REVISE OWN DRAFT ──────────────────────────────────────────────
+
+/**
+ * The worker's counterpart to the seller's editWorkerDraft: they revise their
+ * own draft (or a product the seller sent back with changes requested). A
+ * changes_requested product drops back to draft so the normal
+ * submit-for-review loop can run again.
+ */
+export const updateMyDraft = mutation({
+  args: {
+    productEntryId: v.id("dataEntryProducts"),
+    listingArgs: v.object({
+      title: v.optional(v.string()),
+      description: v.optional(v.string()),
+      price: v.optional(v.number()),
+      subcategory: v.optional(v.string()),
+      condition: v.optional(v.string()),
+      images: v.optional(v.array(v.string())),
+      attributes: v.optional(v.record(v.string(), v.string())),
+      negotiable: v.optional(v.boolean()),
+      originalPrice: v.optional(v.number()),
+      wholesale: v.optional(v.boolean()),
+      moq: v.optional(v.number()),
+      tierPrices: v.optional(v.array(v.object({ minQty: v.number(), price: v.number() }))),
+      rental: v.optional(v.boolean()),
+      ratePerDay: v.optional(v.number()),
+      depositAmount: v.optional(v.number()),
+      minRentalDays: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const worker = await requireDataEntryWorker(ctx);
+    const dep = (await ctx.db.get(args.productEntryId)) as any;
+    if (!dep) throw new ConvexError("Product entry not found");
+    if (dep.workerId !== worker._id) throw new ConvexError("Not your product");
+    if (dep.status !== "draft" && dep.status !== "changes_requested") {
+      throw new ConvexError("Only drafts or change-requested products can be edited");
+    }
+
+    const la = args.listingArgs as any;
+    const listingUpdates = buildListingUpdates(la);
+    if (la.images !== undefined) listingUpdates.images = la.images;
+    listingUpdates.updatedAt = Date.now();
+    await ctx.db.patch(dep.listingId, listingUpdates);
+    if (dep.status === "changes_requested") {
+      await ctx.db.patch(args.productEntryId, { status: "draft" });
+    }
+
+    await insertAudit(
+      ctx,
+      worker._id,
+      worker.name || worker.email || "Worker",
+      "data_entry",
+      "PRODUCT_EDITED",
+      dep.sellerId,
+      dep.jobId,
+      args.productEntryId as any,
+      `Revised product draft ${dep.listingId}`,
+    );
+
+    await ctx.db.insert("notifications", {
+      userId: dep.sellerId,
+      type: "data_entry",
+      title: "Draft revised",
+      message: `${worker.name || worker.email || "A worker"} revised a product draft and is ready to resubmit.`,
+      read: false,
+      link: "/seller/my-team",
+      createdAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
 // ─── WORKER: VIEW ASSIGNED PRODUCTS ────────────────────────────────────────
 
 export const myProducts = query({
@@ -1230,7 +1382,7 @@ export const myProducts = query({
       .collect();
     return Promise.all(
       products.map(async (p: any) => {
-        const listing = await ctx.db.get(p.listingId as any);
+        const listing = await listingWithUrls(ctx, await ctx.db.get(p.listingId as any));
         const seller = await ctx.db.get(p.sellerId as any);
         const job = p.jobId ? await ctx.db.get(p.jobId as any) : null;
         return { ...p, listing, sellerName: (seller as any)?.businessName || (seller as any)?.name || "Seller", job };
@@ -1255,6 +1407,7 @@ export const myStats = query({
       rejected: products.filter((p: any) => p.status === "rejected").length,
       changesRequested: products.filter((p: any) => p.status === "changes_requested").length,
       published: products.filter((p: any) => p.status === "published").length,
+      completionPercent: 0,
     };
     const completed = totals.approved + totals.published + totals.rejected;
     totals.completionPercent = totals.total > 0 ? Math.round((completed / totals.total) * 100) : 0;
@@ -1274,7 +1427,7 @@ export const createDispute = mutation({
     const user = await getSessionUser(ctx);
     if (!user) throw new ConvexError("Not authenticated");
 
-    const job = await ctx.db.get(args.jobId);
+    const job = (await ctx.db.get(args.jobId as any)) as any;
     if (!job) throw new ConvexError("Job not found");
 
     if (user._id !== job.sellerId && user._id !== job.acceptedWorkerId) {
@@ -1365,12 +1518,12 @@ export const approvePaymentForProduct = mutation({
   },
   handler: async (ctx, args) => {
     const seller = await requireSeller(ctx);
-    const dep = await ctx.db.get(args.productEntryId);
+    const dep = (await ctx.db.get(args.productEntryId)) as any;
     if (!dep) throw new ConvexError("Product entry not found");
     if (dep.sellerId !== seller._id) throw new ConvexError("Not your product");
     if (dep.status !== "approved") throw new ConvexError("Product must be approved first");
 
-    const job = await ctx.db.get(dep.jobId);
+    const job = (await ctx.db.get(dep.jobId as any)) as any;
     if (!job) throw new ConvexError("Job not found");
     if (job.sellerId !== seller._id) throw new ConvexError("Job not yours");
 
@@ -1524,7 +1677,7 @@ export const adminGetAllWorkerProducts = query({
     const rows = await ctx.db.query("dataEntryProducts").collect();
     return Promise.all(
       rows.map(async (r: any) => {
-        const listing = await ctx.db.get(r.listingId as any);
+        const listing = await listingWithUrls(ctx, await ctx.db.get(r.listingId as any));
         const seller = await ctx.db.get(r.sellerId as any);
         const worker = await ctx.db.get(r.workerId as any);
         return {
@@ -1545,9 +1698,9 @@ export const adminGetAllDataEntryDisputes = query({
     const rows = await ctx.db.query("dataEntryDisputes").collect();
     return Promise.all(
       rows.map(async (r: any) => {
-        const seller = await ctx.db.get(r.sellerId);
-        const worker = await ctx.db.get(r.workerId);
-        const job = await ctx.db.get(r.jobId);
+        const seller = (await ctx.db.get(r.sellerId as any)) as any;
+        const worker = (await ctx.db.get(r.workerId as any)) as any;
+        const job = (await ctx.db.get(r.jobId as any)) as any;
         return {
           ...r,
           sellerName: seller?.businessName || seller?.name || "Seller",
@@ -1566,9 +1719,9 @@ export const adminGetAllDataEntryPayments = query({
     const rows = await ctx.db.query("dataEntryPayments").collect();
     return Promise.all(
       rows.map(async (r: any) => {
-        const seller = await ctx.db.get(r.sellerId);
-        const worker = await ctx.db.get(r.workerId);
-        const job = await ctx.db.get(r.jobId);
+        const seller = (await ctx.db.get(r.sellerId as any)) as any;
+        const worker = (await ctx.db.get(r.workerId as any)) as any;
+        const job = (await ctx.db.get(r.jobId as any)) as any;
         return {
           ...r,
           sellerName: seller?.businessName || seller?.name || "Seller",
@@ -1597,6 +1750,116 @@ export const adminAuditLogs = query({
         a.action.startsWith("STAFF_")
       )
       .sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+  },
+});
+
+// ─── ADMIN: SELLER PRODUCT TRACE & RE-CHANNEL ────────────────────────────
+
+/**
+ * Trace a seller's account and every listing they own, across all statuses
+ * and marketplaces, so an admin can see exactly where a store's products are
+ * channelled (product market vs freelance/digital market).
+ */
+export const adminTraceSellerProducts = query({
+  args: {
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    storeName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const email = args.email?.trim().toLowerCase() || "";
+    const digits = (args.phone || "").replace(/\D/g, "");
+    const needle = (args.storeName || "").trim().toLowerCase();
+    if (!email && !needle && digits.length < 6) return { accounts: [], listings: [] };
+
+    const allUsers = await ctx.db.query("users").collect();
+    const accounts = allUsers
+      .filter((u: any) => {
+        const byEmail = !!email && (u.email || "").toLowerCase() === email;
+        const byStore =
+          !!needle &&
+          [u.businessName, u.name, u.storeName]
+            .filter(Boolean)
+            .some((s: string) => s.toLowerCase().includes(needle));
+        const byPhone =
+          digits.length >= 6 &&
+          String(u.phone || "").replace(/\D/g, "").includes(digits.slice(-9));
+        return byEmail || byStore || byPhone;
+      })
+      .map((u: any) => ({
+        _id: u._id,
+        email: u.email,
+        name: u.name,
+        businessName: u.businessName,
+        role: u.role,
+        phone: u.phone,
+        county: u.county,
+        town: u.town,
+        kycStatus: u.kycStatus,
+      }));
+
+    const ids = new Set(accounts.map((a) => a._id));
+    const allListings = await ctx.db.query("listings").collect();
+    const listings = allListings
+      .filter(
+        (l: any) =>
+          ids.has(l.sellerId) ||
+          (!!needle && (l.sellerName || "").toLowerCase().includes(needle)),
+      )
+      .map((l: any) => ({
+        _id: l._id,
+        title: l.title,
+        marketplace: l.marketplace === "freelance" ? "freelance" : "product",
+        category: l.category,
+        status: l.status,
+        price: l.price,
+        sellerName: l.sellerName,
+        sellerId: l.sellerId,
+        createdAt: l.createdAt ?? l._creationTime,
+      }))
+      .sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    return { accounts, listings };
+  },
+});
+
+/**
+ * Move a listing between the product market and the freelance/digital market.
+ * Physical-goods sellers accidentally channelled into the digital marketplace
+ * are corrected here, with a full audit trail.
+ */
+export const adminSetListingMarketplace = mutation({
+  args: {
+    listingId: v.id("listings"),
+    marketplace: v.union(v.literal("product"), v.literal("freelance")),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const listing = (await ctx.db.get(args.listingId)) as any;
+    if (!listing) throw new ConvexError("Listing not found");
+
+    const current = listing.marketplace === "freelance" ? "freelance" : "product";
+    if (current === args.marketplace) {
+      throw new ConvexError(`Already in the ${args.marketplace} market`);
+    }
+
+    await ctx.db.patch(args.listingId, { marketplace: args.marketplace });
+
+    await insertAudit(
+      ctx,
+      admin._id,
+      (admin as any).name || (admin as any).email || "Admin",
+      "admin",
+      "PRODUCT_MARKETPLACE_CHANGED",
+      listing.sellerId,
+      undefined,
+      args.listingId as any,
+      `Moved "${listing.title}" from ${current} market to ${args.marketplace} market`,
+    );
+
+    return { success: true, from: current, to: args.marketplace };
   },
 });
 

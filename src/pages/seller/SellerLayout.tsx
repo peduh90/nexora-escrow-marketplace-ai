@@ -16,6 +16,7 @@ const navLabels: Record<string, string> = {
   "/seller/messages": "Messages",
   "/seller/offers": "Offers",
   "/seller/customers": "Customers",
+  "/seller/my-team": "My Team",
   "/seller/earnings": "Wallet",
   "/seller/withdrawals": "Withdrawals",
   "/seller/delivery": "Delivery",

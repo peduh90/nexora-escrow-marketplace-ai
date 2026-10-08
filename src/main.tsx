@@ -57,6 +57,13 @@ const BuyerDisputes = lazy(() => import("./pages/Disputes.tsx"));
 const BuyerSettings = lazy(() => import("./pages/buyer/BuyerSettings.tsx"));
 const SellerNotifications = lazy(() => import("./pages/seller/SellerNotifications.tsx"));
 const SellerHelp = lazy(() => import("./pages/seller/SellerHelp.tsx"));
+const SellerMyTeam = lazy(() => import("./pages/seller/SellerMyTeam.tsx"));
+const AdminDataEntry = lazy(() => import("./pages/admin/AdminDataEntry.tsx"));
+const DataEntryDashboard = lazy(() => import("./pages/dataentry/DataEntryDashboard.tsx"));
+const DataEntryNewProduct = lazy(() => import("./pages/dataentry/DataEntryNewProduct.tsx"));
+const DataEntryProducts = lazy(() => import("./pages/dataentry/DataEntryProducts.tsx"));
+const DataEntryJobs = lazy(() => import("./pages/dataentry/DataEntryJobs.tsx"));
+const DataEntryInvite = lazy(() => import("./pages/dataentry/DataEntryInvite.tsx"));
 const SellerWithdrawals = lazy(() => import("./pages/seller/SellerWithdrawals.tsx"));
 const SellerPromotions = lazy(() => import("./pages/seller/SellerPromotions.tsx"));
 const SellerAddProduct = lazy(() => import("./pages/seller/SellerAddProduct.tsx"));
@@ -435,6 +442,16 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/seller/notifications" element={<RoleRouter allowedRoles={["seller"]}><SellerNotifications /></RoleRouter>} />
               <Route path="/seller/settings" element={<RoleRouter allowedRoles={["seller"]}><SellerSettings /></RoleRouter>} />
               <Route path="/seller/help" element={<RoleRouter allowedRoles={["seller"]}><SellerHelp /></RoleRouter>} />
+              <Route path="/seller/my-team" element={<RoleRouter allowedRoles={["seller"]}><SellerMyTeam /></RoleRouter>} />
+
+              {/* Data entry worker panel (data_entry role only) */}
+              <Route path="/data-entry" element={<RoleRouter allowedRoles={["data_entry"]}><DataEntryDashboard /></RoleRouter>} />
+              <Route path="/data-entry/new" element={<RoleRouter allowedRoles={["data_entry"]}><DataEntryNewProduct /></RoleRouter>} />
+              <Route path="/data-entry/products" element={<RoleRouter allowedRoles={["data_entry"]}><DataEntryProducts /></RoleRouter>} />
+              <Route path="/data-entry/jobs" element={<RoleRouter allowedRoles={["data_entry"]}><DataEntryJobs /></RoleRouter>} />
+              {/* Invite links open for ANY signed-in role — accepting is what
+                  grants the data_entry role, so the guard can't require it first. */}
+              <Route path="/data-entry/invite/:id" element={<RoleRouter><DataEntryInvite /></RoleRouter>} />
 
               {/* Admin routes */}
               <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
@@ -463,6 +480,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin/settings" element={<RequireAdmin><AdminSettings /></RequireAdmin>} />
               <Route path="/admin/notifications" element={<RequireAdmin><AdminNotifications /></RequireAdmin>} />
               <Route path="/admin/audit-logs" element={<RequireAdmin><AdminAuditLogs /></RequireAdmin>} />
+              <Route path="/admin/data-entry" element={<RequireAdmin><AdminDataEntry /></RequireAdmin>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

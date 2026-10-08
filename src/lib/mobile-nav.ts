@@ -74,6 +74,7 @@ export function roleHome(role?: string | null): string {
     case "creator": return "/creator";
     case "service_provider": return "/services/dashboard";
     case "driver": return "/transport/dashboard";
+    case "data_entry": return "/data-entry";
     default: return "/auth";
   }
 }

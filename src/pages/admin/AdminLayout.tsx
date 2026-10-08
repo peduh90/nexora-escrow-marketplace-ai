@@ -12,7 +12,7 @@ import {
   Truck, Briefcase, Activity, Wallet, Bell,
   Search, Package, CreditCard, MessageSquare, AlertTriangle,
   Receipt, TrendingUp, X, Menu, Crown, Home, Share2, MapPin,
-  Percent, Database, ClipboardCheck, Send, UserCheck, Banknote,
+  Percent, Database, ClipboardCheck, Send, UserCheck, Banknote, PenLine,
 } from "lucide-react";
 
 /**
@@ -42,6 +42,7 @@ const navGroups: NavGroup[] = [
       { icon: Users, label: "All Users", path: "/admin/users", desc: "Every account" },
       { icon: ClipboardCheck, label: "Verification (KYC)", path: "/admin/kyc", desc: "Identity reviews" },
       { icon: UserCheck, label: "Sellers", path: "/admin/sellers", desc: "Marketplace merchants", countKey: "sellers" },
+      { icon: PenLine, label: "Data Entry", path: "/admin/data-entry", desc: "Staff, jobs & entry audit" },
       { icon: Share2, label: "Creator Program", path: "/admin/referrals", desc: "Referrals & agreements" },
     ],
   },

@@ -527,6 +527,7 @@ export function RoleRouter({ children, allowedRoles }: RoleRouterProps) {
       creator: "/creator",
       service_provider: "/services/dashboard",
       driver: "/transport/dashboard",
+      data_entry: "/data-entry",
     };
     const target = roleRedirects[role as string];
     if (target) {
@@ -569,6 +570,8 @@ export function getDashboardPath(role?: string | null): string {
       return "/services/dashboard";
     case "driver":
       return "/transport/dashboard";
+    case "data_entry":
+      return "/data-entry";
     default:
       return "/auth?returnTo=/";
   }
