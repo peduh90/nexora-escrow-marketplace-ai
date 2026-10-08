@@ -20,6 +20,7 @@ export const ALLOWED_ROLES = [
   "freelancer",
   "employer",
   "creator",
+  "data_entry",
 ] as const;
 
 export type AllowedRole = (typeof ALLOWED_ROLES)[number];

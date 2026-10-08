@@ -1603,6 +1603,241 @@ const schema = defineSchema(
     // One opt-in record per product per buyer. Reminder ticks are computed
     // from nextOrderAt; reordering creates a REAL escrow order through the
     // existing wallet engine — never a fake statistic.
+
+    // ─── SELLER DATA-ENTRY / DELEGATED STAFF SYSTEM ────────────────────────
+    // A DATA_ENTRY worker has their OWN Nexora account. The seller grants them
+    // scoped access via sellerStaff. Products remain owned by the seller and
+    // are audit-logged with createdBy / createdVia.
+
+    // Authorization records: seller → worker relationships.
+    sellerStaff: defineTable({
+      sellerId: v.string(),
+      workerId: v.string(),
+      role: v.literal("data_entry"),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("active"),
+        v.literal("revoked"),
+      ),
+      permissions: v.optional(v.array(v.string())),
+      invitedBy: v.optional(v.string()),
+      invitedByName: v.optional(v.string()),
+      invitedAt: v.optional(v.number()),
+      acceptedAt: v.optional(v.number()),
+      revokedAt: v.optional(v.number()),
+      revokedBy: v.optional(v.string()),
+      revokeReason: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_seller", ["sellerId"])
+      .index("by_worker", ["workerId"])
+      .index("by_status", ["status"]),
+
+    // Pending invitations: seller invites a worker by email/phone; the worker
+    // creates their own account and accepts the invitation.
+    sellerStaffInvitations: defineTable({
+      sellerId: v.string(),
+      inviteeEmail: v.optional(v.string()),
+      inviteePhone: v.optional(v.string()),
+      inviteeName: v.optional(v.string()),
+      description: v.optional(v.string()),
+      role: v.literal("data_entry"),
+      permissions: v.optional(v.array(v.string())),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("accepted"),
+        v.literal("expired"),
+        v.literal("cancelled"),
+      ),
+      invitedBy: v.string(),
+      invitedByName: v.string(),
+      createdAt: v.number(),
+      expiresAt: v.number(),
+    })
+      .index("by_seller", ["sellerId"])
+      .index("by_invitee_email", ["inviteeEmail"])
+      .index("by_invitee_phone", ["inviteePhone"])
+      .index("by_status", ["status"])
+      .index("by_created", ["createdAt"]),
+
+    // Data entry job posts created by sellers.
+    dataEntryJobs: defineTable({
+      sellerId: v.string(),
+      createdBy: v.string(),
+      createdByName: v.string(),
+      title: v.string(),
+      description: v.string(),
+      productCount: v.number(),
+      category: v.string(),
+      deadline: v.optional(v.number()),
+      pricePerProduct: v.number(),
+      totalBudget: v.number(),
+      requiredSkills: v.optional(v.array(v.string())),
+      status: v.union(
+        v.literal("draft"),
+        v.literal("open"),
+        v.literal("assigned"),
+        v.literal("in_progress"),
+        v.literal("completed"),
+        v.literal("cancelled"),
+      ),
+      publishMode: v.union(
+        v.literal("manual"),
+        v.literal("auto"),
+      ),
+      acceptedWorkerId: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_seller", ["sellerId"])
+      .index("by_status", ["status"])
+      .index("by_created", ["createdAt"])
+      .index("by_worker", ["acceptedWorkerId"]),
+
+    // Individual product-assignment records under a job.
+    dataEntryAssignments: defineTable({
+      jobId: v.string(),
+      sellerId: v.string(),
+      workerId: v.string(),
+      productId: v.optional(v.string()),
+      status: v.union(
+        v.literal("assigned"),
+        v.literal("in_progress"),
+        v.literal("submitted"),
+        v.literal("approved"),
+        v.literal("rejected"),
+        v.literal("changes_requested"),
+        v.literal("completed"),
+      ),
+      assignedAt: v.number(),
+      submittedAt: v.optional(v.number()),
+      reviewedAt: v.optional(v.number()),
+      reviewedBy: v.optional(v.string()),
+      reviewNote: v.optional(v.string()),
+      completedAt: v.optional(v.number()),
+    })
+      .index("by_job", ["jobId"])
+      .index("by_worker", ["workerId"])
+      .index("by_seller", ["sellerId"])
+      .index("by_status", ["status"])
+      .index("by_product", ["productId"]),
+
+    // Product authorship + delegation markers.
+    //   sellerId   = actual business owner (unchanged).
+    //   createdBy  = the worker (or seller) who created the listing.
+    //   createdVia = how it was created: normal seller flow, or delegated DATA_ENTRY.
+    listingAuthorNotes: defineTable({
+      listingId: v.id("listings"),
+      sellerId: v.string(),
+      createdBy: v.string(),
+      createdVia: v.union(
+        v.literal("seller"),
+        v.literal("data_entry"),
+      ),
+      createdAt: v.number(),
+    })
+      .index("by_listing", ["listingId"])
+      .index("by_seller_created_by", ["sellerId", "createdBy"]),
+
+    // Product lifecycle status for delegated products (separate from listing.status).
+    // This is the review workflow state visible to sellers and workers.
+    dataEntryProducts: defineTable({
+      listingId: v.id("listings"),
+      sellerId: v.string(),
+      workerId: v.string(),
+      jobId: v.optional(v.string()),
+      assignmentId: v.optional(v.id("dataEntryAssignments")),
+      status: v.union(
+        v.literal("draft"),
+        v.literal("pending_seller_review"),
+        v.literal("approved"),
+        v.literal("rejected"),
+        v.literal("changes_requested"),
+        v.literal("published"),
+      ),
+      publishMode: v.union(
+        v.literal("manual"),
+        v.literal("auto"),
+      ),
+      submittedAt: v.optional(v.number()),
+      reviewedAt: v.optional(v.number()),
+      reviewedBy: v.optional(v.string()),
+      reviewNote: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_listing", ["listingId"])
+      .index("by_seller", ["sellerId"])
+      .index("by_worker", ["workerId"])
+      .index("by_status", ["status"])
+      .index("by_job", ["jobId"]),
+
+    // Job application records: workers apply/accept data entry jobs.
+    dataEntryApplications: defineTable({
+      jobId: v.string(),
+      workerId: v.string(),
+      workerName: v.string(),
+      message: v.optional(v.string()),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("accepted"),
+        v.literal("rejected"),
+        v.literal("withdrawn"),
+      ),
+      appliedAt: v.number(),
+      reviewedAt: v.optional(v.number()),
+      reviewedBy: v.optional(v.string()),
+    })
+      .index("by_job", ["jobId"])
+      .index("by_worker", ["workerId"])
+      .index("by_status", ["status"]),
+
+    // Disputes/correction requests between seller and worker.
+    dataEntryDisputes: defineTable({
+      jobId: v.string(),
+      sellerId: v.string(),
+      workerId: v.string(),
+      title: v.string(),
+      description: v.string(),
+      status: v.union(
+        v.literal("open"),
+        v.literal("under_review"),
+        v.literal("seller_response"),
+        v.literal("worker_response"),
+        v.literal("resolved"),
+      ),
+      resolution: v.optional(v.string()),
+      resolvedBy: v.optional(v.string()),
+      createdAt: v.number(),
+      resolvedAt: v.optional(v.number()),
+    })
+      .index("by_job", ["jobId"])
+      .index("by_seller", ["sellerId"])
+      .index("by_worker", ["workerId"])
+      .index("by_status", ["status"]),
+
+    // Staff payment ledger: one row per approved product unit under a job.
+    dataEntryPayments: defineTable({
+      jobId: v.string(),
+      workerId: v.string(),
+      sellerId: v.string(),
+      productId: v.string(),
+      ratePerProduct: v.number(),
+      amount: v.number(),
+      currency: v.string(),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("paid"),
+        v.literal("disputed"),
+      ),
+      paidAt: v.optional(v.number()),
+      createdAt: v.number(),
+    })
+      .index("by_job", ["jobId"])
+      .index("by_worker", ["workerId"])
+      .index("by_seller", ["sellerId"])
+      .index("by_status", ["status"]),
+
     // ─── Creator Referral Agreement (embedded at registration) ───
     // The user reads the agreement inside the signup flow, fills their
     // declaration, signs and ticks "I agree". Stored for admin review; the
